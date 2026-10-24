@@ -1,5 +1,5 @@
 /*
- * LMX Pack v5.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v5.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1091,7 +1091,12 @@
     function mobileCss() {
         var B = 'body.lmx-full ';
         return '@media (max-width:760px){' +
-            B + '.full-start-new__body{height:auto !important;min-height:60vh;padding-bottom:2vh}' +
+            B + '.full-start-new__body{height:auto !important;min-height:56vh;padding-bottom:2vh}' +
+            B + '.full-start-new__right{align-self:flex-end}' +
+            // опис дублюється блоком «Детально» нижче — на телефоні копію ховаємо
+            B + '.lmx-descr,' + B + '.full-start-new__right > .lmx-descr{display:none !important}' +
+            B + '.lmx-info{gap:.4em 1em}' +
+            B + '.lmx-info .lmx-ip + .lmx-ip::before{content:none !important}' +
             B + '.full-start-new__right{max-width:100% !important;width:100% !important;box-sizing:border-box}' +
             B + '.lmx-logo{max-width:72vw;max-height:14vh}' +
             B + '.lmx-descr,' + B + '.full-start-new__right > .lmx-descr{position:static !important;width:auto !important;max-width:100% !important;margin:.6em 0 1em;top:auto;right:auto}' +
@@ -1119,7 +1124,7 @@
             // ряди
             T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
             // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
-            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .32s cubic-bezier(.22,.8,.3,1);backface-visibility:hidden}' +
+            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .32s cubic-bezier(.22,.8,.3,1)}' +
             // кільце у фокусі — градієнт кольору теми; анімується лише прозорістю (дешево для ТВ, без ривків)
             T + '.card__view::after{display:block !important;content:"";position:absolute;top:-.24em;left:-.24em;right:-.24em;bottom:-.24em;border:0 !important;border-radius:.75em;background:' + G + ';z-index:-1;opacity:0;transition:opacity .32s ease;pointer-events:none}' +
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{opacity:1}' +
@@ -1177,6 +1182,9 @@
             '@media (max-width:760px){' +
                 F + '.lmx-logo{max-width:72vw;max-height:14vh}' +
                 F + '.lmx-descr__t{-webkit-line-clamp:4}' +
+                F + '.lmx-descr,' + F + '.full-start-new__right > .lmx-descr{display:none !important}' +
+                F + '.lmx-info .lmx-ip + .lmx-ip::before{content:none !important}' +
+                F + '.lmx-info{gap:.4em 1em}' +
                 F + '.full-start-new__buttons{flex-wrap:wrap}' +
             '}';
     }
@@ -1184,7 +1192,7 @@
         if (getStr('lmx_theme', 'default') !== 'hbo' || document.getElementById('lmx-font')) return;
         var l = document.createElement('link');
         l.id = 'lmx-font'; l.rel = 'stylesheet';
-        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&subset=cyrillic&display=swap';
+        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&subset=cyrillic&display=swap';
         document.head.appendChild(l);
     }
     function applyThemeClass() {
@@ -1265,6 +1273,15 @@
             if (n.children.length === 0 && re.test(n.textContent) && !isOurs(n)) hideEl(pillOf(n, view));
         }
     }
+    // Стандартний значок «TV» — лише серед прямих дітей постера, без глибокого обходу й getComputedStyle (дешево)
+    function hideNativeTv(view) {
+        var ch = view.children;
+        for (var i = 0; i < ch.length; i++) {
+            var n = ch[i];
+            if (n.style.display === 'none' || (n.className && String(n.className).indexOf('lmx-') >= 0)) continue;
+            if (n.children.length < 2 && RE_NATIVE_TV.test(n.textContent)) hideEl(n);
+        }
+    }
     function hideYear(el) {
         var view = el.querySelector('.card__view');
         if (view) hideLeaves(view, RE_YEAR);
@@ -1331,7 +1348,7 @@
         if (!view) return;
         var v = Number(d.vote_average) || 0;
 
-        hideLeaves(view, RE_NATIVE_TV);
+        hideNativeTv(view);
 
         if ('cinema' === 'cinema') {
             // стандартні підписи ховає CSS (без обчислень у JS — так легше для ТВ)
@@ -1639,7 +1656,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '5.2';
+    var VERSION = '5.3';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
