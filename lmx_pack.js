@@ -1,5 +1,5 @@
 /*
- * LMX Pack v4.5 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v4.7 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -479,7 +479,7 @@
         var P = H;
         P.title('lmx_t_page', 'Сторінка фільму');
         P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
-        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB замість назви; рік і країна переходять плашкою перед тривалістю. Вимкнено — звичайна назва', null);
+        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB замість назви; рік і країна переходять плашкою перед тривалістю. Вимкнено — звичайна назва', restyle);
         P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
         P.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія…»');
     }
@@ -1058,6 +1058,8 @@
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .25s ease}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
             // у контейнері font-size:0, тому розміри лише у vw/vh/px (em тут дорівнювали б нулю)
             B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
@@ -1137,8 +1139,8 @@
             T + '.lmx-pill.lmx-m-soon{background:rgba(5,6,15,.82) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}' +
             // банер і плитки стрімінгів
             T + '.card--lmxhero .card__view{border-radius:.5em}' +
-            T + '.card--lmxhero .card__view::after,' + T + '.card--lmxstudio .card__view::after{display:block !important}' +
-            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .2em #8a3bff !important}' +
+            T + '.card--lmxhero .card__view::after,' + T + '.card--lmxstudio .card__view::after{display:none !important}' +
+            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #8a3bff,0 0 1em rgba(138,59,255,.5) !important}' +
             T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
             T + '.menu__item,' + T + '.settings-param,' + T + '.settings-folder,' + T + '.selectbox-item{transition:background-color .2s ease}' +
@@ -1189,7 +1191,10 @@
     }
     function applyFullClass() {
         var on = getBool('lmx_full', true);
-        if (document.body && document.body.classList) document.body.classList.toggle('lmx-full', on);
+        if (document.body && document.body.classList) {
+            document.body.classList.toggle('lmx-full', on);
+            document.body.classList.toggle('lmx-logo-on', on && getBool('lmx_logo', true));
+        }
     }
 
     function applyStyle() {
@@ -1528,12 +1533,15 @@
         });
         return best && best.file_path;
     }
+    // Поки логотип вантажиться, текстову назву не показуємо (інакше вона блимає); потім показуємо те, що є
+    function reveal(r) { r.find('.full-start-new__title').addClass('lmx-reveal'); }
     function applyLogo(r, path) {
         var t = r.find('.full-start-new__title').eq(0);
-        if (!t.length || !path) return;
+        if (!t.length || !path) { reveal(r); return; }
         r.find('.lmx-logo').remove();
         var img = $('<img class="lmx-logo">').attr('src', imgUrl(path, 'w780'));
-        img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); restoreHead(r); });
+        img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); restoreHead(r); reveal(r); });
+        img.on('load', function () { reveal(r); });
         t.addClass('lmx-has-logo').prepend(img);
         moveHead(r);
     }
@@ -1567,7 +1575,8 @@
         Lampa.Api.sources.tmdb.get(kind + '/' + m.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
             logoCache[key] = pickLogo(j && j.logos);
             applyLogo(r, logoCache[key]);
-        }, function () {});
+        }, function () { reveal(r); });
+        setTimeout(function () { reveal(r); }, 3500);
     }
 
     function onFull(e) {
@@ -1580,6 +1589,7 @@
         var foreign = r.find('.cardify, .custom-ghost-main').length > 0;
         function yieldToForeign() {
             r.find('.lmx-descr,.lmx-scrim,.lmx-logo').remove();
+            reveal(r);
             r.find('.full-start-new__title').removeClass('lmx-has-logo');
             if (document.body && document.body.classList) document.body.classList.remove('lmx-full');
         }
@@ -1627,7 +1637,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '4.5';
+    var VERSION = '4.7';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
