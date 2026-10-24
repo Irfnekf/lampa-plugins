@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.7 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.8 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1047,8 +1047,8 @@
         var B = 'body.lmx-full ';
         var compact = getBool('lmx_btn_compact', true);
         return '' +
-            B + '.full-start-new__body{position:relative;height:80vh;' +
-                'background-image:linear-gradient(to right,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,0) 70%),linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,0) 55%)}' +
+            B + '.full-start-new__body{position:relative;height:94vh;padding-bottom:4vh;box-sizing:border-box;' +
+                'background-image:linear-gradient(to right,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,0) 70%),linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.55) 25%,rgba(0,0,0,0) 60%)}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
@@ -1056,9 +1056,9 @@
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
             B + '.full-start__background{opacity:1 !important}' +
-            B + '.lmx-descr{position:absolute;right:2%;top:4%;width:32vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
+            B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
-                'display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}' +
+                'display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}' +
             // кнопки: компактно, у кілька рядків без розтягування
             B + '.full-start-new__buttons{display:flex;flex-wrap:wrap;margin-top:.4em}' +
             B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);border-radius:.8em;margin:0 .5em .5em 0;padding:.55em 1em;font-size:.95em}' +
@@ -1431,7 +1431,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.7';
+    var VERSION = '2.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
