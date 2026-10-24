@@ -549,7 +549,7 @@
     }
 
     // ===== ДОПОМІЖНЕ ДЛЯ КАРТОК =====
-    var MAX_PARALLEL = 2;
+    var MAX_PARALLEL = 3;
     var CACHE_MIN = 1440;
     var RE_YEAR = /^\s*(19|20)\d\d\s*$/;
     var RE_RATING = /^\s*\d{1,2}([.,]\d)?\s*$/;
@@ -853,25 +853,25 @@
     var work = [], workTimer = null;
     function addWork(job) {
         work.push(job);
-        if (!workTimer) workTimer = setTimeout(runWork, 400);
+        if (!workTimer) workTimer = setTimeout(runWork, 150);
     }
     function runWork() {
         workTimer = null;
         var now = Date.now(), left = [], done = 0;
         for (var i = 0; i < work.length; i++) {
             var j = work[i];
-            if (j.due > now || done >= 4) { left.push(j); continue; }
+            if (j.due > now || done >= 14) { left.push(j); continue; }
             done++;
             if (document.body.contains(j.el)) safe(j.fn);
         }
         work = left;
-        if (work.length) workTimer = setTimeout(runWork, 250);
+        if (work.length) workTimer = setTimeout(runWork, 120);
     }
 
     var pumpTimer = null;
     function pumpSoon() {
         if (pumpTimer) return;
-        pumpTimer = setTimeout(function () { pumpTimer = null; pump(); }, 700);
+        pumpTimer = setTimeout(function () { pumpTimer = null; pump(); }, 250);
     }
     function pump() {
         while (active < MAX_PARALLEL && queue.length) {
@@ -903,7 +903,7 @@
 
             if (getBool('lmx_hide_year', true)) {
                 hideYear(el);
-                addWork({ el: el, due: Date.now() + 1500, fn: function () { hideYear(el); } });
+                addWork({ el: el, due: Date.now() + 700, fn: function () { hideYear(el); } });
             }
 
             var d = getData(el);
@@ -912,8 +912,8 @@
             var type = typeOf(d);
 
             // даємо Ліхтарю час намалювати свої значки, потім доповнюємо
-            addWork({ el: el, due: Date.now() + 1600, fn: function () { extras(el, d, type); } });
-            addWork({ el: el, due: Date.now() + 4000, fn: function () { extras(el, d, type); } });
+            addWork({ el: el, due: Date.now() + 700, fn: function () { extras(el, d, type); } });
+            addWork({ el: el, due: Date.now() + 2500, fn: function () { extras(el, d, type); } });
 
             if (type === 'tv') {
                 var task = { el: el, id: d.id };
@@ -930,7 +930,7 @@
     var timer = null;
     function schedule() {
         clearTimeout(timer);
-        timer = setTimeout(function () { safe(scan); }, 600);
+        timer = setTimeout(function () { safe(scan); }, 350);
     }
 
     // після зміни стилю: прибрати наші елементи, показати сховане, перемалювати
