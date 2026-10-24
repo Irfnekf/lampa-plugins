@@ -1,5 +1,5 @@
 /*
- * LMX Pack v3.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v3.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1060,7 +1060,8 @@
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
-            B + '.lmx-logo{display:block;max-width:70%;max-height:8em;width:auto;height:auto;margin-bottom:.6em;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
+            // у контейнері font-size:0, тому розміри лише у vw/vh/px (em тут дорівнювали б нулю)
+            B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
@@ -1485,7 +1486,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '3.2';
+    var VERSION = '3.3';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
