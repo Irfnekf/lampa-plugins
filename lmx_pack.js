@@ -1,5 +1,5 @@
 /*
- * LMX Pack v4.0 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v4.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -455,7 +455,7 @@
         // ---- Головна ----
         var H = mk('lmx');
         H.title('lmx_t_theme', 'Тема · версія ' + VERSION);
-        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'HBO — чорно-синя з фіолетовим акцентом' }, 'default', 'Тема застосунку', 'Змінює фон, акценти та підсвітку вибраного', restyle);
+        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'HBO Max' }, 'default', 'Тема застосунку', 'HBO Max: постери без підписів, біле кільце фокуса, нова сторінка фільму. Сторінку фільму видно після повторного відкриття', restyle);
         H.title('lmx_t_home', 'Головна');
         H.button('lmx_order_btn', 'Порядок рядів', 'Переставити й сховати ряди (банер, стрімінги, підбірки)', openOrderModal);
         H.trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
@@ -479,7 +479,7 @@
         var P = H;
         P.title('lmx_t_page', 'Сторінка фільму');
         P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
-        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB; якщо його немає — звичайний заголовок', null);
+        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB замість назви; рік і країна переходять плашкою перед тривалістю. Вимкнено — звичайна назва', null);
         P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
         P.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія…»');
     }
@@ -1010,6 +1010,7 @@
             '.lmx-st-done{background:' + cDone + '}' +
             '.lmx-st-soon{background:' + cSoon + '}' +
             '.lmx-st-bad{background:' + COLORS.red + '}' +
+            '.lmx-head-moved{display:none !important}' +
             '.lmx-info{display:flex;flex-wrap:wrap;gap:.5em;margin:.8em 0}' +
             '.lmx-ip{font-size:1.1em;line-height:1;padding:.45em .8em;border-radius:.6em;background:rgba(255,255,255,.12);color:#fff}' +
             '.lmx-ip.lmx-next{background:' + cNext + '}' +
@@ -1083,34 +1084,61 @@
     }
 
     // ===== ТЕМА ЗАСТОСУНКУ =====
-    // «hbo» — темний чорно-синій фон, фіолетово-синій акцент (як у застосунку HBO Max), без інших змін логіки
+    // «hbo» — повний вигляд у дусі застосунку HBO Max: постери без підписів, біле кільце у фокусі,
+    // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
     function themeCss() {
         if (getStr('lmx_theme', 'default') !== 'hbo') return '';
-        var G = 'linear-gradient(135deg,#2f3dff 0%,#8a3bff 100%)';
         var T = 'body.lmx-hbo ';
+        var F = 'body.lmx-hbo.lmx-full ';
         return '' +
-            T + '{background:#07070d !important}' +
-            T + '.wrap,' + T + '.activity,' + T + '.activity__body{background:transparent}' +
-            // заголовки рядів
-            T + '.items-line__title{font-weight:700;letter-spacing:.01em}' +
-            // картки: заокруглення та біле кільце у фокусі
-            T + '.card__view{border-radius:.7em;background:#14141f}' +
-            T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{border-color:#fff !important;border-radius:.9em}' +
-            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff,0 0 1.4em rgba(138,59,255,.55) !important}' +
-            // акцент у меню, налаштуваннях, списках вибору
+            T + '{background:#05060f !important}' +
+            T + '.activity,' + T + '.activity__body{background:transparent}' +
+            // ряди
+            T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
+            // картки: лише постер, без підписів; назва з'являється тільки у вибраної
+            T + '.card__view{border-radius:.5em;background:#12131f}' +
+            T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{box-shadow:0 0 0 .2em #fff;transform:scale(1.04)}' +
+            T + '.lmx-cin{display:none;padding:2em .6em .5em;border-radius:0 0 .5em .5em}' +
+            T + '.card.focus .lmx-cin{display:block}' +
+            T + '.lmx-cin__g,' + T + '.lmx-cin__r{display:none}' +
+            T + '.lmx-cin__t{font-size:1em;font-weight:700;margin:0}' +
+            // мітки — як у HBO: маленькі білі плашки
+            T + '.lmx-box .lmx-pill,' + T + '.lmx-tr .lmx-pill{background:#fff !important;color:#000 !important;border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
+            // банер і плитки стрімінгів
+            T + '.card--lmxhero .card__view{border-radius:.5em}' +
+            T + '.lmx-hero__v{display:none}' +
+            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
+            T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
+            // меню, налаштування, списки: білий фокус
             T + '.menu__item.focus,' + T + '.menu__item.traverse,' + T + '.menu__item.hover,' +
             T + '.settings-folder.focus,' + T + '.settings-param.focus,' + T + '.selectbox-item.focus,' +
-            T + '.settings-param-title.focus,' + T + '.simple-button.focus,' + T + '.full-person.focus,' +
-            T + '.head__action.focus,' + T + '.head__action.hover,' + T + '.lmx-ord__btn.focus,' + T + '.lmx-ord__reset.focus' +
-            '{background:' + G + ' !important;color:#fff !important}' +
-            T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0b0b14}' +
-            T + '.modal__content{background:#10101c}' +
-            // сторінка фільму: головна кнопка у фокусі — з акцентом
-            T + '.full-start__button.focus,' + T + '.full-start-new__buttons .simple-button.focus{background:' + G + ' !important;color:#fff !important}' +
-            T + '.full-start-new__title{font-weight:800}' +
-            // мітки та значки — холодніші, ніж у стандартній темі
-            T + '.lmx-descr{background:rgba(10,10,24,.62)}' +
-            T + '.lmx-info .lmx-ip{background:rgba(120,110,255,.2)}';
+            T + '.simple-button.focus,' + T + '.head__action.focus,' + T + '.head__action.hover' +
+            '{background:#fff !important;color:#000 !important}' +
+            T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0a0b17}' +
+            T + '.modal__content{background:#0f1020}' +
+            // ===== сторінка фільму =====
+            F + '.full-start__background{filter:brightness(.6)}' +
+            F + '.full-start-new__right{max-width:44%}' +
+            F + '.lmx-logo{max-width:30vw;max-height:20vh;margin-bottom:1.6vh}' +
+            F + '.full-start-new__tagline{display:none}' +
+            F + '.full-start-new__rate-line,' + F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{background:none !important;border:0 !important;padding-left:0;padding-right:.5em;font-size:1em}' +
+            F + '.full-start-new__rate-line{margin:0 0 .5em 0}' +
+            F + '.full-start-new__details{margin:0 0 .5em 0;opacity:.8}' +
+            F + '.lmx-info{gap:.4em .7em;margin:.2em 0 .7em;align-items:center}' +
+            F + '.lmx-info .lmx-ip{background:none !important;padding:0;font-size:1.1em;color:#d5d8e4;font-weight:500}' +
+            F + '.lmx-info .lmx-ip + .lmx-ip::before{content:"\\2022";margin-right:.7em;opacity:.55}' +
+            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#fff;font-weight:700}' +
+            // опис — під метаданими, без плашки, 3 рядки
+            F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:36vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:0 0 1.2em;font-size:1.05em;color:#c4c8d6;z-index:auto}' +
+            F + '.lmx-descr__t{-webkit-line-clamp:3}' +
+            // кнопки: біла «Дивитись» + круглі іконки
+            F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
+            F + '.full-start-new__buttons > .full-start__button{width:3em;height:3em;padding:0;border-radius:50%;justify-content:center;background:rgba(255,255,255,.18) !important;color:#fff}' +
+            F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child{width:auto;padding:0 1.8em;border-radius:2em;background:#fff !important;color:#000;font-weight:700}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child span{display:inline !important}' +
+            F + '.full-start-new__buttons > .full-start__button.focus{background:#fff !important;color:#000;transform:scale(1.08);box-shadow:0 0 0 .2em rgba(255,255,255,.55)}';
     }
     function applyThemeClass() {
         if (document.body && document.body.classList) document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo');
@@ -1461,8 +1489,32 @@
         if (!t.length || !path) return;
         r.find('.lmx-logo').remove();
         var img = $('<img class="lmx-logo">').attr('src', imgUrl(path, 'w780'));
-        img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); });
+        img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); restoreHead(r); });
         t.addClass('lmx-has-logo').prepend(img);
+        moveHead(r);
+    }
+    // З логотипом: «рік, країна» з-над заголовка переходить плашкою перед тривалістю
+    var HEAD_SEL = '.full-start-new__head, .full-start__head';
+    function moveHead(r) {
+        var head = r.find(HEAD_SEL).eq(0);
+        r.find('.lmx-ip-head').remove();
+        if (!head.length || !r.find('.lmx-has-logo').length) return;
+        var txt = head.text().replace(/\s+/g, ' ').trim();
+        if (!txt) return;
+        var box = r.find('.lmx-info').eq(0);
+        if (!box.length) {
+            var anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+            box = $('<div class="lmx-info"></div>');
+            var dsc = r.find('.full-start-new__right > .lmx-descr').eq(0);
+            if (dsc.length) dsc.before(box);
+            else if (anchor.length) anchor.before(box); else r.find('.full-start-new__right, .full-start__right').eq(0).append(box);
+        }
+        box.prepend($('<div class="lmx-ip lmx-ip-head"></div>').text(txt));
+        head.addClass('lmx-head-moved');
+    }
+    function restoreHead(r) {
+        r.find('.lmx-ip-head').remove();
+        r.find(HEAD_SEL).removeClass('lmx-head-moved');
     }
     function loadLogo(r, m) {
         var kind = (m.name || m.first_air_date || m.number_of_seasons) ? 'tv' : 'movie';
@@ -1499,7 +1551,13 @@
             r.find('.lmx-descr').remove();
             var txt = String(m.overview || '').trim();
             var body = r.find('.full-start-new__body').eq(0);
-            if (txt && body.length) body.append($('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end());
+            if (txt && body.length) {
+                var dEl = $('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end();
+                var btns = r.find('.full-start-new__buttons').eq(0);
+                // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
+                if (getStr('lmx_theme', 'default') === 'hbo' && btns.length) btns.before(dEl);
+                else body.append(dEl);
+            }
         }
 
         if (!foreign && getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
@@ -1509,20 +1567,23 @@
         if (!pills.length) return;
 
         r.find('.lmx-info').remove();
+        r.find('.lmx-ip-head').remove();
 
         var html = '<div class="lmx-info">' + pills.map(function (x) {
             return '<div class="lmx-ip ' + (x.c || '') + '">' + x.t + '</div>';
         }).join('') + '</div>';
 
-        var anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        var anchor = r.find('.full-start-new__right > .lmx-descr').eq(0);
+        if (!anchor.length) anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (anchor.length) anchor.before(html);
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
+        moveHead(r);
     }
 
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '4.0';
+    var VERSION = '4.2';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
