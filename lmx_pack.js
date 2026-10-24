@@ -1,5 +1,5 @@
 /*
- * LMX Pack v5.6 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v5.8 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -704,7 +704,7 @@
                                     if (!h) return;
                                     h.addClass('card--lmxhero');
                                     var view = h.find('.card__view');
-                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') === 'hbo' ? 'w780' : 'w500') + ')');
+                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') !== 'hbo' ? 'w500' : (window.innerWidth < 760 ? 'w780' : 'w1280')) + ')');
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
@@ -715,7 +715,9 @@
                                     if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
                                     view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
                                         esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
-                                        (v ? '<span class="lmx-hero__v">' + v.toFixed(1) + '</span>' : '') +
+                                        (v ? (getStr('lmx_theme', 'default') === 'hbo' ?
+                                            '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' :
+                                            '<span class="lmx-hero__v">' + v.toFixed(1) + '</span>') : '') +
                                         '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
                                         '</div><div class="lmx-hero__o">' + esc(ov) + '</div></div>');
                                 });
@@ -1149,10 +1151,13 @@
             // банер і плитки стрімінгів
             // банер як у HBO Max: велика афіша на ширину екрана, текст зліва, наступна афіша визирає справа
             T + '.card--lmxhero{width:42em !important}' +
-            T + '.card--lmxhero .card__view{height:21em !important;border-radius:.6em}' +
+            T + '.card--lmxhero .card__view{height:23.6em !important;border-radius:.6em}' +
             T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(90deg,rgba(5,6,15,.92) 0%,rgba(5,6,15,.6) 42%,rgba(5,6,15,0) 75%),linear-gradient(to top,rgba(5,6,15,.8) 0%,rgba(5,6,15,0) 50%)}' +
             T + '.card--lmxhero .lmx-hero__text{left:1.6em;bottom:1.4em;right:auto;max-width:58%}' +
             T + '.card--lmxhero .lmx-hero__title{font-size:1.9em;font-weight:800;line-height:1.05;letter-spacing:-.01em;margin-bottom:.4em}' +
+            T + '.card--lmxhero .lmx-hero__v{display:inline-flex;align-items:center;gap:.3em;background:rgba(255,255,255,.14);padding:.2em .6em;border-radius:.4em;font-weight:700;-webkit-text-fill-color:#fff}' +
+            T + '.card--lmxhero .lmx-hero__v i{-webkit-text-fill-color:currentColor;font-style:normal;font-size:.9em}' +
+            T + '.card--lmxhero .card__view{background-repeat:no-repeat !important;background-size:cover !important;background-position:center 25% !important}' +
             T + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9}' +
             T + '.card--lmxhero .lmx-hero__o{font-size:.95em;opacity:.8;line-height:1.35;max-height:2.8em;margin-top:.5em}' +
             T + '.card--lmxhero .card__view::after,' + T + '.card--lmxstudio .card__view::after{display:none !important}' +
@@ -1213,8 +1218,9 @@
         safe(loadThemeFont);
         if (document.body && document.body.classList) document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo');
     }
+    function isMobile() { return (window.innerWidth || 1000) <= 760; }
     function applyFullClass() {
-        var on = getBool('lmx_full', true);
+        var on = getBool('lmx_full', true) && !isMobile();
         if (document.body && document.body.classList) {
             document.body.classList.toggle('lmx-full', on);
             document.body.classList.toggle('lmx-logo-on', on && getBool('lmx_logo', true));
@@ -1617,6 +1623,9 @@
         var m = e.data && e.data.movie;
         if (!m) return;
         var r = e.object.activity.render();
+        // Телефон: рідний мобільний вигляд Lampa, без нашого кіно-стилю сторінки (він розрахований на великий екран)
+        var useFull = getBool('lmx_full', true) && !isMobile();
+        if (!useFull && document.body && document.body.classList) { document.body.classList.remove('lmx-full'); document.body.classList.remove('lmx-logo-on'); }
 
         // Якщо на сторінці вже працює інший плагін оформлення (напр. Cardify) — не накладаємо свій кіно-стиль
         var foreign = r.find('.cardify, .custom-ghost-main').length > 0;
@@ -1628,13 +1637,14 @@
         }
         if (foreign) {
             yieldToForeign();
-        } else if (getBool('lmx_full', true) && document.body && document.body.classList) {
+        } else if (useFull && document.body && document.body.classList) {
             document.body.classList.add('lmx-full');
+            document.body.classList.toggle('lmx-logo-on', getBool('lmx_logo', true));
         }
         if (!foreign) setTimeout(function () { if (r.find('.custom-ghost-main').length) yieldToForeign(); }, 800);
 
         // опис у правому верхньому куті (копія, оригінал нижче лишається)
-        if (!foreign && getBool('lmx_full', true)) {
+        if (!foreign && useFull) {
             r.find('.lmx-descr').remove();
             var txt = String(m.overview || '').trim();
             var body = r.find('.full-start-new__body').eq(0);
@@ -1647,7 +1657,7 @@
             }
         }
 
-        if (!foreign && getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
+        if (!foreign && useFull && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
 
         if (!getBool('lmx_info', true)) return;
         var pills = infoPills(m);
@@ -1670,7 +1680,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '5.6';
+    var VERSION = '5.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
