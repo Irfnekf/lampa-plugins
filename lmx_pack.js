@@ -1,5 +1,5 @@
 /*
- * LMX Pack v6.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v6.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -897,6 +897,17 @@
     function code(s, e) {
         return 'С' + s + 'Е' + e;
     }
+    // Лише те, що вже вийшло: сезони до останньої вийшовшої серії та кількість вийшовших серій
+    // (TMDB у number_of_seasons / number_of_episodes враховує й анонсовані, ще не вийшли сезони)
+    function airedStats(j) {
+        var last = j && j.last_episode_to_air;
+        if (!last || !(last.season_number > 0)) return null;
+        var eps = last.episode_number || 0;
+        (j.seasons || []).forEach(function (x) {
+            if (x.season_number > 0 && x.season_number < last.season_number) eps += x.episode_count || 0;
+        });
+        return eps > 0 ? { s: last.season_number, e: eps } : null;
+    }
     // 105 -> «1 год 45 хв», 45 -> «45 хв», 120 -> «2 год»
     function fmtDur(min) {
         min = Math.round(min);
@@ -1499,8 +1510,9 @@
     function renderTv(el, j) {
         var view = el.querySelector('.card__view');
         if (!view) return;
-        if (!view.querySelector('.lmx-box') && j.number_of_seasons && j.number_of_episodes) {
-            addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(j.number_of_seasons, j.number_of_episodes) + '</span>');
+        var st = airedStats(j);
+        if (!view.querySelector('.lmx-box') && st) {
+            addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(st.s, st.e) + '</span>');
         }
         addMark(view, tvMark(j));
         addStripe(view, tvStripe(j));
@@ -1777,7 +1789,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '6.5';
+    var VERSION = '6.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
