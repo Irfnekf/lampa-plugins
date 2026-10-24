@@ -1,5 +1,5 @@
 /*
- * LMX Pack v4.7 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v5.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -459,19 +459,19 @@
         H.title('lmx_t_home', 'Головна');
         H.button('lmx_order_btn', 'Порядок рядів', 'Переставити й сховати ряди (банер, стрімінги, підбірки)', openOrderModal);
         H.trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
-        H.title('lmx_t_c1', 'Підбір контенту');
+        H.title('lmx_t_c1', 'Підбір і фільтри');
         H.select('lmx_hero_src', { mix: 'У тренді (фільми й серіали)', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' }, 'mix', 'Що показувати у банері', 'Відбираються картки з описом і гідним рейтингом', restart);
-        H.trigger('lmx_market', true, 'Підбірки для українського ринку', 'Лише те, що доступне в Україні, і з описом. Без цього — світова добірка', restart);
+        H.trigger('lmx_market', true, 'Лише з українським описом', 'Ховає фільми й серіали без українського опису (їх зазвичай ще не переклали) і підбирає те, що доступне в Україні', restart);
         H.select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
 
         // ---- Картки ----
         var C = H;
-        C.title('lmx_t_look', 'Картки · вигляд');
+        C.title('lmx_t_look', 'Картки');
         C.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         C.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів', 'Значки, рейтинг, мітки', restyle);
-        C.title('lmx_t_marks', 'Картки · мітки');
+        C.title('lmx_t_marks', 'Мітки на картках');
         C.trigger('lmx_marks', true, 'Мітки на постері', '«Нова серія», «Сьогодні», «Новинка», «Скоро»', rebuild);
-        C.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія', 'Також «Сьогодні»', restyle);
+        C.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія', 'Також «Сьогодні». У темі HBO кольори фіксовані', restyle);
         C.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро / очікується', 'Також для ще не випущеного', restyle);
         C.select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'У рядку статусу сторінки фільму', restyle);
 
@@ -480,7 +480,7 @@
         P.title('lmx_t_page', 'Сторінка фільму');
         P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
         P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB замість назви; рік і країна переходять плашкою перед тривалістю. Вимкнено — звичайна назва', restyle);
-        P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
+        P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки. У темі HBO — завжди компактні', restyle);
         P.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія…»');
     }
 
@@ -499,7 +499,7 @@
     }
 
     // Прибираємо слабкі (1–2 з 10) та «не перекладені» (без опису) картки
-    function cleanResults(list, skipText) {
+    function cleanResults(list, skipText, keepFresh) {
         var min = parseInt(getStr('lmx_min_rating', '3'), 10) || 0;
         var strict = market();
         return (list || []).filter(function (c) {
@@ -595,7 +595,7 @@
             }
             pick.forEach(function (cat, i) {
                 Lampa.Api.sources.tmdb.get(cat.url, { page: 1 }, function (j) {
-                    got[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path; });
+                    got[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; });
                     fin();
                 }, function () { got[i] = []; fin(); });
             });
@@ -627,7 +627,7 @@
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 cats.forEach(function (c, i) {
                     Lampa.Api.sources.tmdb.get(c.url, { page: 1 }, function (j) {
-                        res[i] = cleanResults(j && j.results, true).filter(function (x) { return x.poster_path; });
+                        res[i] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
                         fin();
                     }, function () { res[i] = []; fin(); });
                 });
@@ -806,7 +806,7 @@
             base.forEach(function (c) {
                 var kind = (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie';
                 Lampa.Api.sources.tmdb.get(kind + '/' + c.id + '/recommendations', { page: 1 }, function (j) {
-                    cleanResults(j && j.results, true).forEach(function (r) {
+                    cleanResults(j && j.results, false).forEach(function (r) {
                         if (!r.poster_path || watched[r.id]) return;
                         r.media_type = kind;
                         if (!score[r.id]) score[r.id] = { c: r, n: 0 };
@@ -833,7 +833,7 @@
                     if (i >= urls.length) return done();
                     var url = urls[i++];
                     Lampa.Api.sources.tmdb.get(url, { page: 1 }, function (json) {
-                        var list = cleanResults(json && json.results, row.ua);
+                        var list = cleanResults(json && json.results, row.ua, row.name === 'LmxNowPlaying' || row.name === 'LmxUpcoming');
                         if (list.length && (!best || list.length > best.list.length)) best = { list: list, url: url, pages: json.total_pages || 1 };
                         if (best && best.list.length >= (row.minCount || 1)) return done();
                         next();
@@ -1060,6 +1060,8 @@
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .25s ease}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .25s ease}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__head.lmx-reveal{opacity:1}' +
             // у контейнері font-size:0, тому розміри лише у vw/vh/px (em тут дорівнювали б нулю)
             B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
@@ -1534,7 +1536,7 @@
         return best && best.file_path;
     }
     // Поки логотип вантажиться, текстову назву не показуємо (інакше вона блимає); потім показуємо те, що є
-    function reveal(r) { r.find('.full-start-new__title').addClass('lmx-reveal'); }
+    function reveal(r) { r.find('.full-start-new__title, .full-start-new__head, .full-start__head').addClass('lmx-reveal'); }
     function applyLogo(r, path) {
         var t = r.find('.full-start-new__title').eq(0);
         if (!t.length || !path) { reveal(r); return; }
@@ -1637,7 +1639,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '4.7';
+    var VERSION = '5.2';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
