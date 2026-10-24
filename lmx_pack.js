@@ -130,6 +130,11 @@
         return stats[n] === 0 ? 'порожній (немає карток)' : stats[n] + ' карток';
     }
 
+    // Порядок за замовчуванням (поки користувач не змінив його сам)
+    var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxNowPlaying',
+        'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxUaMovies', 'LmxUaTv', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
+        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky', 'LmxHistory'];
+
     function allRows() {
         var map = {}, list = [];
         function put(n, t, src) {
@@ -143,6 +148,8 @@
                 if ((stats[n] || 0) > 0 || live.indexOf(n) >= 0) put(n, seen[n].title || n, 'Інше');
             });
         }
+        var rank = function (n) { var i = DEFAULT_ORDER.indexOf(n); return i < 0 ? 999 : i; };
+        list = list.map(function (n, i) { return { n: n, i: i }; }).sort(function (x, y) { return rank(x.n) - rank(y.n) || x.i - y.i; }).map(function (x) { return x.n; });
         return { map: map, list: list };
     }
     function getOrder() {
