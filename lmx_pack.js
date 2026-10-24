@@ -33,7 +33,7 @@
     var COLOR_NAMES = { green: 'Зелений', orange: 'Помаранчевий', blue: 'Синій', red: 'Червоний', purple: 'Фіолетовий', gray: 'Сірий' };
     var SIZES = { s: 0.8, m: 0.95, l: 1.1, xl: 1.25 };
     var SIZE_NAMES = { s: 'Маленький', m: 'Середній', l: 'Великий', xl: 'Дуже великий' };
-    var STYLE_NAMES = { classic: 'Класичний', glass: 'Скло', minimal: 'Мінімум' };
+    var STYLE_NAMES = { classic: 'Класичний', glass: 'Скло', minimal: 'Мінімум', cinema: 'Кіно (напис на постері)' };
 
     // ===== НАШІ РЯДИ =====
     function dayStr(offset) {
@@ -67,6 +67,34 @@
         { name: 'LmxUaTv',          title: 'Українські серіали',  urls: function () { return uaUrls('tv'); },    ua: true, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 }
     ];
+
+    // Замість Ліхтаря: стрімінги (id провайдерів TMDB) і підбірки «під настрій»
+    var SERVICES = [
+        ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
+        ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
+        ['sky', 'SkyShowtime', 1773]
+    ];
+    var MOODS = [
+        ['relax', 'Розслабитись', '35%7C10751'],
+        ['think', 'Подумати', '9648%7C878'],
+        ['adrenaline', 'Адреналін', '28%7C53'],
+        ['romance', 'Романтика', '10749'],
+        ['scary', 'Моторошно', '27'],
+        ['friends', 'З друзями', '12%7C35']
+    ];
+    ROWS.unshift(
+        { name: 'LmxHero', title: 'Новинки прокату', gate: 'lmx_hero', index: -2, custom: function () { return heroCall(this); } },
+        { name: 'LmxStudios', title: 'Стрімінги', gate: 'lmx_studios', index: -1, custom: function () { return studioCall(this); } }
+    );
+    var n0 = 30;
+    SERVICES.forEach(function (x) {
+        ROWS.push({ name: 'LmxSvc_' + x[0], title: 'Сьогодні на ' + x[1], gate: 'lmx_services', index: n0++,
+            custom: function () { return serviceCall(this, x[2]); } });
+    });
+    MOODS.forEach(function (x) {
+        ROWS.push({ name: 'LmxMood_' + x[0], title: 'Під настрій: ' + x[1], gate: 'lmx_moods', index: n0++,
+            urls: function () { return ['discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + (market() ? '&region=UA' : '')]; } });
+    });
 
     // Ряди Ліхтаря (назви взято з його коду) — щоб екран порядку працював навіть якщо їх не вдалося перехопити
     var KNOWN = [
@@ -124,8 +152,10 @@
         function put(n, t, src) {
             if (!map[n]) { map[n] = { name: n, title: t, src: src }; list.push(n); }
         }
-        KNOWN.forEach(function (k) { put(k.name, k.title, 'Ліхтар'); });
-        ROWS.forEach(function (r) { put(r.name, r.title, 'LMX Pack'); });
+        // Ряди Ліхтаря показуємо, лише якщо він справді їх зареєстрував (інакше — вимкнений, нічого не засмічуємо)
+        var liveK = readJson('lmx_live');
+        KNOWN.forEach(function (k) { if (seen[k.name] || liveK.indexOf(k.name) >= 0) put(k.name, k.title, 'Ліхтар'); });
+        ROWS.forEach(function (r) { if (!r.gate || getBool(r.gate, true)) put(r.name, r.title, 'LMX Pack'); });
         // Ряди інших плагінів показуємо лише якщо вони реально давали картки (приховані Ліхтарем туди не потрапляють)
         var live = readJson('lmx_live');
         Object.keys(seen).forEach(function (n) {
@@ -459,6 +489,13 @@
         title('lmx_t_rows', 'Головна сторінка');
         button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати всі ряди: і Ліхтаря, і наші', openOrderModal);
 
+        // --- Замість Ліхтаря ---
+        title('lmx_t_lk', 'Замість Ліхтаря');
+        trigger('lmx_hero', true, 'Банер «Новинки прокату»', 'Широкі картки з фоном фільму зверху головної', restart);
+        trigger('lmx_studios', true, 'Ряд стрімінгів з логотипами', 'Плитки Netflix, HBO та інших — відкривають підбірку сервісу', restart);
+        trigger('lmx_services', true, 'Ряди стрімінгів (Netflix, HBO та ін.)', 'Якщо Ліхтар ще увімкнений — вимкніть його, інакше ряди дублюватимуться', restart);
+        trigger('lmx_moods', true, 'Підбірки «Під настрій»', 'Шість рядів за жанрами; в порядку головної їх можна сховати окремо', restart);
+
         // --- Вигляд ---
         title('lmx_t_cards', 'Вигляд карток');
         select('lmx_style', STYLE_NAMES, 'classic', 'Стиль значків',
@@ -507,6 +544,143 @@
         });
     }
 
+    // Ряд стрімінгу: фільми + серіали, доступні в Україні на цьому сервісі, за популярністю
+    function serviceCall(row, providerId) {
+        var q = '?with_watch_providers=' + providerId + '&watch_region=UA&with_watch_monetization_types=flatrate&sort_by=popularity.desc';
+        return function (call) {
+            var got = {}, left = 2;
+            function fin() {
+                if (--left > 0) return;
+                var a = got.movie || [], b = got.tv || [], out = [], i = 0;
+                while (i < a.length || i < b.length) { if (b[i]) out.push(b[i]); if (a[i]) out.push(a[i]); i++; }
+                if (!out.length) return call();
+                call({ title: row.title, results: out, url: 'discover/tv' + q, source: 'tmdb', page: 1, more: true, total_pages: 2 });
+            }
+            ['movie', 'tv'].forEach(function (kind) {
+                Lampa.Api.sources.tmdb.get('discover/' + kind + q, { page: 1 }, function (j) {
+                    got[kind] = cleanResults(j && j.results).map(function (c) { c.media_type = kind; return c; });
+                    fin();
+                }, function () { got[kind] = []; fin(); });
+            });
+        };
+    }
+
+    // ===== Банер і плитки стрімінгів (власні картки Lampa.Maker) =====
+    function imgUrl(path, size) {
+        try { if (Lampa.TMDB && Lampa.TMDB.image) return Lampa.TMDB.image('t/p/' + size + path); } catch (e) {}
+        return 'https://image.tmdb.org/t/p/' + size + path;
+    }
+    function makeInstance(d) {
+        return Lampa.Maker.make('Card', d, function (module) { return module.only('Card', 'Callback'); });
+    }
+    function htmlOf(inst, extra) {
+        var h = (inst && inst.html) || (extra && extra.html) || extra;
+        if (!h) return null;
+        if (h.jquery) return h;
+        return (window.$ && h.nodeType) ? window.$(h) : null;
+    }
+    function openFull(m) {
+        Lampa.Activity.push({
+            url: '', component: 'full', id: m.id, method: (m.media_type === 'tv' || m.name) ? 'tv' : 'movie',
+            card: m, source: 'tmdb'
+        });
+    }
+    function esc(t) { return String(t || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function heroCall(row) {
+        return function (call) {
+            Lampa.Api.sources.tmdb.get('movie/now_playing?region=UA', { page: 1 }, function (j) {
+                var list = cleanResults(j && j.results).filter(function (m) { return m.backdrop_path; }).slice(0, 12);
+                if (!list.length) return call();
+                var items = list.map(function (m) {
+                    var it = {};
+                    for (var k in m) it[k] = m[k];
+                    it.params = {
+                        createInstance: makeInstance,
+                        emit: {
+                            onCreate: function () {
+                                var self = this, ex = arguments[0];
+                                safe(function () {
+                                    var h = htmlOf(self, ex);
+                                    if (!h) return;
+                                    h.addClass('card--lmxhero');
+                                    var view = h.find('.card__view');
+                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, 'w780') + ')');
+                                    view.find('img').css('opacity', 0);
+                                    h.find('.card__title,.card__age,.card__vote').remove();
+                                    var v = Number(m.vote_average) || 0;
+                                    var year = String(m.release_date || '').slice(0, 4);
+                                    view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
+                                        esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
+                                        (v ? '<span class="lmx-hero__v">' + v.toFixed(1) + '</span>' : '') +
+                                        '<span>Фільм</span>' + (year ? '<span>' + year + '</span>' : '') + '</div></div>');
+                                });
+                            },
+                            onlyEnter: function () { openFull(m); }
+                        }
+                    };
+                    return it;
+                });
+                call({ title: row.title, results: items, params: { items: { mapping: 'line', view: 15 } } });
+            }, function () { call(); });
+        };
+    }
+
+    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a' };
+    function studioCall(row) {
+        return function (call) {
+            var logos = {};
+            function done() {
+                var items = SERVICES.map(function (x) {
+                    return {
+                        id: 'lmxstudio' + x[2], title: x[1], params: {
+                            createInstance: makeInstance,
+                            emit: {
+                                onCreate: function () {
+                                    var self = this, ex = arguments[0];
+                                    safe(function () {
+                                        var h = htmlOf(self, ex);
+                                        if (!h) return;
+                                        h.addClass('card--lmxstudio');
+                                        var view = h.find('.card__view');
+                                        view.css('background-color', PROV_COLORS[x[2]] || '#2a2f3d');
+                                        view.find('img').css('opacity', 0);
+                                        h.find('.card__title,.card__age,.card__vote').remove();
+                                        var lg = logos[x[2]];
+                                        view.append(lg ? '<img class="lmx-studio__logo" src="' + imgUrl(lg, 'w154') + '">' :
+                                            '<div class="lmx-studio__name">' + esc(x[1]) + '</div>');
+                                    });
+                                },
+                                onlyEnter: function () { openService(x); }
+                            }
+                        }
+                    };
+                });
+                call({ title: row.title, results: items, params: { items: { mapping: 'line', view: 15 } } });
+            }
+            Lampa.Api.sources.tmdb.get('watch/providers/movie?watch_region=UA', {}, function (j) {
+                ((j && j.results) || []).forEach(function (p) { logos[p.provider_id] = p.logo_path; });
+                done();
+            }, function () { done(); });
+        };
+    }
+    function openService(x) {
+        function go(kind) {
+            Lampa.Activity.push({
+                url: 'discover/' + kind + '?with_watch_providers=' + x[2] + '&watch_region=UA&with_watch_monetization_types=flatrate&sort_by=popularity.desc',
+                title: x[1] + (kind === 'tv' ? ' — серіали' : ' — фільми'),
+                component: 'category_full', source: 'tmdb', page: 1
+            });
+        }
+        var enabled = Lampa.Controller.enabled().name;
+        Lampa.Select.show({
+            title: x[1],
+            items: [{ title: 'Фільми', k: 'movie' }, { title: 'Серіали', k: 'tv' }],
+            onSelect: function (it) { go(it.k); },
+            onBack: function () { Lampa.Controller.toggle(enabled); }
+        });
+    }
+
     function makeCall(row) {
         if (row.custom) return function () { return row.custom(); };
         return function () {
@@ -538,6 +712,7 @@
         rowsStarted = true;
         if (!Lampa.ContentRows || !Lampa.ContentRows.add) return;
         ROWS.forEach(function (row) {
+            if (row.gate && !getBool(row.gate, true)) return;
             Lampa.ContentRows.add({
                 name: row.name,
                 title: row.title,
@@ -697,7 +872,27 @@
             '.lmx-ip.lmx-next{background:' + cNext + '}' +
             '.lmx-ip.lmx-done{background:' + cDone + '}' +
             '.lmx-ip.lmx-soon{background:' + cSoon + '}' +
-            '.lmx-ip.lmx-bad{background:' + COLORS.red + '}';
+            '.lmx-ip.lmx-bad{background:' + COLORS.red + '}' +
+            (st === 'cinema' ?
+                '.lmx-stripe,.lmx-br,.lmx-bl{display:none !important}' +
+                '.card .card__title,.card .card__age{display:none !important}' +
+                '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
+                    'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
+                '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+                '.lmx-cin__t{font-size:' + (1.15 * fs).toFixed(2) + 'em;font-weight:600;line-height:1.15;margin:.15em 0 .35em;max-height:3.5em;overflow:hidden}' +
+                '.lmx-cin__r{display:flex;justify-content:space-between;align-items:center;font-size:' + (0.9 * fs).toFixed(2) + 'em}' +
+                '.lmx-cin__v i{font-style:normal}.lmx-cin__y{opacity:.85}' : '') +
+            '.card--lmxhero{width:30em !important}' +
+            '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
+            '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
+            '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
+            '.lmx-hero__title{font-size:1.5em;font-weight:600;line-height:1.15;margin-bottom:.35em}' +
+            '.lmx-hero__meta{display:flex;gap:.6em;font-size:1em;opacity:.95;align-items:center}' +
+            '.lmx-hero__v{background:' + COLORS.green + ';padding:.15em .5em;border-radius:.4em}' +
+            '.card--lmxstudio{width:13em !important}' +
+            '.card--lmxstudio .card__view{padding-bottom:0 !important;height:6.5em;border-radius:.8em;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}' +
+            '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
+            '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
     function applyStyle() {
         var s = document.getElementById('lmx-css');
@@ -729,7 +924,7 @@
     }
 
     function isOurs(n) {
-        return !!(n.closest && n.closest('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr'));
+        return !!(n.closest && n.closest('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-cin'));
     }
     function findLeaf(view, re) {
         var all = view.querySelectorAll('*');
@@ -799,6 +994,30 @@
         addTo(view, 'lmx-stripe lmx-st-' + kind, '');
     }
 
+    var GENRES = { 28: 'Бойовик', 12: 'Пригоди', 16: 'Мультфільм', 35: 'Комедія', 80: 'Кримінал', 99: 'Документальний', 18: 'Драма', 10751: 'Сімейний',
+        14: 'Фентезі', 36: 'Історія', 27: 'Жахи', 10402: 'Музика', 9648: 'Детектив', 10749: 'Мелодрама', 878: 'Фантастика', 10770: 'ТВ-фільм',
+        53: 'Трилер', 10752: 'Військовий', 37: 'Вестерн', 10759: 'Бойовик', 10762: 'Дитячий', 10763: 'Новини', 10764: 'Реаліті',
+        10765: 'Фантастика', 10766: 'Мильна опера', 10767: 'Ток-шоу', 10768: 'Війна і політика' };
+    function genresOf(d) {
+        var ids = d.genre_ids || (d.genres || []).map(function (g) { return g.id; }) || [];
+        var out = [];
+        for (var i = 0; i < ids.length && out.length < 2; i++) { var n = GENRES[ids[i]]; if (n && out.indexOf(n) < 0) out.push(n); }
+        return out.join(', ');
+    }
+    function cinemaOverlay(view, d, type) {
+        if (view.querySelector('.lmx-cin')) return;
+        var v = Number(d.vote_average) || 0;
+        var year = String(d.release_date || d.first_air_date || '').slice(0, 4);
+        var g = genresOf(d);
+        var title = d.title || d.name || '';
+        var html = '<div class="lmx-cin__g">' + esc(type === 'tv' ? ('Серіал' + (g ? ' · ' + g : '')) : g) + '</div>' +
+            '<div class="lmx-cin__t">' + esc(title) + '</div>' +
+            '<div class="lmx-cin__r">' +
+            (v > 0 ? '<span class="lmx-cin__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '<span></span>') +
+            '<span class="lmx-cin__y">' + year + '</span></div>';
+        addTo(view, 'lmx-cin', html);
+    }
+
     // Рейтинг, мітка Фільм/Серіал (лише якщо її немає), для фільмів ще мітка «Новинка» і смужка
     function extras(el, d, type) {
         var view = el.querySelector('.card__view');
@@ -806,6 +1025,12 @@
         var v = Number(d.vote_average) || 0;
 
         hideLeaves(view, RE_NATIVE_TV);
+
+        if (getStr('lmx_style', 'classic') === 'cinema') {
+            cinemaOverlay(view, d, type);
+            if (type === 'movie') addMark(view, movieMark(d));
+            return;
+        }
 
         if (v > 0) {
             var ratingLeaf = findLeaf(view, RE_RATING);
@@ -901,6 +1126,7 @@
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
+            if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio')) return;
             found++;
 
             if (getBool('lmx_hide_year', true)) {
@@ -941,7 +1167,7 @@
     function resetCards() {
         hiddenEls.forEach(function (e) { e.style.display = ''; });
         hiddenEls = [];
-        var mine = document.querySelectorAll('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-stripe');
+        var mine = document.querySelectorAll('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-stripe,.lmx-cin');
         for (var i = 0; i < mine.length; i++) mine[i].parentNode.removeChild(mine[i]);
         var cards = document.querySelectorAll('.card[data-lmx]');
         for (var k = 0; k < cards.length; k++) cards[k].removeAttribute('data-lmx');
