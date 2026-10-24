@@ -1,5 +1,5 @@
 /*
- * LMX Pack v3.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v3.6 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1065,7 +1065,10 @@
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
-            B + '.full-start__background{opacity:1 !important}' +
+            B + '.full-start__background{opacity:1 !important;filter:brightness(.45)}' +
+            B + '.background{filter:brightness(.45)}' +
+            B + '.background,' + B + '.full-start__background{transition:none}' +
+            B + '.full-start-new__right{text-shadow:0 1px 8px rgba(0,0,0,.85)}' +
             '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
@@ -1425,7 +1428,7 @@
         var t = r.find('.full-start-new__title').eq(0);
         if (!t.length || !path) return;
         r.find('.lmx-logo').remove();
-        var img = $('<img class="lmx-logo">').attr('src', imgUrl(path, 'w500'));
+        var img = $('<img class="lmx-logo">').attr('src', imgUrl(path, 'w780'));
         img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); });
         t.addClass('lmx-has-logo').prepend(img);
     }
@@ -1445,28 +1448,29 @@
         if (!m) return;
         var r = e.object.activity.render();
 
+        // Якщо на сторінці вже працює інший плагін оформлення (напр. Cardify) — не накладаємо свій кіно-стиль
+        var foreign = r.find('.cardify, .custom-ghost-main').length > 0;
+        function yieldToForeign() {
+            r.find('.lmx-descr,.lmx-scrim,.lmx-logo').remove();
+            r.find('.full-start-new__title').removeClass('lmx-has-logo');
+            if (document.body && document.body.classList) document.body.classList.remove('lmx-full');
+        }
+        if (foreign) {
+            yieldToForeign();
+        } else if (getBool('lmx_full', true) && document.body && document.body.classList) {
+            document.body.classList.add('lmx-full');
+        }
+        if (!foreign) setTimeout(function () { if (r.find('.custom-ghost-main').length) yieldToForeign(); }, 800);
+
         // опис у правому верхньому куті (копія, оригінал нижче лишається)
-        if (getBool('lmx_full', true)) {
+        if (!foreign && getBool('lmx_full', true)) {
             r.find('.lmx-descr').remove();
-            // затемнення рівно поверх фонової картинки: копіюємо її розташування й розміри
-            r.find('.lmx-scrim').remove();
-            var bg = r.find('.full-start__background').eq(0);
-            if (bg.length) {
-                safe(function () {
-                    var cs = window.getComputedStyle(bg[0]);
-                    var sc = $('<div class="lmx-scrim"></div>').css({
-                        position: cs.position === 'static' ? 'absolute' : cs.position,
-                        top: cs.top, left: cs.left, width: cs.width, height: cs.height
-                    });
-                    bg.after(sc);
-                });
-            }
             var txt = String(m.overview || '').trim();
             var body = r.find('.full-start-new__body').eq(0);
             if (txt && body.length) body.append($('<div class="lmx-descr"></div>').text(txt));
         }
 
-        if (getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
+        if (!foreign && getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
 
         if (!getBool('lmx_info', true)) return;
         var pills = infoPills(m);
@@ -1486,7 +1490,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '3.3';
+    var VERSION = '3.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
