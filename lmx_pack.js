@@ -549,7 +549,7 @@
     }
 
     // ===== ДОПОМІЖНЕ ДЛЯ КАРТОК =====
-    var MAX_PARALLEL = 4;
+    var MAX_PARALLEL = 2;
     var CACHE_MIN = 1440;
     var RE_YEAR = /^\s*(19|20)\d\d\s*$/;
     var RE_RATING = /^\s*\d{1,2}([.,]\d)?\s*$/;
@@ -849,6 +849,30 @@
         }, { life: CACHE_MIN });
     }
 
+    // Відкладена робота над картками: невеликими порціями, щоб не гальмувати підвантаження списків
+    var work = [], workTimer = null;
+    function addWork(job) {
+        work.push(job);
+        if (!workTimer) workTimer = setTimeout(runWork, 400);
+    }
+    function runWork() {
+        workTimer = null;
+        var now = Date.now(), left = [], done = 0;
+        for (var i = 0; i < work.length; i++) {
+            var j = work[i];
+            if (j.due > now || done >= 4) { left.push(j); continue; }
+            done++;
+            if (document.body.contains(j.el)) safe(j.fn);
+        }
+        work = left;
+        if (work.length) workTimer = setTimeout(runWork, 250);
+    }
+
+    var pumpTimer = null;
+    function pumpSoon() {
+        if (pumpTimer) return;
+        pumpTimer = setTimeout(function () { pumpTimer = null; pump(); }, 700);
+    }
     function pump() {
         while (active < MAX_PARALLEL && queue.length) {
             (function (task) {
@@ -856,7 +880,7 @@
                 load(task.id, function (j) {
                     active--;
                     if (j) renderTv(task.el, j);
-                    pump();
+                    if (queue.length) setTimeout(pump, 120);
                 });
             })(queue.shift());
         }
@@ -868,7 +892,7 @@
             io.unobserve(e.target);
             if (e.target.__lmx) queue.push(e.target.__lmx);
         });
-        pump();
+        pumpSoon();
     }, { rootMargin: '200px' }) : null;
 
     function scan() {
@@ -879,7 +903,7 @@
 
             if (getBool('lmx_hide_year', true)) {
                 hideYear(el);
-                setTimeout(function () { safe(function () { hideYear(el); }); }, 1500);
+                addWork({ el: el, due: Date.now() + 1500, fn: function () { hideYear(el); } });
             }
 
             var d = getData(el);
@@ -888,8 +912,8 @@
             var type = typeOf(d);
 
             // даємо Ліхтарю час намалювати свої значки, потім доповнюємо
-            setTimeout(function () { safe(function () { extras(el, d, type); }); }, 1600);
-            setTimeout(function () { safe(function () { extras(el, d, type); }); }, 4000);
+            addWork({ el: el, due: Date.now() + 1600, fn: function () { extras(el, d, type); } });
+            addWork({ el: el, due: Date.now() + 4000, fn: function () { extras(el, d, type); } });
 
             if (type === 'tv') {
                 var task = { el: el, id: d.id };
@@ -897,7 +921,7 @@
                 else { queue.push(task); }
             }
         });
-        if (!io) pump();
+        if (!io) pumpSoon();
         if (getBool('lmx_debug', false) && cards.length && Lampa.Noty) {
             Lampa.Noty.show('lmx: карток ' + found + ', з даними ' + withData + ', значків ' + rendered);
         }
@@ -906,7 +930,7 @@
     var timer = null;
     function schedule() {
         clearTimeout(timer);
-        timer = setTimeout(function () { safe(scan); }, 300);
+        timer = setTimeout(function () { safe(scan); }, 600);
     }
 
     // після зміни стилю: прибрати наші елементи, показати сховане, перемалювати
