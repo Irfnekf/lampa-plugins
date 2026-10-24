@@ -83,7 +83,7 @@
         ['friends', 'З друзями', '12%7C35']
     ];
     ROWS.unshift(
-        { name: 'LmxHero', title: 'Новинки прокату', gate: 'lmx_hero', index: -2, custom: function () { return heroCall(this); } },
+        { name: 'LmxHero', title: 'Банер', gate: 'lmx_hero', index: -2, custom: function () { return heroCall(this); } },
         { name: 'LmxStudios', title: 'Стрімінги', gate: 'lmx_studios', index: -1, custom: function () { return studioCall(this); } }
     );
     var n0 = 30;
@@ -480,7 +480,8 @@
         // --- Ряди ---
         title('lmx_t_lk', 'Ряди LMX');
         trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
-        trigger('lmx_hero', true, 'Банер «Новинки прокату»', 'Широкі картки з фоном фільму зверху головної', restart);
+        trigger('lmx_hero', true, 'Банер зверху головної', 'Широкі картки з фоном фільму', restart);
+        select('lmx_hero_src', { mix: 'У тренді (фільми й серіали)', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' }, 'mix', 'Що показувати у банері', 'Відбираються картки з описом і гідним рейтингом', restart);
         trigger('lmx_studios', true, 'Ряд стрімінгів з логотипами', 'Плитки Netflix, HBO та інших — відкривають підбірку сервісу', restart);
         trigger('lmx_services', true, 'Ряди стрімінгів (Netflix, HBO та ін.)', 'Netflix, HBO, Disney+ та інші', restart);
         trigger('lmx_moods', true, 'Підбірки «Під настрій»', 'Шість рядів за жанрами; в порядку головної їх можна сховати окремо', restart);
@@ -489,6 +490,7 @@
         title('lmx_t_cards', 'Вигляд карток');
         select('lmx_style', STYLE_NAMES, 'classic', 'Стиль значків',
             'Класичний — темні плашки. Скло — напівпрозорі плашки, кільце рейтингу, смужка статусу. Мінімум — без фону', rebuild);
+        select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах головної', restyle);
         select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на постерах', 'Значки, рейтинг, мітки', restyle);
 
         // --- Додатково ---
@@ -685,10 +687,34 @@
     }
     function esc(t) { return String(t || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
+    var HERO_TITLES = { mix: 'У тренді', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' };
+    // Що показувати у банері: тренди тижня (фільми й серіали), кінотеатри або свіже з високим рейтингом
+    function heroSources(src) {
+        var today = dayStr(0);
+        if (src === 'cinema') return [['movie/now_playing?region=UA', 'movie', 1]];
+        if (src === 'fresh') return [
+            ['discover/movie?sort_by=popularity.desc&primary_release_date.gte=' + dayStr(-75) + '&primary_release_date.lte=' + today + '&vote_average.gte=6.5&vote_count.gte=80', 'movie', 1],
+            ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(-120) + '&first_air_date.lte=' + today + '&vote_average.gte=7&vote_count.gte=40', 'tv', 1]
+        ];
+        return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]];
+    }
+
     function heroCall(row) {
         return function (call) {
-            Lampa.Api.sources.tmdb.get('movie/now_playing?region=UA', { page: 1 }, function (j) {
-                var list = cleanResults(j && j.results).filter(function (m) { return m.backdrop_path; }).slice(0, 12);
+            var src = getStr('lmx_hero_src', 'mix');
+            var srcs = heroSources(src), left = srcs.length, all = [], seenIds = {};
+            function fin() {
+                if (--left > 0) return;
+                var list = all.filter(function (m) {
+                    if (!m.backdrop_path || seenIds[m.id]) return false;
+                    if (m.media_type === 'person') return false;
+                    if (!(m.overview && String(m.overview).trim())) return false;
+                    if (m.vote_count > 30 && m.vote_average < 6.3) return false;
+                    seenIds[m.id] = 1;
+                    return true;
+                });
+                list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+                list = list.slice(0, 12);
                 if (!list.length) return call();
                 var items = list.map(function (m) {
                     var it = {};
@@ -707,11 +733,15 @@
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
-                                    var year = String(m.release_date || '').slice(0, 4);
+                                    var isTv = m.media_type === 'tv' || (!m.title && m.name);
+                                    var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
+                                    var ov = String(m.overview || '');
+                                    if (ov.length > 120) ov = ov.slice(0, 117).replace(/\s+\S*$/, '') + '…';
                                     view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
                                         esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
                                         (v ? '<span class="lmx-hero__v">' + v.toFixed(1) + '</span>' : '') +
-                                        '<span>Фільм</span>' + (year ? '<span>' + year + '</span>' : '') + '</div></div>');
+                                        '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
+                                        '</div><div class="lmx-hero__o">' + esc(ov) + '</div></div>');
                                 });
                             },
                             onlyEnter: function () { openFull(m); }
@@ -719,8 +749,14 @@
                     };
                     return it;
                 });
-                call({ title: row.title, results: items, params: { items: { mapping: 'line', view: 15 } } });
-            }, function () { call(); });
+                call({ title: HERO_TITLES[src] || HERO_TITLES.mix, results: items, params: { items: { mapping: 'line', view: 15 } } });
+            }
+            srcs.forEach(function (x) {
+                Lampa.Api.sources.tmdb.get(x[0], { page: 1 }, function (j) {
+                    (j && j.results || []).forEach(function (m) { if (x[1] && !m.media_type) m.media_type = x[1]; all.push(m); });
+                    fin();
+                }, function () { fin(); });
+            });
         };
     }
 
@@ -972,7 +1008,10 @@
                 '.lmx-cin__t{font-size:' + (1.15 * fs).toFixed(2) + 'em;font-weight:600;line-height:1.15;margin:.15em 0 .35em;max-height:3.5em;overflow:hidden}' +
                 '.lmx-cin__r{display:flex;justify-content:space-between;align-items:center;font-size:' + (0.9 * fs).toFixed(2) + 'em}' +
                 '.lmx-cin__v i{font-style:normal}.lmx-cin__y{opacity:.85}' : '') +
-            '.card--lmxhero{width:30em !important}' +
+            (getStr('lmx_card_size', 'm') !== 'm' ?
+                '.items-line .card:not(.card--lmxhero):not(.card--lmxstudio){width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '19.5em' : '17em') + ' !important}' : '') +
+            '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
+            '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
