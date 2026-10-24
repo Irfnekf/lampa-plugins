@@ -1,5 +1,5 @@
 /*
- * LMX Pack v6.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v6.7 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1284,28 +1284,33 @@
                         A + '.selectbox,' + A + '.settings,' + A + '.menu{background:rgba(18,18,20,.98)}' +
             A + '.modal__content,' + A + '.selectbox__content{background:#1c1c1e;border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + '}' +
-            // ===== сторінка фільму =====
-            F + '.full-start__background{filter:brightness(.6)}' +
-            F + '.full-start-new__right{max-width:46%}' +
-            F + '.lmx-logo{max-width:32vw;max-height:22vh;margin-bottom:1.8vh}' +
-            F + '.full-start-new__title{font-weight:700;letter-spacing:-.03em}' +
+            // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
+            F + '.full-start__background{filter:brightness(.52)}' +
+            F + '.full-start-new__right{max-width:44%;text-shadow:0 1px 14px rgba(0,0,0,.75)}' +
+            F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
+            F + '.full-start-new__title{font-size:3.4em;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin-bottom:.25em}' +
+            F + '.full-start-new__title.lmx-has-logo{font-size:0}' +
             F + '.full-start-new__tagline{display:none}' +
-            F + '.full-start-new__rate-line,' + F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{background:none !important;border:0 !important;padding-left:0;padding-right:.5em;font-size:1em}' +
-            F + '.full-start-new__rate-line{margin:0 0 .4em 0}' +
-            F + '.full-start-new__details{margin:0 0 .5em 0;opacity:.75}' +
-            F + '.lmx-info{gap:.3em .7em;margin:.1em 0 1.1em;align-items:center}' +
+            F + '.full-start-new__rate-line,' + F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{background:none !important;border:0 !important;padding-left:0;padding-right:.6em;font-size:1em;color:' + GRAY + '}' +
+            F + '.full-start-new__rate-line{margin:0 0 .3em 0}' +
+            F + '.full-start-new__details{margin:0 0 .6em 0;color:' + GRAY + ';opacity:1;font-weight:500}' +
+            F + '.lmx-info{gap:.3em .7em;margin:.1em 0 .9em;align-items:center}' +
             F + '.lmx-info .lmx-ip{background:none !important;padding:0;font-size:1.1em;color:' + GRAY + ';font-weight:500}' +
             F + '.lmx-info .lmx-ip + .lmx-ip::before{content:"\\00B7";margin-right:.7em;opacity:.8}' +
             F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#f5f5f7;font-weight:600}' +
-            F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
-            F + '.full-start-new__buttons > .full-start__button{width:3.4em;height:3.4em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;color:#f5f5f7;transition:transform .45s ' + SPRING + '}' +
+            F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:36vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:0 0 1.5em;font-size:1.08em;line-height:1.45;color:#d1d1d6;z-index:auto}' +
+            F + '.lmx-descr__t{-webkit-line-clamp:3}' +
+            // кнопки: велика біла капсула «Дивитись» і круглі скляні
+            F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center;margin-top:0}' +
+            F + '.full-start-new__buttons > .full-start__button{width:3.5em;height:3.5em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;color:#f5f5f7;margin-right:.7em;transition:transform .45s ' + SPRING + '}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child{width:auto;padding:0 2.2em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.05em}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child{width:auto;padding:0 2.4em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.08em}' +
             F + '.full-start-new__buttons > .full-start__button:first-child span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{transform:scale(1.1);background:rgba(255,255,255,.34) !important;color:#fff}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child.focus{background:#fff !important;color:#000}' +
-            F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:34vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:1.4em 0 0;font-size:1.02em;color:' + GRAY + ';z-index:auto}' +
-            F + '.lmx-descr__t{-webkit-line-clamp:3}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .18em rgba(255,255,255,.35)}' +
+            // нижні розділи сторінки (опис, актори) — у тому ж стилі
+            A + '.full-descr__text,' + A + '.full-descr__details{color:#d1d1d6}' +
+            A + '.full-person{border-radius:1.1em}' +
             '@media (max-width:760px){' +
                 A + '.card--lmxhero{width:90vw !important}' +
                 A + '.card--lmxhero .card__view{height:52vw !important}' +
@@ -1704,7 +1709,7 @@
         if (!box.length) {
             var anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
             box = $('<div class="lmx-info"></div>');
-            var dsc = getStr('lmx_theme', 'default') === 'apple' ? $() : r.find('.full-start-new__right > .lmx-descr').eq(0);
+            var dsc = r.find('.full-start-new__right > .lmx-descr').eq(0);
             if (dsc.length) dsc.before(box);
             else if (anchor.length) anchor.before(box); else r.find('.full-start-new__right, .full-start__right').eq(0).append(box);
         }
@@ -1760,8 +1765,7 @@
                 var dEl = $('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end();
                 var btns = r.find('.full-start-new__buttons').eq(0);
                 // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
-                if (getStr('lmx_theme', 'default') === 'hbo' && btns.length) btns.before(dEl);
-                else if (getStr('lmx_theme', 'default') === 'apple' && btns.length) btns.after(dEl);
+                if (getStr('lmx_theme', 'default') !== 'default' && btns.length) btns.before(dEl);
                 else body.append(dEl);
             }
         }
@@ -1779,7 +1783,7 @@
             return '<div class="lmx-ip ' + (x.c || '') + '">' + x.t + '</div>';
         }).join('') + '</div>';
 
-        var anchor = getStr('lmx_theme', 'default') === 'apple' ? $() : r.find('.full-start-new__right > .lmx-descr').eq(0);
+        var anchor = r.find('.full-start-new__right > .lmx-descr').eq(0);
         if (!anchor.length) anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (anchor.length) anchor.before(html);
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
@@ -1789,7 +1793,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '6.6';
+    var VERSION = '6.7';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
