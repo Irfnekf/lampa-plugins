@@ -1,9 +1,10 @@
 /*
- * LMX Pack v6.0 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
- *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
- *  2) «Порядок головної»: переставити й сховати будь-який ряд
- *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
- *  4) Тривалість («1 год 45 хв») і статус із відліком («через 3 дні») всередині картки
+ * LMX Pack v6.2 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
+ *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
+ *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
+ *  3) Три теми: Стандартна (LMX), HBO Max, Apple TV
+ *  4) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
  */
 (function () {
@@ -452,36 +453,41 @@
         var restyle = function () { setTimeout(function () { safe(applyStyle); }, 80); };
         var rebuild = function () { setTimeout(function () { safe(applyStyle); safe(resetCards); }, 80); };
 
-        // ---- Головна ----
         var H = mk('lmx');
-        H.title('lmx_t_theme', 'Тема · версія ' + VERSION);
-        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'HBO Max' }, 'default', 'Тема застосунку', 'HBO Max: постери без підписів, біле кільце фокуса, нова сторінка фільму. Сторінку фільму видно після повторного відкриття', restyle);
-        H.title('lmx_t_home', 'Головна');
-        H.button('lmx_order_btn', 'Порядок рядів', 'Переставити й сховати ряди (банер, стрімінги, підбірки)', openOrderModal);
-        H.trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
-        H.title('lmx_t_c1', 'Підбір і фільтри');
-        H.select('lmx_hero_src', { mix: 'У тренді (фільми й серіали)', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' }, 'mix', 'Що показувати у банері', 'Відбираються картки з описом і гідним рейтингом', restart);
-        H.trigger('lmx_market', true, 'Лише з українським описом', 'Ховає фільми й серіали без українського опису (їх зазвичай ще не переклали) і підбирає те, що доступне в Україні', restart);
-        H.select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
 
-        // ---- Картки ----
-        var C = H;
-        C.title('lmx_t_look', 'Картки');
-        C.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
-        C.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів', 'Значки, рейтинг, мітки', restyle);
-        C.title('lmx_t_marks', 'Мітки на картках');
-        C.trigger('lmx_marks', true, 'Мітки на постері', '«Нова серія», «Сьогодні», «Новинка», «Скоро»', rebuild);
-        C.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія', 'Також «Сьогодні». У темі HBO кольори фіксовані', restyle);
-        C.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро / очікується', 'Також для ще не випущеного', restyle);
-        C.select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'У рядку статусу сторінки фільму', restyle);
+        // ---- Вигляд ----
+        H.title('lmx_t_look', 'Зовнішній вигляд');
+        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'HBO Max', apple: 'Apple TV' }, 'default', 'Тема',
+            'Змінює вигляд карток, банера, меню та сторінки фільму. HBO Max — темно-синя з фіолетовим акцентом, Apple TV — чорна й мінімалістична. Сторінка фільму оновлюється при наступному відкритті', restyle);
+        H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
+        H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
+
+        // ---- Головна ----
+        H.title('lmx_t_home', 'Головна сторінка');
+        H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати банер, стрімінги та будь-яку підбірку', openOrderModal);
+        H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
+        H.select('lmx_hero_src', { mix: 'У тренді (фільми й серіали)', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' }, 'mix', 'Що показувати в банері', 'Фільми й серіали з описом та гідним рейтингом. Діє після перезапуску', restart);
+
+        // ---- Фільтри ----
+        H.title('lmx_t_filters', 'Фільтри');
+        H.trigger('lmx_market', true, 'Лише з українським описом', 'Ховає фільми й серіали без опису українською (їх зазвичай ще не переклали) і підбирає те, що доступне в Україні. Діє після перезапуску', restart);
+        H.select('lmx_min_rating', { '0': 'Не ховати', '3': 'З оцінкою 1–2', '4': 'Нижче 4', '5': 'Нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'Прибирає з наших рядів те, що має низьку оцінку. Діє після перезапуску', restart);
+
+        // ---- Мітки ----
+        H.title('lmx_t_marks', 'Мітки на картках');
+        H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
+        H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в стандартній темі, в HBO Max і Apple TV кольори вбудовані', restyle);
+        H.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро й очікується', 'Лише в стандартній темі', restyle);
+        H.select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: «Вийшов» і «Завершено»', 'Статус над кнопками на сторінці фільму, лише в стандартній темі', restyle);
 
         // ---- Сторінка фільму ----
-        var P = H;
-        P.title('lmx_t_page', 'Сторінка фільму');
-        P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
-        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB замість назви; рік і країна переходять плашкою перед тривалістю. Вимкнено — звичайна назва', restyle);
-        P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки. У темі HBO — завжди компактні', restyle);
-        P.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія…»');
+        H.title('lmx_t_page', 'Сторінка фільму');
+        H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
+        H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
+        H.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підпис лише в перших трьох і в тієї, що вибрана. У HBO Max і Apple TV кнопки завжди компактні', restyle);
+        H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
+
+        H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
     }
 
     // ===== РЯДИ НА ГОЛОВНІЙ (наші) =====
@@ -704,18 +710,18 @@
                                     if (!h) return;
                                     h.addClass('card--lmxhero');
                                     var view = h.find('.card__view');
-                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') !== 'hbo' ? 'w500' : 'w780') + ')');
+                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') === 'default' ? 'w500' : 'w780') + ')');
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
                                     var isTv = m.media_type === 'tv' || (!m.title && m.name);
                                     var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
                                     var ov = String(m.overview || '');
-                                    var ovMax = getStr('lmx_theme', 'default') === 'hbo' ? 190 : 120;
+                                    var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
                                     if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
                                     view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
                                         esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
-                                        (v ? (getStr('lmx_theme', 'default') === 'hbo' ?
+                                        (v ? (getStr('lmx_theme', 'default') !== 'default' ?
                                             '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' :
                                             '<span class="lmx-hero__v">' + v.toFixed(1) + '</span>') : '') +
                                         '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
@@ -1206,8 +1212,86 @@
                 F + '.full-start-new__buttons{flex-wrap:wrap}' +
             '}';
     }
+
+    // ===== ТЕМА «APPLE TV» =====
+    // Чорний мінімалізм: великі заокруглення, м'яка тінь і «пружинний» підйом вибраної картки, капсули-мітки,
+    // широкий банер без зайвого, сторінка фільму з білою кнопкою «Дивитись»
+    function appleCss() {
+        if (getStr('lmx_theme', 'default') !== 'apple') return '';
+        var A = 'body.lmx-apple ';
+        var F = 'body.lmx-apple.lmx-full ';
+        var SPRING = 'cubic-bezier(.34,1.32,.64,1)';
+        var GRAY = '#a1a1a6';
+        return '' +
+            A + '{background:#000 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif}' +
+            A + '.activity,' + A + '.activity__body{background:transparent}' +
+            // ряди
+            A + '.items-line__title{font-size:1.45em;font-weight:700;letter-spacing:-.01em;color:#f5f5f7}' +
+            // картки: великі заокруглення; вибрана м'яко підіймається «з пружиною» і отримує дифузну тінь
+            A + '.card__view{border-radius:1em;background:#1c1c1e;transition:transform .45s ' + SPRING + '}' +
+            A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:translateY(-.45em) scale(1.08)}' +
+            A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:block !important;content:"";position:absolute;top:0;left:0;right:0;bottom:0;border:0 !important;background:none;border-radius:1em;box-shadow:0 1.2em 2.4em rgba(0,0,0,.75);z-index:-1;pointer-events:none;animation:lmxshadow .45s ease both}' +
+            '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
+            // наші підписи — тонкий низ-градієнт, напівжирна назва
+            A + '.lmx-cin{padding:2.4em .8em .7em;border-radius:0 0 1em 1em;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,0) 100%)}' +
+            A + '.lmx-cin__t{font-size:1.15em;font-weight:600;letter-spacing:-.01em;line-height:1.15}' +
+            A + '.lmx-cin__g{opacity:.65;text-transform:uppercase;letter-spacing:.07em;font-size:.6em;font-weight:600}' +
+            A + '.lmx-cin__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
+            A + '.lmx-cin__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
+            A + '.lmx-cin__y{opacity:.7;font-weight:500}' +
+            // мітки — капсули
+            A + '.lmx-pill{border:0 !important;border-radius:99em;font-weight:600;letter-spacing:.02em;padding:.34em .85em}' +
+            A + '.lmx-box .lmx-pill{background:rgba(44,44,46,.85) !important;color:#f5f5f7 !important}' +
+            A + '.lmx-pill.lmx-m-next{background:#0a84ff !important;color:#fff !important}' +
+            A + '.lmx-pill.lmx-m-new{background:#f5f5f7 !important;color:#000 !important}' +
+            A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.9) !important;color:#f5f5f7 !important}' +
+            // банер: широка афіша 16:9, градієнт знизу, великий заголовок
+            A + '.card--lmxhero{width:46em !important}' +
+            A + '.card--lmxhero .card__view{height:25.9em !important;border-radius:1.1em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 25% !important}' +
+            A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view{transform:translateY(-.3em) scale(1.03)}' +
+            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.35) 40%,rgba(0,0,0,0) 70%)}' +
+            A + '.card--lmxhero .lmx-hero__text{left:1.8em;right:1.8em;bottom:1.6em;max-width:70%}' +
+            A + '.card--lmxhero .lmx-hero__title{font-size:2.2em;font-weight:700;line-height:1.05;letter-spacing:-.02em;margin-bottom:.35em}' +
+            A + '.card--lmxhero .lmx-hero__meta{font-size:1em;opacity:.85}' +
+            A + '.card--lmxhero .lmx-hero__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
+            A + '.card--lmxhero .lmx-hero__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
+            A + '.card--lmxhero .lmx-hero__o{font-size:.95em;opacity:.75;line-height:1.35;max-height:2.8em;margin-top:.5em}' +
+            // плитки стрімінгів — як канали в Apple TV
+            A + '.card--lmxstudio .card__view{background:#1c1c1e;border-radius:1em}' +
+            // меню, налаштування, списки
+            A + '.menu__item,' + A + '.settings-param,' + A + '.settings-folder,' + A + '.selectbox-item{transition:background-color .2s ease,transform .3s ' + SPRING + '}' +
+            A + '.menu__item.focus,' + A + '.menu__item.traverse,' + A + '.menu__item.hover,' +
+            A + '.settings-folder.focus,' + A + '.settings-param.focus,' + A + '.selectbox-item.focus,' +
+            A + '.settings-param-title.focus,' + A + '.simple-button.focus,' + A + '.full-person.focus,' +
+            A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
+            '{background:#f5f5f7 !important;color:#000 !important;border-radius:.8em}' +
+            A + '.selectbox,' + A + '.settings,' + A + '.menu{background:#111113}' +
+            A + '.modal__content{background:#1c1c1e;border-radius:1.2em}' +
+            // ===== сторінка фільму =====
+            F + '.full-start__background{filter:brightness(.55)}' +
+            F + '.full-start-new__right{max-width:46%}' +
+            F + '.lmx-logo{max-width:30vw;max-height:20vh;margin-bottom:1.6vh}' +
+            F + '.full-start-new__tagline{display:none}' +
+            F + '.full-start-new__rate-line,' + F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{background:none !important;border:0 !important;padding-left:0;padding-right:.5em;font-size:1em}' +
+            F + '.full-start-new__rate-line{margin:0 0 .4em 0}' +
+            F + '.full-start-new__details{margin:0 0 .5em 0;opacity:.75}' +
+            F + '.lmx-info{gap:.3em .7em;margin:.1em 0 1em;align-items:center}' +
+            F + '.lmx-info .lmx-ip{background:none !important;padding:0;font-size:1.1em;color:' + GRAY + ';font-weight:500}' +
+            F + '.lmx-info .lmx-ip + .lmx-ip::before{content:"\\00B7";margin-right:.7em;opacity:.8}' +
+            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#f5f5f7;font-weight:600}' +
+            // кнопки: велика біла «Дивитись» і напівпрозорі круглі
+            F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
+            F + '.full-start-new__buttons > .full-start__button{width:3.2em;height:3.2em;padding:0;border-radius:50%;justify-content:center;background:rgba(120,120,128,.36) !important;color:#f5f5f7;transition:transform .4s ' + SPRING + '}' +
+            F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child{width:auto;padding:0 2em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child span{display:inline !important}' +
+            F + '.full-start-new__buttons > .full-start__button.focus{transform:scale(1.1);background:#fff !important;color:#000;box-shadow:0 .6em 1.6em rgba(0,0,0,.6)}' +
+            // опис — під кнопками, сірий, до трьох рядків
+            F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:34vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:1.3em 0 0;font-size:1.02em;color:' + GRAY + ';z-index:auto}' +
+            F + '.lmx-descr__t{-webkit-line-clamp:3}';
+    }
     function loadThemeFont() {
-        if (getStr('lmx_theme', 'default') !== 'hbo' || document.getElementById('lmx-font')) return;
+        if (getStr('lmx_theme', 'default') === 'default' || document.getElementById('lmx-font')) return;
         var l = document.createElement('link');
         l.id = 'lmx-font'; l.rel = 'stylesheet';
         l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&subset=cyrillic&display=swap';
@@ -1215,7 +1299,7 @@
     }
     function applyThemeClass() {
         safe(loadThemeFont);
-        if (document.body && document.body.classList) document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo');
+        if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); }
     }
     function isMobile() { return (window.innerWidth || 1000) <= 760; }
     function applyFullClass() {
@@ -1235,7 +1319,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss();
+        s.textContent = buildCss() + themeCss() + appleCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -1595,7 +1679,7 @@
         if (!box.length) {
             var anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
             box = $('<div class="lmx-info"></div>');
-            var dsc = r.find('.full-start-new__right > .lmx-descr').eq(0);
+            var dsc = getStr('lmx_theme', 'default') === 'apple' ? $() : r.find('.full-start-new__right > .lmx-descr').eq(0);
             if (dsc.length) dsc.before(box);
             else if (anchor.length) anchor.before(box); else r.find('.full-start-new__right, .full-start__right').eq(0).append(box);
         }
@@ -1652,6 +1736,7 @@
                 var btns = r.find('.full-start-new__buttons').eq(0);
                 // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
                 if (getStr('lmx_theme', 'default') === 'hbo' && btns.length) btns.before(dEl);
+                else if (getStr('lmx_theme', 'default') === 'apple' && btns.length) btns.after(dEl);
                 else body.append(dEl);
             }
         }
@@ -1669,7 +1754,7 @@
             return '<div class="lmx-ip ' + (x.c || '') + '">' + x.t + '</div>';
         }).join('') + '</div>';
 
-        var anchor = r.find('.full-start-new__right > .lmx-descr').eq(0);
+        var anchor = getStr('lmx_theme', 'default') === 'apple' ? $() : r.find('.full-start-new__right > .lmx-descr').eq(0);
         if (!anchor.length) anchor = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (anchor.length) anchor.before(html);
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
@@ -1679,7 +1764,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '6.0';
+    var VERSION = '6.2';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
