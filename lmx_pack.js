@@ -1,5 +1,5 @@
 /*
- * LMX Pack v3.1 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v3.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -482,6 +482,7 @@
         // ---- Сторінка фільму ----
         var P = mk('lmx_page');
         P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
+        P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB; якщо його немає — звичайний заголовок', null);
         P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
         P.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія…»');
     }
@@ -1058,6 +1059,8 @@
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
+            B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
+            B + '.lmx-logo{display:block;max-width:70%;max-height:8em;width:auto;height:auto;margin-bottom:.6em;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
@@ -1403,6 +1406,38 @@
         return p;
     }
 
+    // Офіційний логотип фільму з TMDB замість текстового заголовка (якщо є)
+    var logoCache = {};
+    function pickLogo(list) {
+        var best = null, bestScore = -1;
+        (list || []).forEach(function (l) {
+            if (!l || !l.file_path) return;
+            var lang = l.iso_639_1;
+            var sc = lang === 'uk' ? 3 : (lang === 'en' ? 2 : (!lang ? 1 : 0));
+            if (!sc) return;
+            sc = sc * 1000 + (l.vote_average || 0) * 10 + Math.min(9, (l.width || 0) / 400);
+            if (sc > bestScore) { bestScore = sc; best = l; }
+        });
+        return best && best.file_path;
+    }
+    function applyLogo(r, path) {
+        var t = r.find('.full-start-new__title').eq(0);
+        if (!t.length || !path) return;
+        r.find('.lmx-logo').remove();
+        var img = $('<img class="lmx-logo">').attr('src', imgUrl(path, 'w500'));
+        img.on('error', function () { img.remove(); t.removeClass('lmx-has-logo'); });
+        t.addClass('lmx-has-logo').prepend(img);
+    }
+    function loadLogo(r, m) {
+        var kind = (m.name || m.first_air_date || m.number_of_seasons) ? 'tv' : 'movie';
+        var key = kind + m.id;
+        if (key in logoCache) return applyLogo(r, logoCache[key]);
+        Lampa.Api.sources.tmdb.get(kind + '/' + m.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
+            logoCache[key] = pickLogo(j && j.logos);
+            applyLogo(r, logoCache[key]);
+        }, function () {});
+    }
+
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
@@ -1430,6 +1465,8 @@
             if (txt && body.length) body.append($('<div class="lmx-descr"></div>').text(txt));
         }
 
+        if (getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
+
         if (!getBool('lmx_info', true)) return;
         var pills = infoPills(m);
         if (!pills.length) return;
@@ -1448,7 +1485,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '3.1';
+    var VERSION = '3.2';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
