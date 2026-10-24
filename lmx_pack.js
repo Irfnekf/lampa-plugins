@@ -1,8 +1,8 @@
 /*
- * LMX Pack v1.5.1 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
- *  1) Додаткові ряди на головній (TMDB + українське кіно та серіали)
- *  2) «Порядок головної»: один екран, де можна переставити й сховати ВСІ ряди (і Ліхтаря, і наші)
- *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», мітка Фільм/Серіал, рейтинг; стилі: Класичний, Скло, Мінімум
+ * LMX Pack v2.0 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
+ *  2) «Порядок головної»: переставити й сховати будь-який ряд
+ *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
  *  4) Тривалість («1 год 45 хв») і статус із відліком («через 3 дні») всередині картки
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
  */
@@ -68,7 +68,7 @@
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 }
     ];
 
-    // Замість Ліхтаря: стрімінги (id провайдерів TMDB) і підбірки «під настрій»
+    // Стрімінги (id провайдерів TMDB) і підбірки «під настрій»
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
@@ -95,23 +95,6 @@
         ROWS.push({ name: 'LmxMood_' + x[0], title: 'Під настрій: ' + x[1], gate: 'lmx_moods', index: n0++,
             urls: function () { return ['discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + (market() ? '&region=UA' : '')]; } });
     });
-
-    // Ряди Ліхтаря (назви взято з його коду) — щоб екран порядку працював навіть якщо їх не вдалося перехопити
-    var KNOWN = [
-        { name: 'custom_hero_row',               title: 'Новинки прокату (банер)' },
-        { name: 'custom_studio_row',             title: 'Стрімінги (логотипи)' },
-        { name: 'custom_mood_row',               title: 'Кіно під настрій' },
-        { name: 'service_row_netflix',           title: 'Сьогодні на Netflix' },
-        { name: 'service_row_apple',             title: 'Сьогодні на Apple TV+' },
-        { name: 'service_row_hbo',               title: 'Сьогодні на HBO / Max' },
-        { name: 'service_row_amazon',            title: 'Сьогодні на Prime Video' },
-        { name: 'service_row_disney',            title: 'Сьогодні на Disney+' },
-        { name: 'service_row_paramount',         title: 'Сьогодні на Paramount+' },
-        { name: 'service_row_sky_showtime',      title: 'Сьогодні на Sky Showtime' },
-        { name: 'service_row_hulu',              title: 'Сьогодні на Hulu' },
-        { name: 'service_row_syfy',              title: 'Сьогодні на Syfy' },
-        { name: 'service_row_educational_and_reality', title: 'Сьогодні на Пізнавальне' }
-    ];
 
     var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
 
@@ -152,15 +135,14 @@
         function put(n, t, src) {
             if (!map[n]) { map[n] = { name: n, title: t, src: src }; list.push(n); }
         }
-        // Ряди Ліхтаря показуємо, лише якщо він справді їх зареєстрував (інакше — вимкнений, нічого не засмічуємо)
-        var liveK = readJson('lmx_live');
-        KNOWN.forEach(function (k) { if (seen[k.name] || liveK.indexOf(k.name) >= 0) put(k.name, k.title, 'Ліхтар'); });
         ROWS.forEach(function (r) { if (!r.gate || getBool(r.gate, true)) put(r.name, r.title, 'LMX Pack'); });
-        // Ряди інших плагінів показуємо лише якщо вони реально давали картки (приховані Ліхтарем туди не потрапляють)
-        var live = readJson('lmx_live');
-        Object.keys(seen).forEach(function (n) {
-            if ((stats[n] || 0) > 0 || live.indexOf(n) >= 0) put(n, seen[n].title || n, 'Інший плагін');
-        });
+        // Чужі ряди (стандартні й від інших плагінів) показуємо лише якщо їх не сховано глобально і вони реально давали картки
+        if (!getBool('lmx_only_mine', true)) {
+            var live = readJson('lmx_live');
+            Object.keys(seen).forEach(function (n) {
+                if ((stats[n] || 0) > 0 || live.indexOf(n) >= 0) put(n, seen[n].title || n, 'Інше');
+            });
+        }
         return { map: map, list: list };
     }
     function getOrder() {
@@ -228,7 +210,13 @@
         });
         diag.lastTotal = calls.length;
         diag.lastTagged = tagged;
-        if (tagged < 2) return;
+        if (getBool('lmx_only_mine', true) && tagged > 0) {
+            var ours = {};
+            ROWS.forEach(function (r) { ours[r.name] = 1; });
+            var mine = boxed.filter(function (b) { return ours[tagOf(b.c)]; });
+            if (mine.length) { boxed = mine; tagged = mine.length; }
+        }
+        if (tagged < 2 && boxed.length === calls.length) return;
         boxed.sort(function (a, b) { return a.key - b.key || a.i - b.i; });
         calls.length = 0;
         boxed.forEach(function (b) { calls.push(b.c); });
@@ -487,13 +475,14 @@
 
         // --- Ряди ---
         title('lmx_t_rows', 'Головна сторінка');
-        button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати всі ряди: і Ліхтаря, і наші', openOrderModal);
+        button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати ряди головної', openOrderModal);
 
-        // --- Замість Ліхтаря ---
-        title('lmx_t_lk', 'Замість Ліхтаря');
+        // --- Ряди ---
+        title('lmx_t_lk', 'Ряди LMX');
+        trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
         trigger('lmx_hero', true, 'Банер «Новинки прокату»', 'Широкі картки з фоном фільму зверху головної', restart);
         trigger('lmx_studios', true, 'Ряд стрімінгів з логотипами', 'Плитки Netflix, HBO та інших — відкривають підбірку сервісу', restart);
-        trigger('lmx_services', true, 'Ряди стрімінгів (Netflix, HBO та ін.)', 'Якщо Ліхтар ще увімкнений — вимкніть його, інакше ряди дублюватимуться', restart);
+        trigger('lmx_services', true, 'Ряди стрімінгів (Netflix, HBO та ін.)', 'Netflix, HBO, Disney+ та інші', restart);
         trigger('lmx_moods', true, 'Підбірки «Під настрій»', 'Шість рядів за жанрами; в порядку головної їх можна сховати окремо', restart);
 
         // --- Вигляд ---
@@ -511,7 +500,7 @@
         trigger('lmx_market', true, 'Підбірки для українського ринку', 'Лише те, що доступне в Україні, і з описом українською/вашою мовою. Без цього — світова добірка', restart);
         select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
         trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
-        trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість рейтингу Ліхтаря', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
+        trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість стандартного', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
         trigger('lmx_order_classic', false, 'Простий список замість вікна порядку', 'Якщо вікно з кнопками ▲ ▼ погано прокручується — буде звичайний список Lampa');
         button('lmx_diag_btn', 'Діагностика рядів', 'Показує, що бачить плагін, і поточний порядок на головній', openDiagnostics);
@@ -934,6 +923,7 @@
         var ringBg = st === 'glass' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.62)';
         function markCss(cls, nm) {
             var sel = '.lmx-pill.lmx-m-' + cls;
+            if (st === 'cinema') return sel + '{background:' + rgba(nm, 0.4) + ';border:1px solid ' + rgba(nm, 0.9) + ';-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}';
             if (st === 'glass') return sel + '{background:' + rgba(nm, 0.42) + ';border:1px solid ' + rgba(nm, 0.95) + '}';
             if (st === 'minimal') return sel + '{background:none;border:0;padding:.1em .2em;color:' + rgba(nm, 1) + '}';
             return sel + '{background:' + rgba(nm, 0.96) + '}';
@@ -973,6 +963,8 @@
             '.lmx-ip.lmx-bad{background:' + COLORS.red + '}' +
             (st === 'cinema' ?
                 '.lmx-stripe,.lmx-br,.lmx-bl{display:none !important}' +
+                '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
+                '.lmx-box .lmx-pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}' +
                 '.card .card__title,.card .card__age{display:none !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
@@ -1002,7 +994,7 @@
         s.textContent = buildCss();
     }
 
-    // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa/Ліхтаря мені недоступні) =====
+    // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
     function looksLikeCard(o) {
         return !!(o && typeof o === 'object' && !o.nodeType &&
             (typeof o.id === 'number' || /^\d+$/.test(String(o.id || ''))) &&
@@ -1134,7 +1126,7 @@
             var ratingLeaf = findLeaf(view, RE_RATING);
             var has = !!view.querySelector('.lmx-br');
             if (ratingLeaf && getBool('lmx_replace_rating', true)) {
-                // рейтинг Ліхтаря міг з'явитися пізніше за наш — тоді ховаємо його
+                // стандартний рейтинг міг з'явитися пізніше за наш — тоді ховаємо його
                 hideEl(pillOf(ratingLeaf, view));
                 if (!has) addTo(view, 'lmx-br', ratingHtml(v));
             } else if (!ratingLeaf && !has) {
@@ -1237,7 +1229,6 @@
             withData++;
             var type = typeOf(d);
 
-            // даємо Ліхтарю час намалювати свої значки, потім доповнюємо
             // Головна — майже одразу; екран «Ще» (довгі списки) — легше й із затримкою
             var fast = !el.closest('.category-full');
             addWork({ el: el, fast: fast, due: Date.now() + (fast ? 0 : 700), fn: function () { extras(el, d, type); } });
@@ -1337,7 +1328,7 @@
     }
 
     // ===== Запуск =====
-    // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які Ліхтар додасть пізніше
+    // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     safe(patchContentRows);
 
     function start() {
