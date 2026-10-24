@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -511,6 +511,8 @@
         select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
         trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
         trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість стандартного', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
+        trigger('lmx_full', true, 'Сторінка фільму в кіно-стилі', 'Фон на весь екран, великий заголовок, скляні кнопки', restyle);
+        trigger('lmx_full_poster', true, 'Ховати постер на сторінці фільму', 'Лишається лише фон, як у кіно', restyle);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
         trigger('lmx_order_classic', false, 'Простий список замість вікна порядку', 'Якщо вікно з кнопками ▲ ▼ погано прокручується — буде звичайний список Lampa');
         button('lmx_diag_btn', 'Діагностика рядів', 'Показує, що бачить плагін, і поточний порядок на головній', openDiagnostics);
@@ -1018,6 +1020,7 @@
                 '.lmx-cin__v i{font-style:normal}.lmx-cin__y{opacity:.85}' : '') +
             (getStr('lmx_card_size', 'm') !== 'm' ?
                 '.items-line .card:not(.card--lmxhero):not(.card--lmxstudio){width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '19.5em' : '17em') + ' !important}' : '') +
+            fullCss() +
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
@@ -1031,7 +1034,31 @@
             '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
             '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
+    // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
+    function fullCss() {
+        var B = 'body.lmx-full ';
+        return '' +
+            B + '.full-start-new,' + B + '.full-start{position:relative}' +
+            B + '.full-start-new::before,' + B + '.full-start::before{content:"";position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:0;' +
+                'background:linear-gradient(to right,rgba(10,12,16,.92) 0%,rgba(10,12,16,.6) 42%,rgba(10,12,16,0) 78%),linear-gradient(to top,rgba(10,12,16,.95) 0%,rgba(10,12,16,0) 55%)}' +
+            B + '.full-start-new__body,' + B + '.full-start__body{position:relative;z-index:1;align-items:flex-end}' +
+            B + '.full-start__background{opacity:1 !important}' +
+            B + '.full-start-new__title,' + B + '.full-start__title{font-size:2.9em;line-height:1.05;font-weight:700;text-shadow:0 2px 12px rgba(0,0,0,.6)}' +
+            B + '.full-start-new__tagline,' + B + '.full-start__tagline{opacity:.8;font-size:1.15em}' +
+            B + '.full-start-new__right,' + B + '.full-start__right{max-width:56%}' +
+            B + '.full-start-new__text,' + B + '.full-start__text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;opacity:.92}' +
+            B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:.9em}' +
+            B + '.full-start__button.focus,' + B + '.full-start-new__buttons .simple-button.focus{background:#fff;color:#111}' +
+            B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+            (getBool('lmx_full_poster', true) ? B + '.full-start-new__left,' + B + '.full-start__left{display:none !important}' : '');
+    }
+    function applyFullClass() {
+        var on = getBool('lmx_full', true);
+        if (document.body && document.body.classList) document.body.classList.toggle('lmx-full', on);
+    }
+
     function applyStyle() {
+        safe(applyFullClass);
         var s = document.getElementById('lmx-css');
         if (!s) {
             s = document.createElement('style');
@@ -1380,7 +1407,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.2';
+    var VERSION = '2.3';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
