@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.6 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.7 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -512,6 +512,7 @@
         trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
         trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість стандартного', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
         trigger('lmx_full', true, 'Сторінка фільму в кіно-стилі', 'Фон на весь екран, великий заголовок, скляні кнопки', restyle);
+        trigger('lmx_btn_compact', true, 'Компактні кнопки на сторінці фільму', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
         trigger('lmx_full_poster', true, 'Ховати постер на сторінці фільму', 'Лишається лише фон, як у кіно', restyle);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
         trigger('lmx_order_classic', false, 'Простий список замість вікна порядку', 'Якщо вікно з кнопками ▲ ▼ погано прокручується — буде звичайний список Lampa');
@@ -739,7 +740,7 @@
                                     if (!h) return;
                                     h.addClass('card--lmxhero');
                                     var view = h.find('.card__view');
-                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, 'w780') + ')');
+                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, 'w500') + ')');
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
@@ -1044,22 +1045,28 @@
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
     function fullCss() {
         var B = 'body.lmx-full ';
+        var compact = getBool('lmx_btn_compact', true);
         return '' +
-            B + '.full-start-new__body{position:relative;height:80vh}' +
-            B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:58%}' +
+            B + '.full-start-new__body{position:relative;height:80vh;' +
+                'background-image:linear-gradient(to right,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,0) 70%),linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,0) 55%)}' +
+            B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
-            B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 0 .1em rgba(0,0,0,.4)}' +
-            B + '.full-start-new__tagline{opacity:.85}' +
-            B + '.full-start-new__rate-line{margin:1em 0 1.2em 0}' +
-            B + '.full-start-new__details{margin:0 0 1.2em -0.3em}' +
-            // затемнення всередині блоку (а не fixed на весь екран — fixed зміщується в анімованих контейнерах)
-            B + '.full-start-new__body::before{content:"";position:absolute;left:0;right:0;top:0;bottom:-6vh;pointer-events:none;z-index:-1;' +
-                'background:linear-gradient(225deg,rgba(0,0,0,.8) 0%,rgba(0,0,0,0) 55%),linear-gradient(to top,rgba(0,0,0,.75) 0%,rgba(0,0,0,0) 50%)}' +
+            B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
+            B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
+            B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
+            B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
             B + '.full-start__background{opacity:1 !important}' +
-            B + '.lmx-descr{position:absolute;right:2%;top:6%;width:36vw;text-align:right;font-size:1.2em;line-height:1.5;z-index:2;color:#fff;' +
-                'text-shadow:0 1px 6px rgba(0,0,0,.8);display:-webkit-box;-webkit-line-clamp:9;-webkit-box-orient:vertical;overflow:hidden}' +
-            B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);border-radius:.9em}' +
+            B + '.lmx-descr{position:absolute;right:2%;top:4%;width:32vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
+                'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
+                'display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}' +
+            // кнопки: компактно, у кілька рядків без розтягування
+            B + '.full-start-new__buttons{display:flex;flex-wrap:wrap;margin-top:.4em}' +
+            B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);border-radius:.8em;margin:0 .5em .5em 0;padding:.55em 1em;font-size:.95em}' +
             B + '.full-start__button.focus,' + B + '.full-start-new__buttons .simple-button.focus{background:#fff;color:#111}' +
+            (compact ?
+                // підписи показуємо лише у перших трьох кнопок і в тієї, що у фокусі — решта лишається іконками
+                B + '.full-start-new__buttons > .full-start__button:nth-child(n+4) span{display:none}' +
+                B + '.full-start-new__buttons > .full-start__button:nth-child(n+4).focus span{display:inline}' : '') +
             B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14)}' +
             (getBool('lmx_full_poster', true) ? B + '.full-start-new__left{display:none !important}' : '');
     }
@@ -1296,7 +1303,7 @@
             if (e.target.__lmx) queue.push(e.target.__lmx);
         });
         pumpSoon();
-    }, { rootMargin: '600px' }) : null;
+    }, { rootMargin: '300px' }) : null;
 
     function scan() {
         var cards = document.querySelectorAll('.card:not([data-lmx])');
@@ -1318,7 +1325,6 @@
             // Головна — майже одразу; екран «Ще» (довгі списки) — легше й із затримкою
             var fast = !el.closest('.category-full');
             addWork({ el: el, fast: fast, due: Date.now() + (fast ? 0 : 700), fn: function () { extras(el, d, type); } });
-            addWork({ el: el, fast: fast, due: Date.now() + (fast ? 1200 : 2500), fn: function () { extras(el, d, type); } });
 
             if (type === 'tv') {
                 var task = { el: el, id: d.id };
@@ -1425,7 +1431,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.6';
+    var VERSION = '2.7';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
@@ -1442,7 +1448,16 @@
         safe(initRows);
         safe(function () {
             applyStyle();
-            new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+            new MutationObserver(function (muts) {
+                // реагуємо лише коли додались картки, а не на кожну зміну сторінки
+                for (var i = 0; i < muts.length; i++) {
+                    var add = muts[i].addedNodes;
+                    for (var k = 0; k < add.length; k++) {
+                        var n = add[k];
+                        if (n.nodeType === 1 && ((n.classList && n.classList.contains('card')) || (n.querySelector && n.querySelector('.card')))) { schedule(); return; }
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
             scan();
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
         });
