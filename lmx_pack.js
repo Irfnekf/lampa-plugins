@@ -1,5 +1,5 @@
 /*
- * LMX Pack v1.5 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
+ * LMX Pack v1.5.1 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
  *  1) Додаткові ряди на головній (TMDB + українське кіно та серіали)
  *  2) «Порядок головної»: один екран, де можна переставити й сховати ВСІ ряди (і Ліхтаря, і наші)
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», мітка Фільм/Серіал, рейтинг; стилі: Класичний, Скло, Мінімум
@@ -36,19 +36,50 @@
     var STYLE_NAMES = { classic: 'Класичний', glass: 'Скло', minimal: 'Мінімум' };
 
     // ===== НАШІ РЯДИ =====
-    function uaUrl(kind) {
-        var q = getStr('lmx_ua_mode', 'lang') === 'country' ? 'with_origin_country=UA' : 'with_original_language=uk';
-        return 'discover/' + kind + '?' + q + '&sort_by=popularity.desc';
+    function dayStr(offset) {
+        var d = new Date(Date.now() + offset * 86400000);
+        var m = d.getMonth() + 1, dd = d.getDate();
+        return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+    }
+    function market() { return getBool('lmx_market', true); }
+    var WATCH = 'watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy';
+    function uaBase(kind) {
+        return 'discover/' + kind + '?' + (getStr('lmx_ua_mode', 'lang') === 'country' ? 'with_origin_country=UA' : 'with_original_language=uk') + '&sort_by=popularity.desc';
+    }
+    // «Популярне зараз»: спочатку вузьке вікно за датою, якщо карток мало — ширше, потім без вікна
+    function uaUrls(kind) {
+        var base = uaBase(kind);
+        if (kind === 'movie') {
+            return [
+                base + '&primary_release_date.gte=' + dayStr(-365) + '&primary_release_date.lte=' + dayStr(30),
+                base + '&primary_release_date.gte=' + dayStr(-900) + '&primary_release_date.lte=' + dayStr(30),
+                base
+            ];
+        }
+        return [
+            base + '&air_date.gte=' + dayStr(-180) + '&air_date.lte=' + dayStr(30),
+            base + '&air_date.gte=' + dayStr(-730) + '&air_date.lte=' + dayStr(30),
+            base
+        ];
+    }
+    // Для українського ринку: те, що доступне в Україні; без ринку — як було
+    function mkt(url, kind) {
+        if (!market()) return [url];
+        if (kind === 'movie') return [url + (url.indexOf('?') < 0 ? '?' : '&') + 'region=UA'];
+        if (kind === 'tv') {
+            return ['discover/tv?sort_by=popularity.desc&' + WATCH + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + dayStr(30), url];
+        }
+        return [url];
     }
     // index — лише запасне значення; реальний порядок задає екран «Порядок головної»
     var ROWS = [
-        { name: 'LmxPopularMovies', title: 'Популярні фільми',    url: 'movie/popular',     index: 13 },
-        { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', url: 'movie/now_playing', index: 14 },
-        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       url: 'movie/upcoming',    index: 15 },
-        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    url: 'movie/top_rated',   index: 16 },
-        { name: 'LmxPopularTv',     title: 'Популярні серіали',   url: 'tv/popular',        index: 17 },
-        { name: 'LmxUaMovies',      title: 'Українське кіно',     url: function () { return uaUrl('movie'); }, index: 18 },
-        { name: 'LmxUaTv',          title: 'Українські серіали',  url: function () { return uaUrl('tv'); },    index: 19 },
+        { name: 'LmxPopularMovies', title: 'Популярні фільми',    urls: function () { return mkt('movie/popular', 'movie'); },     index: 13 },
+        { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', urls: function () { return mkt('movie/now_playing', 'movie'); }, index: 14 },
+        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15 },
+        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
+        { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
+        { name: 'LmxUaMovies',      title: 'Українське кіно зараз',     urls: function () { return uaUrls('movie'); }, minCount: 6, index: 18 },
+        { name: 'LmxUaTv',          title: 'Українські серіали зараз',  urls: function () { return uaUrls('tv'); },    minCount: 6, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 }
     ];
 
@@ -83,7 +114,13 @@
             if (typeof args[0] === 'function') {
                 var cb = args[0];
                 args[0] = function (data) {
-                    try { stats[name] = (data && data.results) ? data.results.length : 0; } catch (e) {}
+                    try {
+                        stats[name] = (data && data.results) ? data.results.length : 0;
+                        if (stats[name] > 0) {
+                            var lv = readJson('lmx_live');
+                            if (lv.indexOf(name) < 0) { lv.push(name); Lampa.Storage.set('lmx_live', lv); }
+                        }
+                    } catch (e) {}
                     return cb.apply(this, arguments);
                 };
             }
@@ -104,7 +141,11 @@
         }
         KNOWN.forEach(function (k) { put(k.name, k.title, 'Ліхтар'); });
         ROWS.forEach(function (r) { put(r.name, r.title, 'LMX Pack'); });
-        Object.keys(seen).forEach(function (n) { put(n, seen[n].title || n, 'Інший плагін'); });
+        // Ряди інших плагінів показуємо лише якщо вони реально давали картки (приховані Ліхтарем туди не потрапляють)
+        var live = readJson('lmx_live');
+        Object.keys(seen).forEach(function (n) {
+            if ((stats[n] || 0) > 0 || live.indexOf(n) >= 0) put(n, seen[n].title || n, 'Інший плагін');
+        });
         return { map: map, list: list };
     }
     function getOrder() {
@@ -282,71 +323,83 @@
     var BOX_OFF = SVG_O + '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>';
 
     function openOrderModal() {
-        if (!(Lampa.Modal && Lampa.Modal.open && window.$)) return openOrderList();
+        if (getBool('lmx_order_classic', false) || !(Lampa.Modal && Lampa.Modal.open && window.$)) return openOrderList();
         var enabled = Lampa.Controller.enabled().name;
         var wrap = $('<div class="lmx-ord"></div>');
-        var focusTarget = null;
+        var rowEls = {};
         var lastFire = 0;
+
+        // Не перебудовуємо список і не чіпаємо колекцію контролера — лише пересуваємо рядки на місці,
+        // щоб прокрутка вікна (її веде сама Lampa) не ламалась.
+        function followFocus(el) {
+            safe(function () {
+                if (window.Navigator && Navigator.focus) Navigator.focus(el);
+                else $(el).trigger('hover:focus');
+            });
+        }
 
         function bind(btn, name, act) {
             btn.on('hover:enter click', function () {
                 var now = Date.now();
                 if (now - lastFire < 250) return;
                 lastFire = now;
-                apply(name, act);
+                apply(name, act, this);
             });
         }
 
-        function build() {
-            wrap.empty();
-            var a = allRows(), order = getOrder(), hidden = getHidden(), want = null;
-            order.forEach(function (n) {
-                var info = a.map[n], off = hidden.indexOf(n) >= 0;
-                var st = rowStat(n);
-                var row = $('<div class="lmx-ord__row"></div>');
-                var nm = $('<div class="lmx-ord__name"></div>');
-                nm.append($('<span></span>').text(info.title));
-                nm.append($('<span class="lmx-ord__sub"></span>').text(info.src + (st ? ' · ' + st : '')));
-                row.append(nm);
-                [['up', CHEV_UP], ['down', CHEV_DOWN], ['toggle', off ? BOX_OFF : BOX_ON]].forEach(function (b) {
-                    var btn = $('<div class="lmx-ord__btn selector"></div>').html(b[1]);
-                    if (b[0] === 'toggle' && off) btn.addClass('lmx-ord__off');
-                    bind(btn, n, b[0]);
-                    row.append(btn);
-                    if (focusTarget && focusTarget.name === n && focusTarget.act === b[0]) want = btn[0];
-                });
-                wrap.append(row);
+        function mkRow(n, a, hidden) {
+            var info = a.map[n], off = hidden.indexOf(n) >= 0;
+            var st = rowStat(n);
+            var row = $('<div class="lmx-ord__row"></div>');
+            var nm = $('<div class="lmx-ord__name"></div>');
+            nm.append($('<span></span>').text(info.title));
+            nm.append($('<span class="lmx-ord__sub"></span>').text(info.src + (st ? ' · ' + st : '')));
+            row.append(nm);
+            [['up', CHEV_UP], ['down', CHEV_DOWN], ['toggle', off ? BOX_OFF : BOX_ON]].forEach(function (b) {
+                var btn = $('<div class="lmx-ord__btn selector"></div>').html(b[1]);
+                if (b[0] === 'toggle' && off) btn.addClass('lmx-ord__off');
+                bind(btn, n, b[0]);
+                row.append(btn);
             });
+            rowEls[n] = row;
+            return row;
+        }
+
+        function buildAll() {
+            wrap.empty();
+            rowEls = {};
+            var a = allRows(), hidden = getHidden();
+            getOrder().forEach(function (n) { wrap.append(mkRow(n, a, hidden)); });
             var reset = $('<div class="lmx-ord__reset selector">Скинути порядок і показати все</div>');
             bind(reset, null, 'reset');
             wrap.append(reset);
-            return want;
         }
 
-        function refresh() {
-            var want = build();
-            safe(function () {
-                Lampa.Controller.collectionSet(wrap);
-                if (want) Lampa.Controller.collectionFocus(want, wrap);
-            });
-        }
-
-        function apply(name, act) {
+        function apply(name, act, btnEl) {
             var order = getOrder(), i = order.indexOf(name);
-            if (act === 'up' && i > 0) { order.splice(i, 1); order.splice(i - 1, 0, name); saveOrder(order); }
-            else if (act === 'down' && i >= 0 && i < order.length - 1) { order.splice(i, 1); order.splice(i + 1, 0, name); saveOrder(order); }
-            else if (act === 'toggle') {
+            if (act === 'up' && i > 0) {
+                order.splice(i, 1); order.splice(i - 1, 0, name); saveOrder(order);
+                rowEls[name].insertBefore(rowEls[order[i]]);
+                followFocus(btnEl);
+            } else if (act === 'down' && i >= 0 && i < order.length - 1) {
+                order.splice(i, 1); order.splice(i + 1, 0, name); saveOrder(order);
+                rowEls[name].insertAfter(rowEls[order[i]]);
+                followFocus(btnEl);
+            } else if (act === 'toggle') {
                 var h = getHidden(), k = h.indexOf(name);
                 if (k >= 0) h.splice(k, 1); else h.push(name);
                 saveHidden(h);
+                var off = h.indexOf(name) >= 0;
+                rowEls[name].find('.lmx-ord__btn').eq(2).html(off ? BOX_OFF : BOX_ON).toggleClass('lmx-ord__off', off);
             } else if (act === 'reset') {
-                saveOrder([]); saveHidden([]); name = null;
+                saveOrder([]); saveHidden([]);
+                buildAll();
+                var first = wrap.find('.lmx-ord__btn')[0];
+                if (first) followFocus(first);
             }
-            focusTarget = name ? { name: name, act: act } : null;
-            refresh();
         }
 
-        build();
+        buildAll();
         Lampa.Modal.open({
             title: 'Порядок головної',
             html: wrap,
@@ -433,6 +486,8 @@
         select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: наступна серія / нова серія', 'Фон напису про наступну чи нову серію', restyle);
         select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'Фон напису про вихід фільму чи завершення серіалу', restyle);
         select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: очікується', 'Фон напису для ще не випущеного', restyle);
+        trigger('lmx_market', true, 'Підбірки для українського ринку', 'Лише те, що доступне в Україні, і з описом українською/вашою мовою. Без цього — світова добірка', restart);
+        select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
         select('lmx_ua_mode', {
             lang: 'Мова оригіналу — українська',
             country: 'Країна виробництва — Україна'
@@ -441,6 +496,7 @@
         trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
         trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість рейтингу Ліхтаря', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
+        trigger('lmx_order_classic', false, 'Простий список замість вікна порядку', 'Якщо вікно з кнопками ▲ ▼ погано прокручується — буде звичайний список Lampa');
         button('lmx_diag_btn', 'Діагностика рядів', 'Показує, що бачить плагін, і поточний порядок на головній', openDiagnostics);
         trigger('lmx_debug', false, 'Режим налагодження', 'Показує підказку з кількістю знайдених карток');
     }
@@ -459,26 +515,40 @@
         };
     }
 
+    // Прибираємо слабкі (1–2 з 10) та «не перекладені» (без опису) картки
+    function cleanResults(list) {
+        var min = parseInt(getStr('lmx_min_rating', '3'), 10) || 0;
+        var strict = market();
+        return (list || []).filter(function (c) {
+            if (!c) return false;
+            if (min && c.vote_count > 2 && c.vote_average > 0 && c.vote_average < min) return false;
+            if (strict && !(c.overview && String(c.overview).trim())) return false;
+            return true;
+        });
+    }
+
     function makeCall(row) {
         if (row.custom) return function () { return row.custom(); };
         return function () {
             return function (call) {
-                var url = typeof row.url === 'function' ? row.url() : row.url;
-                Lampa.Api.sources.tmdb.get(url, { page: 1 }, function (json) {
-                    if (json && json.results && json.results.length) {
-                        call({
-                            title: row.title,
-                            results: json.results,
-                            url: url,
-                            source: 'tmdb',
-                            total_pages: json.total_pages || 1
-                        });
-                    } else {
-                        call();
-                    }
-                }, function () {
-                    call();
-                });
+                var urls = typeof row.urls === 'function' ? row.urls() : [row.url];
+                var best = null, i = 0;
+                function done() {
+                    if (best && best.list.length) {
+                        call({ title: row.title, results: best.list, url: best.url, source: 'tmdb', total_pages: best.pages });
+                    } else call();
+                }
+                function next() {
+                    if (i >= urls.length) return done();
+                    var url = urls[i++];
+                    Lampa.Api.sources.tmdb.get(url, { page: 1 }, function (json) {
+                        var list = cleanResults(json && json.results);
+                        if (list.length && (!best || list.length > best.list.length)) best = { list: list, url: url, pages: json.total_pages || 1 };
+                        if (best && best.list.length >= (row.minCount || 1)) return done();
+                        next();
+                    }, function () { next(); });
+                }
+                next();
             };
         };
     }
