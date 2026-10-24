@@ -807,12 +807,14 @@
 
         hideLeaves(view, RE_NATIVE_TV);
 
-        if (v > 0 && !view.querySelector('.lmx-br')) {
+        if (v > 0) {
             var ratingLeaf = findLeaf(view, RE_RATING);
-            if (!ratingLeaf) {
-                addTo(view, 'lmx-br', ratingHtml(v));
-            } else if (getBool('lmx_replace_rating', true)) {
+            var has = !!view.querySelector('.lmx-br');
+            if (ratingLeaf && getBool('lmx_replace_rating', true)) {
+                // рейтинг Ліхтаря міг з'явитися пізніше за наш — тоді ховаємо його
                 hideEl(pillOf(ratingLeaf, view));
+                if (!has) addTo(view, 'lmx-br', ratingHtml(v));
+            } else if (!ratingLeaf && !has) {
                 addTo(view, 'lmx-br', ratingHtml(v));
             }
         }
@@ -853,15 +855,15 @@
     var work = [], workTimer = null;
     function addWork(job) {
         work.push(job);
-        if (!workTimer) workTimer = setTimeout(runWork, 150);
+        if (!workTimer) workTimer = setTimeout(runWork, 30);
     }
     function runWork() {
         workTimer = null;
         var now = Date.now(), left = [], done = 0;
         for (var i = 0; i < work.length; i++) {
             var j = work[i];
-            if (j.due > now || done >= 14) { left.push(j); continue; }
-            done++;
+            if (j.due > now || (!j.fast && done >= 6)) { left.push(j); continue; }
+            if (!j.fast) done++;
             if (document.body.contains(j.el)) safe(j.fn);
         }
         work = left;
@@ -871,7 +873,7 @@
     var pumpTimer = null;
     function pumpSoon() {
         if (pumpTimer) return;
-        pumpTimer = setTimeout(function () { pumpTimer = null; pump(); }, 250);
+        pumpTimer = setTimeout(function () { pumpTimer = null; pump(); }, 60);
     }
     function pump() {
         while (active < MAX_PARALLEL && queue.length) {
@@ -893,7 +895,7 @@
             if (e.target.__lmx) queue.push(e.target.__lmx);
         });
         pumpSoon();
-    }, { rootMargin: '200px' }) : null;
+    }, { rootMargin: '600px' }) : null;
 
     function scan() {
         var cards = document.querySelectorAll('.card:not([data-lmx])');
@@ -903,7 +905,7 @@
 
             if (getBool('lmx_hide_year', true)) {
                 hideYear(el);
-                addWork({ el: el, due: Date.now() + 700, fn: function () { hideYear(el); } });
+                addWork({ el: el, fast: !el.closest('.category-full'), due: Date.now() + 700, fn: function () { hideYear(el); } });
             }
 
             var d = getData(el);
@@ -912,8 +914,10 @@
             var type = typeOf(d);
 
             // даємо Ліхтарю час намалювати свої значки, потім доповнюємо
-            addWork({ el: el, due: Date.now() + 700, fn: function () { extras(el, d, type); } });
-            addWork({ el: el, due: Date.now() + 2500, fn: function () { extras(el, d, type); } });
+            // Головна — майже одразу; екран «Ще» (довгі списки) — легше й із затримкою
+            var fast = !el.closest('.category-full');
+            addWork({ el: el, fast: fast, due: Date.now() + (fast ? 0 : 700), fn: function () { extras(el, d, type); } });
+            addWork({ el: el, fast: fast, due: Date.now() + (fast ? 1200 : 2500), fn: function () { extras(el, d, type); } });
 
             if (type === 'tv') {
                 var task = { el: el, id: d.id };
@@ -930,7 +934,7 @@
     var timer = null;
     function schedule() {
         clearTimeout(timer);
-        timer = setTimeout(function () { safe(scan); }, 350);
+        timer = setTimeout(function () { safe(scan); }, 120);
     }
 
     // після зміни стилю: прибрати наші елементи, показати сховане, перемалювати
