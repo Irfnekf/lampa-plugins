@@ -1,5 +1,5 @@
 /*
- * LMX Pack v5.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v5.4 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1124,11 +1124,12 @@
             // ряди
             T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
             // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
-            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .32s cubic-bezier(.22,.8,.3,1)}' +
+            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .5s cubic-bezier(.2,.7,.2,1)}' +
             // кільце у фокусі — градієнт кольору теми; анімується лише прозорістю (дешево для ТВ, без ривків)
-            T + '.card__view::after{display:block !important;content:"";position:absolute;top:-.24em;left:-.24em;right:-.24em;bottom:-.24em;border:0 !important;border-radius:.75em;background:' + G + ';z-index:-1;opacity:0;transition:opacity .32s ease;pointer-events:none}' +
+            T + '.card__view::after{display:block !important;content:"";position:absolute;top:-.24em;left:-.24em;right:-.24em;bottom:-.24em;border:0 !important;border-radius:.75em;background:' + G + ';z-index:-1;opacity:0;transition:opacity .5s ease;pointer-events:none}' +
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{opacity:1}' +
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.035)}' +
+            T + '.card{transition:transform .5s cubic-bezier(.2,.7,.2,1)}' +
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:translateY(-.3em) scale(1.035)}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1656,7 +1657,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '5.3';
+    var VERSION = '5.4';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
