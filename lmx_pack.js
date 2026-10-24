@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.1 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.2 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1009,7 +1009,7 @@
                 '.lmx-stripe,.lmx-br,.lmx-bl{display:none !important}' +
                 '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
                 '.lmx-box .lmx-pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}' +
-                '.card .card__title,.card .card__age{display:none !important}' +
+                '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -1164,6 +1164,9 @@
         hideLeaves(view, RE_NATIVE_TV);
 
         if (getStr('lmx_style', 'classic') === 'cinema') {
+            // стандартний рейтинг Lampa (він проглядає під роком) ховаємо — рейтинг уже є в нашому підписі
+            var nativeRating = findLeaf(view, RE_RATING);
+            if (nativeRating) hideEl(pillOf(nativeRating, view));
             cinemaOverlay(view, d, type);
             if (type === 'movie') addMark(view, movieMark(d));
             return;
@@ -1377,13 +1380,14 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.1';
+    var VERSION = '2.2';
     safe(function () {
-        if (Lampa.Storage.get('lmx_ver', '') !== VERSION) {
+        var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
+        if (prev < '2.1') {
             Lampa.Storage.set('lmx_order', []);
             Lampa.Storage.set('lmx_hidden', []);
-            Lampa.Storage.set('lmx_ver', VERSION);
         }
+        if (prev !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
     safe(patchContentRows);
 
