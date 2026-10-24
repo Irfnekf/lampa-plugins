@@ -43,24 +43,9 @@
     }
     function market() { return getBool('lmx_market', true); }
     var WATCH = 'watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy';
-    function uaBase(kind) {
-        return 'discover/' + kind + '?' + (getStr('lmx_ua_mode', 'lang') === 'country' ? 'with_origin_country=UA' : 'with_original_language=uk') + '&sort_by=popularity.desc';
-    }
-    // «Популярне зараз»: спочатку вузьке вікно за датою, якщо карток мало — ширше, потім без вікна
+    // Українські: країна виробництва включає Україну (співпродакшн теж), сортування за популярністю, як у звичайних популярних
     function uaUrls(kind) {
-        var base = uaBase(kind);
-        if (kind === 'movie') {
-            return [
-                base + '&primary_release_date.gte=' + dayStr(-365) + '&primary_release_date.lte=' + dayStr(30),
-                base + '&primary_release_date.gte=' + dayStr(-900) + '&primary_release_date.lte=' + dayStr(30),
-                base
-            ];
-        }
-        return [
-            base + '&air_date.gte=' + dayStr(-180) + '&air_date.lte=' + dayStr(30),
-            base + '&air_date.gte=' + dayStr(-730) + '&air_date.lte=' + dayStr(30),
-            base
-        ];
+        return ['discover/' + kind + '?with_origin_country=UA&sort_by=popularity.desc'];
     }
     // Для українського ринку: те, що доступне в Україні; без ринку — як було
     function mkt(url, kind) {
@@ -78,8 +63,8 @@
         { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15 },
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
-        { name: 'LmxUaMovies',      title: 'Українське кіно зараз',     urls: function () { return uaUrls('movie'); }, minCount: 6, index: 18 },
-        { name: 'LmxUaTv',          title: 'Українські серіали зараз',  urls: function () { return uaUrls('tv'); },    minCount: 6, index: 19 },
+        { name: 'LmxUaMovies',      title: 'Українське кіно',     urls: function () { return uaUrls('movie'); }, ua: true, index: 18 },
+        { name: 'LmxUaTv',          title: 'Українські серіали',  urls: function () { return uaUrls('tv'); },    ua: true, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 }
     ];
 
@@ -488,11 +473,6 @@
         select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: очікується', 'Фон напису для ще не випущеного', restyle);
         trigger('lmx_market', true, 'Підбірки для українського ринку', 'Лише те, що доступне в Україні, і з описом українською/вашою мовою. Без цього — світова добірка', restart);
         select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
-        select('lmx_ua_mode', {
-            lang: 'Мова оригіналу — українська',
-            country: 'Країна виробництва — Україна'
-        }, 'lang', 'Що вважати «українським»',
-            'Мова оригіналу точніша. Країна виробництва додає й російськомовні проєкти українського виробництва', restart);
         trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
         trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість рейтингу Ліхтаря', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
@@ -516,13 +496,13 @@
     }
 
     // Прибираємо слабкі (1–2 з 10) та «не перекладені» (без опису) картки
-    function cleanResults(list) {
+    function cleanResults(list, skipText) {
         var min = parseInt(getStr('lmx_min_rating', '3'), 10) || 0;
         var strict = market();
         return (list || []).filter(function (c) {
             if (!c) return false;
             if (min && c.vote_count > 2 && c.vote_average > 0 && c.vote_average < min) return false;
-            if (strict && !(c.overview && String(c.overview).trim())) return false;
+            if (strict && !skipText && !(c.overview && String(c.overview).trim())) return false;
             return true;
         });
     }
@@ -535,14 +515,14 @@
                 var best = null, i = 0;
                 function done() {
                     if (best && best.list.length) {
-                        call({ title: row.title, results: best.list, url: best.url, source: 'tmdb', total_pages: best.pages });
+                        call({ title: row.title, results: best.list, url: best.url, source: 'tmdb', page: 1, more: true, total_pages: Math.max(best.pages, 2) });
                     } else call();
                 }
                 function next() {
                     if (i >= urls.length) return done();
                     var url = urls[i++];
                     Lampa.Api.sources.tmdb.get(url, { page: 1 }, function (json) {
-                        var list = cleanResults(json && json.results);
+                        var list = cleanResults(json && json.results, row.ua);
                         if (list.length && (!best || list.length > best.list.length)) best = { list: list, url: url, pages: json.total_pages || 1 };
                         if (best && best.list.length >= (row.minCount || 1)) return done();
                         next();
