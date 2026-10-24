@@ -1,5 +1,5 @@
 /*
- * LMX Pack v4.4 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v4.5 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1080,7 +1080,25 @@
                 B + '.full-start-new__buttons > .full-start__button:nth-child(n+4) span{display:none}' +
                 B + '.full-start-new__buttons > .full-start__button:nth-child(n+4).focus span{display:inline}' : '') +
             B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14)}' +
-            B + '.full-start-new__left{display:none !important}';
+            B + '.full-start-new__left{display:none !important}' +
+            mobileCss();
+    }
+    // Телефони та вузькі екрани: одноколонкова сторінка фільму, компактні банер і плитки
+    function mobileCss() {
+        var B = 'body.lmx-full ';
+        return '@media (max-width:760px){' +
+            B + '.full-start-new__body{height:auto !important;min-height:60vh;padding-bottom:2vh}' +
+            B + '.full-start-new__right{max-width:100% !important;width:100% !important;box-sizing:border-box}' +
+            B + '.lmx-logo{max-width:72vw;max-height:14vh}' +
+            B + '.lmx-descr,' + B + '.full-start-new__right > .lmx-descr{position:static !important;width:auto !important;max-width:100% !important;margin:.6em 0 1em;top:auto;right:auto}' +
+            B + '.lmx-descr__t{-webkit-line-clamp:4}' +
+            B + '.full-start-new__buttons{flex-wrap:wrap !important}' +
+            '.card--lmxhero{width:82vw !important}' +
+            '.card--lmxhero .card__view{height:48vw !important}' +
+            '.card--lmxstudio{width:36vw !important}' +
+            '.card--lmxstudio .card__view{height:19vw !important}' +
+            '.lmx-studio__name{font-size:1em}' +
+        '}';
     }
 
     // ===== ТЕМА ЗАСТОСУНКУ =====
@@ -1097,9 +1115,11 @@
             // ряди
             T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
             // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
-            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .28s ease,box-shadow .28s ease;will-change:transform}' +
-            T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{box-shadow:0 0 0 .2em #fff,0 0 1.3em rgba(138,59,255,.55);transform:scale(1.04)}' +
+            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .32s cubic-bezier(.22,.8,.3,1);backface-visibility:hidden}' +
+            // кільце у фокусі — градієнт кольору теми; анімується лише прозорістю (дешево для ТВ, без ривків)
+            T + '.card__view::after{display:block !important;content:"";position:absolute;top:-.24em;left:-.24em;right:-.24em;bottom:-.24em;border:0 !important;border-radius:.75em;background:' + G + ';z-index:-1;opacity:0;transition:opacity .32s ease;pointer-events:none}' +
+            T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{opacity:1}' +
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.035)}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1117,7 +1137,8 @@
             T + '.lmx-pill.lmx-m-soon{background:rgba(5,6,15,.82) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}' +
             // банер і плитки стрімінгів
             T + '.card--lmxhero .card__view{border-radius:.5em}' +
-            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff,0 0 1.4em rgba(138,59,255,.55) !important}' +
+            T + '.card--lmxhero .card__view::after,' + T + '.card--lmxstudio .card__view::after{display:block !important}' +
+            T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .2em #8a3bff !important}' +
             T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
             T + '.menu__item,' + T + '.settings-param,' + T + '.settings-folder,' + T + '.selectbox-item{transition:background-color .2s ease}' +
@@ -1148,7 +1169,12 @@
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
             F + '.full-start-new__buttons > .full-start__button:first-child{width:auto;padding:0 1.8em;border-radius:2em;background:#fff !important;color:#000;font-weight:700}' +
             F + '.full-start-new__buttons > .full-start__button:first-child span{display:inline !important}' +
-            F + '.full-start-new__buttons > .full-start__button.focus{background:' + G + ' !important;color:#fff;transform:scale(1.08);box-shadow:0 0 1.2em rgba(138,59,255,.6)}';
+            F + '.full-start-new__buttons > .full-start__button.focus{background:' + G + ' !important;color:#fff;transform:scale(1.08);box-shadow:0 0 1.2em rgba(138,59,255,.6)}' +
+            '@media (max-width:760px){' +
+                F + '.lmx-logo{max-width:72vw;max-height:14vh}' +
+                F + '.lmx-descr__t{-webkit-line-clamp:4}' +
+                F + '.full-start-new__buttons{flex-wrap:wrap}' +
+            '}';
     }
     function loadThemeFont() {
         if (getStr('lmx_theme', 'default') !== 'hbo' || document.getElementById('lmx-font')) return;
@@ -1601,7 +1627,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '4.4';
+    var VERSION = '4.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
