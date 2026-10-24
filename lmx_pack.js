@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.12 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.11 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -498,7 +498,6 @@
         title('lmx_t_cards', 'Вигляд карток');
         select('lmx_style', STYLE_NAMES, 'classic', 'Стиль значків',
             'Класичний — темні плашки. Скло — напівпрозорі плашки, кільце рейтингу, смужка статусу. Мінімум — без фону', rebuild);
-        select('lmx_badge_fmt', { long: '4 сез · 32 сер', short: 'С4Е32' }, 'long', 'Формат значка серіалу', 'Кількість сезонів і серій, а не ваш прогрес', rebuild);
         select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах головної', restyle);
         select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на постерах', 'Значки, рейтинг, мітки', restyle);
 
@@ -1241,16 +1240,11 @@
     }
 
     // Серіали: значок С3Е24, мітки «Нова серія»/«Сьогодні», смужка статусу
-    // Значок серіалу: за замовчуванням «4 сез · 32 сер», щоб не плутати з прогресом перегляду
-    function badgeText(sn, ep) {
-        if (getStr('lmx_badge_fmt', 'long') === 'short') return code(sn, ep);
-        return sn + ' сез · ' + ep + ' сер';
-    }
     function renderTv(el, j) {
         var view = el.querySelector('.card__view');
         if (!view) return;
         if (!view.querySelector('.lmx-box') && j.number_of_seasons && j.number_of_episodes) {
-            addTo(view, 'lmx-box', '<span class="lmx-pill">' + badgeText(j.number_of_seasons, j.number_of_episodes) + '</span>');
+            addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(j.number_of_seasons, j.number_of_episodes) + '</span>');
         }
         addMark(view, tvMark(j));
         addStripe(view, tvStripe(j));
@@ -1452,7 +1446,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.12';
+    var VERSION = '2.11';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
