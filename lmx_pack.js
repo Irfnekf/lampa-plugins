@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.5 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.6 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -965,7 +965,7 @@
 
         var pill;
         if (st === 'glass') {
-            pill = 'background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+            pill = 'background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);';
         } else if (st === 'minimal') {
             pill = 'background:none;padding:.1em .2em;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8);';
         } else {
@@ -974,7 +974,7 @@
         var ringBg = st === 'glass' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.62)';
         function markCss(cls, nm) {
             var sel = '.lmx-pill.lmx-m-' + cls;
-            if (st === 'cinema') return sel + '{background:' + rgba(nm, 0.4) + ';border:1px solid ' + rgba(nm, 0.9) + ';-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}';
+            if (st === 'cinema') return sel + '{background:' + rgba(nm, 0.62) + ';border:1px solid ' + rgba(nm, 0.9) + '}';
             if (st === 'glass') return sel + '{background:' + rgba(nm, 0.42) + ';border:1px solid ' + rgba(nm, 0.95) + '}';
             if (st === 'minimal') return sel + '{background:none;border:0;padding:.1em .2em;color:' + rgba(nm, 1) + '}';
             return sel + '{background:' + rgba(nm, 0.96) + '}';
@@ -997,7 +997,7 @@
             '.lmx-ord__off{opacity:.5}' +
             '.lmx-ord__reset{margin-top:.8em;padding:.8em 1em;border-radius:.5em;text-align:center;background:rgba(255,255,255,.08)}' +
             '.lmx-ord__reset.focus{background:#fff;color:#000}' +
-            '.lmx-ring{position:relative;display:inline-block;width:2.8em;height:2.8em;font-size:' + fs + 'em;border-radius:50%;background:' + ringBg + ';-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+            '.lmx-ring{position:relative;display:inline-block;width:2.8em;height:2.8em;font-size:' + fs + 'em;border-radius:50%;background:' + ringBg + '}' +
             '.lmx-ring svg{position:absolute;left:0;top:0;width:100%;height:100%}' +
             '.lmx-ring span{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:.85em;font-weight:700;color:#fff}' +
             '.lmx-num{display:inline-block;font-size:' + (fs * 1.3).toFixed(2) + 'em;line-height:1;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8)}' +
@@ -1015,7 +1015,7 @@
             (st === 'cinema' ?
                 '.lmx-stripe,.lmx-br,.lmx-bl{display:none !important}' +
                 '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
-                '.lmx-box .lmx-pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}' +
+                '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
@@ -1026,6 +1026,8 @@
             (getStr('lmx_card_size', 'm') !== 'm' ?
                 '.items-line .card:not(.card--lmxhero):not(.card--lmxstudio){width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '19.5em' : '17em') + ' !important}' : '') +
             fullCss() +
+            '.card--lmxhero.focus .card__view,.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
+            '.card--lmxhero.focus .card__view::after,.card--lmxstudio.focus .card__view::after{display:none !important}' +
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
@@ -1050,18 +1052,15 @@
             B + '.full-start-new__tagline{opacity:.85}' +
             B + '.full-start-new__rate-line{margin:1em 0 1.2em 0}' +
             B + '.full-start-new__details{margin:0 0 1.2em -0.3em}' +
-            B + '.full-start-new{transition:all .3s}' +
-            // затемнення з правого верхнього кута (під опис) і знизу (під заголовок)
-            B + '.full-start-new::before{content:"";position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:0;' +
-                'background:linear-gradient(225deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,0) 55%),linear-gradient(to top,rgba(0,0,0,.7) 0%,rgba(0,0,0,0) 45%)}' +
-            B + '.full-start-new__body{z-index:1}' +
-            B + '.full-start__background{opacity:1 !important;left:0}' +
-            'body.lmx-full:not(.menu--open) .full-start__background{-webkit-mask-image:linear-gradient(to bottom,#fff 50%,rgba(255,255,255,0) 100%);mask-image:linear-gradient(to bottom,#fff 50%,rgba(255,255,255,0) 100%)}' +
+            // затемнення всередині блоку (а не fixed на весь екран — fixed зміщується в анімованих контейнерах)
+            B + '.full-start-new__body::before{content:"";position:absolute;left:0;right:0;top:0;bottom:-6vh;pointer-events:none;z-index:-1;' +
+                'background:linear-gradient(225deg,rgba(0,0,0,.8) 0%,rgba(0,0,0,0) 55%),linear-gradient(to top,rgba(0,0,0,.75) 0%,rgba(0,0,0,0) 50%)}' +
+            B + '.full-start__background{opacity:1 !important}' +
             B + '.lmx-descr{position:absolute;right:2%;top:6%;width:36vw;text-align:right;font-size:1.2em;line-height:1.5;z-index:2;color:#fff;' +
                 'text-shadow:0 1px 6px rgba(0,0,0,.8);display:-webkit-box;-webkit-line-clamp:9;-webkit-box-orient:vertical;overflow:hidden}' +
-            B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:.9em}' +
+            B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);border-radius:.9em}' +
             B + '.full-start__button.focus,' + B + '.full-start-new__buttons .simple-button.focus{background:#fff;color:#111}' +
-            B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+            B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14)}' +
             (getBool('lmx_full_poster', true) ? B + '.full-start-new__left{display:none !important}' : '');
     }
     function applyFullClass() {
@@ -1203,9 +1202,7 @@
         hideLeaves(view, RE_NATIVE_TV);
 
         if (getStr('lmx_style', 'classic') === 'cinema') {
-            // стандартний рейтинг Lampa (він проглядає під роком) ховаємо — рейтинг уже є в нашому підписі
-            var nativeRating = findLeaf(view, RE_RATING);
-            if (nativeRating) hideEl(pillOf(nativeRating, view));
+            // стандартні підписи ховає CSS (без обчислень у JS — так легше для ТВ)
             cinemaOverlay(view, d, type);
             if (type === 'movie') addMark(view, movieMark(d));
             return;
@@ -1308,7 +1305,7 @@
             if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio')) return;
             found++;
 
-            if (getBool('lmx_hide_year', true)) {
+            if (getBool('lmx_hide_year', true) && getStr('lmx_style', 'classic') !== 'cinema') {
                 hideYear(el);
                 addWork({ el: el, fast: !el.closest('.category-full'), due: Date.now() + 700, fn: function () { hideYear(el); } });
             }
@@ -1428,7 +1425,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.5';
+    var VERSION = '2.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
