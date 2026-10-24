@@ -1,5 +1,5 @@
 /*
- * LMX Pack v5.9 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v6.0 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1159,7 +1159,7 @@
             T + '.card--lmxhero .card__view{background-repeat:no-repeat !important;background-size:cover !important;background-position:center 25% !important}' +
             T + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9}' +
             T + '.card--lmxhero .lmx-hero__o{font-size:.95em;opacity:.8;line-height:1.35;max-height:2.8em;margin-top:.5em}' +
-            T + '.card--lmxhero .card__view::after,' + T + '.card--lmxstudio .card__view::after{display:none !important}' +
+            T + '.card--lmxhero.focus .card__view::after,' + T + '.card--lmxhero.hover .card__view::after,' + T + '.card--lmxstudio.focus .card__view::after,' + T + '.card--lmxstudio.hover .card__view::after{display:none !important;animation:none}' +
             T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #8a3bff,0 0 1em rgba(138,59,255,.5) !important}' +
             T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
@@ -1679,7 +1679,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '5.9';
+    var VERSION = '6.0';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
