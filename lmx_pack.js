@@ -1,8 +1,9 @@
 /*
- * LMX Pack v1.2 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
- *  1) Додаткові ряди на головній (TMDB + українське кіно та серіали): кожен ряд вмикається окремо, позиція налаштовується
- *  2) Значок С3Е24, мітка Фільм/Серіал, рейтинг із кольором за оцінкою, прибирання року
- *  3) Тривалість («1 год 45 хв») і кольоровий статус виходу всередині картки
+ * LMX Pack v1.4 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
+ *  1) Додаткові ряди на головній (TMDB + українське кіно та серіали)
+ *  2) «Порядок головної»: один екран, де можна переставити й сховати ВСІ ряди (і Ліхтаря, і наші)
+ *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», мітка Фільм/Серіал, рейтинг; стилі: Класичний, Скло, Мінімум
+ *  4) Тривалість («1 год 45 хв») і статус із відліком («через 3 дні») всередині картки
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
  */
 (function () {
@@ -15,6 +16,11 @@
     }
     function getStr(name, def) {
         return String(Lampa.Storage.get(name, def));
+    }
+    function readJson(key) {
+        var v = Lampa.Storage.get(key, '[]');
+        if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = []; } }
+        return Array.isArray(v) ? v : [];
     }
     function safe(fn) {
         try { fn(); } catch (e) { console.error('LMX', e); }
@@ -31,23 +37,247 @@
     var COLOR_NAMES = { green: 'Зелений', orange: 'Помаранчевий', blue: 'Синій', red: 'Червоний', purple: 'Фіолетовий', gray: 'Сірий' };
     var SIZES = { s: 0.8, m: 0.95, l: 1.1, xl: 1.25 };
     var SIZE_NAMES = { s: 'Маленький', m: 'Середній', l: 'Великий', xl: 'Дуже великий' };
+    var STYLE_NAMES = { classic: 'Класичний', glass: 'Скло', minimal: 'Мінімум' };
 
-    // ===== РЯДИ (значення за замовчуванням) =====
+    // ===== НАШІ РЯДИ =====
     function uaUrl(kind) {
         var q = getStr('lmx_ua_mode', 'lang') === 'country' ? 'with_origin_country=UA' : 'with_original_language=uk';
         return 'discover/' + kind + '?' + q + '&sort_by=popularity.desc';
     }
+    // index — лише запасне значення; реальний порядок задає екран «Порядок головної»
     var ROWS = [
-        { name: 'LmxPopularMovies', title: 'Популярні фільми',    url: 'movie/popular',     index: 2 },
-        { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', url: 'movie/now_playing', index: 3 },
-        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       url: 'movie/upcoming',    index: 4 },
-        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    url: 'movie/top_rated',   index: 5 },
-        { name: 'LmxPopularTv',     title: 'Популярні серіали',   url: 'tv/popular',        index: 6 },
-        { name: 'LmxUaMovies',      title: 'Українське кіно',     url: function () { return uaUrl('movie'); }, index: 7 },
-        { name: 'LmxUaTv',          title: 'Українські серіали',  url: function () { return uaUrl('tv'); },    index: 8 }
+        { name: 'LmxPopularMovies', title: 'Популярні фільми',    url: 'movie/popular',     index: 13 },
+        { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', url: 'movie/now_playing', index: 14 },
+        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       url: 'movie/upcoming',    index: 15 },
+        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    url: 'movie/top_rated',   index: 16 },
+        { name: 'LmxPopularTv',     title: 'Популярні серіали',   url: 'tv/popular',        index: 17 },
+        { name: 'LmxUaMovies',      title: 'Українське кіно',     url: function () { return uaUrl('movie'); }, index: 18 },
+        { name: 'LmxUaTv',          title: 'Українські серіали',  url: function () { return uaUrl('tv'); },    index: 19 }
+    ];
+
+    // Ряди Ліхтаря (назви взято з його коду) — щоб екран порядку працював навіть якщо їх не вдалося перехопити
+    var KNOWN = [
+        { name: 'custom_hero_row',               title: 'Новинки прокату (банер)' },
+        { name: 'custom_studio_row',             title: 'Стрімінги (логотипи)' },
+        { name: 'custom_mood_row',               title: 'Кіно під настрій' },
+        { name: 'service_row_netflix',           title: 'Сьогодні на Netflix' },
+        { name: 'service_row_apple',             title: 'Сьогодні на Apple TV+' },
+        { name: 'service_row_hbo',               title: 'Сьогодні на HBO / Max' },
+        { name: 'service_row_amazon',            title: 'Сьогодні на Prime Video' },
+        { name: 'service_row_disney',            title: 'Сьогодні на Disney+' },
+        { name: 'service_row_paramount',         title: 'Сьогодні на Paramount+' },
+        { name: 'service_row_sky_showtime',      title: 'Сьогодні на Sky Showtime' },
+        { name: 'service_row_hulu',              title: 'Сьогодні на Hulu' },
+        { name: 'service_row_syfy',              title: 'Сьогодні на Syfy' },
+        { name: 'service_row_educational_and_reality', title: 'Сьогодні на Пізнавальне' }
     ];
 
     var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+
+    // ===== ПОРЯДОК ВСІХ РЯДІВ ГОЛОВНОЇ =====
+    var seen = {};          // ряди, які пройшли через ContentRows.add після встановлення перехоплення
+    var diag = { patched: false, addCount: 0, lastTotal: 0, lastTagged: 0 };
+
+    function allRows() {
+        var map = {}, list = [];
+        function put(n, t, src) {
+            if (!map[n]) { map[n] = { name: n, title: t, src: src }; list.push(n); }
+        }
+        KNOWN.forEach(function (k) { put(k.name, k.title, 'Ліхтар'); });
+        ROWS.forEach(function (r) { put(r.name, r.title, 'LMX Pack'); });
+        Object.keys(seen).forEach(function (n) { put(n, seen[n].title || n, 'Інший плагін'); });
+        return { map: map, list: list };
+    }
+    function getOrder() {
+        var a = allRows();
+        var saved = readJson('lmx_order').filter(function (n) { return a.map[n]; });
+        a.list.forEach(function (n) { if (saved.indexOf(n) < 0) saved.push(n); });
+        return saved;
+    }
+    function getHidden() {
+        return readJson('lmx_hidden');
+    }
+    function isHidden(name) {
+        return getHidden().indexOf(name) >= 0;
+    }
+    function rankOf(name) {
+        return getOrder().indexOf(name);
+    }
+    function emptyRowCall(name) {
+        return function () {
+            var f = function (cb) { cb({ results: [] }); };
+            f.__lmx = name;
+            return f;
+        };
+    }
+
+    // Перехоплення: при реєстрації ряду задаємо йому наше місце, ховаємо за потреби і «мітимо» його call
+    function adoptRow(row) {
+        if (!row || !row.name) return;
+        diag.addCount++;
+        seen[row.name] = { title: row.title };
+        var r = rankOf(row.name);
+        if (r >= 0) row.index = r;
+        var orig = row.call;
+        if (typeof orig === 'function' && !orig.__lmxWrapped) {
+            var wrapped = function () {
+                if (isHidden(row.name)) return emptyRowCall(row.name)();
+                var f = orig.apply(this, arguments);
+                if (f && (typeof f === 'function' || typeof f === 'object')) {
+                    try { f.__lmx = row.name; } catch (e) {}
+                }
+                return f;
+            };
+            wrapped.__lmxWrapped = true;
+            row.call = wrapped;
+        }
+    }
+
+    function tagOf(item) {
+        if (!item) return null;
+        if (item.__lmx) return item.__lmx;
+        if (item.call && item.call.__lmx) return item.call.__lmx;
+        return null;
+    }
+    // Після побудови списку рядів головної — розставляємо за нашим порядком (незалежно від того, як Lampa трактує index)
+    function reorderCalls(screen, calls) {
+        if (screen !== 'main' || !Array.isArray(calls) || calls.length < 2) return;
+        var order = getOrder();
+        var tagged = 0;
+        var boxed = calls.map(function (c, i) {
+            var t = tagOf(c);
+            var r = t ? order.indexOf(t) : -1;
+            if (t) tagged++;
+            return { c: c, i: i, key: r >= 0 ? r : 1000 + i };
+        });
+        diag.lastTotal = calls.length;
+        diag.lastTagged = tagged;
+        if (tagged < 2) return;
+        boxed.sort(function (a, b) { return a.key - b.key || a.i - b.i; });
+        calls.length = 0;
+        boxed.forEach(function (b) { calls.push(b.c); });
+    }
+
+    function patchContentRows() {
+        var CR = Lampa.ContentRows;
+        if (!CR || CR.__lmxPatched) return;
+        var origAdd = CR.add, origCall = CR.call;
+        if (typeof origAdd !== 'function') return;
+        try {
+            CR.add = function (row) {
+                safe(function () { adoptRow(row); });
+                return origAdd.apply(this, arguments);
+            };
+            if (typeof origCall === 'function') {
+                CR.call = function (screen, params, calls) {
+                    var res = origCall.apply(this, arguments);
+                    safe(function () { reorderCalls(screen, calls); });
+                    return res;
+                };
+            }
+            CR.__lmxPatched = true;
+            diag.patched = true;
+        } catch (e) { console.error('LMX patch', e); }
+    }
+
+    // ===== ЕКРАН «ПОРЯДОК ГОЛОВНОЇ» =====
+    var lastPicked = null;
+
+    function saveOrder(order) { Lampa.Storage.set('lmx_order', order); }
+    function saveHidden(h) { Lampa.Storage.set('lmx_hidden', h); }
+    function notifySaved() {
+        if (Lampa.Noty) Lampa.Noty.show('Збережено. Поверніться на головну (або перезапустіть Lampa)');
+    }
+
+    function openOrder() {
+        if (!Lampa.Select || !Lampa.Select.show) return;
+        var enabled = Lampa.Controller.enabled().name;
+        var a = allRows();
+        var order = getOrder();
+        var hidden = getHidden();
+        var items = order.map(function (n, i) {
+            var info = a.map[n];
+            return {
+                title: (i + 1) + '. ' + info.title + (hidden.indexOf(n) >= 0 ? '  (сховано)' : ''),
+                subtitle: info.src,
+                name: n,
+                selected: n === lastPicked
+            };
+        });
+        items.push({ title: 'Скинути порядок і показати все', reset: true });
+        Lampa.Select.show({
+            title: 'Порядок головної',
+            items: items,
+            onBack: function () { Lampa.Controller.toggle(enabled); },
+            onSelect: function (it) {
+                if (it.reset) {
+                    saveOrder([]); saveHidden([]); lastPicked = null;
+                    notifySaved();
+                    setTimeout(openOrder, 60);
+                    return;
+                }
+                lastPicked = it.name;
+                setTimeout(function () { openRowMenu(it.name, enabled); }, 60);
+            }
+        });
+    }
+
+    function openRowMenu(name, enabled) {
+        var a = allRows();
+        var hidden = isHidden(name);
+        Lampa.Select.show({
+            title: a.map[name] ? a.map[name].title : name,
+            items: [
+                { title: 'Вгору', act: 'up' },
+                { title: 'Вниз', act: 'down' },
+                { title: 'На початок', act: 'top' },
+                { title: 'В кінець', act: 'bottom' },
+                { title: hidden ? 'Показувати' : 'Сховати', act: 'toggle' }
+            ],
+            onBack: function () { setTimeout(openOrder, 60); },
+            onSelect: function (it) {
+                var order = getOrder();
+                var i = order.indexOf(name);
+                if (it.act === 'up' && i > 0) { order.splice(i, 1); order.splice(i - 1, 0, name); }
+                if (it.act === 'down' && i < order.length - 1) { order.splice(i, 1); order.splice(i + 1, 0, name); }
+                if (it.act === 'top') { order.splice(i, 1); order.unshift(name); }
+                if (it.act === 'bottom') { order.splice(i, 1); order.push(name); }
+                if (it.act === 'toggle') {
+                    var h = getHidden();
+                    var k = h.indexOf(name);
+                    if (k >= 0) h.splice(k, 1); else h.push(name);
+                    saveHidden(h);
+                }
+                saveOrder(order);
+                notifySaved();
+                setTimeout(openOrder, 60);
+            }
+        });
+    }
+
+    function openDiagnostics() {
+        if (!Lampa.Select || !Lampa.Select.show) return;
+        var enabled = Lampa.Controller.enabled().name;
+        var titles = [];
+        var nodes = document.querySelectorAll('.items-line__title');
+        for (var i = 0; i < nodes.length; i++) {
+            var t = (nodes[i].textContent || '').trim();
+            if (t) titles.push(t);
+        }
+        var items = [
+            { title: 'Перехоплення рядів: ' + (diag.patched ? 'увімкнено' : 'НЕ вдалося') },
+            { title: 'Рядів зареєстровано після запуску LMX: ' + diag.addCount },
+            { title: 'Розпізнано при побудові головної: ' + diag.lastTagged + ' з ' + diag.lastTotal },
+            { title: 'Зараз на головній (зверху вниз):' }
+        ];
+        titles.forEach(function (t, k) { items.push({ title: (k + 1) + '. ' + t }); });
+        Lampa.Select.show({
+            title: 'Діагностика рядів',
+            items: items,
+            onBack: function () { Lampa.Controller.toggle(enabled); },
+            onSelect: function () { Lampa.Controller.toggle(enabled); }
+        });
+    }
 
     // ===== СТОРІНКА НАЛАШТУВАНЬ =====
     function addSettings() {
@@ -58,6 +288,9 @@
 
         function title(id, text) {
             S.addParam({ component: 'lmx', param: { name: id, type: 'title', default: '' }, field: { name: text } });
+        }
+        function button(id, name, desc, onChange) {
+            S.addParam({ component: 'lmx', param: { name: id, type: 'button' }, field: { name: name, description: desc }, onChange: onChange });
         }
         function trigger(id, def, name, desc, onChange) {
             S.addParam({
@@ -77,46 +310,37 @@
         }
         var restart = function () { if (Lampa.Noty) Lampa.Noty.show('Перезапустіть Lampa, щоб застосувати'); };
         var restyle = function () { safe(applyStyle); };
+        var rebuild = function () { safe(applyStyle); safe(resetCards); };
 
         // --- Ряди ---
-        title('lmx_t_rows', 'Ряди на головній (зміни — після перезапуску Lampa)');
-        var POS = {};
-        for (var i = 0; i <= 20; i++) POS[String(i)] = i === 0 ? '0 (найвище)' : String(i);
+        title('lmx_t_rows', 'Головна сторінка');
+        button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати всі ряди: і Ліхтаря, і наші', openOrder);
 
-        ROWS.forEach(function (row) {
-            trigger('lmx_on_' + row.name, true, row.title, 'Показувати цей ряд на головній', restart);
-            select('lmx_row_' + row.name, POS, String(row.index), '   ↳ позиція ряду «' + row.title + '»',
-                'Ряди Ліхтаря теж мають номери, тож пробуйте різні', restart);
-        });
+        // --- Вигляд ---
+        title('lmx_t_cards', 'Вигляд карток');
+        select('lmx_style', STYLE_NAMES, 'classic', 'Стиль значків',
+            'Класичний — темні плашки. Скло — напівпрозорі плашки, кільце рейтингу, смужка статусу. Мінімум — без фону', rebuild);
+        select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на постерах', 'Значки, рейтинг, мітки', restyle);
+
+        // --- Додатково ---
+        title('lmx_t_misc', 'Додатково');
+        trigger('lmx_marks', true, 'Мітки «Нова серія», «Сьогодні», «Новинка»', 'У правому верхньому куті постера', rebuild);
+        select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: наступна серія / нова серія', 'Фон напису про наступну чи нову серію', restyle);
+        select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'Фон напису про вихід фільму чи завершення серіалу', restyle);
+        select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: очікується', 'Фон напису для ще не випущеного', restyle);
         select('lmx_ua_mode', {
             lang: 'Мова оригіналу — українська',
             country: 'Країна виробництва — Україна'
         }, 'lang', 'Що вважати «українським»',
-            'Мова оригіналу точніша. Країна виробництва додає також російськомовні проєкти українського виробництва', restart);
-
-        // --- Вигляд карток ---
-        title('lmx_t_cards', 'Вигляд карток');
-        select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на постерах', 'Значки, рейтинг, мітка Фільм/Серіал', restyle);
-        trigger('lmx_badge', true, 'Значок С3Е24 на серіалах', 'Сезони та серії в лівому верхньому куті');
-        trigger('lmx_type', true, 'Мітка Фільм/Серіал', 'Внизу ліворуч, якщо її ще немає на картці');
-        trigger('lmx_rating', true, 'Рейтинг на картках', 'Додає рейтинг там, де його ще немає');
-        trigger('lmx_rate_color', true, 'Колір рейтингу за оцінкою', 'Зелений — високий, жовтий і помаранчевий — середній, червоний — низький', restyle);
-        trigger('lmx_recolor', true, 'Перефарбувати рейтинг Ліхтаря', 'Застосувати колір за оцінкою й до рейтингу, який малює Ліхтар');
-        trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається');
-
-        // --- Кольори статусів ---
-        title('lmx_t_colors', 'Кольори статусів усередині картки');
-        select('lmx_c_next', COLOR_NAMES, 'orange', 'Наступна серія', 'Фон напису про дату наступної серії', restyle);
-        select('lmx_c_done', COLOR_NAMES, 'green', 'Вийшов / Завершено', 'Фон напису про вихід фільму чи завершення серіалу', restyle);
-        select('lmx_c_soon', COLOR_NAMES, 'blue', 'Очікується', 'Фон напису для ще не випущеного', restyle);
-
-        // --- Додатково ---
-        title('lmx_t_misc', 'Додатково');
+            'Мова оригіналу точніша. Країна виробництва додає й російськомовні проєкти українського виробництва', restart);
+        trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Рік під назвою залишається', rebuild);
+        trigger('lmx_replace_rating', true, 'Свій стиль рейтингу замість рейтингу Ліхтаря', 'Колір за оцінкою: зелений — високий, червоний — низький', rebuild);
         trigger('lmx_info', true, 'Тривалість і статус усередині картки', 'Рядок над кнопкою «Дивитись»');
+        button('lmx_diag_btn', 'Діагностика рядів', 'Показує, що бачить плагін, і поточний порядок на головній', openDiagnostics);
         trigger('lmx_debug', false, 'Режим налагодження', 'Показує підказку з кількістю знайдених карток');
     }
 
-    // ===== РЯДИ НА ГОЛОВНІЙ =====
+    // ===== РЯДИ НА ГОЛОВНІЙ (наші) =====
     var rowsStarted = false;
 
     function makeCall(row) {
@@ -147,15 +371,10 @@
         rowsStarted = true;
         if (!Lampa.ContentRows || !Lampa.ContentRows.add) return;
         ROWS.forEach(function (row) {
-            if (!getBool('lmx_on_' + row.name, true)) return;
-            var pos = getStr('lmx_row_' + row.name, String(row.index));
-            if (pos === 'off') return;
-            var idx = parseInt(pos, 10);
-            if (isNaN(idx)) idx = row.index;
             Lampa.ContentRows.add({
                 name: row.name,
                 title: row.title,
-                index: idx,
+                index: row.index,
                 screen: ['main'],
                 call: makeCall(row)
             });
@@ -174,6 +393,7 @@
     var queue = [];
     var active = 0;
     var found = 0, withData = 0, rendered = 0;
+    var hiddenEls = [];
 
     function typeOf(d) {
         if (d.media_type === 'tv' || d.media_type === 'movie') return d.media_type;
@@ -182,6 +402,10 @@
     function fmtFull(s) {
         var p = String(s || '').split('-');
         return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : '';
+    }
+    function fmtShort(s) {
+        var p = String(s || '').split('-');
+        return p.length === 3 ? p[2] + '.' + p[1] : '';
     }
     function code(s, e) {
         return 'С' + s + 'Е' + e;
@@ -193,25 +417,100 @@
         var h = Math.floor(min / 60), m = min % 60;
         return h + ' год' + (m ? ' ' + m + ' хв' : '');
     }
+    // скільки днів від сьогодні до дати (від’ємне — дата в минулому), null — дати немає
+    function dayDiff(dateStr) {
+        var p = String(dateStr || '').split('-');
+        if (p.length !== 3) return null;
+        var t = new Date();
+        var a = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+        var b = new Date(+p[0], +p[1] - 1, +p[2]);
+        if (isNaN(b.getTime())) return null;
+        return Math.round((b - a) / 86400000);
+    }
+    function plural(n, one, few, many) {
+        var a = n % 10, b = n % 100;
+        if (a === 1 && b !== 11) return one;
+        if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
+        return many;
+    }
+    // «сьогодні» / «завтра» / «через 3 дні»
+    function rel(dateStr) {
+        var n = dayDiff(dateStr);
+        if (n === null || n < 0 || n > 90) return fmtFull(dateStr);
+        if (n === 0) return 'сьогодні';
+        if (n === 1) return 'завтра';
+        return 'через ' + n + ' ' + plural(n, 'день', 'дні', 'днів');
+    }
     function ratingColor(v) {
-        if (!getBool('lmx_rate_color', true)) return COLORS.blue;
         if (v >= 7.5) return 'rgba(46,158,91,.95)';
         if (v >= 6.5) return 'rgba(140,160,30,.95)';
         if (v >= 5.5) return 'rgba(224,123,32,.95)';
         return 'rgba(192,57,43,.95)';
     }
 
+    // ===== Мітки =====
+    function tvMark(j) {
+        var n = j.next_episode_to_air ? dayDiff(j.next_episode_to_air.air_date) : null;
+        var l = j.last_episode_to_air ? dayDiff(j.last_episode_to_air.air_date) : null;
+        if (n === 0 || l === 0) return { t: 'Сьогодні', c: 'next' };
+        if (l !== null && l < 0 && l >= -7) return { t: 'Нова серія', c: 'next' };
+        return null;
+    }
+    function movieMark(d) {
+        var n = dayDiff(d.release_date);
+        if (n !== null && n <= 0 && n >= -30) return { t: 'Новинка', c: 'new' };
+        return null;
+    }
+    function movieStripe(d) {
+        var n = dayDiff(d.release_date);
+        if (n === null) return null;
+        return n <= 0 ? 'done' : 'soon';
+    }
+    function tvStripe(j) {
+        var st = j.status;
+        if (st === 'Returning Series') return 'next';
+        if (st === 'Ended') return 'done';
+        if (st === 'Canceled') return 'bad';
+        return 'soon';
+    }
+
+    // ===== CSS =====
     function buildCss() {
+        var st = getStr('lmx_style', 'classic');
         var fs = SIZES[getStr('lmx_size', 'm')] || SIZES.m;
         var cNext = COLORS[getStr('lmx_c_next', 'orange')] || COLORS.orange;
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
         var cSoon = COLORS[getStr('lmx_c_soon', 'blue')] || COLORS.blue;
+
+        var pill;
+        if (st === 'glass') {
+            pill = 'background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);';
+        } else if (st === 'minimal') {
+            pill = 'background:none;padding:.1em .2em;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8);';
+        } else {
+            pill = 'background:rgba(0,0,0,.62);';
+        }
+        var ringBg = st === 'glass' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.62)';
+
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
+            '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
+            '.lmx-tr.lmx-low{top:2.6em}' +
             '.lmx-bl{position:absolute;left:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
             '.lmx-br{position:absolute;right:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
-            '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;' +
-            'background:rgba(0,0,0,.62);color:#fff;font-weight:600;white-space:nowrap}' +
+            '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;' + pill + '}' +
+            '.lmx-pill.lmx-mark{padding:.32em .6em;border:0;text-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}' +
+            '.lmx-pill.lmx-m-next{background:' + cNext + '}' +
+            '.lmx-pill.lmx-m-new{background:' + COLORS.purple + '}' +
+            '.lmx-ring{position:relative;display:inline-block;width:2.8em;height:2.8em;font-size:' + fs + 'em;border-radius:50%;background:' + ringBg + ';-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+            '.lmx-ring svg{position:absolute;left:0;top:0;width:100%;height:100%}' +
+            '.lmx-ring span{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:.85em;font-weight:700;color:#fff}' +
+            '.lmx-num{display:inline-block;font-size:' + (fs * 1.3).toFixed(2) + 'em;line-height:1;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8)}' +
+            '.lmx-stripe{position:absolute;left:0;right:0;bottom:0;height:.3em;z-index:3;pointer-events:none}' +
+            '.lmx-st-next{background:' + cNext + '}' +
+            '.lmx-st-done{background:' + cDone + '}' +
+            '.lmx-st-soon{background:' + cSoon + '}' +
+            '.lmx-st-bad{background:' + COLORS.red + '}' +
             '.lmx-info{display:flex;flex-wrap:wrap;gap:.5em;margin:.8em 0}' +
             '.lmx-ip{font-size:1.1em;line-height:1;padding:.45em .8em;border-radius:.6em;background:rgba(255,255,255,.12);color:#fff}' +
             '.lmx-ip.lmx-next{background:' + cNext + '}' +
@@ -249,7 +548,7 @@
     }
 
     function isOurs(n) {
-        return !!(n.closest && n.closest('.lmx-box,.lmx-bl,.lmx-br'));
+        return !!(n.closest && n.closest('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr'));
     }
     function findLeaf(view, re) {
         var all = view.querySelectorAll('*');
@@ -259,7 +558,7 @@
         }
         return null;
     }
-    // елемент-«плашка» з фоном навколо тексту (щоб ховати/фарбувати плашку, а не лише текст)
+    // елемент-«плашка» з фоном навколо тексту (щоб ховати плашку, а не лише текст)
     function pillOf(leaf, view) {
         var txt = leaf.textContent.trim(), el = leaf;
         while (el && el !== view) {
@@ -271,71 +570,91 @@
         }
         return leaf;
     }
+    function hideEl(el) {
+        el.style.display = 'none';
+        hiddenEls.push(el);
+    }
 
+    function hideLeaves(view, re) {
+        var all = view.querySelectorAll('*');
+        for (var i = 0; i < all.length; i++) {
+            var n = all[i];
+            if (n.children.length === 0 && re.test(n.textContent) && !isOurs(n)) hideEl(pillOf(n, view));
+        }
+    }
     function hideYear(el) {
         var view = el.querySelector('.card__view');
-        if (!view) return;
-        var all = view.querySelectorAll('*');
-        for (var i = 0; i < all.length; i++) {
-            var n = all[i];
-            if (n.children.length === 0 && RE_YEAR.test(n.textContent) && !isOurs(n)) {
-                pillOf(n, view).style.display = 'none';
-            }
-        }
+        if (view) hideLeaves(view, RE_YEAR);
     }
 
-    function hideNativeTv(view) {
-        var all = view.querySelectorAll('*');
-        for (var i = 0; i < all.length; i++) {
-            var n = all[i];
-            if (n.children.length === 0 && RE_NATIVE_TV.test(n.textContent) && !isOurs(n)) {
-                pillOf(n, view).style.display = 'none';
-            }
+    // ===== Малювання елементів на постері =====
+    function addTo(view, cls, html) {
+        var d = document.createElement('div');
+        d.className = cls;
+        d.innerHTML = html;
+        view.appendChild(d);
+        rendered++;
+    }
+    function ratingHtml(v) {
+        var st = getStr('lmx_style', 'classic');
+        var col = ratingColor(v);
+        if (st === 'glass') {
+            var C = 2 * Math.PI * 12;
+            var len = Math.max(0.05, Math.min(1, v / 10)) * C;
+            return '<span class="lmx-ring"><svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3"/>' +
+                '<circle cx="15" cy="15" r="12" fill="none" stroke="' + col + '" stroke-width="3" stroke-linecap="round" stroke-dasharray="' +
+                len.toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 15 15)"/></svg><span>' + v.toFixed(1) + '</span></span>';
         }
+        if (st === 'minimal') return '<span class="lmx-num" style="color:' + col + '">' + v.toFixed(1) + '</span>';
+        return '<span class="lmx-pill" style="background:' + col + '">' + v.toFixed(1) + '</span>';
+    }
+    function addMark(view, m) {
+        if (!m || !getBool('lmx_marks', true) || view.querySelector('.lmx-tr')) return;
+        var low = getBool('lmx_hide_year', true) ? '' : ' lmx-low';
+        addTo(view, 'lmx-tr' + low, '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>');
+    }
+    function addStripe(view, kind) {
+        if (!kind || getStr('lmx_style', 'classic') !== 'glass' || view.querySelector('.lmx-stripe')) return;
+        addTo(view, 'lmx-stripe lmx-st-' + kind, '');
     }
 
-    // Рейтинг, мітка Фільм/Серіал — додаємо лише якщо їх ще немає; рейтинг Ліхтаря перефарбовуємо
+    // Рейтинг, мітка Фільм/Серіал (лише якщо її немає), для фільмів ще мітка «Новинка» і смужка
     function extras(el, d, type) {
         var view = el.querySelector('.card__view');
         if (!view) return;
         var v = Number(d.vote_average) || 0;
 
-        hideNativeTv(view);
+        hideLeaves(view, RE_NATIVE_TV);
 
-        var ratingLeaf = findLeaf(view, RE_RATING);
-        if (ratingLeaf) {
-            if (v > 0 && getBool('lmx_rate_color', true) && getBool('lmx_recolor', true)) {
-                pillOf(ratingLeaf, view).style.setProperty('background-color', ratingColor(v), 'important');
+        if (v > 0 && !view.querySelector('.lmx-br')) {
+            var ratingLeaf = findLeaf(view, RE_RATING);
+            if (!ratingLeaf) {
+                addTo(view, 'lmx-br', ratingHtml(v));
+            } else if (getBool('lmx_replace_rating', true)) {
+                hideEl(pillOf(ratingLeaf, view));
+                addTo(view, 'lmx-br', ratingHtml(v));
             }
-        } else if (getBool('lmx_rating', true) && v > 0 && !view.querySelector('.lmx-br')) {
-            var r = document.createElement('div');
-            r.className = 'lmx-br';
-            r.innerHTML = '<span class="lmx-pill" style="background:' + ratingColor(v) + '">' + v.toFixed(1) + '</span>';
-            view.appendChild(r);
-            rendered++;
         }
 
-        if (getBool('lmx_type', true) && !findLeaf(view, RE_TYPE) && !view.querySelector('.lmx-bl')) {
-            var t = document.createElement('div');
-            t.className = 'lmx-bl';
-            t.innerHTML = '<span class="lmx-pill">' + (type === 'tv' ? 'Серіал' : 'Фільм') + '</span>';
-            view.appendChild(t);
-            rendered++;
+        if (!findLeaf(view, RE_TYPE) && !view.querySelector('.lmx-bl')) {
+            addTo(view, 'lmx-bl', '<span class="lmx-pill">' + (type === 'tv' ? 'Серіал' : 'Фільм') + '</span>');
+        }
+
+        if (type === 'movie') {
+            addMark(view, movieMark(d));
+            addStripe(view, movieStripe(d));
         }
     }
 
-    function renderBadge(el, j) {
+    // Серіали: значок С3Е24, мітки «Нова серія»/«Сьогодні», смужка статусу
+    function renderTv(el, j) {
         var view = el.querySelector('.card__view');
-        if (!view || view.querySelector('.lmx-box')) return;
-        if (!j.number_of_seasons || !j.number_of_episodes) return;
-        var box = document.createElement('div');
-        box.className = 'lmx-box';
-        var s = document.createElement('span');
-        s.className = 'lmx-pill';
-        s.textContent = code(j.number_of_seasons, j.number_of_episodes);
-        box.appendChild(s);
-        view.appendChild(box);
-        rendered++;
+        if (!view) return;
+        if (!view.querySelector('.lmx-box') && j.number_of_seasons && j.number_of_episodes) {
+            addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(j.number_of_seasons, j.number_of_episodes) + '</span>');
+        }
+        addMark(view, tvMark(j));
+        addStripe(view, tvStripe(j));
     }
 
     function load(id, cb) {
@@ -355,7 +674,7 @@
                 active++;
                 load(task.id, function (j) {
                     active--;
-                    if (j) renderBadge(task.el, j);
+                    if (j) renderTv(task.el, j);
                     pump();
                 });
             })(queue.shift());
@@ -391,7 +710,7 @@
             setTimeout(function () { safe(function () { extras(el, d, type); }); }, 1600);
             setTimeout(function () { safe(function () { extras(el, d, type); }); }, 4000);
 
-            if (type === 'tv' && getBool('lmx_badge', true)) {
+            if (type === 'tv') {
                 var task = { el: el, id: d.id };
                 if (io) { el.__lmx = task; io.observe(el); }
                 else { queue.push(task); }
@@ -407,6 +726,18 @@
     function schedule() {
         clearTimeout(timer);
         timer = setTimeout(function () { safe(scan); }, 300);
+    }
+
+    // після зміни стилю: прибрати наші елементи, показати сховане, перемалювати
+    function resetCards() {
+        hiddenEls.forEach(function (e) { e.style.display = ''; });
+        hiddenEls = [];
+        var mine = document.querySelectorAll('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-stripe');
+        for (var i = 0; i < mine.length; i++) mine[i].parentNode.removeChild(mine[i]);
+        var cards = document.querySelectorAll('.card[data-lmx]');
+        for (var k = 0; k < cards.length; k++) cards[k].removeAttribute('data-lmx');
+        found = 0; withData = 0; rendered = 0;
+        schedule();
     }
 
     // ===== Всередині картки фільму/серіалу: тривалість і статус =====
@@ -425,7 +756,9 @@
             else if (st === 'Returning Series') {
                 var n = m.next_episode_to_air;
                 if (n && n.air_date) {
-                    p.push({ t: 'Наступна серія: ' + fmtFull(n.air_date) + ' (' + code(n.season_number, n.episode_number) + ')', c: 'lmx-next' });
+                    var d = dayDiff(n.air_date);
+                    var extra = (d !== null && d > 1 ? fmtShort(n.air_date) + ', ' : '') + code(n.season_number, n.episode_number);
+                    p.push({ t: 'Наступна серія: ' + rel(n.air_date) + ' (' + extra + ')', c: 'lmx-next' });
                 } else {
                     p.push({ t: 'Виходить, дата наступної серії невідома', c: 'lmx-next' });
                 }
@@ -439,7 +772,11 @@
             if (ms === 'Released') p.push({ t: 'Вийшов', c: 'lmx-done' });
             else if (ms === 'Canceled') p.push({ t: 'Скасовано', c: 'lmx-bad' });
             else if (ms) {
-                var rd = m.release_date ? ' · ' + fmtFull(m.release_date) : '';
+                var rd = '';
+                if (m.release_date) {
+                    var dd = dayDiff(m.release_date);
+                    rd = ': ' + rel(m.release_date) + (dd !== null && dd > 1 && dd <= 90 ? ' (' + fmtFull(m.release_date) + ')' : '');
+                }
                 p.push({ t: 'Очікується' + rd, c: 'lmx-soon' });
             }
         }
@@ -467,7 +804,11 @@
     }
 
     // ===== Запуск =====
+    // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які Ліхтар додасть пізніше
+    safe(patchContentRows);
+
     function start() {
+        safe(patchContentRows);
         safe(addSettings);
         safe(initRows);
         safe(function () {
