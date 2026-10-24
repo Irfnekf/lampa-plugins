@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.9 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.10 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1047,15 +1047,15 @@
         var B = 'body.lmx-full ';
         var compact = getBool('lmx_btn_compact', true);
         return '' +
-            B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box;' +
-                'background-image:linear-gradient(to right,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,0) 70%),linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.55) 25%,rgba(0,0,0,0) 60%)}' +
+            B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
-            B + '.full-start__background{opacity:.55 !important}' +
+            B + '.full-start__background{opacity:1 !important}' +
+            '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
                 'display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}' +
@@ -1408,6 +1408,19 @@
         // опис у правому верхньому куті (копія, оригінал нижче лишається)
         if (getBool('lmx_full', true)) {
             r.find('.lmx-descr').remove();
+            // затемнення рівно поверх фонової картинки: копіюємо її розташування й розміри
+            r.find('.lmx-scrim').remove();
+            var bg = r.find('.full-start__background').eq(0);
+            if (bg.length) {
+                safe(function () {
+                    var cs = window.getComputedStyle(bg[0]);
+                    var sc = $('<div class="lmx-scrim"></div>').css({
+                        position: cs.position === 'static' ? 'absolute' : cs.position,
+                        top: cs.top, left: cs.left, width: cs.width, height: cs.height
+                    });
+                    bg.after(sc);
+                });
+            }
             var txt = String(m.overview || '').trim();
             var body = r.find('.full-start-new__body').eq(0);
             if (txt && body.length) body.append($('<div class="lmx-descr"></div>').text(txt));
@@ -1431,7 +1444,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.9';
+    var VERSION = '2.10';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
