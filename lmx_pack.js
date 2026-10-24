@@ -1,5 +1,5 @@
 /*
- * LMX Pack v4.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v4.4 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1092,7 +1092,7 @@
         var T = 'body.lmx-hbo ';
         var F = 'body.lmx-hbo.lmx-full ';
         return '' +
-            T + '{background:#05060f !important}' +
+            T + '{background:#05060f !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
@@ -1103,6 +1103,11 @@
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
+            T + '.lmx-cin__t{font-size:1.2em;line-height:1.15;letter-spacing:-.005em}' +
+            T + '.lmx-cin__r{margin-top:.1em}' +
+            T + '.lmx-cin__v{display:inline-flex;align-items:center;gap:.3em;background:rgba(255,255,255,.14);padding:.2em .6em;border-radius:.4em;font-weight:700;-webkit-text-fill-color:#fff}' +
+            T + '.lmx-cin__v i{-webkit-text-fill-color:currentColor;font-size:.9em}' +
+            T + '.lmx-cin__y{font-weight:600;letter-spacing:.06em;opacity:.75}' +
             T + '.lmx-cin__g{opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:.62em}' +
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
@@ -1145,7 +1150,15 @@
             F + '.full-start-new__buttons > .full-start__button:first-child span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{background:' + G + ' !important;color:#fff;transform:scale(1.08);box-shadow:0 0 1.2em rgba(138,59,255,.6)}';
     }
+    function loadThemeFont() {
+        if (getStr('lmx_theme', 'default') !== 'hbo' || document.getElementById('lmx-font')) return;
+        var l = document.createElement('link');
+        l.id = 'lmx-font'; l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&subset=cyrillic&display=swap';
+        document.head.appendChild(l);
+    }
     function applyThemeClass() {
+        safe(loadThemeFont);
         if (document.body && document.body.classList) document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo');
     }
     function applyFullClass() {
@@ -1588,7 +1601,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '4.3';
+    var VERSION = '4.4';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
