@@ -89,7 +89,7 @@
     var n0 = 30;
     SERVICES.forEach(function (x) {
         ROWS.push({ name: 'LmxSvc_' + x[0], title: 'Сьогодні на ' + x[1], gate: 'lmx_services', index: n0++,
-            custom: function () { return serviceCall(this, x[2]); } });
+            custom: function () { return serviceCall(this, x[0]); } });
     });
     MOODS.forEach(function (x) {
         ROWS.push({ name: 'LmxMood_' + x[0], title: 'Під настрій: ' + x[1], gate: 'lmx_moods', index: n0++,
@@ -544,25 +544,134 @@
         });
     }
 
-    // Ряд стрімінгу: фільми + серіали, доступні в Україні на цьому сервісі, за популярністю
-    function serviceCall(row, providerId) {
-        var q = '?with_watch_providers=' + providerId + '&watch_region=UA&with_watch_monetization_types=flatrate&sort_by=popularity.desc';
+    // ===== Сторінки стрімінгів: як окремий «сайт» сервісу з десятком підбірок =====
+    function prov(id) { return 'with_watch_providers=' + id + '&watch_region=UA&with_watch_monetization_types=flatrate'; }
+    var PIPE = '%7C';
+    // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
+    var SVC = {
+        hbo: { mf: 'with_companies=174' + PIPE + '49', tf: 'with_networks=49' + PIPE + '3186', extra: [
+            { t: 'Max Originals', k: 'tv', q: 'with_networks=3186&sort_by=popularity.desc' },
+            { t: 'Блокбастери Warner Bros.', k: 'movie', q: 'with_companies=174&sort_by=revenue.desc&vote_count.gte=1000' },
+            { t: 'Епічні світи (фентезі)', k: 'tv', q: 'with_networks=49' + PIPE + '3186&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Преміальні драми', k: 'tv', q: 'with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' },
+            { t: 'Доросла анімація', k: 'tv', q: 'with_networks=3186' + PIPE + '80&with_genres=16&sort_by=popularity.desc' },
+            { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' }
+        ] },
+        netflix: { mf: prov(8), tf: 'with_networks=213', extra: [
+            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=213&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Кримінал і трилери', k: 'tv', q: 'with_networks=213&with_genres=80' + PIPE + '9648&sort_by=popularity.desc' },
+            { t: 'Комедії', k: 'tv', q: 'with_networks=213&with_genres=35&sort_by=popularity.desc' },
+            { t: 'Аніме й анімація', k: 'tv', q: 'with_networks=213&with_genres=16&sort_by=popularity.desc' },
+            { t: 'Документальні', k: 'tv', q: 'with_networks=213&with_genres=99&sort_by=popularity.desc' }
+        ] },
+        apple: { mf: prov(350), tf: 'with_networks=2552', extra: [
+            { t: 'Фантастика', k: 'tv', q: 'with_networks=2552&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Комедії та feel-good', k: 'tv', q: 'with_networks=2552&with_genres=35&sort_by=popularity.desc' },
+            { t: 'Трилери та детективи', k: 'tv', q: 'with_networks=2552&with_genres=9648' + PIPE + '80&sort_by=popularity.desc' },
+            { t: 'Драми', k: 'tv', q: 'with_networks=2552&with_genres=18&sort_by=popularity.desc' }
+        ] },
+        amazon: { mf: prov(119), tf: 'with_networks=1024', extra: [
+            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=1024&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Бойовики й трилери', k: 'tv', q: 'with_networks=1024&with_genres=10759' + PIPE + '80&sort_by=popularity.desc' },
+            { t: 'Комедії', k: 'tv', q: 'with_networks=1024&with_genres=35&sort_by=popularity.desc' },
+            { t: 'Драми', k: 'tv', q: 'with_networks=1024&with_genres=18&sort_by=popularity.desc' }
+        ] },
+        disney: { mf: 'with_companies=2' + PIPE + '3' + PIPE + '420' + PIPE + '1', tf: 'with_networks=2739', extra: [
+            { t: 'Marvel', k: 'movie', q: 'with_companies=420&sort_by=popularity.desc' },
+            { t: 'Зоряні війни', k: 'movie', q: 'with_companies=1&sort_by=popularity.desc' },
+            { t: 'Pixar', k: 'movie', q: 'with_companies=3&sort_by=popularity.desc' },
+            { t: 'Серіали Marvel і Зоряних війн', k: 'tv', q: 'with_networks=2739&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Анімація', k: 'tv', q: 'with_networks=2739&with_genres=16&sort_by=popularity.desc' }
+        ] },
+        paramount: { mf: 'with_companies=4', tf: 'with_networks=4330', extra: [
+            { t: 'Paramount Pictures', k: 'movie', q: 'with_companies=4&sort_by=popularity.desc' },
+            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=4330&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Драми', k: 'tv', q: 'with_networks=4330&with_genres=18&sort_by=popularity.desc' },
+            { t: 'Реаліті', k: 'tv', q: 'with_networks=4330&with_genres=10764&sort_by=popularity.desc' }
+        ] },
+        sky: { mf: prov(1773), tf: prov(1773), extra: [
+            { t: 'Драми', k: 'tv', q: prov(1773) + '&with_genres=18&sort_by=popularity.desc' },
+            { t: 'Комедії', k: 'tv', q: prov(1773) + '&with_genres=35&sort_by=popularity.desc' },
+            { t: 'Фантастика й фентезі', k: 'tv', q: prov(1773) + '&with_genres=10765&sort_by=popularity.desc' }
+        ] }
+    };
+    function svcCats(key) {
+        var c = SVC[key], today = dayStr(0), out = [];
+        if (!c) return out;
+        out.push({ t: 'Нові фільми', k: 'movie', q: c.mf + '&sort_by=primary_release_date.desc&primary_release_date.lte=' + today + '&vote_count.gte=10' });
+        out.push({ t: 'Нові серіали', k: 'tv', q: c.tf + '&sort_by=first_air_date.desc&first_air_date.lte=' + today + '&vote_count.gte=5' });
+        out.push({ t: 'Головні хіти', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
+        out.push({ t: 'Популярні фільми', k: 'movie', q: c.mf + '&sort_by=popularity.desc&vote_count.gte=50' });
+        c.extra.forEach(function (e) { out.push(e); });
+        out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
+        return out.map(function (e) {
+            return { title: e.t, url: 'discover/' + e.k + '?' + e.q.replace('{today}', today), kind: e.k };
+        });
+    }
+
+    // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших
+    function serviceCall(row, key) {
         return function (call) {
-            var got = {}, left = 2;
+            var cats = svcCats(key), pick = [cats[0], cats[1]];
+            var got = [null, null], left = 2;
             function fin() {
                 if (--left > 0) return;
-                var a = got.movie || [], b = got.tv || [], out = [], i = 0;
-                while (i < a.length || i < b.length) { if (b[i]) out.push(b[i]); if (a[i]) out.push(a[i]); i++; }
-                if (!out.length) return call();
-                call({ title: row.title, results: out, url: 'discover/tv' + q, source: 'tmdb', page: 1, more: true, total_pages: 2 });
+                var all = [];
+                [0, 1].forEach(function (i) {
+                    (got[i] || []).forEach(function (c) { c.media_type = pick[i].kind; all.push(c); });
+                });
+                all.sort(function (a, b) {
+                    return String(b.release_date || b.first_air_date || '').localeCompare(String(a.release_date || a.first_air_date || ''));
+                });
+                all = all.slice(0, 20);
+                if (!all.length) return call();
+                call({ title: row.title, results: all, url: pick[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
             }
-            ['movie', 'tv'].forEach(function (kind) {
-                Lampa.Api.sources.tmdb.get('discover/' + kind + q, { page: 1 }, function (j) {
-                    got[kind] = cleanResults(j && j.results).map(function (c) { c.media_type = kind; return c; });
+            pick.forEach(function (cat, i) {
+                Lampa.Api.sources.tmdb.get(cat.url, { page: 1 }, function (j) {
+                    got[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path; });
                     fin();
-                }, function () { got[kind] = []; fin(); });
+                }, function () { got[i] = []; fin(); });
             });
         };
+    }
+
+    // Окрема сторінка сервісу (компонент Lampa)
+    var svcRegistered = false;
+    function registerServicePage() {
+        if (svcRegistered || !Lampa.Component || !Lampa.Component.add || !Lampa.InteractionMain) return;
+        svcRegistered = true;
+        Lampa.Component.add('lmx_service', function (object) {
+            var comp = new Lampa.InteractionMain(object);
+            comp.create = function () {
+                var self = this;
+                this.activity.loader(true);
+                var cats = svcCats(object.service_id), res = new Array(cats.length), left = cats.length;
+                function fin() {
+                    if (--left > 0) return;
+                    var data = [];
+                    cats.forEach(function (c, i) {
+                        if (res[i] && res[i].length) {
+                            data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, total_pages: 5 });
+                        }
+                    });
+                    self.activity.loader(false);
+                    if (!data.length) self.empty(); else self.build(data);
+                }
+                if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
+                cats.forEach(function (c, i) {
+                    Lampa.Api.sources.tmdb.get(c.url, { page: 1 }, function (j) {
+                        res[i] = cleanResults(j && j.results, true).filter(function (x) { return x.poster_path; });
+                        fin();
+                    }, function () { res[i] = []; fin(); });
+                });
+                return this.render();
+            };
+            comp.onMore = function (data) {
+                Lampa.Activity.push({ url: data.url, title: data.title || 'Ще', component: 'category_full', source: 'tmdb', page: 1 });
+            };
+            return comp;
+        });
     }
 
     // ===== Банер і плитки стрімінгів (власні картки Lampa.Maker) =====
@@ -665,20 +774,8 @@
         };
     }
     function openService(x) {
-        function go(kind) {
-            Lampa.Activity.push({
-                url: 'discover/' + kind + '?with_watch_providers=' + x[2] + '&watch_region=UA&with_watch_monetization_types=flatrate&sort_by=popularity.desc',
-                title: x[1] + (kind === 'tv' ? ' — серіали' : ' — фільми'),
-                component: 'category_full', source: 'tmdb', page: 1
-            });
-        }
-        var enabled = Lampa.Controller.enabled().name;
-        Lampa.Select.show({
-            title: x[1],
-            items: [{ title: 'Фільми', k: 'movie' }, { title: 'Серіали', k: 'tv' }],
-            onSelect: function (it) { go(it.k); },
-            onBack: function () { Lampa.Controller.toggle(enabled); }
-        });
+        registerServicePage();
+        Lampa.Activity.push({ url: '', title: x[1], component: 'lmx_service', service_id: x[0], page: 1 });
     }
 
     function makeCall(row) {
@@ -710,6 +807,7 @@
     function initRows() {
         if (rowsStarted) return;
         rowsStarted = true;
+        registerServicePage();
         if (!Lampa.ContentRows || !Lampa.ContentRows.add) return;
         ROWS.forEach(function (row) {
             if (row.gate && !getBool(row.gate, true)) return;
