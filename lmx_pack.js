@@ -1,5 +1,5 @@
 /*
- * LMX Pack v1.4 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
+ * LMX Pack v1.5 — надбудова для Lampa, що працює РАЗОМ з плагіном «Ліхтар» (не замінює його).
  *  1) Додаткові ряди на головній (TMDB + українське кіно та серіали)
  *  2) «Порядок головної»: один екран, де можна переставити й сховати ВСІ ряди (і Ліхтаря, і наші)
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», мітка Фільм/Серіал, рейтинг; стилі: Класичний, Скло, Мінімум
@@ -26,14 +26,10 @@
         try { fn(); } catch (e) { console.error('LMX', e); }
     }
 
-    var COLORS = {
-        green:  'rgba(46,158,91,.94)',
-        orange: 'rgba(224,123,32,.96)',
-        blue:   'rgba(48,112,220,.92)',
-        red:    'rgba(192,57,43,.94)',
-        purple: 'rgba(130,80,200,.92)',
-        gray:   'rgba(110,110,120,.92)'
-    };
+    var RGB = { green: '46,158,91', orange: '224,123,32', blue: '48,112,220', red: '192,57,43', purple: '130,80,200', gray: '110,110,120' };
+    var COLORS = {};
+    Object.keys(RGB).forEach(function (k) { COLORS[k] = 'rgba(' + RGB[k] + ',.94)'; });
+    function rgba(name, a) { return 'rgba(' + (RGB[name] || RGB.orange) + ',' + a + ')'; }
     var COLOR_NAMES = { green: 'Зелений', orange: 'Помаранчевий', blue: 'Синій', red: 'Червоний', purple: 'Фіолетовий', gray: 'Сірий' };
     var SIZES = { s: 0.8, m: 0.95, l: 1.1, xl: 1.25 };
     var SIZE_NAMES = { s: 'Маленький', m: 'Середній', l: 'Великий', xl: 'Дуже великий' };
@@ -52,7 +48,8 @@
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    url: 'movie/top_rated',   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   url: 'tv/popular',        index: 17 },
         { name: 'LmxUaMovies',      title: 'Українське кіно',     url: function () { return uaUrl('movie'); }, index: 18 },
-        { name: 'LmxUaTv',          title: 'Українські серіали',  url: function () { return uaUrl('tv'); },    index: 19 }
+        { name: 'LmxUaTv',          title: 'Українські серіали',  url: function () { return uaUrl('tv'); },    index: 19 },
+        { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 }
     ];
 
     // Ряди Ліхтаря (назви взято з його коду) — щоб екран порядку працював навіть якщо їх не вдалося перехопити
@@ -77,6 +74,28 @@
     // ===== ПОРЯДОК ВСІХ РЯДІВ ГОЛОВНОЇ =====
     var seen = {};          // ряди, які пройшли через ContentRows.add після встановлення перехоплення
     var diag = { patched: false, addCount: 0, lastTotal: 0, lastTagged: 0 };
+
+    var stats = {};         // скільки карток повернув ряд під час останньої побудови головної
+
+    function trackCalls(name, f) {
+        var g = function () {
+            var args = Array.prototype.slice.call(arguments);
+            if (typeof args[0] === 'function') {
+                var cb = args[0];
+                args[0] = function (data) {
+                    try { stats[name] = (data && data.results) ? data.results.length : 0; } catch (e) {}
+                    return cb.apply(this, arguments);
+                };
+            }
+            return f.apply(this, args);
+        };
+        for (var k in f) { try { g[k] = f[k]; } catch (e) {} }
+        return g;
+    }
+    function rowStat(n) {
+        if (stats[n] === undefined) return '';
+        return stats[n] === 0 ? 'порожній (немає карток)' : stats[n] + ' карток';
+    }
 
     function allRows() {
         var map = {}, list = [];
@@ -123,6 +142,7 @@
             var wrapped = function () {
                 if (isHidden(row.name)) return emptyRowCall(row.name)();
                 var f = orig.apply(this, arguments);
+                if (typeof f === 'function') f = trackCalls(row.name, f);
                 if (f && (typeof f === 'function' || typeof f === 'object')) {
                     try { f.__lmx = row.name; } catch (e) {}
                 }
@@ -189,7 +209,7 @@
         if (Lampa.Noty) Lampa.Noty.show('Збережено. Поверніться на головну (або перезапустіть Lampa)');
     }
 
-    function openOrder() {
+    function openOrderList() {
         if (!Lampa.Select || !Lampa.Select.show) return;
         var enabled = Lampa.Controller.enabled().name;
         var a = allRows();
@@ -213,7 +233,7 @@
                 if (it.reset) {
                     saveOrder([]); saveHidden([]); lastPicked = null;
                     notifySaved();
-                    setTimeout(openOrder, 60);
+                    setTimeout(openOrderList, 60);
                     return;
                 }
                 lastPicked = it.name;
@@ -234,7 +254,7 @@
                 { title: 'В кінець', act: 'bottom' },
                 { title: hidden ? 'Показувати' : 'Сховати', act: 'toggle' }
             ],
-            onBack: function () { setTimeout(openOrder, 60); },
+            onBack: function () { setTimeout(openOrderList, 60); },
             onSelect: function (it) {
                 var order = getOrder();
                 var i = order.indexOf(name);
@@ -250,7 +270,92 @@
                 }
                 saveOrder(order);
                 notifySaved();
-                setTimeout(openOrder, 60);
+                setTimeout(openOrderList, 60);
+            }
+        });
+    }
+
+    var SVG_O = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">';
+    var CHEV_UP = SVG_O + '<path d="M6 15l6-6 6 6"/></svg>';
+    var CHEV_DOWN = SVG_O + '<path d="M6 9l6 6 6-6"/></svg>';
+    var BOX_ON = SVG_O + '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg>';
+    var BOX_OFF = SVG_O + '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>';
+
+    function openOrderModal() {
+        if (!(Lampa.Modal && Lampa.Modal.open && window.$)) return openOrderList();
+        var enabled = Lampa.Controller.enabled().name;
+        var wrap = $('<div class="lmx-ord"></div>');
+        var focusTarget = null;
+        var lastFire = 0;
+
+        function bind(btn, name, act) {
+            btn.on('hover:enter click', function () {
+                var now = Date.now();
+                if (now - lastFire < 250) return;
+                lastFire = now;
+                apply(name, act);
+            });
+        }
+
+        function build() {
+            wrap.empty();
+            var a = allRows(), order = getOrder(), hidden = getHidden(), want = null;
+            order.forEach(function (n) {
+                var info = a.map[n], off = hidden.indexOf(n) >= 0;
+                var st = rowStat(n);
+                var row = $('<div class="lmx-ord__row"></div>');
+                var nm = $('<div class="lmx-ord__name"></div>');
+                nm.append($('<span></span>').text(info.title));
+                nm.append($('<span class="lmx-ord__sub"></span>').text(info.src + (st ? ' · ' + st : '')));
+                row.append(nm);
+                [['up', CHEV_UP], ['down', CHEV_DOWN], ['toggle', off ? BOX_OFF : BOX_ON]].forEach(function (b) {
+                    var btn = $('<div class="lmx-ord__btn selector"></div>').html(b[1]);
+                    if (b[0] === 'toggle' && off) btn.addClass('lmx-ord__off');
+                    bind(btn, n, b[0]);
+                    row.append(btn);
+                    if (focusTarget && focusTarget.name === n && focusTarget.act === b[0]) want = btn[0];
+                });
+                wrap.append(row);
+            });
+            var reset = $('<div class="lmx-ord__reset selector">Скинути порядок і показати все</div>');
+            bind(reset, null, 'reset');
+            wrap.append(reset);
+            return want;
+        }
+
+        function refresh() {
+            var want = build();
+            safe(function () {
+                Lampa.Controller.collectionSet(wrap);
+                if (want) Lampa.Controller.collectionFocus(want, wrap);
+            });
+        }
+
+        function apply(name, act) {
+            var order = getOrder(), i = order.indexOf(name);
+            if (act === 'up' && i > 0) { order.splice(i, 1); order.splice(i - 1, 0, name); saveOrder(order); }
+            else if (act === 'down' && i >= 0 && i < order.length - 1) { order.splice(i, 1); order.splice(i + 1, 0, name); saveOrder(order); }
+            else if (act === 'toggle') {
+                var h = getHidden(), k = h.indexOf(name);
+                if (k >= 0) h.splice(k, 1); else h.push(name);
+                saveHidden(h);
+            } else if (act === 'reset') {
+                saveOrder([]); saveHidden([]); name = null;
+            }
+            focusTarget = name ? { name: name, act: act } : null;
+            refresh();
+        }
+
+        build();
+        Lampa.Modal.open({
+            title: 'Порядок головної',
+            html: wrap,
+            size: 'medium',
+            mask: true,
+            onBack: function () {
+                Lampa.Modal.close();
+                Lampa.Controller.toggle(enabled);
+                notifySaved();
             }
         });
     }
@@ -314,7 +419,7 @@
 
         // --- Ряди ---
         title('lmx_t_rows', 'Головна сторінка');
-        button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати всі ряди: і Ліхтаря, і наші', openOrder);
+        button('lmx_order_btn', 'Порядок головної', 'Переставити й сховати всі ряди: і Ліхтаря, і наші', openOrderModal);
 
         // --- Вигляд ---
         title('lmx_t_cards', 'Вигляд карток');
@@ -343,7 +448,19 @@
     // ===== РЯДИ НА ГОЛОВНІЙ (наші) =====
     var rowsStarted = false;
 
+    // Ряд з історії перегляду самої Lampa (запасний варіант, якщо «Продовжити перегляд» не показується)
+    function historyCall() {
+        return function (call) {
+            var list = [];
+            try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
+            list = list.filter(function (c) { return c && c.id; }).slice(0, 20);
+            if (!list.length) return call();
+            call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
+        };
+    }
+
     function makeCall(row) {
+        if (row.custom) return function () { return row.custom(); };
         return function () {
             return function (call) {
                 var url = typeof row.url === 'function' ? row.url() : row.url;
@@ -481,6 +598,7 @@
         var cNext = COLORS[getStr('lmx_c_next', 'orange')] || COLORS.orange;
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
         var cSoon = COLORS[getStr('lmx_c_soon', 'blue')] || COLORS.blue;
+        var nNext = RGB[getStr('lmx_c_next', 'orange')] ? getStr('lmx_c_next', 'orange') : 'orange';
 
         var pill;
         if (st === 'glass') {
@@ -491,6 +609,12 @@
             pill = 'background:rgba(0,0,0,.62);';
         }
         var ringBg = st === 'glass' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.62)';
+        function markCss(cls, nm) {
+            var sel = '.lmx-pill.lmx-m-' + cls;
+            if (st === 'glass') return sel + '{background:' + rgba(nm, 0.42) + ';border:1px solid ' + rgba(nm, 0.95) + '}';
+            if (st === 'minimal') return sel + '{background:none;border:0;padding:.1em .2em;color:' + rgba(nm, 1) + '}';
+            return sel + '{background:' + rgba(nm, 0.96) + '}';
+        }
 
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
@@ -499,9 +623,16 @@
             '.lmx-bl{position:absolute;left:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
             '.lmx-br{position:absolute;right:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;' + pill + '}' +
-            '.lmx-pill.lmx-mark{padding:.32em .6em;border:0;text-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}' +
-            '.lmx-pill.lmx-m-next{background:' + cNext + '}' +
-            '.lmx-pill.lmx-m-new{background:' + COLORS.purple + '}' +
+            markCss('next', nNext) + markCss('new', 'purple') +
+            '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
+            '.lmx-ord__row:nth-child(even){background:rgba(255,255,255,.06)}' +
+            '.lmx-ord__name{flex:1;min-width:0;font-size:1.15em}' +
+            '.lmx-ord__sub{display:block;font-size:.7em;opacity:.55;margin-top:.15em}' +
+            '.lmx-ord__btn{display:flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.3em;border-radius:.5em}' +
+            '.lmx-ord__btn.focus{background:#fff;color:#000}' +
+            '.lmx-ord__off{opacity:.5}' +
+            '.lmx-ord__reset{margin-top:.8em;padding:.8em 1em;border-radius:.5em;text-align:center;background:rgba(255,255,255,.08)}' +
+            '.lmx-ord__reset.focus{background:#fff;color:#000}' +
             '.lmx-ring{position:relative;display:inline-block;width:2.8em;height:2.8em;font-size:' + fs + 'em;border-radius:50%;background:' + ringBg + ';-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
             '.lmx-ring svg{position:absolute;left:0;top:0;width:100%;height:100%}' +
             '.lmx-ring span{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:.85em;font-weight:700;color:#fff}' +
