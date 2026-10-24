@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.3 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.5 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -503,7 +503,7 @@
 
         // --- Додатково ---
         title('lmx_t_misc', 'Додатково');
-        trigger('lmx_marks', true, 'Мітки «Нова серія», «Сьогодні», «Новинка»', 'У правому верхньому куті постера', rebuild);
+        trigger('lmx_marks', true, 'Мітки «Нова серія», «Сьогодні», «Новинка», «Скоро»', 'У правому верхньому куті постера', rebuild);
         select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: наступна серія / нова серія', 'Фон напису про наступну чи нову серію', restyle);
         select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'Фон напису про вихід фільму чи завершення серіалу', restyle);
         select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: очікується', 'Фон напису для ще не випущеного', restyle);
@@ -929,11 +929,15 @@
         var l = j.last_episode_to_air ? dayDiff(j.last_episode_to_air.air_date) : null;
         if (n === 0 || l === 0) return { t: 'Сьогодні', c: 'next' };
         if (l !== null && l < 0 && l >= -7) return { t: 'Нова серія', c: 'next' };
+        var fa = dayDiff(j.first_air_date);
+        var planned = j.status === 'Planned' || j.status === 'In Production' || j.status === 'Pilot';
+        if ((fa !== null && fa > 0) || (planned && !j.last_episode_to_air && fa === null)) return { t: 'Скоро', c: 'soon' };
         return null;
     }
     function movieMark(d) {
         var n = dayDiff(d.release_date);
         if (n !== null && n <= 0 && n >= -30) return { t: 'Новинка', c: 'new' };
+        if (n !== null && n > 0) return { t: 'Скоро', c: 'soon' };
         return null;
     }
     function movieStripe(d) {
@@ -957,6 +961,7 @@
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
         var cSoon = COLORS[getStr('lmx_c_soon', 'blue')] || COLORS.blue;
         var nNext = RGB[getStr('lmx_c_next', 'orange')] ? getStr('lmx_c_next', 'orange') : 'orange';
+        var nSoon = RGB[getStr('lmx_c_soon', 'blue')] ? getStr('lmx_c_soon', 'blue') : 'blue';
 
         var pill;
         if (st === 'glass') {
@@ -982,7 +987,7 @@
             '.lmx-bl{position:absolute;left:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
             '.lmx-br{position:absolute;right:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;' + pill + '}' +
-            markCss('next', nNext) + markCss('new', 'purple') +
+            markCss('next', nNext) + markCss('new', 'purple') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
             '.lmx-ord__row:nth-child(even){background:rgba(255,255,255,.06)}' +
             '.lmx-ord__name{flex:1;min-width:0;font-size:1.15em}' +
@@ -1038,19 +1043,26 @@
     function fullCss() {
         var B = 'body.lmx-full ';
         return '' +
-            B + '.full-start-new,' + B + '.full-start{position:relative}' +
-            B + '.full-start-new::before,' + B + '.full-start::before{content:"";position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:0;' +
-                'background:linear-gradient(to right,rgba(10,12,16,.92) 0%,rgba(10,12,16,.6) 42%,rgba(10,12,16,0) 78%),linear-gradient(to top,rgba(10,12,16,.95) 0%,rgba(10,12,16,0) 55%)}' +
-            B + '.full-start-new__body,' + B + '.full-start__body{position:relative;z-index:1;align-items:flex-end}' +
-            B + '.full-start__background{opacity:1 !important}' +
-            B + '.full-start-new__title,' + B + '.full-start__title{font-size:2.9em;line-height:1.05;font-weight:700;text-shadow:0 2px 12px rgba(0,0,0,.6)}' +
-            B + '.full-start-new__tagline,' + B + '.full-start__tagline{opacity:.8;font-size:1.15em}' +
-            B + '.full-start-new__right,' + B + '.full-start__right{max-width:56%}' +
-            B + '.full-start-new__text,' + B + '.full-start__text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;opacity:.92}' +
+            B + '.full-start-new__body{position:relative;height:80vh}' +
+            B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:58%}' +
+            B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
+            B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 0 .1em rgba(0,0,0,.4)}' +
+            B + '.full-start-new__tagline{opacity:.85}' +
+            B + '.full-start-new__rate-line{margin:1em 0 1.2em 0}' +
+            B + '.full-start-new__details{margin:0 0 1.2em -0.3em}' +
+            B + '.full-start-new{transition:all .3s}' +
+            // затемнення з правого верхнього кута (під опис) і знизу (під заголовок)
+            B + '.full-start-new::before{content:"";position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:0;' +
+                'background:linear-gradient(225deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,0) 55%),linear-gradient(to top,rgba(0,0,0,.7) 0%,rgba(0,0,0,0) 45%)}' +
+            B + '.full-start-new__body{z-index:1}' +
+            B + '.full-start__background{opacity:1 !important;left:0}' +
+            'body.lmx-full:not(.menu--open) .full-start__background{-webkit-mask-image:linear-gradient(to bottom,#fff 50%,rgba(255,255,255,0) 100%);mask-image:linear-gradient(to bottom,#fff 50%,rgba(255,255,255,0) 100%)}' +
+            B + '.lmx-descr{position:absolute;right:2%;top:6%;width:36vw;text-align:right;font-size:1.2em;line-height:1.5;z-index:2;color:#fff;' +
+                'text-shadow:0 1px 6px rgba(0,0,0,.8);display:-webkit-box;-webkit-line-clamp:9;-webkit-box-orient:vertical;overflow:hidden}' +
             B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:.9em}' +
             B + '.full-start__button.focus,' + B + '.full-start-new__buttons .simple-button.focus{background:#fff;color:#111}' +
             B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
-            (getBool('lmx_full_poster', true) ? B + '.full-start-new__left,' + B + '.full-start__left{display:none !important}' : '');
+            (getBool('lmx_full_poster', true) ? B + '.full-start-new__left{display:none !important}' : '');
     }
     function applyFullClass() {
         var on = getBool('lmx_full', true);
@@ -1386,13 +1398,22 @@
 
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
-        if (!getBool('lmx_info', true)) return;
         var m = e.data && e.data.movie;
         if (!m) return;
+        var r = e.object.activity.render();
+
+        // опис у правому верхньому куті (копія, оригінал нижче лишається)
+        if (getBool('lmx_full', true)) {
+            r.find('.lmx-descr').remove();
+            var txt = String(m.overview || '').trim();
+            var body = r.find('.full-start-new__body').eq(0);
+            if (txt && body.length) body.append($('<div class="lmx-descr"></div>').text(txt));
+        }
+
+        if (!getBool('lmx_info', true)) return;
         var pills = infoPills(m);
         if (!pills.length) return;
 
-        var r = e.object.activity.render();
         r.find('.lmx-info').remove();
 
         var html = '<div class="lmx-info">' + pills.map(function (x) {
@@ -1407,7 +1428,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.3';
+    var VERSION = '2.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
