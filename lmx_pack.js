@@ -1,5 +1,5 @@
 /*
- * LMX Pack v3.6 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v3.8 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -430,10 +430,8 @@
         var S = Lampa.SettingsApi;
         if (!S || !S.addComponent) return;
 
-        // Три сторінки налаштувань: головна, картки, сторінка фільму
-        S.addComponent({ component: 'lmx', name: 'LMX · Головна', icon: ICON });
-        S.addComponent({ component: 'lmx_cards', name: 'LMX · Картки', icon: ICON });
-        S.addComponent({ component: 'lmx_page', name: 'LMX · Сторінка фільму', icon: ICON });
+        // Одна сторінка налаштувань із розділами
+        S.addComponent({ component: 'lmx', name: 'LMX Pack', icon: ICON });
 
         function mk(comp) {
             return {
@@ -457,7 +455,7 @@
 
         // ---- Головна ----
         var H = mk('lmx');
-        H.title('lmx_t_ver', 'Версія ' + VERSION);
+        H.title('lmx_t_ver', 'Головна · версія ' + VERSION);
         H.button('lmx_order_btn', 'Порядок рядів', 'Переставити й сховати ряди (банер, стрімінги, підбірки)', openOrderModal);
         H.trigger('lmx_only_mine', true, 'Лише підбірки LMX на головній', 'Ховає стандартні ряди Lampa та ряди інших плагінів', null);
         H.title('lmx_t_c1', 'Підбір контенту');
@@ -466,21 +464,22 @@
         H.select('lmx_min_rating', { '0': 'Не ховати', '3': 'Ховати з оцінкою 1–2', '4': 'Ховати нижче 4', '5': 'Ховати нижче 5' }, '3', 'Ховати слабкі фільми й серіали', 'У наших рядах', restart);
 
         // ---- Картки ----
-        var C = mk('lmx_cards');
-        C.title('lmx_t_look', 'Вигляд');
+        var C = H;
+        C.title('lmx_t_look', 'Картки · вигляд');
         C.select('lmx_style', STYLE_NAMES, 'cinema', 'Стиль карток',
             'Кіно — підпис на постері. Класичний — темні плашки. Скло — напівпрозорі плашки та кільце рейтингу. Мінімум — без фону', rebuild);
         C.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         C.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів', 'Значки, рейтинг, мітки', restyle);
         C.trigger('lmx_hide_year', true, 'Прибрати рік на постері', 'Для стилів Класичний, Скло, Мінімум; рік під назвою залишається', rebuild);
-        C.title('lmx_t_marks', 'Мітки');
+        C.title('lmx_t_marks', 'Картки · мітки');
         C.trigger('lmx_marks', true, 'Мітки на постері', '«Нова серія», «Сьогодні», «Новинка», «Скоро»', rebuild);
         C.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія', 'Також «Сьогодні»', restyle);
         C.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро / очікується', 'Також для ще не випущеного', restyle);
         C.select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: вийшов / завершено', 'У рядку статусу сторінки фільму', restyle);
 
         // ---- Сторінка фільму ----
-        var P = mk('lmx_page');
+        var P = H;
+        P.title('lmx_t_page', 'Сторінка фільму');
         P.trigger('lmx_full', true, 'Кіно-стиль сторінки', 'Фон на весь екран, затемнення, опис справа, великий заголовок', restyle);
         P.trigger('lmx_logo', true, 'Логотип фільму замість заголовка', 'Офіційний логотип з TMDB; якщо його немає — звичайний заголовок', null);
         P.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підписи лише в перших трьох і в обраної кнопки', restyle);
@@ -1071,8 +1070,8 @@
             B + '.full-start-new__right{text-shadow:0 1px 8px rgba(0,0,0,.85)}' +
             '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
-                'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
-                'display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}' +
+                'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em}' +
+            B + '.lmx-descr__t{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}' +
             // кнопки: компактно, у кілька рядків без розтягування
             B + '.full-start-new__buttons{display:flex;flex-wrap:wrap;margin-top:.4em}' +
             B + '.full-start__button,' + B + '.full-start-new__buttons .simple-button{background:rgba(255,255,255,.14);border-radius:.8em;margin:0 .5em .5em 0;padding:.55em 1em;font-size:.95em}' +
@@ -1467,7 +1466,7 @@
             r.find('.lmx-descr').remove();
             var txt = String(m.overview || '').trim();
             var body = r.find('.full-start-new__body').eq(0);
-            if (txt && body.length) body.append($('<div class="lmx-descr"></div>').text(txt));
+            if (txt && body.length) body.append($('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end());
         }
 
         if (!foreign && getBool('lmx_full', true) && getBool('lmx_logo', true)) safe(function () { loadLogo(r, m); });
@@ -1490,7 +1489,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '3.6';
+    var VERSION = '3.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
