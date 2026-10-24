@@ -1,5 +1,5 @@
 /*
- * LMX Pack v2.8 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
+ * LMX Pack v2.9 — збірка для Lampa: власна головна, сторінки стрімінгів, стилі карток
  *  1) Ряди на головній: банер, стрімінги, підбірки під настрій, TMDB та українське кіно й серіали
  *  2) «Порядок головної»: переставити й сховати будь-який ряд
  *  3) Значок С3Е24, мітки «Нова серія» / «Сьогодні» / «Новинка», рейтинг; стилі: Класичний, Скло, Мінімум, Кіно
@@ -1047,7 +1047,7 @@
         var B = 'body.lmx-full ';
         var compact = getBool('lmx_btn_compact', true);
         return '' +
-            B + '.full-start-new__body{position:relative;height:94vh;padding-bottom:4vh;box-sizing:border-box;' +
+            B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box;' +
                 'background-image:linear-gradient(to right,rgba(0,0,0,.82) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,0) 70%),linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.55) 25%,rgba(0,0,0,0) 60%)}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
@@ -1055,7 +1055,7 @@
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
-            B + '.full-start__background{opacity:1 !important}' +
+            B + '.full-start__background{opacity:.55 !important}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em;' +
                 'display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}' +
@@ -1431,7 +1431,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '2.8';
+    var VERSION = '2.9';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
