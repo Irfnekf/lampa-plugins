@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.7 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.8 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -581,7 +581,6 @@
         H.title('lmx_t_page', 'Сторінка фільму');
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
-        H.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підпис лише в перших трьох і в тієї, що вибрана. У HBO Max і Apple TV кнопки завжди компактні', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
@@ -2330,7 +2329,7 @@
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
     var CLOSEI = BI('<path d="M6 6l12 12M18 6L6 18"/>');
 
-    var btnLast = null, btnRun = null, btnPageIds = [];
+    var btnLast = null, btnRun = null, btnPageIds = [], btnExtraCount = 0;
 
     function iconByKey(k) { for (var i = 0; i < BTN_ICONS.length; i++) if (BTN_ICONS[i][0] === k) return BTN_ICONS[i]; return null; }
     function strHash(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h).toString(36); }
@@ -2368,11 +2367,14 @@
     function btnCollect(cont, r) {
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
         // «Показувати всі кнопки»: добираємо й ті, що Lampa ховає поза рядом (їх видно лише в меню «Дивитись»)
+        btnExtraCount = 0;
         if (r && getBool('lmx_btn_all', false)) {
             r.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').each(function () {
                 if (els.indexOf(this) >= 0 || $(this).closest('.card, .full-person, .full-descr, .full-episode, .items-line').length) return;
-                if (!/(^|\s)(view--|button--)/.test(String(this.className || ''))) return;
+                var cn = String(this.className || '');
+                if (!/(^|\s)(view--|button--)/.test(cn) && !/(^|\s)full-start__button(\s|$)/.test(cn)) return;
                 els.push(this);
+                btnExtraCount++;
             });
         }
         els.forEach(function (el) { if (el.__lmxId != null) seen[el.__lmxId] = 1; });
@@ -2771,10 +2773,25 @@
         function allText() { allRow.find('b').text('Показувати всі кнопки: ' + (getBool('lmx_btn_all', false) ? 'так' : 'ні')); }
         allText();
         bind(allRow, function () {
-            Lampa.Storage.set('lmx_btn_all', getBool('lmx_btn_all', false) ? 'false' : 'true');
+            var on = !getBool('lmx_btn_all', false);
+            Lampa.Storage.set('lmx_btn_all', on ? 'true' : 'false');
             allText();
+            btnExtraCount = 0;
+            safe(function () { if (btnRun) btnRun(true); });
+            if (on && Lampa.Noty) {
+                Lampa.Noty.show(btnExtraCount ? 'Знайдено прихованих кнопок: ' + btnExtraCount : 'Прихованих кнопок на сторінці не знайдено: меню «Дивитись» будується не з кнопок сторінки');
+            }
+            if (btnExtraCount) reopen();
         });
-        top.append(mk, col, look, allRow);
+        var compactRow = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Підпис лише в перших трьох кнопок і в тієї, що вибрана (стандартна тема)</span></div>');
+        function compactText() { compactRow.find('b').text('Компактні кнопки: ' + (getBool('lmx_btn_compact', true) ? 'так' : 'ні')); }
+        compactText();
+        bind(compactRow, function () {
+            Lampa.Storage.set('lmx_btn_compact', getBool('lmx_btn_compact', true) ? 'false' : 'true');
+            compactText();
+            safe(applyStyle);
+        });
+        top.append(mk, col, look, compactRow, allRow);
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
         bind(reset, function () {
@@ -2801,7 +2818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.7';
+    var VERSION = '8.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
