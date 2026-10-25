@@ -6,6 +6,11 @@
  *  3) Три теми: Стандартна (LMX), HBO Max, Apple TV
  *  4) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
+ *
+ * Структура файлу (зверху вниз):
+ *  налаштування → наші ряди → порядок рядів і його екран → сторінка налаштувань → сторінки стрімінгів
+ *  → банер і плитки стрімінгів → допоміжне для карток → мітки → CSS (база, тема HBO, тема Apple TV)
+ *  → пошук даних картки → малювання на постері → сторінка фільму → запуск
  */
 (function () {
     'use strict';
@@ -508,7 +513,7 @@
     }
 
     // Прибираємо слабкі (1–2 з 10) та «не перекладені» (без опису) картки
-    function cleanResults(list, skipText, keepFresh) {
+    function cleanResults(list, skipText) {
         var min = parseInt(getStr('lmx_min_rating', '3'), 10) || 0;
         var strict = market();
         return (list || []).filter(function (c) {
@@ -603,7 +608,7 @@
                 call({ title: row.title, results: all, url: pick[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
             }
             pick.forEach(function (cat, i) {
-                Lampa.Api.sources.tmdb.get(cat.url, { page: 1 }, function (j) {
+                tget(cat.url, { page: 1 }, function (j) {
                     got[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; });
                     fin();
                 }, function () { got[i] = []; fin(); });
@@ -635,7 +640,7 @@
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 cats.forEach(function (c, i) {
-                    Lampa.Api.sources.tmdb.get(c.url, { page: 1 }, function (j) {
+                    tget(c.url, { page: 1 }, function (j) {
                         res[i] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
                         fin();
                     }, function () { res[i] = []; fin(); });
@@ -696,6 +701,31 @@
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
     }
 
+    // Кеш запитів до TMDB у пам'яті (8 хв) + об'єднання однакових запитів, що летять одночасно — головна відкривається швидше
+    var tcache = {}, tpend = {};
+    function tclone(j) {
+        if (!j || !j.results || !j.results.slice) return j;
+        var o = {}, k;
+        for (k in j) o[k] = j[k];
+        o.results = j.results.map(function (m) { var c = {}, q; for (q in m) c[q] = m[q]; return c; });
+        return o;
+    }
+    function tget(url, params, ok, fail) {
+        var key = url + '|' + JSON.stringify(params || {}), now = Date.now();
+        var c = tcache[key];
+        if (c && now - c.t < 480000) { setTimeout(function () { ok(tclone(c.j)); }, 0); return; }
+        if (tpend[key]) { tpend[key].push([ok, fail]); return; }
+        tpend[key] = [[ok, fail]];
+        Lampa.Api.sources.tmdb.get(url, params || {}, function (j) {
+            var q = tpend[key]; delete tpend[key];
+            if (j) tcache[key] = { t: Date.now(), j: j };
+            q.forEach(function (x) { try { x[0](tclone(j)); } catch (e) {} });
+        }, function (err) {
+            var q = tpend[key]; delete tpend[key];
+            q.forEach(function (x) { try { if (x[1]) x[1](err); } catch (e) {} });
+        });
+    }
+
     function heroCall(row) {
         return function (call) {
             var src = getStr('lmx_hero_src', 'mix');
@@ -740,7 +770,12 @@
                     list.push(m);
                 });
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
-                list = list.slice(0, getStr('lmx_theme', 'default') === 'apple' ? 7 : 12);
+                // «гучні» прем'єри (особливо «скоро») не мають вилітати через ліміт — беремо їх першими, решту добираємо за популярністю
+                var lim = getStr('lmx_theme', 'default') === 'apple' ? 8 : 12;
+                var tg = list.filter(function (m) { return m.__tag === 'soon'; }).concat(list.filter(function (m) { return m.__tag === 'new'; })).slice(0, lim - 2);
+                var rest = list.filter(function (m) { return !m.__tag; });
+                list = tg.concat(rest.slice(0, lim - tg.length));
+                list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 if (!list.length) return call();
                 var items = list.map(function (m) {
                     var it = {};
@@ -782,7 +817,7 @@
                 call({ title: HERO_TITLES[src] || HERO_TITLES.mix, results: items, params: { items: { mapping: 'line', view: 15 } } });
             }
             srcs.forEach(function (x) {
-                Lampa.Api.sources.tmdb.get(x[0], { page: 1 }, function (j) {
+                tget(x[0], { page: 1 }, function (j) {
                     (j && j.results || []).forEach(function (m) { if (x[1] && !m.media_type) m.media_type = x[1]; if (x[3]) m.__hype = x[3]; all.push(m); });
                     fin();
                 }, function () { fin(); });
@@ -822,7 +857,7 @@
                 });
                 call({ title: row.title, results: items, params: { items: { mapping: 'line', view: 15 } } });
             }
-            Lampa.Api.sources.tmdb.get('watch/providers/movie?watch_region=UA', {}, function (j) {
+            tget('watch/providers/movie?watch_region=UA', {}, function (j) {
                 ((j && j.results) || []).forEach(function (p) { logos[p.provider_id] = p.logo_path; });
                 done();
             }, function () { done(); });
@@ -860,7 +895,7 @@
             }
             base.forEach(function (c) {
                 var kind = (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie';
-                Lampa.Api.sources.tmdb.get(kind + '/' + c.id + '/recommendations', { page: 1 }, function (j) {
+                tget(kind + '/' + c.id + '/recommendations', { page: 1 }, function (j) {
                     cleanResults(j && j.results, false).forEach(function (r) {
                         if (!r.poster_path || watched[r.id]) return;
                         r.media_type = kind;
@@ -887,8 +922,8 @@
                 function next() {
                     if (i >= urls.length) return done();
                     var url = urls[i++];
-                    Lampa.Api.sources.tmdb.get(url, { page: 1 }, function (json) {
-                        var list = cleanResults(json && json.results, row.ua, row.name === 'LmxNowPlaying' || row.name === 'LmxUpcoming');
+                    tget(url, { page: 1 }, function (json) {
+                        var list = cleanResults(json && json.results, row.ua);
                         if (list.length && (!best || list.length > best.list.length)) best = { list: list, url: url, pages: json.total_pages || 1 };
                         if (best && best.list.length >= (row.minCount || 1)) return done();
                         next();
@@ -918,15 +953,11 @@
     // ===== ДОПОМІЖНЕ ДЛЯ КАРТОК =====
     var MAX_PARALLEL = 3;
     var CACHE_MIN = 1440;
-    var RE_YEAR = /^\s*(19|20)\d\d\s*$/;
-    var RE_RATING = /^\s*\d{1,2}([.,]\d)?\s*$/;
-    var RE_TYPE = /^\s*(Фільм|Фильм|Серіал|Сериал)\s*$/i;
     var RE_NATIVE_TV = /^\s*(TV|ТВ)\s*$/i;
 
     var mem = {};
     var queue = [];
     var active = 0;
-    var found = 0, withData = 0, rendered = 0;
     var hiddenEls = [];
 
     function typeOf(d) {
@@ -1010,22 +1041,8 @@
         if (n !== null && n > 0) return { t: 'Скоро', c: 'soon' };
         return null;
     }
-    function movieStripe(d) {
-        var n = dayDiff(d.release_date);
-        if (n === null) return null;
-        return n <= 0 ? 'done' : 'soon';
-    }
-    function tvStripe(j) {
-        var st = j.status;
-        if (st === 'Returning Series') return 'next';
-        if (st === 'Ended') return 'done';
-        if (st === 'Canceled') return 'bad';
-        return 'soon';
-    }
-
     // ===== CSS =====
     function buildCss() {
-        var st = 'cinema';
         var fs = SIZES[getStr('lmx_size', 'm')] || SIZES.m;
         var cNext = COLORS[getStr('lmx_c_next', 'orange')] || COLORS.orange;
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
@@ -1033,30 +1050,14 @@
         var nNext = RGB[getStr('lmx_c_next', 'orange')] ? getStr('lmx_c_next', 'orange') : 'orange';
         var nSoon = RGB[getStr('lmx_c_soon', 'blue')] ? getStr('lmx_c_soon', 'blue') : 'blue';
 
-        var pill;
-        if (st === 'glass') {
-            pill = 'background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.38);';
-        } else if (st === 'minimal') {
-            pill = 'background:none;padding:.1em .2em;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8);';
-        } else {
-            pill = 'background:rgba(0,0,0,.62);';
-        }
-        var ringBg = st === 'glass' ? 'rgba(0,0,0,.45)' : 'rgba(0,0,0,.62)';
         function markCss(cls, nm) {
-            var sel = '.lmx-pill.lmx-m-' + cls;
-            if (st === 'cinema') return sel + '{background:' + rgba(nm, 0.62) + ';border:1px solid ' + rgba(nm, 0.9) + '}';
-            if (st === 'glass') return sel + '{background:' + rgba(nm, 0.42) + ';border:1px solid ' + rgba(nm, 0.95) + '}';
-            if (st === 'minimal') return sel + '{background:none;border:0;padding:.1em .2em;color:' + rgba(nm, 1) + '}';
-            return sel + '{background:' + rgba(nm, 0.96) + '}';
+            return '.lmx-pill.lmx-m-' + cls + '{background:' + rgba(nm, 0.62) + ';border:1px solid ' + rgba(nm, 0.9) + '}';
         }
 
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
-            '.lmx-tr.lmx-low{top:2.6em}' +
-            '.lmx-bl{position:absolute;left:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
-            '.lmx-br{position:absolute;right:.4em;bottom:.4em;z-index:3;pointer-events:none}' +
-            '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;' + pill + '}' +
+            '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'purple') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
             '.lmx-ord__row:nth-child(even){background:rgba(255,255,255,.06)}' +
@@ -1067,15 +1068,6 @@
             '.lmx-ord__off{opacity:.5}' +
             '.lmx-ord__reset{margin-top:.8em;padding:.8em 1em;border-radius:.5em;text-align:center;background:rgba(255,255,255,.08)}' +
             '.lmx-ord__reset.focus{background:#fff;color:#000}' +
-            '.lmx-ring{position:relative;display:inline-block;width:2.8em;height:2.8em;font-size:' + fs + 'em;border-radius:50%;background:' + ringBg + '}' +
-            '.lmx-ring svg{position:absolute;left:0;top:0;width:100%;height:100%}' +
-            '.lmx-ring span{position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:.85em;font-weight:700;color:#fff}' +
-            '.lmx-num{display:inline-block;font-size:' + (fs * 1.3).toFixed(2) + 'em;line-height:1;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.8)}' +
-            '.lmx-stripe{position:absolute;left:0;right:0;bottom:0;height:.3em;z-index:3;pointer-events:none}' +
-            '.lmx-st-next{background:' + cNext + '}' +
-            '.lmx-st-done{background:' + cDone + '}' +
-            '.lmx-st-soon{background:' + cSoon + '}' +
-            '.lmx-st-bad{background:' + COLORS.red + '}' +
             '.lmx-head-moved{display:none !important}' +
             '.lmx-info{display:flex;flex-wrap:wrap;gap:.5em;margin:.8em 0}' +
             '.lmx-ip{font-size:1.1em;line-height:1;padding:.45em .8em;border-radius:.6em;background:rgba(255,255,255,.12);color:#fff}' +
@@ -1083,8 +1075,8 @@
             '.lmx-ip.lmx-done{background:' + cDone + '}' +
             '.lmx-ip.lmx-soon{background:' + cSoon + '}' +
             '.lmx-ip.lmx-bad{background:' + COLORS.red + '}' +
-            (st === 'cinema' ?
-                '.lmx-stripe,.lmx-br,.lmx-bl{display:none !important}' +
+            // стиль карток «Кіно» (єдиний)
+            ''+
                 '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
@@ -1095,7 +1087,7 @@
                 '.lmx-cin__r{display:flex;justify-content:space-between;align-items:center;font-size:' + (0.9 * fs).toFixed(2) + 'em}' +
                 '.lmx-cin__v i{font-style:normal}.lmx-cin__y{opacity:.85}' +
                 // плашка «Переглянуто …» (історія): угору постера, щоб не накладалась на назву
-                '.card .card-watched{top:2.8em !important;bottom:auto !important;left:.5em !important;right:.5em !important;z-index:5;font-size:.8em}' : '') +
+                '.card .card-watched{top:2.8em !important;bottom:auto !important;left:.5em !important;right:.5em !important;z-index:5;font-size:.8em}' +
             (getStr('lmx_card_size', 'm') !== 'm' ?
                 '.items-line .card:not(.card--lmxhero):not(.card--lmxstudio){width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '19.5em' : '17em') + ' !important}' : '') +
             fullCss() +
@@ -1431,41 +1423,11 @@
         return null;
     }
 
-    function isOurs(n) {
-        return !!(n.closest && n.closest('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-cin'));
-    }
-    function findLeaf(view, re) {
-        var all = view.querySelectorAll('*');
-        for (var i = 0; i < all.length; i++) {
-            var n = all[i];
-            if (n.children.length === 0 && n.offsetWidth > 0 && !isOurs(n) && re.test(n.textContent)) return n;
-        }
-        return null;
-    }
-    // елемент-«плашка» з фоном навколо тексту (щоб ховати плашку, а не лише текст)
-    function pillOf(leaf, view) {
-        var txt = leaf.textContent.trim(), el = leaf;
-        while (el && el !== view) {
-            var bg = window.getComputedStyle(el).backgroundColor;
-            if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return el;
-            var p = el.parentElement;
-            if (!p || p === view || p.textContent.trim() !== txt) break;
-            el = p;
-        }
-        return leaf;
-    }
     function hideEl(el) {
         el.style.display = 'none';
         hiddenEls.push(el);
     }
 
-    function hideLeaves(view, re) {
-        var all = view.querySelectorAll('*');
-        for (var i = 0; i < all.length; i++) {
-            var n = all[i];
-            if (n.children.length === 0 && re.test(n.textContent) && !isOurs(n)) hideEl(pillOf(n, view));
-        }
-    }
     // Стандартний значок «TV» — лише серед прямих дітей постера, без глибокого обходу й getComputedStyle (дешево)
     function hideNativeTv(view) {
         var ch = view.children;
@@ -1475,42 +1437,17 @@
             if (n.children.length < 2 && RE_NATIVE_TV.test(n.textContent)) hideEl(n);
         }
     }
-    function hideYear(el) {
-        var view = el.querySelector('.card__view');
-        if (view) hideLeaves(view, RE_YEAR);
-    }
-
     // ===== Малювання елементів на постері =====
     function addTo(view, cls, html) {
         var d = document.createElement('div');
         d.className = cls;
         d.innerHTML = html;
         view.appendChild(d);
-        rendered++;
-    }
-    function ratingHtml(v) {
-        var st = 'cinema';
-        var col = ratingColor(v);
-        if (st === 'glass') {
-            var C = 2 * Math.PI * 12;
-            var len = Math.max(0.05, Math.min(1, v / 10)) * C;
-            return '<span class="lmx-ring"><svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3"/>' +
-                '<circle cx="15" cy="15" r="12" fill="none" stroke="' + col + '" stroke-width="3" stroke-linecap="round" stroke-dasharray="' +
-                len.toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 15 15)"/></svg><span>' + v.toFixed(1) + '</span></span>';
-        }
-        if (st === 'minimal') return '<span class="lmx-num" style="color:' + col + '">' + v.toFixed(1) + '</span>';
-        return '<span class="lmx-pill" style="background:' + col + '">' + v.toFixed(1) + '</span>';
     }
     function addMark(view, m) {
         if (!m || !getBool('lmx_marks', true) || view.querySelector('.lmx-tr')) return;
-        var low = '';
-        addTo(view, 'lmx-tr' + low, '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>');
+        addTo(view, 'lmx-tr', '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>');
     }
-    function addStripe(view, kind) {
-        if (!kind || 'cinema' !== 'glass' || view.querySelector('.lmx-stripe')) return;
-        addTo(view, 'lmx-stripe lmx-st-' + kind, '');
-    }
-
     var GENRES = { 28: 'Бойовик', 12: 'Пригоди', 16: 'Мультфільм', 35: 'Комедія', 80: 'Кримінал', 99: 'Документальний', 18: 'Драма', 10751: 'Сімейний',
         14: 'Фентезі', 36: 'Історія', 27: 'Жахи', 10402: 'Музика', 9648: 'Детектив', 10749: 'Мелодрама', 878: 'Фантастика', 10770: 'ТВ-фільм',
         53: 'Трилер', 10752: 'Військовий', 37: 'Вестерн', 10759: 'Бойовик', 10762: 'Дитячий', 10763: 'Новини', 10764: 'Реаліті',
@@ -1535,44 +1472,16 @@
         addTo(view, 'lmx-cin', html);
     }
 
-    // Рейтинг, мітка Фільм/Серіал (лише якщо її немає), для фільмів ще мітка «Новинка» і смужка
+    // Картка: «кіно»-підпис (жанр, назва, рейтинг, рік) і мітка «Новинка/Скоро» для фільмів
     function extras(el, d, type) {
         var view = el.querySelector('.card__view');
         if (!view) return;
-        var v = Number(d.vote_average) || 0;
-
         hideNativeTv(view);
-
-        if ('cinema' === 'cinema') {
-            // стандартні підписи ховає CSS (без обчислень у JS — так легше для ТВ)
-            cinemaOverlay(view, d, type);
-            if (type === 'movie') addMark(view, movieMark(d));
-            return;
-        }
-
-        if (v > 0) {
-            var ratingLeaf = findLeaf(view, RE_RATING);
-            var has = !!view.querySelector('.lmx-br');
-            if (ratingLeaf) {
-                // стандартний рейтинг міг з'явитися пізніше за наш — тоді ховаємо його
-                hideEl(pillOf(ratingLeaf, view));
-                if (!has) addTo(view, 'lmx-br', ratingHtml(v));
-            } else if (!ratingLeaf && !has) {
-                addTo(view, 'lmx-br', ratingHtml(v));
-            }
-        }
-
-        if (!findLeaf(view, RE_TYPE) && !view.querySelector('.lmx-bl')) {
-            addTo(view, 'lmx-bl', '<span class="lmx-pill">' + (type === 'tv' ? 'Серіал' : 'Фільм') + '</span>');
-        }
-
-        if (type === 'movie') {
-            addMark(view, movieMark(d));
-            addStripe(view, movieStripe(d));
-        }
+        cinemaOverlay(view, d, type);
+        if (type === 'movie') addMark(view, movieMark(d));
     }
 
-    // Серіали: значок С3Е24, мітки «Нова серія»/«Сьогодні», смужка статусу
+    // Серіали: значок С3Е24 і мітки «Нова серія»/«Сьогодні»
     function renderTv(el, j) {
         var view = el.querySelector('.card__view');
         if (!view) return;
@@ -1581,7 +1490,6 @@
             addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(st.s, st.e) + '</span>');
         }
         addMark(view, tvMark(j));
-        addStripe(view, tvStripe(j));
     }
 
     function load(id, cb) {
@@ -1646,16 +1554,9 @@
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
             if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio')) return;
-            found++;
-
-            if (getBool('lmx_hide_year', true) && 'cinema' !== 'cinema') {
-                hideYear(el);
-                addWork({ el: el, fast: !el.closest('.category-full'), due: Date.now() + 700, fn: function () { hideYear(el); } });
-            }
 
             var d = getData(el);
             if (!d) return;
-            withData++;
             var type = typeOf(d);
 
             // Головна — майже одразу; екран «Ще» (довгі списки) — легше й із затримкою
@@ -1681,11 +1582,10 @@
     function resetCards() {
         hiddenEls.forEach(function (e) { e.style.display = ''; });
         hiddenEls = [];
-        var mine = document.querySelectorAll('.lmx-box,.lmx-bl,.lmx-br,.lmx-tr,.lmx-stripe,.lmx-cin');
+        var mine = document.querySelectorAll('.lmx-box,.lmx-tr,.lmx-cin');
         for (var i = 0; i < mine.length; i++) mine[i].parentNode.removeChild(mine[i]);
         var cards = document.querySelectorAll('.card[data-lmx]');
         for (var k = 0; k < cards.length; k++) cards[k].removeAttribute('data-lmx');
-        found = 0; withData = 0; rendered = 0;
         schedule();
     }
 
