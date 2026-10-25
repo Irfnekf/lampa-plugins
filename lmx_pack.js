@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.0 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2330,7 +2330,7 @@
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
     var CLOSEI = BI('<path d="M6 6l12 12M18 6L6 18"/>');
 
-    var btnLast = null, btnRun = null, btnPageIds = [], btnVirtual = null, watchCap = null;
+    var btnLast = null, btnRun = null, btnPageIds = [], btnScanNow = null, watchCap = null;
 
     function iconByKey(k) { for (var i = 0; i < BTN_ICONS.length; i++) if (BTN_ICONS[i][0] === k) return BTN_ICONS[i]; return null; }
     function strHash(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h).toString(36); }
@@ -2396,6 +2396,7 @@
     function btnApply(r) {
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length) return;
+        btnVirtualize(r, cont);
         var m = bmGet(), list = btnCollect(cont, r), known = knownGet(), changed = false, map = {}, inFolder = {};
         list.forEach(function (b) {
             var k = known[b.id];
@@ -2535,40 +2536,60 @@
         if (p.outerHTML) return p.outerHTML;
         return BTN_ICONS[0][2];
     }
-    function btnVirtualize(r, cont, cb) {
-        var host = cont.find('.full-start__button').not('.lmx-edit, .lmx-folder, .lmx-virt');
-        var m = bmGet(), prim = null;
-        host.each(function () { if (!prim && this.__lmxId === m.first) prim = this; });
-        if (!prim) prim = host[0];
-        if (!getBool('lmx_btn_all', false)) { cont.find('.lmx-virt').remove(); return cb && cb(0); }
-        if (cont.find('.lmx-virt').length) return cb && cb(cont.find('.lmx-virt').length);
-        if (!prim || !/smart online|дивитись|дивись|смотреть|watch/i.test(String(prim.__lmxT || btnTitleOf(prim)))) return cb && cb(0);
+    function watchBtnOf(cont) {
+        var el = null;
+        cont.find('.full-start__button').not('.lmx-edit, .lmx-folder, .lmx-virt').each(function () {
+            if (!el && /(^|\s)button--play(\s|$)/.test(String(this.className || ''))) el = this;
+        });
+        if (!el) cont.find('.full-start__button').not('.lmx-edit, .lmx-folder, .lmx-virt').each(function () {
+            if (!el && /^(дивитись|дивись|смотреть|watch)$/i.test(String(this.__lmxT || btnTitleOf(this)))) el = this;
+        });
+        return el;
+    }
+    // Знімає меню кнопки «Дивитись» (лише за явною дією користувача) і ховає його, щоб воно не відкривалось
+    function btnCaptureMenu(cont, cb) {
+        var w = watchBtnOf(cont);
+        if (!w) return cb(null);
         watchCap = { o: null };
-        try { $(prim).trigger('hover:enter'); } catch (e) {}
+        try { $(w).trigger('hover:enter'); } catch (e) {}
         var cap = watchCap;
-        setTimeout(function () {
-            watchCap = null;
-            var o = cap.o, n = 0;
-            if (o && o.items && document.body.contains(cont[0])) {
-                o.items.forEach(function (it) {
-                    if (!it || !it.title) return;
-                    var title = String(it.title).replace(/<[^>]*>/g, '').trim(), sub = String(it.subtitle || '').replace(/<[^>]*>/g, '').trim();
-                    var html = picHtml(it.picture || it.icon || it.img || it.image);
-                    var el = $('<div class="full-start__button selector lmx-virt"></div>').html(html + '<span></span>');
-                    el.find('span').text(title);
-                    el[0].__lmxT = title; el[0].__lmxS = html; el[0].__lmxSub = sub;
-                    el[0].__lmxId = 'v:' + strHash(title + '|' + sub);
-                    el.on('hover:enter', function () {
-                        var enabled = Lampa.Controller.enabled().name;
-                        Lampa.Controller.toggle(enabled);
-                        setTimeout(function () { try { if (o.onSelect) o.onSelect(it); } catch (e) { console.error('LMX virt', e); } }, 40);
-                    });
-                    cont.append(el);
-                    n++;
+        setTimeout(function () { watchCap = null; cb(cap.o); }, 250);
+    }
+    function norm(t) { return String(t || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); }
+    function menuGet() { var a = jsonStore('lmx_btn_menu', []); return Array.isArray(a) ? a : []; }
+    // Зберігаємо опис пунктів меню; саму сторінку при відкритті ніщо не натискає
+    function btnScan(cont, cb) {
+        btnCaptureMenu(cont, function (o) {
+            var out = [];
+            if (o && o.items) o.items.forEach(function (it) {
+                if (!it || !it.title) return;
+                out.push({ t: norm(it.title), sub: norm(it.subtitle), h: picHtml(it.picture || it.icon || it.img || it.image) });
+            });
+            if (out.length) Lampa.Storage.set('lmx_btn_menu', out);
+            cb(out.length);
+        });
+    }
+    function btnVirtualize(r, cont) {
+        var list = getBool('lmx_btn_all', false) ? menuGet() : [];
+        if (!list.length) { cont.find('.lmx-virt').remove(); return; }
+        if (cont.find('.lmx-virt').length) return;
+        list.forEach(function (d) {
+            var el = $('<div class="full-start__button selector lmx-virt"></div>').html(d.h + '<span></span>');
+            el.find('span').text(d.t);
+            el[0].__lmxT = d.t; el[0].__lmxS = d.h; el[0].__lmxSub = d.sub || '';
+            el[0].__lmxId = 'v:' + strHash(d.t + '|' + (d.sub || ''));
+            el.on('hover:enter', function () {
+                var enabled = Lampa.Controller.enabled().name;
+                btnCaptureMenu(cont, function (o) {
+                    var it = null;
+                    if (o && o.items) o.items.forEach(function (x) { if (!it && x && norm(x.title) === d.t && norm(x.subtitle) === (d.sub || '')) it = x; });
+                    Lampa.Controller.toggle(enabled);
+                    if (!it) { if (Lampa.Noty) Lampa.Noty.show('Ця кнопка зараз недоступна'); return; }
+                    setTimeout(function () { try { if (o.onSelect) o.onSelect(it); } catch (e) { console.error('LMX virt', e); } }, 40);
                 });
-            }
-            cb && cb(n);
-        }, 250);
+            });
+            cont.append(el);
+        });
     }
 
     function btnsOnFull(r) {
@@ -2588,9 +2609,7 @@
         }
         btnLast = r; btnRun = run;
         run(true);
-        function tryVirt(cb) { btnVirtualize(r, cont, function (n) { if (n || !getBool('lmx_btn_all', false)) run(true); if (cb) cb(n); }); }
-        btnVirtual = tryVirt;
-        if (getBool('lmx_btn_all', false)) [700, 2000, 4500].forEach(function (ms) { setTimeout(function () { if (document.body.contains(node) && !cont.find('.lmx-virt').length) tryVirt(); }, ms); });
+        btnScanNow = function (cb) { btnScan(cont, cb); };
         var mo = new MutationObserver(function () {
             if (busy) return;
             clearTimeout(timer);
@@ -2811,10 +2830,13 @@
             var on = !getBool('lmx_btn_all', false);
             Lampa.Storage.set('lmx_btn_all', on ? 'true' : 'false');
             allText();
-            if (btnVirtual) btnVirtual(function (n) {
+            function after(n) {
                 if (on && Lampa.Noty) Lampa.Noty.show(n ? 'Додано кнопок із меню «Дивитись»: ' + n : 'У меню «Дивитись» нічого не знайдено');
-                if (n || !on) reopen();
-            });
+                safe(function () { if (btnRun) btnRun(true); });
+                reopen();
+            }
+            if (on && btnScanNow) btnScanNow(function (n) { after(n || menuGet().length); });
+            else after(0);
         });
         var compactRow = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Підпис лише в перших трьох кнопок і в тієї, що вибрана (стандартна тема)</span></div>');
         function compactText() { compactRow.find('b').text('Компактні кнопки: ' + (getBool('lmx_btn_compact', true) ? 'так' : 'ні')); }
@@ -2851,7 +2873,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.9';
+    var VERSION = '9.0';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
