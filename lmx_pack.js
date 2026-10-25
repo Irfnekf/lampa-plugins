@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.7 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -583,7 +583,6 @@
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підпис лише в перших трьох і в тієї, що вибрана. У HBO Max і Apple TV кнопки завжди компактні', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
-        H.trigger('lmx_btn_all', false, 'Показувати всі кнопки', 'Виводить у ряд і ті кнопки, що Lampa ховає й показує лише в меню «Дивитись». Діє при наступному відкритті сторінки', null);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -2342,6 +2341,8 @@
     }
     function bmGet() {
         var o = jsonStore('lmx_btns', {});
+        // нові стабільні id кнопок: старі налаштування скидаємо один раз
+        if (o.v !== 2) { o = { v: 2 }; Lampa.Storage.set('lmx_btn_known', {}); Lampa.Storage.set('lmx_btns', o); }
         o.order = o.order || []; o.hidden = o.hidden || []; o.colors = o.colors || {}; o.icons = o.icons || {};
         o.names = o.names || {}; o.modes = o.modes || {}; o.folders = o.folders || []; o.color = o.color || ''; o.look = o.look || ''; o.first = o.first || '';
         return o;
@@ -2360,8 +2361,9 @@
     }
     function btnIdOf(el) {
         var cls = String(el.className || '').split(/\s+/), i, c;
-        for (i = 0; i < cls.length; i++) { c = cls[i]; if (/^(view--|button--)/.test(c) && c !== 'button--priority') return c; }
-        return 't_' + strHash(el.__lmxT || btnTitleOf(el) || 'x');
+        var t = String(el.__lmxT || btnTitleOf(el) || '').toLowerCase();
+        for (i = 0; i < cls.length; i++) { c = cls[i]; if (/^(view--|button--)/.test(c) && c !== 'button--priority') return c + (t ? '|' + strHash(t) : ''); }
+        return 't_' + strHash(t || 'x');
     }
     function btnCollect(cont, r) {
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
@@ -2513,9 +2515,14 @@
                     var m = bmGet(), known = knownGet(), off = {};
                     m.hidden.forEach(function (id) {
                         if (id.indexOf('f:') === 0) return;
-                        [m.names[id], known[id] && known[id].t, BTN_NAMES[id.replace(/#+$/, '')]].forEach(function (t) {
+                        [m.names[id], known[id] && known[id].t, BTN_NAMES[id.replace(/#+$/, '').split('|')[0]]].forEach(function (t) {
                             if (t) off[String(t).replace(/\s+/g, ' ').trim().toLowerCase()] = 1;
                         });
+                    });
+                    m.hidden.length || (off = {});
+                    Object.keys(known).forEach(function (id) {
+                        if (m.hidden.indexOf(id) >= 0 || id.indexOf('f:') === 0) return;
+                        [m.names[id], known[id] && known[id].t].forEach(function (t) { if (t) delete off[String(t).replace(/\s+/g, ' ').trim().toLowerCase()]; });
                     });
                     if (Object.keys(off).length) {
                         var left = o.items.filter(function (it) {
@@ -2576,7 +2583,7 @@
         function isF(t) { return t.indexOf('f:') === 0; }
         function titleOf(t) {
             if (isF(t)) { var f = findF(t.slice(2)); return f ? f.name : ''; }
-            return m.names[t] || (known[t] && known[t].t) || BTN_NAMES[t.replace(/#+$/, '')] || t;
+            return m.names[t] || (known[t] && known[t].t) || BTN_NAMES[t.replace(/#+$/, '').split('|')[0]] || t;
         }
         function svgOf(t) {
             var ic = iconByKey(m.icons[t]);
@@ -2760,7 +2767,14 @@
                 m.look = it.l; save(); lookText();
             });
         });
-        top.append(mk, col, look);
+        var allRow = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Виводить у ряд і ті кнопки, що Lampa ховає й показує лише в меню «Дивитись»</span></div>');
+        function allText() { allRow.find('b').text('Показувати всі кнопки: ' + (getBool('lmx_btn_all', false) ? 'так' : 'ні')); }
+        allText();
+        bind(allRow, function () {
+            Lampa.Storage.set('lmx_btn_all', getBool('lmx_btn_all', false) ? 'false' : 'true');
+            allText();
+        });
+        top.append(mk, col, look, allRow);
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
         bind(reset, function () {
@@ -2787,7 +2801,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.6';
+    var VERSION = '8.7';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
