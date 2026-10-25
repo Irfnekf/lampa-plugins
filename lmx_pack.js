@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2503,7 +2503,35 @@
         safe(function () { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); });
     }
 
+    // Меню «Дивитись» збирає кнопки саме: прибираємо з нього ті, що вимкнено в нашому налаштуванні
+    function patchSelectHidden() {
+        if (!Lampa.Select || !Lampa.Select.show || Lampa.Select.__lmxP) return;
+        var orig = Lampa.Select.show;
+        Lampa.Select.show = function (o) {
+            try {
+                if (o && o.items && o.items.length > 1 && Lampa.Controller.enabled().name === 'full_start') {
+                    var m = bmGet(), known = knownGet(), off = {};
+                    m.hidden.forEach(function (id) {
+                        if (id.indexOf('f:') === 0) return;
+                        [m.names[id], known[id] && known[id].t, BTN_NAMES[id.replace(/#+$/, '')]].forEach(function (t) {
+                            if (t) off[String(t).replace(/\s+/g, ' ').trim().toLowerCase()] = 1;
+                        });
+                    });
+                    if (Object.keys(off).length) {
+                        var left = o.items.filter(function (it) {
+                            return !(it && it.title && off[String(it.title).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().toLowerCase()]);
+                        });
+                        if (left.length && left.length < o.items.length) o.items = left;
+                    }
+                }
+            } catch (e) {}
+            return orig.apply(this, arguments);
+        };
+        Lampa.Select.__lmxP = true;
+    }
+
     function btnsOnFull(r) {
+        safe(patchSelectHidden);
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length || !window.$) return;
         var node = cont[0], timer = 0, busy = false;
@@ -2759,7 +2787,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.5';
+    var VERSION = '8.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
