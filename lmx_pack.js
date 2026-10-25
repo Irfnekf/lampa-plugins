@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2365,6 +2365,7 @@
         for (i = 0; i < cls.length; i++) { c = cls[i]; if (/^(view--|button--)/.test(c) && c !== 'button--priority') return c + (t ? '|' + strHash(t) : ''); }
         return 't_' + strHash(t || 'x');
     }
+    var btnUid = 0;
     function btnCollect(cont, r) {
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
         els.forEach(function (el) { if (el.__lmxId != null) seen[el.__lmxId] = 1; });
@@ -2378,7 +2379,8 @@
                 seen[id] = 1;
                 el.__lmxId = id;
             }
-            out.push({ el: el, id: el.__lmxId, t: el.__lmxT, s: el.__lmxS });
+            if (!el.__lmxU) el.__lmxU = ++btnUid;
+            out.push({ el: el, id: el.__lmxId, t: el.__lmxT, s: el.__lmxS, u: el.__lmxU });
         });
         return out;
     }
@@ -2452,19 +2454,14 @@
         cont.find('.lmx-folder, .lmx-edit').remove();
         m.folders.forEach(function (f) { (f.items || []).forEach(function (id) { inFolder[id] = f.id; }); });
 
-        // Поки «Показувати всі кнопки» вимкнено, перша кнопка стоїть першою й лишається великою білою (стиль теми).
-        // Коли ввімкнено — вона така ж, як усі, і налаштовується цифрами 1/2/3
+        // «Показувати всі кнопки» вимкнено: порядок задає сама Lampa (довге натискання на кнопку виносить її першою),
+        // перша кнопка лишається великою (стиль теми). Увімкнено: усі кнопки рівні, порядок і розмір — наші
         var allOn = getBool('lmx_btn_all', false);
-        var custom = m.order.length > 0 || m.folders.length > 0;
+        var reorder = allOn && (m.order.length > 0 || m.folders.length > 0);
         var ids = list.map(function (b) { return b.id; });
-        if (!custom) {
-            if (ids[0] && m.first !== ids[0]) { m.first = ids[0]; bmSave(m); }
-        } else if (!m.first || ids.indexOf(m.first) < 0) {
-            m.first = ids[0] || '';
-        }
-        var primary = m.first;
+        var primary = allOn ? '' : (ids[0] || '');
         function modeOf(id) {
-            if (id === primary && !allOn) return '';
+            if (id === primary) return '';
             return m.modes[id] || (m.look === 'full' ? '3' : (m.look === 'icons' ? '1' : (allOn ? '1' : '')));
         }
         function setMode(el, d) {
@@ -2490,7 +2487,7 @@
             else if (m.names[id]) { span = document.createElement('span'); span.textContent = nm; el.appendChild(span); }
             paint(el, m.colors[id] || m.color);
             setMode(el, modeOf(id));
-            el.classList.toggle('lmx-primary', id === primary && !allOn);
+            el.classList.toggle('lmx-primary', id === primary);
             var off = m.hidden.indexOf(id) >= 0 || !!inFolder[id];
             el.classList.toggle('lmx-bh', off);
             el.classList.toggle('selector', !off);
@@ -2524,10 +2521,8 @@
             fEls[tk] = fe[0];
         });
 
-        // Порядок чіпаємо лише коли його змінив користувач; інакше лишається так, як розставила Lampa і її плагіни
         var toks = btnTokens(m, ids);
-        if (custom) {
-            if (primary && !allOn) toks = [primary].concat(toks.filter(function (x) { return x !== primary; }));
+        if (reorder) {
             toks.forEach(function (t) {
                 var el = map[t] || fEls[t];
                 if (el) cont.append(el);
@@ -2535,8 +2530,8 @@
         } else {
             Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
         }
-        cont[0].__lmxWant = (custom && !(primary && !allOn && false)) ? toks.filter(function (t) { return map[t] || fEls[t]; }) : null;
-        btnPageIds = custom ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
+        cont[0].__lmxWant = reorder ? toks.filter(function (t) { return map[t] || fEls[t]; }) : null;
+        btnPageIds = reorder ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
         var ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
         ed.on('hover:enter', function () { openButtonsEditor(); });
         cont.append(ed);
@@ -2647,7 +2642,8 @@
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length || !window.$) return;
         var node = cont[0], timer = 0, busy = false;
-        function sig() { return btnCollect(cont, r).map(function (b) { return b.id + ':' + b.t; }).sort().join('|'); }
+        // у підпис входить і «номер» самого елемента: якщо чужий плагін перестворив кнопку, її стилізуємо знову
+        function sig() { return btnCollect(cont, r).map(function (b) { return b.id + ':' + b.t + ':' + b.u; }).sort().join('|'); }
         function orderBad() {
             var want = node.__lmxWant;
             if (!want || !want.length) return false;
@@ -2692,7 +2688,7 @@
         var m = bmGet(), lastFire = 0;
         var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
         wrap.append(top, listEl, bottom);
-        var first = m.first && ids.indexOf(m.first) >= 0 ? m.first : '';
+        var first = btnPageIds[0] || '';
 
         function save() { bmSave(m); }
         function findF(id) { for (var i = 0; i < m.folders.length; i++) if (m.folders[i].id === id) return m.folders[i]; return null; }
@@ -2771,8 +2767,8 @@
         }
         function move(t, d, btnEl) {
             var row = rowOf(t), sib = d < 0 ? row.prev() : row.next();
-            if (row.attr('data-lock')) { if (Lampa.Noty) Lampa.Noty.show('Велика кнопка стоїть першою, поки «Показувати всі кнопки» вимкнено'); return; }
-            if (!sib.length || sib.attr('data-lock')) return;
+            if (!getBool('lmx_btn_all', false)) { if (Lampa.Noty) Lampa.Noty.show('Порядок налаштовується, коли ввімкнено «Показувати всі кнопки». Поки вимкнено — довге натискання на кнопку в меню «Дивитись» виносить її першою'); return; }
+            if (!sib.length) return;
             if (d < 0) row.insertBefore(sib); else row.insertAfter(sib);
             saveOrderFromDom();
             followFocus(btnEl);
@@ -2782,7 +2778,7 @@
             var row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
             row.append($('<div class="lmx-be__ico"></div>').html(svgOf(t)));
             var nm = $('<div class="lmx-ord__name"></div>').append($('<span></span>').text(titleOf(t)));
-            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Велика біла кнопка, поки «Показувати всі кнопки» вимкнено' : ((known[t] && known[t].sub) || '')));
+            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Перша кнопка сторінки — велика, поки «Показувати всі кнопки» вимкнено' : ((known[t] && known[t].sub) || '')));
             row.append(nm);
             if (lock) row.attr('data-lock', '1');
             var off = m.hidden.indexOf(t) >= 0;
@@ -2806,7 +2802,7 @@
                 if (k >= 0) m.hidden.splice(k, 1); else m.hidden.push(t);
                 save(); refresh(t);
             } else if (a === 'mode') {
-                if (t === first && !getBool('lmx_btn_all', false)) { if (Lampa.Noty) Lampa.Noty.show('Перша кнопка велика, поки «Показувати всі кнопки» вимкнено'); return; }
+                if (t === first && !getBool('lmx_btn_all', false)) { if (Lampa.Noty) Lampa.Noty.show('Перша кнопка велика, поки «Показувати всі кнопки» вимкнено. Розмір кнопок змінюється цифрами, коли воно ввімкнено'); return; }
                 var seq = ['1', '2', '3'], cur = m.modes[t] || '1';
                 m.modes[t] = seq[(seq.indexOf(cur) + 1) % seq.length];
                 save(); refresh(t);
@@ -2876,7 +2872,7 @@
                 m.color = it.c; save(); refreshAll();
             });
         });
-        var look = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Цифра біля кнопки: 1 — компактна (іконка), 2 — трохи ширша з підписом, 3 — з повним підписом. Перша велика кнопка змінюється цифрами лише коли ввімкнено «Показувати всі кнопки»</span></div>');
+        var look = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Цифра біля кнопки: 1 — компактна (іконка), 2 — трохи ширша з підписом, 3 — з повним підписом. Поки «Показувати всі кнопки» вимкнено, перша кнопка велика й порядок задає Lampa; коли ввімкнено — усе налаштовується тут</span></div>');
         function lookText() { look.find('b').text('Вигляд кнопок: ' + lookName()); }
         lookText();
         bind(look, function () {
@@ -2931,8 +2927,7 @@
         bind(done, close);
         bottom.append(reset, done);
 
-        var toks = btnTokens(m, ids);
-        if (first && !getBool('lmx_btn_all', false)) toks = [first].concat(toks.filter(function (x) { return x !== first; }));
+        var toks = getBool('lmx_btn_all', false) ? btnTokens(m, ids) : ids.concat(m.folders.map(function (f) { return 'f:' + f.id; }));
         toks.forEach(function (tk) { listEl.append(rowFor(tk)); });
         refreshAll();
         Lampa.Modal.open({ title: 'Порядок кнопок', html: wrap, size: 'medium', mask: true, onBack: close });
@@ -2941,7 +2936,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.4';
+    var VERSION = '9.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
