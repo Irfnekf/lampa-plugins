@@ -1165,7 +1165,7 @@
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
-                '.lmx-sel{display:none;position:fixed;left:0;top:0;z-index:50;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0;transition:opacity .2s ease;will-change:transform}' +
+                '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0}' +
                 '.lmx-sel.on{opacity:1}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
                 // фон застосунку під тему: стандартна — глибокий синьо-фіолетовий градієнт
@@ -1290,6 +1290,7 @@
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
             T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
             T + '.lmx-sel{display:block}' +
+            T + '.card:not(.card--lmxhero){position:relative}' +
             T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .5s cubic-bezier(.25,.8,.25,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
@@ -2024,47 +2025,52 @@
         if (tm && tm.unref) tm.unref();
     }
 
-    // HBO: біла рамка-виділення «пливе» між картками (як у застосунку). Одна рамка, лише transform + позиція картки (одне читання на кадр)
+    // HBO: біла рамка-виділення «пливе» між картками (як у застосунку).
+    // Рамка живе всередині картки, що в фокусі, тож рухається разом із рядом без жодних розрахунків на кадр;
+    // «ковзання» — це одноразова анімація зсуву від попереднього місця (FLIP): два виміри на кожну зміну фокуса
     function initSelector() {
         if (window.__lmxSel || !window.$) return;
         window.__lmxSel = true;
-        var box = null, cur = null, raf = 0, card = null, endAt = 0, startAt = 0, PAD = 5;
-        function hide() { if (box) box.classList.remove('on'); cur = null; card = null; }
-        function tick() {
-            raf = 0;
-            if (!card || !document.body.contains(card)) { hide(); return; }
-            if (!card.classList.contains('focus') && Date.now() > startAt + 300) { hide(); return; }
-            var v = card.querySelector('.card__view') || card;
-            var r = v.getBoundingClientRect();
-            if (!r.width) { hide(); return; }
-            var t = { x: r.left - PAD, y: r.top - PAD, w: r.width + 2 * PAD, h: r.height + 2 * PAD };
-            if (!cur) cur = { x: t.x, y: t.y, w: t.w, h: t.h };
-            else { cur.x += (t.x - cur.x) * 0.16; cur.y += (t.y - cur.y) * 0.16; cur.w += (t.w - cur.w) * 0.16; cur.h += (t.h - cur.h) * 0.16; }
-            box.style.transform = 'translate3d(' + cur.x.toFixed(1) + 'px,' + cur.y.toFixed(1) + 'px,0)';
-            box.style.width = cur.w.toFixed(1) + 'px';
-            box.style.height = cur.h.toFixed(1) + 'px';
-            box.classList.add('on');
-            var done = Math.abs(t.x - cur.x) < 0.5 && Math.abs(t.y - cur.y) < 0.5 && Math.abs(t.w - cur.w) < 0.5 && Math.abs(t.h - cur.h) < 0.5;
-            if (!done || Date.now() < endAt) raf = window.requestAnimationFrame(tick);
-        }
+        var box = null, cur = null;
+        function hide() { if (box) box.classList.remove('on'); cur = null; }
         function follow(el) {
             if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
             if (el.classList.contains('card--lmxhero')) { hide(); return; }
-            if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; document.body.appendChild(box); }
-            card = el;
-            startAt = Date.now();
-            endAt = startAt + 900;
-            if (!raf) raf = window.requestAnimationFrame(tick);
+            if (cur === el) return;
+            var view = el.querySelector('.card__view') || el;
+            if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
+            var prev = (box.parentNode && box.classList.contains('on')) ? box.getBoundingClientRect() : null;
+            box.style.transition = 'none';
+            box.style.transform = 'none';
+            el.appendChild(box);
+            box.style.left = (view.offsetLeft - 3) + 'px';
+            box.style.top = (view.offsetTop - 3) + 'px';
+            box.style.width = (view.offsetWidth + 6) + 'px';
+            box.style.height = (view.offsetHeight + 6) + 'px';
+            if (prev && prev.width) {
+                var nr = box.getBoundingClientRect();
+                if (nr.width && nr.height) {
+                    box.style.transformOrigin = '0 0';
+                    box.style.transform = 'translate3d(' + (prev.left - nr.left).toFixed(1) + 'px,' + (prev.top - nr.top).toFixed(1) + 'px,0) scale(' + (prev.width / nr.width).toFixed(3) + ',' + (prev.height / nr.height).toFixed(3) + ')';
+                    void box.offsetWidth;
+                    box.style.transition = 'transform .4s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
+                    box.style.transform = 'none';
+                }
+            } else {
+                void box.offsetWidth;
+                box.style.transition = 'opacity .2s ease';
+            }
+            box.classList.add('on');
+            cur = el;
         }
         window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
-        // фокус пішов з карток (меню, шапка, афіша) — ховаємо рамку
         // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
         var tm = setInterval(function () {
             safe(function () {
                 if (!document.body.classList.contains('lmx-hbo')) return;
                 var f = document.querySelector('.card.focus:not(.card--lmxhero)');
-                if (!f) { if (box && box.classList.contains('on')) hide(); return; }
-                if (f !== card) follow(f);
+                if (!f) { if (cur) hide(); return; }
+                if (f !== cur) follow(f);
             });
         }, 120);
         if (tm && tm.unref) tm.unref();
