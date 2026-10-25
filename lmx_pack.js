@@ -1173,6 +1173,8 @@
                 'body{background:linear-gradient(180deg,#1b1a3d 0%,#10112b 45%,#080916 100%) fixed !important}' +
                 '.background{display:none !important}' +
                 '.activity,.activity__body,.wrap{background:transparent}' +
+                // панелі інтерфейсу Lampa (меню, налаштування, списки, вікна) — у колір теми
+                'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content,body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:#14152e !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -1288,7 +1290,7 @@
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
             T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
             T + '.lmx-sel{display:block}' +
-            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .38s cubic-bezier(.22,.8,.22,1) !important}' +
+            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .5s cubic-bezier(.25,.8,.25,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1353,6 +1355,7 @@
             T + '.head__action.focus,' + T + '.head__action.hover,' + T + '.lmx-ord__btn.focus,' + T + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.2) !important;color:#fff !important}' +
             T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0c0c10}' +
+            T + '.settings__content,' + T + '.selectbox__content,' + T + '.modal__content,' + T + '.menu,' + T + '.wrap__left{background:#0e0e12 !important}' +
             T + '.modal__content{background:#121216}' +
             // ===== сторінка фільму =====
             F + '.full-start__background{filter:brightness(.78)}' +
@@ -1485,6 +1488,7 @@
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.22) !important;color:#fff !important}' +
                         A + '.selectbox,' + A + '.settings,' + A + '.menu{background:rgba(30,30,35,.98)}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content,' + A + '.menu,' + A + '.wrap__left{background:#26262b !important}' +
             A + '.modal__content,' + A + '.selectbox__content{background:#1c1c1e;border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + '}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
@@ -2024,17 +2028,18 @@
     function initSelector() {
         if (window.__lmxSel || !window.$) return;
         window.__lmxSel = true;
-        var box = null, cur = null, raf = 0, card = null, endAt = 0, PAD = 5;
+        var box = null, cur = null, raf = 0, card = null, endAt = 0, startAt = 0, PAD = 5;
         function hide() { if (box) box.classList.remove('on'); cur = null; card = null; }
         function tick() {
             raf = 0;
-            if (!card || !card.classList.contains('focus') || !document.body.contains(card)) { hide(); return; }
+            if (!card || !document.body.contains(card)) { hide(); return; }
+            if (!card.classList.contains('focus') && Date.now() > startAt + 300) { hide(); return; }
             var v = card.querySelector('.card__view') || card;
             var r = v.getBoundingClientRect();
             if (!r.width) { hide(); return; }
             var t = { x: r.left - PAD, y: r.top - PAD, w: r.width + 2 * PAD, h: r.height + 2 * PAD };
             if (!cur) cur = { x: t.x, y: t.y, w: t.w, h: t.h };
-            else { cur.x += (t.x - cur.x) * 0.3; cur.y += (t.y - cur.y) * 0.3; cur.w += (t.w - cur.w) * 0.3; cur.h += (t.h - cur.h) * 0.3; }
+            else { cur.x += (t.x - cur.x) * 0.16; cur.y += (t.y - cur.y) * 0.16; cur.w += (t.w - cur.w) * 0.16; cur.h += (t.h - cur.h) * 0.16; }
             box.style.transform = 'translate3d(' + cur.x.toFixed(1) + 'px,' + cur.y.toFixed(1) + 'px,0)';
             box.style.width = cur.w.toFixed(1) + 'px';
             box.style.height = cur.h.toFixed(1) + 'px';
@@ -2042,24 +2047,26 @@
             var done = Math.abs(t.x - cur.x) < 0.5 && Math.abs(t.y - cur.y) < 0.5 && Math.abs(t.w - cur.w) < 0.5 && Math.abs(t.h - cur.h) < 0.5;
             if (!done || Date.now() < endAt) raf = window.requestAnimationFrame(tick);
         }
-        window.$(document.body).on('hover:focus', '.card', function () {
-            var el = this;
-            safe(function () {
-                if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
-                if (el.classList.contains('card--lmxhero')) { hide(); return; }
-                if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; document.body.appendChild(box); }
-                card = el;
-                endAt = Date.now() + 700;
-                if (!raf) raf = window.requestAnimationFrame(tick);
-            });
-        });
+        function follow(el) {
+            if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
+            if (el.classList.contains('card--lmxhero')) { hide(); return; }
+            if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; document.body.appendChild(box); }
+            card = el;
+            startAt = Date.now();
+            endAt = startAt + 900;
+            if (!raf) raf = window.requestAnimationFrame(tick);
+        }
+        window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
         // фокус пішов з карток (меню, шапка, афіша) — ховаємо рамку
+        // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
         var tm = setInterval(function () {
             safe(function () {
-                if (!box || !box.classList.contains('on')) return;
-                if (!document.querySelector('.card.focus:not(.card--lmxhero)')) hide();
+                if (!document.body.classList.contains('lmx-hbo')) return;
+                var f = document.querySelector('.card.focus:not(.card--lmxhero)');
+                if (!f) { if (box && box.classList.contains('on')) hide(); return; }
+                if (f !== card) follow(f);
             });
-        }, 400);
+        }, 120);
         if (tm && tm.unref) tm.unref();
     }
 
