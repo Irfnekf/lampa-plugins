@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v7.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -51,6 +51,19 @@
     // Українські: країна виробництва включає Україну (співпродакшн теж), сортування за популярністю, як у звичайних популярних
     // Українські підбірки: свіже з українських стрімінгів (id беремо з TMDB за назвою), далі — українське за останні роки
     var UA_PROV_RE = /megogo|netflix|kyivstar|київстар|vodafone|водафон|sweet|oll\.?tv|takflix|apple tv|amazon prime|prime video|disney|max|hbo/i;
+    // Українські студії: ID шукаємо в TMDB за назвою, нічого не зашито
+    var UA_STUDIOS = ['Film.UA', '1+1 Media', 'Starlight Media', 'Kyivstar', 'Megogo', 'Plus Plus Studio', 'Dzyga', 'Radar Media', 'Gloria Pictures', '1+1 Ukraine', 'STB', 'ICTV', 'Novy Channel', '2+2', 'Inter Media', 'TRK Ukraina', 'Oll.TV', 'Sweet.tv'];
+    function uaStudioIds(done) {
+        var left = UA_STUDIOS.length, ids = [];
+        UA_STUDIOS.forEach(function (n) {
+            tget('search/company', { query: n, page: 1 }, function (j) {
+                var key = n.toLowerCase().replace(/[^a-z0-9+]/g, '');
+                var hit = ((j && j.results) || []).filter(function (c) { return c && String(c.name || '').toLowerCase().replace(/[^a-z0-9+]/g, '').indexOf(key) === 0; })[0];
+                if (hit && ids.indexOf(hit.id) < 0) ids.push(hit.id);
+                if (--left === 0) done(ids);
+            }, function () { if (--left === 0) done(ids); });
+        });
+    }
     function this_row(n) { for (var i = 0; i < ROWS.length; i++) if (ROWS[i].name === n) return ROWS[i]; return { title: '' }; }
     function uaCall(row, kind) {
         return function (call) {
@@ -58,24 +71,30 @@
             var today = dayStr(0), from3 = dayStr(-365 * 3), from6 = dayStr(-365 * 6);
             var base = 'discover/' + kind + '?';
             function fetchAll(urls, done) {
-                var left = urls.length, out = [];
-                if (!left) return done(out);
-                urls.forEach(function (u, i) {
-                    tget(u, { page: 1 }, function (j) {
+                var tasks = [];
+                urls.forEach(function (u) { tasks.push([u, 1]); tasks.push([u, 2]); });
+                var left = tasks.length, out = [];
+                tasks.forEach(function (t, i) {
+                    tget(t[0], { page: t[1] }, function (j) {
                         out[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path && c.overview && String(c.overview).trim(); });
                         if (--left === 0) done(out);
                     }, function () { out[i] = []; if (--left === 0) done(out); });
                 });
             }
             function dateOf(c) { return String(c.release_date || c.first_air_date || ''); }
-            function build(ids) {
-                var fresh = [], recent = base + 'with_original_language=uk&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc';
+            function build(ids, cids) {
+                var recent = base + 'with_original_language=uk&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc';
+                var fresh = [];
                 if (ids.length) {
                     var pv = 'with_watch_providers=' + ids.join('%7C') + '&watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads&' + dateKey + '.gte=' + from3 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc&';
                     fresh.push(base + pv + 'with_original_language=uk');
                     fresh.push(base + pv + 'with_origin_country=UA');
                 }
+                if (cids && cids.length) fresh.push(base + 'with_companies=' + cids.join('%7C') + '&vote_count.gte=1&' + dateKey + '.gte=' + from3 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
                 fresh.push(recent);
+                var from10 = dayStr(-365 * 10);
+                fresh.push(base + 'with_original_language=uk&vote_count.gte=1&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
+                fresh.push(base + 'with_origin_country=UA&vote_count.gte=1&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
                 fresh.push(base + 'with_origin_country=UA&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=popularity.desc');
                 fetchAll(fresh, function (parts) {
                     var all = [], seen = {};
@@ -86,14 +105,14 @@
                     all.sort(function (a, b) { return dateOf(b).localeCompare(dateOf(a)); });
                     all = all.slice(0, 20);
                     if (!all.length) return call();
-                    call({ title: row.title, results: all, url: fresh[fresh.length - 1], source: 'tmdb', page: 1, more: true, total_pages: 2 });
+                    call({ title: row.title, results: all, url: recent, source: 'tmdb', page: 1, more: true, total_pages: 2 });
                 });
             }
             tget('watch/providers/' + kind + '?watch_region=UA', {}, function (j) {
                 var ids = [];
                 ((j && j.results) || []).forEach(function (p) { if (p && p.provider_name && UA_PROV_RE.test(p.provider_name)) ids.push(p.provider_id); });
-                build(ids.slice(0, 20));
-            }, function () { build([]); });
+                uaStudioIds(function (cids) { build(ids.slice(0, 20), cids); });
+            }, function () { uaStudioIds(function (cids) { build([], cids); }); });
         };
     }
     // Для українського ринку: те, що доступне в Україні; без ринку — як було
@@ -2251,7 +2270,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.6';
+    var VERSION = '7.9';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
