@@ -856,7 +856,8 @@
                         return im;
                     });
                 });
-                var items = list.map(function (m, idx) {
+                // у кінець додаємо копію першого баннера: з останнього «вправо» плавно їдемо на неї, а потім непомітно стрибаємо на справжній перший
+                var items = list.concat(list.length > 1 ? [list[0]] : []).map(function (m, idx) {
                     var it = {};
                     for (var k in m) it[k] = m[k];
                     it.params = {
@@ -1209,7 +1210,7 @@
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
-            B + '.full-start__background{filter:brightness(.45);transition:opacity .8s ease-out;will-change:opacity}' +
+            B + '.full-start__background{filter:brightness(.45);transform:none !important;animation:none !important;transition:opacity .8s ease-out;will-change:opacity}' +
             B + '.background{filter:brightness(.45)}' +
             '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
@@ -1405,7 +1406,8 @@
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
             A + '.lmx-hero-line .scroll__body{transition:transform .55s cubic-bezier(.22,.8,.22,1) !important}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
-            A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
+            A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
+            A + '.lmx-hero-snap .lmx-hero__text{transition:none !important}' +
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-snap .scroll__body{transition:none !important}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
@@ -1831,7 +1833,7 @@
     function syncDots(card) {
         if (!card) return;
         var line = card.closest('.items-line');
-        var n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0;
+        var n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, idx = (parseInt(card.getAttribute('data-lmxi'), 10) || 0) % (n || 1);
         if (!line || n < 2) return;
         var box = line.querySelector('.lmx-dots');
         if (!box) {
@@ -1885,48 +1887,48 @@
     }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
-        var idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0, now = Date.now();
-        if (idx !== ap.idx) { ap.idx = idx; ap.t = now; return; }
+        var raw = parseInt(card.getAttribute('data-lmxi'), 10) || 0, n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, now = Date.now();
+        if (raw !== ap.idx) { ap.idx = raw; ap.t = now; return; }
+        // дісталися копії першого баннера — після завершення анімації тихо переходимо на справжній
+        if (n > 1 && raw >= n) {
+            if (now - ap.t >= 650) { wrapToFirst(line); ap.t = now; }
+            return;
+        }
         if (now - ap.t < AUTOPLAY_MS) return;
         ap.t = now;
         if (document.hidden || !line) return;
         var cn = '';
         try { cn = Lampa.Controller.enabled().name; } catch (e) {}
         if (cn && /menu|settings|select|modal|head|full|player/i.test(cn)) return;
-        var all = line.querySelectorAll('.card--lmxhero'), next = null, first = null;
+        var all = line.querySelectorAll('.card--lmxhero'), next = null;
         for (var i = 0; i < all.length; i++) {
-            var k = parseInt(all[i].getAttribute('data-lmxi'), 10);
-            if (k === 0) first = all[i];
-            if (k === idx + 1) next = all[i];
+            if (parseInt(all[i].getAttribute('data-lmxi'), 10) === raw + 1) next = all[i];
         }
-        if (!next && first && first !== card) { wrapToFirst(line); return; }
         if (next && next !== card) focusCard(next, line);
+    }
+    // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
+    function setCur(el) {
+        var line = el.closest('.items-line');
+        if (!line) return;
+        var old = line.querySelectorAll('.card--lmxhero.lmx-cur');
+        for (var i = 0; i < old.length; i++) if (old[i] !== el) old[i].classList.remove('lmx-cur');
+        el.classList.add('lmx-cur');
     }
     function initDots() {
         if (window.__lmxDots) return;
         window.__lmxDots = true;
-        document.addEventListener('keydown', function (e) {
+        try {
+            if (window.$) window.$(document.body).on('hover:focus', '.card--lmxhero', function () { var self = this; safe(function () { setCur(self); }); });
+        } catch (e) {}
+        document.addEventListener('keydown', function () {
             ap.t = Date.now();
-            // «вправо» на останньому баннері — повертаємось на перший (стан беремо ДО обробки клавіші Lampa)
-            if (e && (e.keyCode === 39 || e.key === 'ArrowRight')) {
-                var c0 = document.querySelector('.card--lmxhero.focus');
-                if (!c0) return;
-                var n0 = parseInt(c0.getAttribute('data-lmxn'), 10) || 0, i0 = parseInt(c0.getAttribute('data-lmxi'), 10) || 0;
-                if (n0 > 1 && i0 === n0 - 1) {
-                    setTimeout(function () {
-                        safe(function () {
-                            var c = document.querySelector('.card--lmxhero.focus');
-                            if (c && parseInt(c.getAttribute('data-lmxi'), 10) === n0 - 1) wrapToFirst(c.closest('.items-line'));
-                        });
-                    }, 60);
-                }
-            }
         }, true);
         var tm = setInterval(function () {
             safe(function () {
                 if (getStr('lmx_theme', 'default') !== 'apple' || isMobile()) return;
                 var c = document.querySelector('.card--lmxhero.focus');
                 if (!c) return;
+                setCur(c);
                 syncDots(c);
                 autoplay(c, c.closest('.items-line'));
             });
