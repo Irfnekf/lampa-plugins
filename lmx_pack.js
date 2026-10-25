@@ -1399,6 +1399,7 @@
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             A + '.lmx-hero-line{position:relative}' +
+            A + '.lmx-hero-top .lmx-anc{overflow:visible !important;-webkit-mask-image:none !important;mask-image:none !important}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             A + '.lmx-hero-on .head{position:absolute !important;top:0;left:0;right:0;z-index:30;background:transparent !important;box-shadow:none !important}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
@@ -1835,11 +1836,13 @@
             for (var k = 0; k < dots.length; k++) dots[k].className = k === idx ? 'on' : '';
             box.__idx = idx;
         }
-        if (!box.__placed) {
-            var view = card.querySelector('.card__view') || card;
-            var r = view.getBoundingClientRect(), lr = line.getBoundingClientRect();
-            var em = parseFloat(window.getComputedStyle(document.body).fontSize) || 16;
-            if (r.height > 0) { box.style.top = Math.round(r.bottom - lr.top - 3.3 * em) + 'px'; box.__placed = true; }
+        // позиція рахується щоразу (шапка/підтягування можуть зсунути ряд) — стиль міняємо, лише якщо вона змінилась
+        var view = card.querySelector('.card__view') || card;
+        var r = view.getBoundingClientRect(), lr = line.getBoundingClientRect();
+        if (r.height > 0) {
+            var em = box.__em || (box.__em = parseFloat(window.getComputedStyle(document.body).fontSize) || 16);
+            var tp = Math.round(r.bottom - lr.top - 3.3 * em);
+            if (box.__top !== tp) { box.style.top = tp + 'px'; box.__top = tp; }
         }
     }
     // Афіша тягнеться під шапку: прибираємо відступ над першою афішею (шапка стає прозорою й лежить поверх)
@@ -1847,25 +1850,53 @@
         if (line.__pulled || !document.body.classList.contains('lmx-hero-on')) return;
         var card = line.querySelector('.card--lmxhero'), view = card && card.querySelector('.card__view');
         if (!view) return;
+        if (!line.__anc) {
+            // предки ряду на час фокусу на афіші не обрізають вміст — інакше картинку не видно під шапкою
+            line.__anc = true;
+            for (var a = line.parentElement; a && a !== document.body; a = a.parentElement) a.classList.add('lmx-anc');
+        }
         var top = view.getBoundingClientRect().top;
         line.__tries = (line.__tries || 0) + 1;
         if (top > 3) line.style.marginTop = (-Math.round(top)) + 'px';
         if (top <= 3 || line.__tries > 6) line.__pulled = true;
     }
+    // Автоперегортання афіші: кожні 8 с, після останньої — знову на першу. Не чіпає, поки користувач сам натискає кнопки
+    var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
+    function autoplay(card, line) {
+        var idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0, now = Date.now();
+        if (idx !== ap.idx) { ap.idx = idx; ap.t = now; return; }
+        if (now - ap.t < AUTOPLAY_MS) return;
+        ap.t = now;
+        if (document.hidden || !line || !window.Navigator || !Navigator.focus) return;
+        var cn = '';
+        try { cn = Lampa.Controller.enabled().name; } catch (e) {}
+        if (cn && cn !== 'content') return;
+        var all = line.querySelectorAll('.card--lmxhero'), next = null, first = null;
+        for (var i = 0; i < all.length; i++) {
+            var k = parseInt(all[i].getAttribute('data-lmxi'), 10);
+            if (k === 0) first = all[i];
+            if (k === idx + 1) next = all[i];
+        }
+        next = next || first;
+        if (next && next !== card) Navigator.focus(next);
+    }
     function initDots() {
         if (window.__lmxDots) return;
         window.__lmxDots = true;
+        document.addEventListener('keydown', function () { ap.t = Date.now(); }, true);
         var tm = setInterval(function () {
             safe(function () {
-                var on = false;
+                var on = false, top = false;
                 if (getStr('lmx_theme', 'default') === 'apple' && !isMobile()) {
                     var ln = document.querySelector('.lmx-hero-line');
                     on = !!(ln && ln.offsetParent !== null);
                     if (on) pullHero(ln);
                     var c = document.querySelector('.card--lmxhero.focus');
-                    if (c) syncDots(c);
+                    if (c) { top = true; syncDots(c); autoplay(c, ln); }
                 }
-                if (document.body.classList.contains('lmx-hero-on') !== on) document.body.classList.toggle('lmx-hero-on', on);
+                var cl = document.body.classList;
+                if (cl.contains('lmx-hero-on') !== on) cl.toggle('lmx-hero-on', on);
+                if (cl.contains('lmx-hero-top') !== top) cl.toggle('lmx-hero-top', top);
             });
         }, 200);
         if (tm && tm.unref) tm.unref();
