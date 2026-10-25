@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.3 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2393,6 +2393,52 @@
         else { el.style.removeProperty('--lmx-bc'); el.classList.remove('lmx-ic'); }
     }
 
+
+    // Режим кнопки (1/2/3) пишемо і класами, і прямо в style з !important: так його не перебивають стилі теми та інших плагінів.
+    // А якщо чужий плагін скидає класи або style, спостерігач повертає наше
+    function labelsOf(el) {
+        return $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
+    }
+    function inlineSet(node, map) {
+        Object.keys(map).forEach(function (k) {
+            var v = map[k], cur = node.style.getPropertyValue(k), pr = node.style.getPropertyPriority(k);
+            if (v === null) { if (cur) node.style.removeProperty(k); }
+            else if (cur !== v || pr !== 'important') node.style.setProperty(k, v, 'important');
+        });
+    }
+    function reassertMode(el) {
+        var d = el.__lmxD || '', cl = el.classList;
+        ['1', '2', '3'].forEach(function (x) { var on = d === x; if (cl.contains('lmx-m' + x) !== on) cl.toggle('lmx-m' + x, on); });
+        var n = !!el.__lmxN;
+        if (cl.contains('lmx-n') !== n) cl.toggle('lmx-n', n);
+        var box = { 'width': null, 'min-width': null, 'height': null, 'padding': null, 'border-radius': null, 'justify-content': null, 'font-size': null };
+        if (d === '1') box = { 'width': '3.2em', 'min-width': '0', 'height': '3.2em', 'padding': '0', 'border-radius': '50%', 'justify-content': 'center', 'font-size': '.95em' };
+        else if (d) box = { 'width': 'auto', 'min-width': '0', 'height': '3.2em', 'padding': '0 1.2em', 'border-radius': '2em', 'justify-content': 'center', 'font-size': '.95em' };
+        inlineSet(el, box);
+        labelsOf(el).forEach(function (l) {
+            if (d === '1') inlineSet(l, { 'display': 'none' });
+            else if (d) inlineSet(l, { 'display': 'inline', 'visibility': 'visible', 'opacity': '1', 'white-space': 'nowrap', 'font-size': '1em',
+                'max-width': d === '2' ? '6.5em' : 'none', 'overflow': d === '2' ? 'hidden' : null, 'text-overflow': d === '2' ? 'ellipsis' : null });
+            else inlineSet(l, { 'display': null, 'visibility': null, 'opacity': null, 'white-space': null, 'font-size': null, 'max-width': null, 'overflow': null, 'text-overflow': null });
+        });
+    }
+    function watchEl(el) {
+        if (el.__lmxMo || !window.MutationObserver) return;
+        var hits = 0, t0 = 0;
+        var mo = new MutationObserver(function () {
+            clearTimeout(el.__lmxTm);
+            el.__lmxTm = setTimeout(function () {
+                if (!document.body.contains(el)) { mo.disconnect(); el.__lmxMo = null; return; }
+                var now = Date.now();
+                if (now - t0 > 3000) { t0 = now; hits = 0; }
+                if (++hits > 8) return;
+                reassertMode(el);
+            }, 80);
+        });
+        mo.observe(el, { attributes: true, attributeFilter: ['class', 'style'], childList: true });
+        el.__lmxMo = mo;
+    }
+
     function btnApply(r) {
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length) return;
@@ -2422,9 +2468,9 @@
             return m.modes[id] || (m.look === 'full' ? '3' : (m.look === 'icons' ? '1' : (allOn ? '1' : '')));
         }
         function setMode(el, d) {
-            el.classList.remove('lmx-m1', 'lmx-m2', 'lmx-m3', 'lmx-n');
-            if (d) el.classList.add('lmx-m' + d);
-            if (allOn) el.classList.add('lmx-n');
+            el.__lmxD = d; el.__lmxN = allOn;
+            reassertMode(el);
+            watchEl(el);
         }
 
         list.forEach(function (b) {
@@ -2474,6 +2520,7 @@
                     }
                 });
             });
+            fe[0].__lmxId = tk;
             fEls[tk] = fe[0];
         });
 
@@ -2488,6 +2535,7 @@
         } else {
             Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
         }
+        cont[0].__lmxWant = (custom && !(primary && !allOn && false)) ? toks.filter(function (t) { return map[t] || fEls[t]; }) : null;
         btnPageIds = custom ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
         var ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
         ed.on('hover:enter', function () { openButtonsEditor(); });
@@ -2600,10 +2648,20 @@
         if (!cont.length || !window.$) return;
         var node = cont[0], timer = 0, busy = false;
         function sig() { return btnCollect(cont, r).map(function (b) { return b.id + ':' + b.t; }).sort().join('|'); }
+        function orderBad() {
+            var want = node.__lmxWant;
+            if (!want || !want.length) return false;
+            var set = {}, dom = [];
+            want.forEach(function (t) { set[t] = 1; });
+            cont.children().each(function () { if (this.__lmxId && set[this.__lmxId]) dom.push(this.__lmxId); });
+            return dom.join('|') !== want.join('|');
+        }
         function run(force) {
             if (!document.body.contains(node)) return;
             var s = sig();
-            if (!force && s === node.__lmxSig) return;
+            if (!force && s === node.__lmxSig) {
+                if (!orderBad() || (node.__lmxFights = (node.__lmxFights || 0) + 1) > 8) return;
+            }
             busy = true;
             try { btnApply(r); } catch (e) { console.error('LMX btns', e); }
             node.__lmxSig = sig();
@@ -2841,7 +2899,22 @@
             if (on && btnScanNow) btnScanNow(function (n) { after(n || menuGet().length); });
             else after(0);
         });
-        top.append(mk, col, look, allRow);
+        var diag = bigRow('lmx-be__look', '<div><b>Діагностика кнопок</b><span class="lmx-ord__sub">Показує, як влаштовані перші кнопки на сторінці (для налагодження)</span></div>');
+        bind(diag, function () {
+            var rows = [];
+            if (btnLast && btnLast.length) {
+                var c = btnLast.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+                c.children().each(function (i) {
+                    if (i > 5) return;
+                    var e = this, lab = labelsOf(e).map(function (x) { return x.tagName.toLowerCase(); }).join(',');
+                    rows.push({ title: (i + 1) + '. ' + (e.__lmxId || e.className.split(' ').slice(0, 3).join(' ')),
+                        subtitle: 'class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 90) + ' | дітей: ' + lab + ' | width: ' + (e.style.width || '-') + ' | батько: ' + String(e.parentNode.className).slice(0, 40) });
+                });
+            }
+            if (!rows.length) rows.push({ title: 'Відкрийте сторінку фільму і спробуйте ще раз' });
+            pick('Діагностика', rows, function () {});
+        });
+        top.append(mk, col, look, allRow, diag);
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
         bind(reset, function () {
@@ -2868,7 +2941,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.3';
+    var VERSION = '9.4';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
