@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.3 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1277,7 +1277,7 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
             'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
-            '.lmx-renamed > *:not(svg):not(img){display:none !important}' +
+            'html body .lmx-renamed > *:not(svg):not(img):not(#lmx-x){display:none !important}' +
             '.lmx-renamed::after{content:attr(data-lmx-name);white-space:nowrap}' +
             '.lmx-renamed.lmx-m1::after{display:none}' +
             '.lmx-renamed.lmx-m2::after{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis}' +
@@ -2407,7 +2407,6 @@
     // Режим кнопки (1/2/3) пишемо і класами, і прямо в style з !important: так його не перебивають стилі теми та інших плагінів.
     // А якщо чужий плагін скидає класи або style, спостерігач повертає наше
     function labelsOf(el) {
-        if (el.classList.contains('lmx-renamed')) return [];
         return $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
     }
     function inlineSet(node, map) {
@@ -2427,8 +2426,10 @@
         else if (d === 'P') box = { 'width': 'auto', 'min-width': '0', 'height': '3.2em', 'padding': '0 1.8em', 'border-radius': '2em', 'justify-content': 'center', 'font-size': '.95em', 'font-weight': '700' };
         else if (d) box = { 'width': 'auto', 'min-width': '0', 'height': '3.2em', 'padding': '0 1.2em', 'border-radius': '2em', 'justify-content': 'center', 'font-size': '.95em' };
         inlineSet(el, box);
+        var ren = cl.contains('lmx-renamed');
         labelsOf(el).forEach(function (l) {
-            if (d === '1') inlineSet(l, { 'display': 'none' });
+            if (ren) inlineSet(l, { 'display': 'none' });
+            else if (d === '1') inlineSet(l, { 'display': 'none' });
             else if (d) inlineSet(l, { 'display': 'inline', 'visibility': 'visible', 'opacity': '1', 'white-space': 'nowrap', 'font-size': '1em',
                 'max-width': d === '2' ? '6.5em' : 'none', 'overflow': d === '2' ? 'hidden' : null, 'text-overflow': d === '2' ? 'ellipsis' : null });
             else inlineSet(l, { 'display': null, 'visibility': null, 'opacity': null, 'white-space': null, 'font-size': null, 'max-width': null, 'overflow': null, 'text-overflow': null });
@@ -3007,7 +3008,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.3';
+    var VERSION = '10.4';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
