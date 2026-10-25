@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.8 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1277,6 +1277,7 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
             'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
+            '.lmx-renamed > *:not(svg):not(img):not(.lmx-nm){display:none !important}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -2401,7 +2402,9 @@
     // Режим кнопки (1/2/3) пишемо і класами, і прямо в style з !important: так його не перебивають стилі теми та інших плагінів.
     // А якщо чужий плагін скидає класи або style, спостерігач повертає наше
     function labelsOf(el) {
-        return $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
+        var kids = $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
+        var mine = kids.filter(function (k) { return k.classList && k.classList.contains('lmx-nm'); });
+        return mine.length ? mine : kids;
     }
     function inlineSet(node, map) {
         Object.keys(map).forEach(function (k) {
@@ -2496,9 +2499,17 @@
                 if (cur) cur.parentNode.replaceChild(nn, cur);
                 el.__lmxSet = null;
             }
-            var span = el.querySelector('span'), nm = m.names[id] || el.__lmxT;
-            if (span) { if (span.textContent !== nm) span.textContent = nm; }
-            else if (m.names[id]) { span = document.createElement('span'); span.textContent = nm; el.appendChild(span); }
+            // Перейменування не чіпає рідний напис кнопки (його можуть читати плагіни): ховаємо його й показуємо свій
+            var nmEl = null, ci;
+            for (ci = 0; ci < el.children.length; ci++) if (el.children[ci].classList.contains('lmx-nm')) { nmEl = el.children[ci]; break; }
+            if (m.names[id]) {
+                if (!nmEl) { nmEl = document.createElement('span'); nmEl.className = 'lmx-nm'; el.appendChild(nmEl); }
+                if (nmEl.textContent !== m.names[id]) nmEl.textContent = m.names[id];
+                if (!el.classList.contains('lmx-renamed')) el.classList.add('lmx-renamed');
+            } else {
+                if (nmEl) nmEl.remove();
+                el.classList.remove('lmx-renamed');
+            }
             paint(el, m.colors[id] || m.color);
             setMode(el, modeOf(id));
             el.classList.toggle('lmx-primary', id === primary);
@@ -2972,7 +2983,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.8';
+    var VERSION = '9.9';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
