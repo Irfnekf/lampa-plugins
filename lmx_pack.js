@@ -1165,6 +1165,8 @@
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
+                '.lmx-sel{display:none;position:fixed;left:0;top:0;z-index:50;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0;transition:opacity .2s ease;will-change:transform}' +
+                '.lmx-sel.on{opacity:1}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
                 // фон застосунку під тему: стандартна — глибокий синьо-фіолетовий градієнт
                 'html{background:#0a0b1c !important}' +
@@ -1270,8 +1272,8 @@
         var T = 'body.lmx-hbo ';
         var F = 'body.lmx-hbo.lmx-full ';
         return '' +
-            'html{background:#05040c !important}' +
-            T + '{background:linear-gradient(180deg,#160f2e 0%,#0b0818 40%,#05040c 100%) fixed !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
+            'html{background:#050507 !important}' +
+            T + '{background:linear-gradient(180deg,#121216 0%,#0b0b0e 45%,#050507 100%) fixed !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
@@ -1283,7 +1285,10 @@
             T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.05);box-shadow:0 0 0 .15em #fff}' +
+            // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
+            T + '.lmx-sel{display:block}' +
+            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .38s cubic-bezier(.22,.8,.22,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1302,7 +1307,7 @@
             // ===== банер-білборд як у HBO Max: афіша на весь екран, текст і кнопки зліва, точки знизу =====
             T + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
             T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;will-change:transform;height:78vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
-            T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#0b0818 0%,rgba(11,8,24,.5) 8%,rgba(11,8,24,0) 28%),linear-gradient(to bottom,rgba(11,8,24,.7) 0%,rgba(11,8,24,0) 16%),linear-gradient(90deg,rgba(11,8,24,.88) 0%,rgba(11,8,24,.55) 30%,rgba(11,8,24,0) 62%)}' +
+            T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#0b0b0e 0%,rgba(11,11,14,.5) 8%,rgba(11,11,14,0) 28%),linear-gradient(to bottom,rgba(11,11,14,.7) 0%,rgba(11,11,14,0) 16%),linear-gradient(90deg,rgba(11,11,14,.88) 0%,rgba(11,11,14,.55) 30%,rgba(11,11,14,0) 62%)}' +
             T + '.card--lmxhero .lmx-hero__text{left:4em;right:auto;bottom:5.2em;max-width:40%}' +
             T + '.card--lmxhero .lmx-hero__title{font-size:2.8em;font-weight:800;line-height:1.05;letter-spacing:-.01em;margin-bottom:.35em}' +
             T + '.card--lmxhero .lmx-hero__v{display:inline-flex;align-items:center;gap:.3em;background:rgba(255,255,255,.14);padding:.2em .6em;border-radius:.4em;font-weight:700;-webkit-text-fill-color:#fff}' +
@@ -1338,7 +1343,7 @@
             T + '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             T + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.5em}' +
             // плитки стрімінгів
-            T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.05)}' +
+            T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             T + '.card--lmxstudio .card__view{border-radius:0;overflow:visible !important;background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
             T + '.menu__item,' + T + '.settings-param,' + T + '.settings-folder,' + T + '.selectbox-item{transition:background-color .2s ease}' +
@@ -1347,8 +1352,8 @@
             T + '.settings-param-title.focus,' + T + '.simple-button.focus,' + T + '.full-person.focus,' +
             T + '.head__action.focus,' + T + '.head__action.hover,' + T + '.lmx-ord__btn.focus,' + T + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.2) !important;color:#fff !important}' +
-            T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0a0b17}' +
-            T + '.modal__content{background:#0f1020}' +
+            T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0c0c10}' +
+            T + '.modal__content{background:#121216}' +
             // ===== сторінка фільму =====
             F + '.full-start__background{filter:brightness(.78)}' +
             F + '.full-start-new__right{max-width:44%}' +
@@ -2015,6 +2020,49 @@
         if (tm && tm.unref) tm.unref();
     }
 
+    // HBO: біла рамка-виділення «пливе» між картками (як у застосунку). Одна рамка, лише transform + позиція картки (одне читання на кадр)
+    function initSelector() {
+        if (window.__lmxSel || !window.$) return;
+        window.__lmxSel = true;
+        var box = null, cur = null, raf = 0, card = null, endAt = 0, PAD = 5;
+        function hide() { if (box) box.classList.remove('on'); cur = null; card = null; }
+        function tick() {
+            raf = 0;
+            if (!card || !card.classList.contains('focus') || !document.body.contains(card)) { hide(); return; }
+            var v = card.querySelector('.card__view') || card;
+            var r = v.getBoundingClientRect();
+            if (!r.width) { hide(); return; }
+            var t = { x: r.left - PAD, y: r.top - PAD, w: r.width + 2 * PAD, h: r.height + 2 * PAD };
+            if (!cur) cur = { x: t.x, y: t.y, w: t.w, h: t.h };
+            else { cur.x += (t.x - cur.x) * 0.3; cur.y += (t.y - cur.y) * 0.3; cur.w += (t.w - cur.w) * 0.3; cur.h += (t.h - cur.h) * 0.3; }
+            box.style.transform = 'translate3d(' + cur.x.toFixed(1) + 'px,' + cur.y.toFixed(1) + 'px,0)';
+            box.style.width = cur.w.toFixed(1) + 'px';
+            box.style.height = cur.h.toFixed(1) + 'px';
+            box.classList.add('on');
+            var done = Math.abs(t.x - cur.x) < 0.5 && Math.abs(t.y - cur.y) < 0.5 && Math.abs(t.w - cur.w) < 0.5 && Math.abs(t.h - cur.h) < 0.5;
+            if (!done || Date.now() < endAt) raf = window.requestAnimationFrame(tick);
+        }
+        window.$(document.body).on('hover:focus', '.card', function () {
+            var el = this;
+            safe(function () {
+                if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
+                if (el.classList.contains('card--lmxhero')) { hide(); return; }
+                if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; document.body.appendChild(box); }
+                card = el;
+                endAt = Date.now() + 700;
+                if (!raf) raf = window.requestAnimationFrame(tick);
+            });
+        });
+        // фокус пішов з карток (меню, шапка, афіша) — ховаємо рамку
+        var tm = setInterval(function () {
+            safe(function () {
+                if (!box || !box.classList.contains('on')) return;
+                if (!document.querySelector('.card.focus:not(.card--lmxhero)')) hide();
+            });
+        }, 400);
+        if (tm && tm.unref) tm.unref();
+    }
+
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
@@ -2108,6 +2156,7 @@
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
             safe(initPrefetch);
             safe(initDots);
+            safe(initSelector);
         });
     }
 
