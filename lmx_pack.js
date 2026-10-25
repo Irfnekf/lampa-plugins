@@ -848,6 +848,14 @@
                 list = tg.concat(rest.slice(0, lim - tg.length));
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 if (!list.length) return call();
+                // зображення афіші тримаємо в пам'яті, щоб при поверненні на перший баннер не було «порожньої» картки
+                safe(function () {
+                    window.__lmxHeroImgs = list.map(function (m) {
+                        var im = new Image();
+                        im.src = imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') === 'apple' ? 'w1280' : (getStr('lmx_theme', 'default') === 'default' ? 'w500' : 'w780'));
+                        return im;
+                    });
+                });
                 var items = list.map(function (m, idx) {
                     var it = {};
                     for (var k in m) it[k] = m[k];
@@ -1379,7 +1387,7 @@
             A + '.lmx-pill.lmx-m-new{background:#f5f5f7 !important;color:#000 !important}' +
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
-            A + '.card--lmxhero{width:100vw !important;margin-left:-2.2em !important;margin-right:2.2em !important}' +
+            A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
             A + '.card--lmxhero .card__view{height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
@@ -1795,6 +1803,10 @@
         if (preSeen[key]) return;
         preSeen[key] = 1;
         try {
+            // той самий запит, що робить сторінка фільму: Lampa кешує відповідь, і сторінка відкривається майже миттєво
+            if (Lampa.Api && Lampa.Api.full) Lampa.Api.full({ id: d.id, method: kind, source: d.source || 'tmdb', card: d }, function () {}, function () {});
+        } catch (e0) {}
+        try {
             if (d.backdrop_path) { var b = new Image(); b.src = imgUrl(d.backdrop_path, 'w1280'); }
             if (getBool('lmx_logo', true) && !(key in logoCache)) {
                 Lampa.Api.sources.tmdb.get(kind + '/' + d.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
@@ -1810,7 +1822,7 @@
         $(document.body).on('hover:focus', '.card', function () {
             var d = this.card_data;
             clearTimeout(preTimer);
-            preTimer = setTimeout(function () { prefetchCard(d); }, 450);
+            preTimer = setTimeout(function () { prefetchCard(d); }, 300);
         });
     }
 
@@ -1835,6 +1847,8 @@
             box.__idx = idx;
         }
         // позиція рахується щоразу (шапка/підтягування можуть зсунути ряд) — стиль міняємо, лише якщо вона змінилась
+        if (box.__top !== undefined && box.__tops >= 3 && box.__idx === box.__lastIdx) return;
+        box.__lastIdx = box.__idx; box.__tops = (box.__tops || 0) + 1;
         var view = card.querySelector('.card__view') || card;
         var r = view.getBoundingClientRect(), lr = line.getBoundingClientRect();
         if (r.height > 0) {
@@ -1869,7 +1883,7 @@
         if (document.hidden || !line) return;
         var cn = '';
         try { cn = Lampa.Controller.enabled().name; } catch (e) {}
-        if (cn && cn !== 'content') return;
+        if (cn && /menu|settings|select|modal|head|full|player/i.test(cn)) return;
         var all = line.querySelectorAll('.card--lmxhero'), next = null, first = null;
         for (var i = 0; i < all.length; i++) {
             var k = parseInt(all[i].getAttribute('data-lmxi'), 10);
@@ -1907,7 +1921,7 @@
                 syncDots(c);
                 autoplay(c, c.closest('.items-line'));
             });
-        }, 200);
+        }, 300);
         if (tm && tm.unref) tm.unref();
     }
 
