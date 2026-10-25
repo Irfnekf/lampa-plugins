@@ -1789,7 +1789,35 @@
             logoCache[key] = pickLogo(j && j.logos);
             applyLogo(r, logoCache[key]);
         }, function () { reveal(r); });
-        setTimeout(function () { reveal(r); }, 3500);
+        setTimeout(function () { reveal(r); }, 1800);
+    }
+
+    // Попереднє завантаження: поки картка в фокусі, тихо тягнемо логотип і фон — сторінка відкривається швидше
+    var preSeen = {}, preTimer = null;
+    function prefetchCard(d) {
+        if (!d || !d.id || isMobile()) return;
+        var kind = (d.name || d.first_air_date || d.number_of_seasons) ? 'tv' : 'movie';
+        var key = kind + d.id;
+        if (preSeen[key]) return;
+        preSeen[key] = 1;
+        try {
+            if (d.backdrop_path) { var b = new Image(); b.src = imgUrl(d.backdrop_path, 'w1280'); }
+            if (getBool('lmx_logo', true) && !(key in logoCache)) {
+                Lampa.Api.sources.tmdb.get(kind + '/' + d.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
+                    logoCache[key] = pickLogo(j && j.logos);
+                    if (logoCache[key]) { var im = new Image(); im.src = imgUrl(logoCache[key], 'w780'); }
+                }, function () {});
+            }
+        } catch (err) {}
+    }
+    function initPrefetch() {
+        if (!window.$ || window.__lmxPre) return;
+        window.__lmxPre = true;
+        $(document.body).on('hover:focus', '.card', function () {
+            var d = this.card_data;
+            clearTimeout(preTimer);
+            preTimer = setTimeout(function () { prefetchCard(d); }, 450);
+        });
     }
 
     function onFull(e) {
@@ -1883,6 +1911,7 @@
             }).observe(document.body, { childList: true, subtree: true });
             scan();
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
+            safe(initPrefetch);
         });
     }
 
