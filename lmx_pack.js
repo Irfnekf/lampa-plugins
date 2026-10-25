@@ -1893,7 +1893,22 @@
             parent.insertBefore(first, after);
             cl.setAttribute('data-lmxi', '0');
             first.setAttribute('data-lmxi', String(n));
+            // після перестановки позиція прокрутки лишилась на старому місці (порожній екран) — перерахувати
+            try { if (window.Lampa && Lampa.Controller && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(cl, window.$ ? window.$(line) : line); } catch (e) {}
             try { if (window.$) window.$(cl).trigger('hover:focus'); } catch (e) {}
+            var fix = function () {
+                safe(function () {
+                    var body = line.querySelector('.scroll__body');
+                    var r = cl.getBoundingClientRect();
+                    if (!body || !r.width) return;
+                    if (Math.abs(r.left) < 4 && r.left > -4) return;
+                    var m = /translate3d\(\s*(-?[\d.]+)px/.exec(body.style.transform || '');
+                    var x = m ? parseFloat(m[1]) : 0;
+                    body.style.transform = 'translate3d(' + Math.round(x - r.left - 1) + 'px,0,0)';
+                });
+            };
+            setTimeout(fix, 50);
+            setTimeout(fix, 250);
         } else {
             focusCard(first, line);
         }
