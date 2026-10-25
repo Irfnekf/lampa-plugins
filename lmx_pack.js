@@ -2049,16 +2049,17 @@
             box.style.height = (view.offsetHeight + 6) + 'px';
             if (prev && prev.width) {
                 var nr = box.getBoundingClientRect();
-                if (nr.width && nr.height) {
+                // ковзаємо лише в межах одного ряду; при переході між рядами рамка з'являється одразу на новій картці (разом із рідними мітками Lampa)
+                if (nr.width && nr.height && Math.abs(prev.top - nr.top) < 6) {
                     box.style.transformOrigin = '0 0';
                     box.style.transform = 'translate3d(' + (prev.left - nr.left).toFixed(1) + 'px,' + (prev.top - nr.top).toFixed(1) + 'px,0) scale(' + (prev.width / nr.width).toFixed(3) + ',' + (prev.height / nr.height).toFixed(3) + ')';
                     void box.offsetWidth;
-                    box.style.transition = 'transform .4s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
+                    box.style.transition = 'transform .2s cubic-bezier(.2,.7,.3,1),opacity .15s ease';
                     box.style.transform = 'none';
                 }
             } else {
                 void box.offsetWidth;
-                box.style.transition = 'opacity .2s ease';
+                box.style.transition = 'opacity .12s ease';
             }
             box.classList.add('on');
             cur = el;
