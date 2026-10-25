@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.0 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -74,8 +74,10 @@
                 var tasks = [];
                 urls.forEach(function (u) { tasks.push([u, 1]); tasks.push([u, 2]); });
                 var left = tasks.length, out = [];
+                done.totals = {};
                 tasks.forEach(function (t, i) {
                     tget(t[0], { page: t[1] }, function (j) {
+                        if (j && j.total_results) done.totals[t[0]] = j.total_results;
                         out[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path && c.overview && String(c.overview).trim(); });
                         if (--left === 0) done(out);
                     }, function () { out[i] = []; if (--left === 0) done(out); });
@@ -96,7 +98,7 @@
                 fresh.push(base + 'with_original_language=uk&vote_count.gte=1&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
                 fresh.push(base + 'with_origin_country=UA&vote_count.gte=1&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
                 fresh.push(base + 'with_origin_country=UA&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=popularity.desc');
-                fetchAll(fresh, function (parts) {
+                var cb = function (parts) {
                     var all = [], seen = {};
                     parts.forEach(function (part) {
                         (part || []).forEach(function (c) { if (!seen[c.id]) { seen[c.id] = 1; c.media_type = kind; all.push(c); } });
@@ -105,8 +107,12 @@
                     all.sort(function (a, b) { return dateOf(b).localeCompare(dateOf(a)); });
                     all = all.slice(0, 20);
                     if (!all.length) return call();
-                    call({ title: row.title, results: all, url: recent, source: 'tmdb', page: 1, more: true, total_pages: 2 });
-                });
+                    // «Ще» відкриває одну TMDB-вибірку: беремо найширшу
+                    var wideUrl = recent, best = 0, tot = cb.totals || {};
+                    fresh.forEach(function (u) { if ((tot[u] || 0) > best) { best = tot[u]; wideUrl = u; } });
+                    call({ title: row.title, results: all, url: wideUrl, source: 'tmdb', page: 1, more: true, total_pages: 2 });
+                };
+                fetchAll(fresh, cb);
             }
             tget('watch/providers/' + kind + '?watch_region=UA', {}, function (j) {
                 var ids = [];
@@ -2270,7 +2276,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.9';
+    var VERSION = '8.0';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
