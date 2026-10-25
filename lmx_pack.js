@@ -1303,6 +1303,7 @@
             T + '.card--lmxhero .lmx-hero__o{font-size:.95em;opacity:.8;line-height:1.35;max-height:2.8em;margin-top:.5em}' +
             T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{transform:none !important;transition:none !important}' +
             T + '.card--lmxhero.focus .card__view::after,' + T + '.card--lmxhero.hover .card__view::after,' + T + '.card--lmxstudio.focus .card__view::after,' + T + '.card--lmxstudio.hover .card__view::after{display:none !important;animation:none}' +
+            T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.05)}' +
             T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #8a3bff,0 0 1em rgba(138,59,255,.5) !important}' +
             T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
@@ -1390,9 +1391,11 @@
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
             A + '.card--lmxhero .card__view{background-color:#1c1c20;will-change:transform;height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
-            A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
-            A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.09)}' +
+            A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view{transform:none;box-shadow:none !important}' +
+            A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after{display:none !important}' +
+            // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
+            A + '.card--lmxstudio .card__view{overflow:visible !important}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07) !important}' +
             A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.5) 8%,rgba(44,44,51,0) 24%),linear-gradient(to bottom,#3b3b44 0%,rgba(59,59,68,.5) 4%,rgba(59,59,68,0) 12%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
@@ -1952,9 +1955,13 @@
         document.addEventListener('keydown', function () {
             ap.t = Date.now();
         }, true);
+        var apple = null, apTick = 0;
         var tm = setInterval(function () {
             safe(function () {
-                if (getStr('lmx_theme', 'default') !== 'apple' || isMobile()) return;
+                if (document.hidden) return;
+                if (++apTick % 10 === 0) apple = null;
+                if (apple === null) apple = getStr('lmx_theme', 'default') === 'apple' && !isMobile();
+                if (!apple) return;
                 var c = document.querySelector('.card--lmxhero.focus');
                 if (!c) return;
                 setCur(c);
