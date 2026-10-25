@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.0 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.1 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1277,7 +1277,12 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
             'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
-            '.lmx-renamed > *:not(svg):not(img):not(.lmx-nm){display:none !important}' +
+            '.lmx-renamed > *:not(svg):not(img){display:none !important}' +
+            '.lmx-renamed::after{content:attr(data-lmx-name);white-space:nowrap}' +
+            '.lmx-renamed.lmx-m1::after{display:none}' +
+            '.lmx-renamed.lmx-m2::after{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis}' +
+            'body.lmx-hbo .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after,body.lmx-apple .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after{display:none}' +
+            '.lmx-iconed > svg:not(.lmx-ico),.lmx-iconed > img{display:none !important}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -2402,9 +2407,8 @@
     // Режим кнопки (1/2/3) пишемо і класами, і прямо в style з !important: так його не перебивають стилі теми та інших плагінів.
     // А якщо чужий плагін скидає класи або style, спостерігач повертає наше
     function labelsOf(el) {
-        var kids = $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
-        var mine = kids.filter(function (k) { return k.classList && k.classList.contains('lmx-nm'); });
-        return mine.length ? mine : kids;
+        if (el.classList.contains('lmx-renamed')) return [];
+        return $(el).children().filter(function () { return !/^(svg|img)$/i.test(this.tagName); }).toArray();
     }
     function inlineSet(node, map) {
         Object.keys(map).forEach(function (k) {
@@ -2490,24 +2494,29 @@
         list.forEach(function (b) {
             var el = b.el, id = b.id, ik = m.icons[id], ic = ik ? iconByKey(ik) : null, cur = el.querySelector('svg, img'), nn;
             map[id] = el;
-            if (ic && el.__lmxSet !== ik) {
-                nn = $(ic[2])[0];
-                if (cur) cur.parentNode.replaceChild(nn, cur); else el.insertBefore(nn, el.firstChild);
-                el.__lmxSet = ik;
-            } else if (!ic && el.__lmxSet && el.__lmxS) {
-                nn = $(el.__lmxS)[0];
-                if (cur) cur.parentNode.replaceChild(nn, cur);
+            // Іконку не підміняємо: рідну ховаємо, а свою додаємо поруч (плагіни можуть шукати рідну)
+            var mineIco = null, ci;
+            for (ci = 0; ci < el.children.length; ci++) if (el.children[ci].classList.contains('lmx-ico')) { mineIco = el.children[ci]; break; }
+            if (ic) {
+                if (!mineIco || el.__lmxSet !== ik) {
+                    if (mineIco) el.removeChild(mineIco);
+                    mineIco = $(ic[2])[0];
+                    mineIco.classList.add('lmx-ico');
+                    el.insertBefore(mineIco, el.firstChild);
+                    el.__lmxSet = ik;
+                }
+                if (!el.classList.contains('lmx-iconed')) el.classList.add('lmx-iconed');
+            } else {
+                if (mineIco) el.removeChild(mineIco);
+                el.classList.remove('lmx-iconed');
                 el.__lmxSet = null;
             }
-            // Перейменування не чіпає рідний напис кнопки (його можуть читати плагіни): ховаємо його й показуємо свій
-            var nmEl = null, ci;
-            for (ci = 0; ci < el.children.length; ci++) if (el.children[ci].classList.contains('lmx-nm')) { nmEl = el.children[ci]; break; }
+            // Перейменування: рідний напис не чіпаємо (його можуть читати плагіни), нове ім'я показує CSS з атрибута
             if (m.names[id]) {
-                if (!nmEl) { nmEl = document.createElement('span'); nmEl.className = 'lmx-nm'; el.appendChild(nmEl); }
-                if (nmEl.textContent !== m.names[id]) nmEl.textContent = m.names[id];
+                if (el.getAttribute('data-lmx-name') !== m.names[id]) el.setAttribute('data-lmx-name', m.names[id]);
                 if (!el.classList.contains('lmx-renamed')) el.classList.add('lmx-renamed');
             } else {
-                if (nmEl) nmEl.remove();
+                if (el.hasAttribute('data-lmx-name')) el.removeAttribute('data-lmx-name');
                 el.classList.remove('lmx-renamed');
             }
             paint(el, m.colors[id] || m.color);
@@ -2986,7 +2995,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.0';
+    var VERSION = '10.1';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
