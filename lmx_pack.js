@@ -1200,16 +1200,16 @@
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
-            'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .25s ease}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .5s ease-out}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
-            'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .25s ease}' +
+            'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .5s ease-out}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head.lmx-reveal{opacity:1}' +
             // у контейнері font-size:0, тому розміри лише у vw/vh/px (em тут дорівнювали б нулю)
             B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
-            B + '.full-start__background{filter:brightness(.45)}' +
+            B + '.full-start__background{filter:brightness(.45);transition:opacity .8s ease-out;will-change:opacity}' +
             B + '.background{filter:brightness(.45)}' +
             '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
@@ -1388,7 +1388,7 @@
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
-            A + '.card--lmxhero .card__view{height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            A + '.card--lmxhero .card__view{background-color:#1c1c20;will-change:transform;height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
             A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.09)}' +
@@ -1407,6 +1407,7 @@
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             A + '.lmx-hero-line{position:relative}' +
+            A + '.lmx-hero-snap .scroll__body{transition:none !important}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:width .45s cubic-bezier(.25,.8,.25,1),background-color .45s ease}' +
@@ -1874,6 +1875,14 @@
         } catch (e) {}
         setTimeout(function () { safe(manual); }, 60);
     }
+    // Повернення на перший баннер без «проїзду» через усі інші: короткий стрибок без анімації
+    function wrapToFirst(line) {
+        var first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
+        if (!first) return;
+        line.classList.add('lmx-hero-snap');
+        focusCard(first, line);
+        setTimeout(function () { line.classList.remove('lmx-hero-snap'); }, 160);
+    }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
         var idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0, now = Date.now();
@@ -1890,7 +1899,7 @@
             if (k === 0) first = all[i];
             if (k === idx + 1) next = all[i];
         }
-        next = next || first;
+        if (!next && first && first !== card) { wrapToFirst(line); return; }
         if (next && next !== card) focusCard(next, line);
     }
     function initDots() {
@@ -1898,19 +1907,19 @@
         window.__lmxDots = true;
         document.addEventListener('keydown', function (e) {
             ap.t = Date.now();
-            // «вправо» на останньому баннері — повертаємось на перший
+            // «вправо» на останньому баннері — повертаємось на перший (стан беремо ДО обробки клавіші Lampa)
             if (e && (e.keyCode === 39 || e.key === 'ArrowRight')) {
-                setTimeout(function () {
-                    safe(function () {
-                        var c = document.querySelector('.card--lmxhero.focus');
-                        if (!c) return;
-                        var n = parseInt(c.getAttribute('data-lmxn'), 10) || 0, i = parseInt(c.getAttribute('data-lmxi'), 10) || 0;
-                        if (n > 1 && i === n - 1) {
-                            var line = c.closest('.items-line'), first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
-                            if (first) focusCard(first, line);
-                        }
-                    });
-                }, 60);
+                var c0 = document.querySelector('.card--lmxhero.focus');
+                if (!c0) return;
+                var n0 = parseInt(c0.getAttribute('data-lmxn'), 10) || 0, i0 = parseInt(c0.getAttribute('data-lmxi'), 10) || 0;
+                if (n0 > 1 && i0 === n0 - 1) {
+                    setTimeout(function () {
+                        safe(function () {
+                            var c = document.querySelector('.card--lmxhero.focus');
+                            if (c && parseInt(c.getAttribute('data-lmxi'), 10) === n0 - 1) wrapToFirst(c.closest('.items-line'));
+                        });
+                    }, 60);
+                }
             }
         }, true);
         var tm = setInterval(function () {
