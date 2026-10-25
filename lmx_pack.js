@@ -1881,9 +1881,23 @@
     function wrapToFirst(line) {
         var first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
         if (!first) return;
+        var cl = line.querySelector('.card--lmxhero.focus');
+        var n = cl ? (parseInt(cl.getAttribute('data-lmxn'), 10) || 0) : 0;
+        var raw = cl ? (parseInt(cl.getAttribute('data-lmxi'), 10) || 0) : 0;
         line.classList.add('lmx-hero-snap');
-        focusCard(first, line);
-        setTimeout(function () { line.classList.remove('lmx-hero-snap'); }, 160);
+        if (cl && n > 1 && raw >= n && cl.parentNode === first.parentNode) {
+            // «холодна» картка першого баннера не встигає промалюватись, тому міняємо їх місцями:
+            // уже промальована копія стає першою, а справжній перший — новою копією в кінці
+            var parent = first.parentNode, after = cl.nextSibling;
+            parent.insertBefore(cl, first);
+            parent.insertBefore(first, after);
+            cl.setAttribute('data-lmxi', '0');
+            first.setAttribute('data-lmxi', String(n));
+            try { if (window.$) window.$(cl).trigger('hover:focus'); } catch (e) {}
+        } else {
+            focusCard(first, line);
+        }
+        setTimeout(function () { line.classList.remove('lmx-hero-snap'); }, 200);
     }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
