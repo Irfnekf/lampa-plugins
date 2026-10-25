@@ -521,6 +521,36 @@
     // ===== РЯДИ НА ГОЛОВНІЙ (наші) =====
     var rowsStarted = false;
 
+    // Apple TV: історія — широкі картки з кадром (як «Продовжити перегляд» в оригіналі)
+    function histItem(m) {
+        var it = {};
+        for (var k in m) it[k] = m[k];
+        it.params = {
+            createInstance: makeInstance,
+            emit: {
+                onCreate: function () {
+                    var self = this, ex = arguments[0];
+                    safe(function () {
+                        var h = htmlOf(self, ex);
+                        if (!h) return;
+                        h.addClass('card--lmxhist');
+                        var view = h.find('.card__view');
+                        var pic = m.backdrop_path || m.poster_path;
+                        if (pic) view.css('background-image', 'url(' + imgUrl(pic, 'w500') + ')');
+                        view.find('img').css('opacity', 0);
+                        h.find('.card__title,.card__age,.card__vote').remove();
+                        var v = Number(m.vote_average) || 0;
+                        var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
+                        view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">&#9654;&nbsp; ' + esc(m.title || m.name) +
+                            '</div><div class="lmx-hist__m">' + (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
+                            (year ? '<span>' + year + '</span>' : '') + '</div></div>');
+                    });
+                },
+                onlyEnter: function () { openFull(m); }
+            }
+        };
+        return it;
+    }
     // Ряд з історії перегляду самої Lampa (запасний варіант, якщо «Продовжити перегляд» не показується)
     function historyCall() {
         return function (call) {
@@ -528,6 +558,7 @@
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
             list = list.filter(function (c) { return c && c.id; }).slice(0, 20);
             if (!list.length) return call();
+            if (getStr('lmx_theme', 'default') === 'apple') list = list.map(histItem);
             call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
         };
     }
@@ -817,7 +848,12 @@
                 list = tg.concat(rest.slice(0, lim - tg.length));
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 if (!list.length) return call();
-                var items = list.map(function (m) {
+                var dotsHtml = function (idx) {
+                    var h = '<div class="lmx-dots">';
+                    for (var q = 0; q < list.length; q++) h += '<i' + (q === idx ? ' class="on"' : '') + '></i>';
+                    return h + '</div>';
+                };
+                var items = list.map(function (m, idx) {
                     var it = {};
                     for (var k in m) it[k] = m[k];
                     it.params = {
@@ -846,7 +882,8 @@
                                         (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
                                         '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
                                         '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-                                        (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' : '') + '</div>');
+                                        (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' : '') + '</div>' +
+                                        (getStr('lmx_theme', 'default') === 'apple' ? dotsHtml(idx) : ''));
                                 });
                             },
                             onlyEnter: function () { openFull(m); }
@@ -1347,8 +1384,8 @@
             A + '.lmx-pill.lmx-m-new{background:#f5f5f7 !important;color:#000 !important}' +
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
-            A + '.card--lmxhero{width:100vw !important;margin-left:-2.2em;margin-right:0 !important}' +
-            A + '.card--lmxhero .card__view{height:58vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            A + '.card--lmxhero{width:100vw !important;margin-left:-2.2em !important;margin-right:2.2em !important}' +
+            A + '.card--lmxhero .card__view{height:62vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
             A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.09)}' +
@@ -1362,6 +1399,17 @@
             A + '.lmx-hero__tag.lmx-t-soon{background:#0a84ff}' +
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
+            A + '.lmx-dots{position:absolute;left:50%;bottom:1.3em;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:3;pointer-events:none}' +
+            A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5)}' +
+            A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
+            // історія: широкі картки з кадром
+            A + '.card--lmxhist{width:24em !important}' +
+            A + '.card--lmxhist .card__view{height:13.5em !important;padding-bottom:0 !important;border-radius:1.1em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
+            A + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0 0 1.1em 1.1em;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,0) 100%)}' +
+            A + '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
+            A + '.lmx-hist__t{font-size:1.05em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            A + '.lmx-hist__m{display:flex;gap:.7em;font-size:.82em;opacity:.85;margin-top:.15em}' +
+            A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(120,120,128,.5);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -1407,11 +1455,11 @@
             A + '.full-descr__text,' + A + '.full-descr__details{color:#d1d1d6}' +
             A + '.full-person{border-radius:1.1em}' +
             '@media (max-width:760px){' +
-                A + '.card--lmxhero{width:94vw !important;margin-left:0}' +
+                A + '.card--lmxhero{width:94vw !important;margin-left:0 !important;margin-right:1em !important}' +
                 A + '.card--lmxhero .card__view{height:52vw !important;border-radius:1.2em}' +
                 A + '.card--lmxhero .lmx-hero__text{left:1.2em;right:1em;bottom:1.2em;max-width:85%}' +
                 A + '.card--lmxhero .lmx-hero__title{font-size:1.7em}' +
-                A + '.card--lmxhero .lmx-hero__o,' + A + '.lmx-hero__acts{display:none}' +
+                A + '.card--lmxhero .lmx-hero__o,' + A + '.lmx-hero__acts,' + A + '.lmx-dots{display:none}' +
             '}';
     }
     function loadThemeFont() {
@@ -1595,7 +1643,7 @@
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
-            if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio')) return;
+            if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio') || el.classList.contains('card--lmxhist')) return;
 
             var d = getData(el);
             if (!d) return;
