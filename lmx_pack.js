@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.3 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -583,7 +583,7 @@
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підпис лише в перших трьох і в тієї, що вибрана. У HBO Max і Apple TV кнопки завжди компактні', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
-        H.trigger('lmx_btn_all', true, 'Показувати всі кнопки', 'Виводить у ряд і ті кнопки, що Lampa ховає й показує лише в меню «Дивитись». Діє при наступному відкритті сторінки', null);
+        H.trigger('lmx_btn_all', false, 'Показувати всі кнопки', 'Виводить у ряд і ті кнопки, що Lampa ховає й показує лише в меню «Дивитись». Діє при наступному відкритті сторінки', null);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -2324,12 +2324,14 @@
     var BTN_COLORS = [['', 'Типовий'], ['#ffffff', 'Білий'], ['#ff5252', 'Червоний'], ['#ff9800', 'Помаранчевий'], ['#ffd54f', 'Жовтий'],
         ['#4caf50', 'Зелений'], ['#26c6da', 'Бірюзовий'], ['#42a5f5', 'Блакитний'], ['#7e57c2', 'Фіолетовий'], ['#ec407a', 'Рожевий']];
     var BTN_LOOKS = [['', 'Стандартний'], ['icons', 'Лише іконки'], ['full', 'З підписами']];
+    var BTN_NAMES = { 'button--book': 'Закладки', 'button--reaction': 'Реакції', 'button--subscribe': 'Підписатися', 'button--options': 'Опції',
+        'button--play': 'Дивитись', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
     var PENCIL = BI('<path d="M4 20l1-4 11-11 3 3L8 19z"/>');
     var IMGI = BI('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>');
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
     var CLOSEI = BI('<path d="M6 6l12 12M18 6L6 18"/>');
 
-    var btnLast = null, btnRun = null;
+    var btnLast = null, btnRun = null, btnPageIds = [];
 
     function iconByKey(k) { for (var i = 0; i < BTN_ICONS.length; i++) if (BTN_ICONS[i][0] === k) return BTN_ICONS[i]; return null; }
     function strHash(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h).toString(36); }
@@ -2341,7 +2343,7 @@
     function bmGet() {
         var o = jsonStore('lmx_btns', {});
         o.order = o.order || []; o.hidden = o.hidden || []; o.colors = o.colors || {}; o.icons = o.icons || {};
-        o.names = o.names || {}; o.modes = o.modes || {}; o.folders = o.folders || []; o.color = o.color || ''; o.look = o.look || '';
+        o.names = o.names || {}; o.modes = o.modes || {}; o.folders = o.folders || []; o.color = o.color || ''; o.look = o.look || ''; o.first = o.first || '';
         return o;
     }
     function bmSave(o) { Lampa.Storage.set('lmx_btns', o); }
@@ -2349,7 +2351,12 @@
 
     function btnTitleOf(el) {
         var s = el.querySelector('span');
-        return String((s ? s.textContent : el.textContent) || '').replace(/\s+/g, ' ').trim();
+        var t = String((s ? s.textContent : el.textContent) || '').replace(/\s+/g, ' ').trim();
+        if (!t) {
+            t = el.getAttribute('title') || el.getAttribute('aria-label') || '';
+            if (!t) { var cl = String(el.className || '').split(/\s+/), i; for (i = 0; i < cl.length; i++) if (BTN_NAMES[cl[i]]) { t = BTN_NAMES[cl[i]]; break; } }
+        }
+        return t;
     }
     function btnIdOf(el) {
         var cls = String(el.className || '').split(/\s+/), i, c;
@@ -2359,7 +2366,7 @@
     function btnCollect(cont, r) {
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
         // «Показувати всі кнопки»: добираємо й ті, що Lampa ховає поза рядом (їх видно лише в меню «Дивитись»)
-        if (r && getBool('lmx_btn_all', true)) {
+        if (r && getBool('lmx_btn_all', false)) {
             r.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').each(function () {
                 if (els.indexOf(this) >= 0 || $(this).closest('.card, .full-person, .full-descr, .full-episode, .items-line').length) return;
                 if (!/(^|\s)(view--|button--)/.test(String(this.className || ''))) return;
@@ -2404,9 +2411,25 @@
         cont.find('.lmx-folder, .lmx-edit').remove();
         m.folders.forEach(function (f) { (f.items || []).forEach(function (id) { inFolder[id] = f.id; }); });
 
+        // Головна кнопка (перша на сторінці) завжди перша, велика й без змін
+        var custom = m.order.length > 0 || m.folders.length > 0;
+        var ids = list.map(function (b) { return b.id; });
+        if (!custom) {
+            if (ids[0] && m.first !== ids[0]) { m.first = ids[0]; bmSave(m); }
+        } else if (!m.first || ids.indexOf(m.first) < 0) {
+            m.first = ids[0] || '';
+        }
+        var primary = m.first;
+
         list.forEach(function (b) {
             var el = b.el, id = b.id, ik = m.icons[id], ic = ik ? iconByKey(ik) : null, cur = el.querySelector('svg'), nn;
             map[id] = el;
+            if (id === primary) {
+                el.classList.remove('lmx-bh', 'lmx-b1', 'lmx-b2', 'lmx-b3', 'lmx-ic', 'hide');
+                el.classList.add('selector', 'lmx-primary');
+                el.style.removeProperty('--lmx-bc');
+                return;
+            }
             if (ic && el.__lmxSet !== ik) {
                 nn = $(ic[2])[0];
                 if (cur) cur.parentNode.replaceChild(nn, cur); else el.insertBefore(nn, el.firstChild);
@@ -2423,7 +2446,7 @@
             el.classList.remove('lmx-b1', 'lmx-b2', 'lmx-b3');
             if (m.modes[id]) el.classList.add('lmx-b' + m.modes[id]);
             var off = m.hidden.indexOf(id) >= 0 || !!inFolder[id];
-            if (!off && getBool('lmx_btn_all', true)) {
+            if (!off && getBool('lmx_btn_all', false)) {
                 el.classList.remove('hide');
                 if (el.style && el.style.display === 'none') el.style.display = '';
             }
@@ -2457,10 +2480,18 @@
             fEls[tk] = fe[0];
         });
 
-        btnTokens(m, list.map(function (b) { return b.id; })).forEach(function (t) {
-            var el = map[t] || fEls[t];
-            if (el) cont.append(el);
-        });
+        // Порядок чіпаємо лише коли його змінив користувач; інакше лишається так, як розставила Lampa і її плагіни
+        var toks = btnTokens(m, ids);
+        if (custom) {
+            if (primary) toks = [primary].concat(toks.filter(function (x) { return x !== primary; }));
+            toks.forEach(function (t) {
+                var el = map[t] || fEls[t];
+                if (el) cont.append(el);
+            });
+        } else {
+            Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
+        }
+        btnPageIds = custom ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
         var ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
         ed.on('hover:enter', function () { openButtonsEditor(); });
         cont.append(ed);
@@ -2501,19 +2532,23 @@
 
     function openButtonsEditor() {
         if (!(Lampa.Modal && Lampa.Modal.open && Lampa.Select && window.$)) return;
-        var known = knownGet(), ids = Object.keys(known);
-        if (!ids.length) { if (Lampa.Noty) Lampa.Noty.show('Спочатку відкрийте будь-який фільм — його кнопки з’являться тут'); return; }
+        var known = knownGet(), ids0 = Object.keys(known);
+        if (!ids0.length) { if (Lampa.Noty) Lampa.Noty.show('Спочатку відкрийте будь-який фільм — його кнопки з’являться тут'); return; }
+        // порядок, як він зараз на сторінці; невідомі сторінці кнопки — в кінець
+        var ids = btnPageIds.filter(function (x) { return known[x]; });
+        ids0.forEach(function (x) { if (ids.indexOf(x) < 0) ids.push(x); });
         var enabled = Lampa.Controller.enabled().name;
         var m = bmGet(), lastFire = 0;
         var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
         wrap.append(top, listEl, bottom);
+        var first = m.first && ids.indexOf(m.first) >= 0 ? m.first : '';
 
         function save() { bmSave(m); }
         function findF(id) { for (var i = 0; i < m.folders.length; i++) if (m.folders[i].id === id) return m.folders[i]; return null; }
         function isF(t) { return t.indexOf('f:') === 0; }
         function titleOf(t) {
             if (isF(t)) { var f = findF(t.slice(2)); return f ? f.name : ''; }
-            return m.names[t] || (known[t] && known[t].t) || t;
+            return m.names[t] || (known[t] && known[t].t) || BTN_NAMES[t.replace(/#+$/, '')] || t;
         }
         function svgOf(t) {
             var ic = iconByKey(m.icons[t]);
@@ -2525,12 +2560,11 @@
             for (var i = 0; i < m.folders.length; i++) if ((m.folders[i].items || []).indexOf(t) >= 0) return m.folders[i];
             return null;
         }
-        function focusOn(el) {
+        // Лише пересуваємо рядки на місці й не чіпаємо колекцію контролера: інакше вікно перестає прокручуватись угору
+        function followFocus(el) {
             safe(function () {
-                var root = wrap.closest('.modal__content');
-                if (!root.length) root = $('.modal').eq(0);
-                Lampa.Controller.collectionSet(root);
-                if (el) Lampa.Controller.collectionFocus(el, root);
+                if (window.Navigator && Navigator.focus) Navigator.focus(el);
+                else $(el).trigger('hover:focus');
             });
         }
         function bind(btn, fn) {
@@ -2549,37 +2583,56 @@
                 onSelect: function (it) { Lampa.Controller.toggle('modal'); setTimeout(function () { cb(it); }, 30); }
             });
         }
+        // Клавіатура Lampa відкривається під нашим вікном, тому на час вводу вікно закриваємо й потім відкриваємо знову
         function ask(title, value, cb) {
-            if (Lampa.Input && Lampa.Input.edit) {
+            if (!(Lampa.Input && Lampa.Input.edit)) return;
+            save();
+            Lampa.Modal.close();
+            setTimeout(function () {
                 Lampa.Input.edit({ title: title, value: value || '', free: true, nosave: true }, function (v) {
-                    Lampa.Controller.toggle('modal');
-                    setTimeout(function () { cb(String(v == null ? '' : v).trim()); }, 30);
+                    try { cb(String(v == null ? '' : v).trim()); } catch (e) {}
+                    setTimeout(openButtonsEditor, 150);
                 });
-            }
+            }, 150);
         }
-        function tokens() { return btnTokens(m, ids); }
-        function rebuild(t, act) {
-            listEl.empty();
-            tokens().forEach(function (tk) { listEl.append(rowFor(tk)); });
-            var row = listEl.children().filter(function () { return $(this).attr('data-t') === t; }).eq(0);
-            var btn = row.find('.lmx-ord__btn').filter(function () { return $(this).attr('data-act') === act; })[0] || listEl.find('.lmx-ord__btn')[0];
-            focusOn(btn);
+        function reopen() {
+            save();
+            Lampa.Modal.close();
+            setTimeout(openButtonsEditor, 120);
         }
-        function move(t, d) {
-            var o = tokens(), i = o.indexOf(t), j = i + d;
-            if (i < 0 || j < 0 || j >= o.length) return;
-            o.splice(i, 1); o.splice(j, 0, t);
-            m.order = o; save();
+        function rowOf(t) { return listEl.children().filter(function () { return $(this).attr('data-t') === t; }).eq(0); }
+        function refresh(t) {
+            var row = rowOf(t);
+            if (!row.length) return;
+            var ico = row.find('.lmx-be__ico').html(svgOf(t));
+            paint(ico[0], m.colors[t] || m.color);
+            row.find('.lmx-ord__name > span').eq(0).text(titleOf(t));
+            var f = !isF(t) ? folderOf(t) : null, sub = row.find('.lmx-ord__sub');
+            sub.text(isF(t) ? 'Папка' : (f ? 'У папці «' + f.name + '»' : ''));
+            var off = m.hidden.indexOf(t) >= 0;
+            row.find('.lmx-ord__btn[data-act=vis]').html(off ? BOX_OFF : BOX_ON).toggleClass('lmx-ord__off', off);
+            row.find('.lmx-ord__btn[data-act=mode]').text(m.modes[t] || '1');
+        }
+        function refreshAll() { listEl.children().each(function () { refresh($(this).attr('data-t')); }); }
+        function saveOrderFromDom() {
+            m.order = listEl.children().map(function () { return $(this).attr('data-t'); }).get();
+            save();
+        }
+        function move(t, d, btnEl) {
+            var row = rowOf(t), sib = d < 0 ? row.prev() : row.next();
+            if (!sib.length || sib.attr('data-lock')) return;
+            if (d < 0) row.insertBefore(sib); else row.insertAfter(sib);
+            saveOrderFromDom();
+            followFocus(btnEl);
         }
         function rowFor(t) {
-            var folder = isF(t), row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
-            var ico = $('<div class="lmx-be__ico"></div>').html(svgOf(t));
-            paint(ico[0], m.colors[t] || m.color);
+            var folder = isF(t), lock = !folder && t === first;
+            var row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
+            row.append($('<div class="lmx-be__ico"></div>').html(svgOf(t)));
             var nm = $('<div class="lmx-ord__name"></div>').append($('<span></span>').text(titleOf(t)));
-            var f = !folder ? folderOf(t) : null;
-            if (folder) nm.append($('<span class="lmx-ord__sub"></span>').text('Папка'));
-            else if (f) nm.append($('<span class="lmx-ord__sub"></span>').text('У папці «' + f.name + '»'));
-            row.append(ico, nm);
+            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Головна кнопка — завжди перша й велика' : ''));
+            row.append(nm);
+            if (lock) { row.attr('data-lock', '1'); refresh0(row, t); return row; }
             var off = m.hidden.indexOf(t) >= 0;
             var defs = [['edit', PENCIL], ['icon', IMGI], ['color', PALI], ['up', CHEV_UP], ['down', CHEV_DOWN],
                 folder ? ['del', CLOSEI] : ['mode', null], ['vis', off ? BOX_OFF : BOX_ON]];
@@ -2587,33 +2640,34 @@
                 var b = $('<div class="lmx-ord__btn selector"></div>').attr('data-act', d[0]);
                 if (d[0] === 'mode') b.text(m.modes[t] || '1'); else b.html(d[1]);
                 if (d[0] === 'vis' && off) b.addClass('lmx-ord__off');
-                bind(b, function () { act(t, d[0]); });
+                bind(b, function (el) { act(t, d[0], el); });
                 row.append(b);
             });
             return row;
         }
-        function act(t, a) {
-            if (a === 'up') { move(t, -1); rebuild(t, a); }
-            else if (a === 'down') { move(t, 1); rebuild(t, a); }
+        function refresh0(row, t) { /* головна кнопка: без змін вигляду */ }
+        function act(t, a, el) {
+            if (a === 'up') move(t, -1, el);
+            else if (a === 'down') move(t, 1, el);
             else if (a === 'vis') {
                 var k = m.hidden.indexOf(t);
                 if (k >= 0) m.hidden.splice(k, 1); else m.hidden.push(t);
-                save(); rebuild(t, a);
+                save(); refresh(t);
             } else if (a === 'mode') {
                 var seq = ['', '2', '3', '1'], cur = m.modes[t] || '';
                 var nx = seq[(seq.indexOf(cur) + 1) % seq.length];
                 if (nx) m.modes[t] = nx; else delete m.modes[t];
-                save(); rebuild(t, a);
+                save(); refresh(t);
             } else if (a === 'color') {
                 pick('Колір іконки', BTN_COLORS.map(function (c) { return { title: c[1], c: c[0] }; }), function (it) {
                     if (it.c) m.colors[t] = it.c; else delete m.colors[t];
-                    save(); rebuild(t, a);
+                    save(); refresh(t);
                 });
             } else if (a === 'icon') {
                 var items = [{ title: 'Типова', k: '' }].concat(BTN_ICONS.map(function (i) { return { title: i[1], k: i[0] }; }));
                 pick('Іконка', items, function (it) {
                     if (it.k) m.icons[t] = it.k; else delete m.icons[t];
-                    save(); rebuild(t, a);
+                    save(); refresh(t);
                 });
             } else if (a === 'edit') {
                 var menu = [{ title: 'Перейменувати', x: 'name' }];
@@ -2629,18 +2683,17 @@
                                 if (isF(t)) { var f = findF(t.slice(2)); if (f) f.name = v; } else m.names[t] = v;
                                 save();
                             }
-                            rebuild(t, a);
                         });
-                    } else if (it.x === 'unname') { delete m.names[t]; save(); rebuild(t, a); }
+                    } else if (it.x === 'unname') { delete m.names[t]; save(); refresh(t); }
                     else if (it.x === 'out') {
                         m.folders.forEach(function (f) { f.items = (f.items || []).filter(function (x) { return x !== t; }); });
-                        save(); rebuild(t, a);
+                        save(); refresh(t);
                     } else if (it.x === 'into') {
                         pick('Папка', m.folders.map(function (f) { return { title: f.name, fid: f.id }; }), function (p) {
                             m.folders.forEach(function (f) { f.items = (f.items || []).filter(function (x) { return x !== t; }); });
                             var tf = findF(p.fid);
                             if (tf) { tf.items = tf.items || []; tf.items.push(t); }
-                            save(); rebuild(t, a);
+                            save(); refresh(t);
                         });
                     }
                 });
@@ -2650,41 +2703,42 @@
                 m.order = m.order.filter(function (x) { return x !== t; });
                 m.hidden = m.hidden.filter(function (x) { return x !== t; });
                 delete m.colors[t]; delete m.icons[t];
-                save(); rebuild(null, 'edit');
+                reopen();
             }
         }
 
         function bigRow(cls, html) { return $('<div class="lmx-be__big selector ' + (cls || '') + '"></div>').html(html); }
-        function buildTop() {
-            top.empty();
-            var mk = bigRow('', '<div class="lmx-be__bi">' + BI('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 11v5M9.5 13.5h5"/>') + '</div><div>Створити папку</div>');
-            bind(mk, function () {
-                ask('Назва папки', 'Папка', function (v) {
-                    if (!v) return focusOn(mk[0]);
-                    m.folders.push({ id: 'F' + Date.now().toString(36), name: v, items: [] });
-                    save(); rebuild(null, 'edit');
-                    if (Lampa.Noty) Lampa.Noty.show('Папку створено. Додайте в неї кнопки через ✎ → «Покласти в папку»');
-                });
+        function lookName() { var lk = ''; BTN_LOOKS.forEach(function (x) { if (x[0] === m.look) lk = x[1]; }); return lk; }
+        var mk = bigRow('', '<div class="lmx-be__bi">' + BI('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 11v5M9.5 13.5h5"/>') + '</div><div>Створити папку</div>');
+        bind(mk, function () {
+            ask('Назва папки', 'Папка', function (v) {
+                if (!v) return;
+                m.folders.push({ id: 'F' + Date.now().toString(36), name: v, items: [] });
+                bmSave(m);
+                if (Lampa.Noty) Lampa.Noty.show('Папку створено. Додайте в неї кнопки через ✎ → «Покласти в папку»');
             });
-            var col = bigRow('', '<div class="lmx-be__bi">' + PALI + '</div><div>Колір іконок' + (m.color ? '' : '') + '</div>');
-            bind(col, function () {
-                pick('Колір усіх іконок', BTN_COLORS.map(function (c) { return { title: c[1], c: c[0] }; }), function (it) {
-                    m.color = it.c; save(); buildTop(); rebuild(null, 'edit'); focusOn(top.children()[1]);
-                });
+        });
+        var col = bigRow('', '<div class="lmx-be__bi">' + PALI + '</div><div>Колір іконок</div>');
+        bind(col, function () {
+            pick('Колір усіх іконок', BTN_COLORS.map(function (c) { return { title: c[1], c: c[0] }; }), function (it) {
+                m.color = it.c; save(); refreshAll();
             });
-            var lk = '';
-            BTN_LOOKS.forEach(function (x) { if (x[0] === m.look) lk = x[1]; });
-            var look = bigRow('lmx-be__look', '<div><b>Вигляд кнопок: ' + lk + '</b><span class="lmx-ord__sub">1 — іконка й підпис, 2 — лише іконка, 3 — лише підпис (для кожної кнопки)</span></div>');
-            bind(look, function () {
-                pick('Вигляд кнопок', BTN_LOOKS.map(function (x) { return { title: x[1], l: x[0] }; }), function (it) {
-                    m.look = it.l; save(); buildTop(); focusOn(top.children()[2]);
-                });
+        });
+        var look = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">1 — іконка й підпис, 2 — лише іконка, 3 — лише підпис (для кожної кнопки). Перша кнопка завжди велика</span></div>');
+        function lookText() { look.find('b').text('Вигляд кнопок: ' + lookName()); }
+        lookText();
+        bind(look, function () {
+            pick('Вигляд кнопок', BTN_LOOKS.map(function (x) { return { title: x[1], l: x[0] }; }), function (it) {
+                m.look = it.l; save(); lookText();
             });
-            top.append(mk, col, look);
-        }
+        });
+        top.append(mk, col, look);
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
-        bind(reset, function () { m = { order: [], hidden: [], colors: {}, icons: {}, names: {}, modes: {}, folders: [], color: '', look: '' }; save(); buildTop(); rebuild(null, 'edit'); });
+        bind(reset, function () {
+            m = { order: [], hidden: [], colors: {}, icons: {}, names: {}, modes: {}, folders: [], color: '', look: '', first: m.first };
+            reopen();
+        });
         var done = bigRow('lmx-be__save', 'ЗБЕРЕГТИ ТА ЗАКРИТИ');
         function close() {
             save();
@@ -2695,15 +2749,17 @@
         bind(done, close);
         bottom.append(reset, done);
 
-        buildTop();
-        tokens().forEach(function (tk) { listEl.append(rowFor(tk)); });
+        var toks = btnTokens(m, ids);
+        if (first) toks = [first].concat(toks.filter(function (x) { return x !== first; }));
+        toks.forEach(function (tk) { listEl.append(rowFor(tk)); });
+        refreshAll();
         Lampa.Modal.open({ title: 'Порядок кнопок', html: wrap, size: 'medium', mask: true, onBack: close });
     }
 
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.3';
+    var VERSION = '8.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
