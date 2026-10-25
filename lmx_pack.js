@@ -1164,6 +1164,13 @@
                 '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
+                // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
+                '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
+                // фон застосунку під тему: стандартна — глибокий синьо-фіолетовий градієнт
+                'html{background:#0a0b1c !important}' +
+                'body{background:linear-gradient(180deg,#1b1a3d 0%,#10112b 45%,#080916 100%) fixed !important}' +
+                '.background{display:none !important}' +
+                '.activity,.activity__body,.wrap{background:transparent}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -1263,7 +1270,8 @@
         var T = 'body.lmx-hbo ';
         var F = 'body.lmx-hbo.lmx-full ';
         return '' +
-            T + '{background:#05060f !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
+            'html{background:#05040c !important}' +
+            T + '{background:linear-gradient(180deg,#160f2e 0%,#0b0818 40%,#05040c 100%) fixed !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
@@ -1294,7 +1302,7 @@
             // ===== банер-білборд як у HBO Max: афіша на весь екран, текст і кнопки зліва, точки знизу =====
             T + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
             T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;will-change:transform;height:78vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
-            T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#05060f 0%,rgba(5,6,15,.5) 8%,rgba(5,6,15,0) 28%),linear-gradient(to bottom,rgba(5,6,15,.7) 0%,rgba(5,6,15,0) 16%),linear-gradient(90deg,rgba(5,6,15,.88) 0%,rgba(5,6,15,.55) 30%,rgba(5,6,15,0) 62%)}' +
+            T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#0b0818 0%,rgba(11,8,24,.5) 8%,rgba(11,8,24,0) 28%),linear-gradient(to bottom,rgba(11,8,24,.7) 0%,rgba(11,8,24,0) 16%),linear-gradient(90deg,rgba(11,8,24,.88) 0%,rgba(11,8,24,.55) 30%,rgba(11,8,24,0) 62%)}' +
             T + '.card--lmxhero .lmx-hero__text{left:4em;right:auto;bottom:5.2em;max-width:40%}' +
             T + '.card--lmxhero .lmx-hero__title{font-size:2.8em;font-weight:800;line-height:1.05;letter-spacing:-.01em;margin-bottom:.35em}' +
             T + '.card--lmxhero .lmx-hero__v{display:inline-flex;align-items:center;gap:.3em;background:rgba(255,255,255,.14);padding:.2em .6em;border-radius:.4em;font-weight:700;-webkit-text-fill-color:#fff}' +
