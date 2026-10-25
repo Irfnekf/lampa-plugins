@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.0 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2931,6 +2931,7 @@
             var on = !getBool('lmx_btn_all', false);
             Lampa.Storage.set('lmx_btn_all', on ? 'true' : 'false');
             allText();
+            if (!on) Lampa.Storage.set('lmx_btn_menu', []);
             function after(n) {
                 if (on && Lampa.Noty) Lampa.Noty.show(n ? 'Додано кнопок із меню «Дивитись»: ' + n : 'У меню «Дивитись» нічого не знайдено');
                 safe(function () { if (btnRun) btnRun(true); });
@@ -2959,7 +2960,9 @@
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
         bind(reset, function () {
-            m = { order: [], hidden: [], colors: {}, icons: {}, names: {}, modes: {}, folders: [], color: '', look: '', first: m.first };
+            m = { v: 2, order: [], hidden: [], colors: {}, icons: {}, names: {}, modes: {}, folders: [], color: '', look: '', first: m.first };
+            Lampa.Storage.set('lmx_btn_menu', []);
+            Lampa.Storage.set('lmx_btn_all', 'false');
             reopen();
         });
         var done = bigRow('lmx-be__save', 'ЗБЕРЕГТИ ТА ЗАКРИТИ');
@@ -2983,7 +2986,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.9';
+    var VERSION = '10.0';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
