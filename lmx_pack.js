@@ -1219,6 +1219,9 @@
                 '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:1.15em;color:#fff;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
                 '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
                 '.lmx-hist__m{display:flex;gap:1em;font-size:.85em;line-height:1.3;margin-top:.4em}' +
+                // стандартна тема: біла рамка на картці історії у фокусі (рідне кільце Lampa обрізається через overflow)
+                'body:not(.lmx-hbo):not(.lmx-apple) .card--lmxhist.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
+                'body:not(.lmx-hbo):not(.lmx-apple) .card--lmxhist.focus .card__view::after{display:none !important}' +
                 '.lmx-hist__bar{position:absolute;left:0;right:0;bottom:0;height:.36em;background:rgba(255,255,255,.3);z-index:3}' +
                 '.lmx-hist__bar i{display:block;height:100%;background:#fff}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
