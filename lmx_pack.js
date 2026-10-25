@@ -1266,15 +1266,18 @@
             T + '{background:#05060f !important;font-family:"Inter","Helvetica Neue",Arial,sans-serif}' +
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
+            T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
+            // як у застосунку: картки при прокрутці «заходять» ліворуч під бокову панель, а не обрізаються на краю ряду
+            T + '.items-line:not(.lmx-hero-line) .scroll{margin-left:-2.2em;padding-left:2.2em;-webkit-mask-image:none !important;mask-image:none !important}' +
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
             // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
             T + '.card,' + T + '.card.focus,' + T + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            T + '.card__view{border-radius:.45em;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
+            T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.05);box-shadow:0 0 0 .2em #fff}' +
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.05);box-shadow:0 0 0 .15em #fff}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
-            T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
+            T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
             T + '.lmx-cin__t{font-size:1.2em;line-height:1.15;letter-spacing:-.005em}' +
             T + '.lmx-cin__r{margin-top:.1em}' +
@@ -1290,7 +1293,7 @@
             T + '.lmx-pill.lmx-m-soon{background:rgba(5,6,15,.82) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}' +
             // ===== банер-білборд як у HBO Max: афіша на весь екран, текст і кнопки зліва, точки знизу =====
             T + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
-            T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;will-change:transform;height:66vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;will-change:transform;height:78vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#05060f 0%,rgba(5,6,15,.5) 8%,rgba(5,6,15,0) 28%),linear-gradient(to bottom,rgba(5,6,15,.7) 0%,rgba(5,6,15,0) 16%),linear-gradient(90deg,rgba(5,6,15,.88) 0%,rgba(5,6,15,.55) 30%,rgba(5,6,15,0) 62%)}' +
             T + '.card--lmxhero .lmx-hero__text{left:4em;right:auto;bottom:5.2em;max-width:40%}' +
             T + '.card--lmxhero .lmx-hero__title{font-size:2.8em;font-weight:800;line-height:1.05;letter-spacing:-.01em;margin-bottom:.35em}' +
@@ -1321,14 +1324,14 @@
             '@keyframes lmxspin{to{transform:rotate(360deg)}}' +
             // історія («Продовжити перегляд»): широкі картки з кадром
             T + '.card--lmxhist{width:23em !important}' +
-            T + '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:.45em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
-            T + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0 0 .45em .45em;background:linear-gradient(to top,rgba(0,0,0,.8) 0%,rgba(0,0,0,0) 100%)}' +
+            T + '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:0;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
+            T + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0;background:linear-gradient(to top,rgba(0,0,0,.8) 0%,rgba(0,0,0,0) 100%)}' +
             T + '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:.9em;color:#fff}' +
             T + '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             T + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.5em}' +
             // плитки стрімінгів
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.05)}' +
-            T + '.card--lmxstudio .card__view{overflow:visible !important;background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
+            T + '.card--lmxstudio .card__view{border-radius:0;overflow:visible !important;background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
             // меню, налаштування, списки: фіолетово-синій акцент у фокусі
             T + '.menu__item,' + T + '.settings-param,' + T + '.settings-folder,' + T + '.selectbox-item{transition:background-color .2s ease}' +
             T + '.menu__item.focus,' + T + '.menu__item.traverse,' + T + '.menu__item.hover,' +
