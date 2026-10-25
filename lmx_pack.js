@@ -1287,14 +1287,17 @@
         var GRAY = '#a1a1a6';
         var GLASS = 'rgba(120,120,128,.32)';
         return '' +
+            'html' + (' ') + '{background:#26262b !important}' +
+            A + '.background{display:none !important}' +
             A + '{background:linear-gradient(180deg,#3b3b44 0%,#2c2c33 38%,#1f1f24 100%) fixed !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
             // заголовки рядів
             A + '.items-line__title{font-size:1.6em;font-weight:700;letter-spacing:-.022em;color:#f5f5f7}' +
             A + '.items-line__more{background:' + GLASS + ';border-radius:99em;font-weight:600}' +
             // ===== картки =====
-            A + '.card__view{border-radius:1.1em;background:#2c2c31;box-shadow:0 .4em 1.2em rgba(0,0,0,.25);transition:transform .7s ' + SPRING + '}' +
-            A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:scale(1.09);will-change:transform}' +
+            A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
+            A + '.card__view{border-radius:1.1em;background:#2c2c31;animation:none !important;transition:transform .6s ' + SPRING + '}' +
+            A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:scale(1.08)}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:block !important;content:"";position:absolute;top:45%;left:4%;right:4%;bottom:-7%;border:0 !important;border-radius:1.15em;background:radial-gradient(ellipse at 50% 60%,rgba(0,0,0,.75) 0%,rgba(0,0,0,0) 70%);z-index:-1;pointer-events:none;animation:lmxshadow .7s ease both}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
             A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.15em 1.15em;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
@@ -1311,10 +1314,10 @@
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:100vw !important;margin-left:-2.2em;margin-right:0 !important}' +
-            A + '.card--lmxhero .card__view{height:58vh !important;border-radius:0;box-shadow:none;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            A + '.card--lmxhero .card__view{height:58vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
-            A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:block !important;border-radius:0;background:none;animation:none}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.07)}' +
+            A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.06)}' +
             A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.55) 22%,rgba(0,0,0,0) 55%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
