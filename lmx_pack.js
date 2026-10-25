@@ -137,9 +137,9 @@
     }
 
     // Порядок за замовчуванням (поки користувач не змінив його сам)
-    var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxNowPlaying',
+    var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxHistory', 'LmxNowPlaying',
         'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxUaMovies', 'LmxUaTv', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
-        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky', 'LmxHistory'];
+        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky'];
 
     function allRows() {
         var map = {}, list = [];
@@ -1475,6 +1475,9 @@
                 A + '.card--lmxhero .lmx-hero__text{left:1.2em;right:1em;bottom:1.2em;max-width:85%}' +
                 A + '.card--lmxhero .lmx-hero__title{font-size:1.7em}' +
                 A + '.card--lmxhero .lmx-hero__o,' + A + '.lmx-hero__acts,' + A + '.lmx-dots{display:none}' +
+                // на телефоні фокусу немає — текст видно завжди, а знизу легке затемнення для читабельності
+                A + '.card--lmxhero .lmx-hero__text{opacity:1 !important;transition:none}' +
+                A + '.card--lmxhero .lmx-hero__shade{background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.45) 40%,rgba(0,0,0,0) 75%)}' +
             '}';
     }
     function loadThemeFont() {
