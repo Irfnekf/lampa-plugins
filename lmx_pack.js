@@ -1199,9 +1199,9 @@
             '.lmx-head-moved{display:none !important}' +
             '.lmx-info{display:flex;flex-wrap:wrap;gap:.5em;margin:.8em 0}' +
             '.lmx-ip{font-size:1.1em;line-height:1;padding:.45em .8em;border-radius:.6em;background:rgba(255,255,255,.12);color:#fff}' +
-            '.lmx-ip.lmx-next{background:' + cNext + '}' +
+            '.lmx-ip.lmx-next{background:rgba(255,255,255,.12)}' +
             '.lmx-ip.lmx-done{background:' + cDone + '}' +
-            '.lmx-ip.lmx-soon{background:' + cSoon + '}' +
+            '.lmx-ip.lmx-soon{background:rgba(255,255,255,.12)}' +
             '.lmx-ip.lmx-bad{background:' + COLORS.red + '}' +
             // стиль карток «Кіно» (єдиний)
             ''+
@@ -1280,7 +1280,9 @@
             B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
-            B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
+            B + '.full-start-new__details{margin:0 0 .8em -0.3em;font-size:1em;line-height:1.5;opacity:.85}' +
+            B + '.full-start-new__right{text-shadow:0 1px 3px rgba(0,0,0,.75)}' +
+            B + '.full-start-new__right .lmx-info{margin:.5em 0 .9em}' +
             B + '.full-start__background{filter:brightness(.45);transform:none !important;animation:none !important;transition:opacity .8s ease-out;will-change:opacity}' +
             B + '.background{filter:brightness(.45)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
@@ -1425,7 +1427,7 @@
             F + '.lmx-info{gap:.4em .7em;margin:.2em 0 .7em;align-items:center}' +
             F + '.lmx-info .lmx-ip{background:none !important;padding:0;font-size:1.1em;color:#d5d8e4;font-weight:500}' +
             F + '.lmx-info .lmx-ip + .lmx-ip::before{content:"\\2022";margin-right:.7em;opacity:.55}' +
-            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#fff;font-weight:700}' +
+            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#d5d8e4;font-weight:500}' +
             F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:36vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:0 0 1.2em;font-size:1.05em;color:#c4c8d6;z-index:auto}' +
             F + '.lmx-descr__t{-webkit-line-clamp:3}' +
             // епізоди серіалу (рідний список Lampa): широкі кадри з малим заокругленням і білою рамкою у фокусі
@@ -1479,7 +1481,7 @@
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             A + '.card__view{border-radius:1.1em;background:#2c2c31;animation:none !important;transition:transform .6s ' + SPRING + '}' +
             A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:scale(1.12)}' +
-            A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:block !important;content:"";position:absolute;top:45%;left:4%;right:4%;bottom:-7%;border:0 !important;border-radius:1.15em;background:radial-gradient(ellipse at 50% 60%,rgba(0,0,0,.75) 0%,rgba(0,0,0,0) 70%);z-index:-1;pointer-events:none;animation:lmxshadow .7s ease both}' +
+            A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
             A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.15em 1.15em;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
             A + '.lmx-cin__t{font-size:1.15em;font-weight:600;letter-spacing:-.015em;line-height:1.15}' +
@@ -1561,7 +1563,7 @@
             F + '.lmx-info{gap:.3em .7em;margin:.1em 0 .9em;align-items:center}' +
             F + '.lmx-info .lmx-ip{background:none !important;padding:0;font-size:1.1em;color:' + GRAY + ';font-weight:500}' +
             F + '.lmx-info .lmx-ip + .lmx-ip::before{content:"\\00B7";margin-right:.7em;opacity:.8}' +
-            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:#f5f5f7;font-weight:600}' +
+            F + '.lmx-info .lmx-ip.lmx-next,' + F + '.lmx-info .lmx-ip.lmx-soon{color:' + GRAY + ';font-weight:500}' +
             F + '.full-start-new__right > .lmx-descr{position:static;width:100%;max-width:36vw;top:auto;right:auto;background:none;padding:0;border-radius:0;margin:0 0 1.5em;font-size:1.08em;line-height:1.45;color:#d1d1d6;z-index:auto}' +
             F + '.lmx-descr__t{-webkit-line-clamp:3}' +
             // кнопки: велика біла капсула «Дивитись» і круглі скляні
@@ -1894,6 +1896,15 @@
         box.prepend($('<div class="lmx-ip lmx-ip-head"></div>').text(txt));
         head.addClass('lmx-head-moved');
     }
+    // Рядок «Наступна: … / Залишилось днів: …» (з іншого плагіна) дублює наш «Наступна серія» — ховаємо його
+    function hideDupes(r) {
+        if (!r.find('.lmx-info .lmx-next').length) return;
+        r.find('div,span').each(function () {
+            if (this.children.length) return;
+            var t = (this.textContent || '').trim();
+            if (t.length < 80 && /^Наступна:\s/.test(t) && /Залишилось/.test(t)) $(this).addClass('lmx-head-moved');
+        });
+    }
     function restoreHead(r) {
         r.find('.lmx-ip-head').remove();
         r.find(HEAD_SEL).removeClass('lmx-head-moved');
@@ -2190,6 +2201,7 @@
         if (anchor.length) anchor.before(html);
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
         moveHead(r);
+        safe(function () { hideDupes(r); });
     }
 
     // ===== Запуск =====
