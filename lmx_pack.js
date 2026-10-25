@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.3 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v7.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -521,8 +521,44 @@
     // ===== РЯДИ НА ГОЛОВНІЙ (наші) =====
     var rowsStarted = false;
 
-    // Apple TV: історія — широкі картки з кадром (як «Продовжити перегляд» в оригіналі)
-    function histItem(m) {
+    // Прогрес перегляду з даних самої Lampa (file_view / Timeline). Нічого не знайшли — картка без смужки
+    function fileViews() {
+        try { if (Lampa.Storage && Lampa.Storage.cache) { var fv = Lampa.Storage.cache('file_view', 10000, {}); if (fv && typeof fv === 'object') return fv; } } catch (e) {}
+        return null;
+    }
+    function pctOf(v) {
+        if (!v) return 0;
+        var p = Number(v.percent);
+        if (!(p >= 0)) p = v.duration ? (Number(v.time) / Number(v.duration)) * 100 : 0;
+        return Math.max(0, Math.min(100, Math.round(p || 0)));
+    }
+    function watchProgress(c) {
+        try {
+            if (!c || !Lampa.Utils || !Lampa.Utils.hash) return null;
+            var name = c.original_title || c.original_name || c.title || c.name || '';
+            if (!name) return null;
+            var fv = fileViews();
+            var get = function (h) {
+                if (fv) return fv[h];
+                return Lampa.Timeline && Lampa.Timeline.view ? Lampa.Timeline.view(h) : null;
+            };
+            if (typeOf(c) !== 'tv') {
+                var pm = pctOf(get(Lampa.Utils.hash(name)));
+                return pm > 0 ? { pct: pm } : null;
+            }
+            var seasons = Math.min(20, Number(c.number_of_seasons) || (c.seasons && c.seasons.length) || 12), best = null;
+            for (var sn = 1; sn <= seasons; sn++) {
+                for (var ep = 1; ep <= 40; ep++) {
+                    var pe = pctOf(get(Lampa.Utils.hash([sn, sn > 10 ? ':' : '', ep, name].join(''))));
+                    if (pe > 0) best = { pct: pe, s: sn, e: ep };
+                }
+            }
+            return best;
+        } catch (e) { return null; }
+    }
+
+    // Широкі картки історії («Продовжити перегляд») з кадром і смужкою прогресу — у темах HBO та Apple TV
+    function histItem(m, prog) {
         var it = {};
         for (var k in m) it[k] = m[k];
         it.params = {
@@ -542,8 +578,10 @@
                         var v = Number(m.vote_average) || 0;
                         var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
                         view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">&#9654;&nbsp; ' + esc(m.title || m.name) +
-                            '</div><div class="lmx-hist__m">' + (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
-                            (year ? '<span>' + year + '</span>' : '') + '</div></div>');
+                            '</div><div class="lmx-hist__m">' + (prog && prog.s ? '<span>С' + prog.s + ' Е' + prog.e + '</span>' : '') +
+                            (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
+                            (year ? '<span>' + year + '</span>' : '') + '</div></div>' +
+                            (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
                     });
                 },
                 onlyEnter: function () { openFull(m); }
@@ -558,7 +596,13 @@
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
             list = list.filter(function (c) { return c && c.id; }).slice(0, 20);
             if (!list.length) return call();
-            if (board()) list = list.map(histItem);
+            if (board()) {
+                // недосмотрене — першим (у межах групи лишається порядок «найсвіжіше зверху»)
+                var withP = list.map(function (c) { return { c: c, p: watchProgress(c) }; });
+                var part = withP.filter(function (x) { return x.p && x.p.pct < 95; });
+                var rest = withP.filter(function (x) { return !(x.p && x.p.pct < 95); });
+                list = part.concat(rest).map(function (x) { return histItem(x.c, x.p); });
+            }
             call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
         };
     }
@@ -1167,6 +1211,8 @@
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
                 '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0}' +
                 '.lmx-sel.on{opacity:1}' +
+                '.lmx-hist__bar{position:absolute;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.28);z-index:3}' +
+                '.lmx-hist__bar i{display:block;height:100%;background:#fff}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
                 // фон застосунку під тему: стандартна — глибокий синьо-фіолетовий градієнт
                 'html{background:#0a0b1c !important}' +
@@ -2138,7 +2184,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.3';
+    var VERSION = '7.4';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
