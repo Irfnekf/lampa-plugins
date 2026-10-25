@@ -609,30 +609,53 @@
         });
     }
 
-    // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших
+    // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
+    // Якщо свіжого мало (у сервісів без великого каталогу в Україні) — добираємо популярним
     function serviceCall(row, key) {
         return function (call) {
-            var cats = svcCats(key), pick = [cats[0], cats[1]];
-            var got = [null, null], left = 2;
-            function fin() {
-                if (--left > 0) return;
-                var all = [];
-                [0, 1].forEach(function (i) {
-                    (got[i] || []).forEach(function (c) { c.media_type = pick[i].kind; all.push(c); });
+            var cats = svcCats(key);
+            var wide = function (u) { return u.replace('with_watch_monetization_types=flatrate', 'with_watch_monetization_types=flatrate%7Cfree%7Cads'); };
+            var fresh = [
+                { url: wide(cats[0].url), page: 1, kind: 'movie' }, { url: wide(cats[0].url), page: 2, kind: 'movie' },
+                { url: cats[1].url, page: 1, kind: 'tv' }, { url: cats[1].url, page: 2, kind: 'tv' }
+            ];
+            var filler = [
+                { url: wide(cats[3].url), page: 1, kind: 'movie' }, { url: cats[2].url, page: 1, kind: 'tv' }
+            ];
+            function fetchAll(tasks, done) {
+                var left = tasks.length, out = [];
+                tasks.forEach(function (t, i) {
+                    tget(t.url, { page: t.page }, function (j) {
+                        out[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; }).map(function (c) { c.media_type = t.kind; return c; });
+                        if (--left === 0) done(out);
+                    }, function () { out[i] = []; if (--left === 0) done(out); });
                 });
-                all.sort(function (a, b) {
-                    return String(b.release_date || b.first_air_date || '').localeCompare(String(a.release_date || a.first_air_date || ''));
-                });
-                all = all.slice(0, 20);
-                if (!all.length) return call();
-                call({ title: row.title, results: all, url: pick[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
             }
-            pick.forEach(function (cat, i) {
-                tget(cat.url, { page: 1 }, function (j) {
-                    got[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; });
-                    fin();
-                }, function () { got[i] = []; fin(); });
+            function merge(parts, into, seen) {
+                parts.forEach(function (part) {
+                    (part || []).forEach(function (c) { var k = c.media_type + c.id; if (!seen[k]) { seen[k] = 1; into.push(c); } });
+                });
+            }
+            function byDate(a, b) {
+                return String(b.release_date || b.first_air_date || '').localeCompare(String(a.release_date || a.first_air_date || ''));
+            }
+            fetchAll(fresh, function (parts) {
+                var all = [], seen = {};
+                merge(parts, all, seen);
+                all.sort(byDate);
+                all = all.slice(0, 20);
+                if (all.length >= 14) return finish(all);
+                fetchAll(filler, function (more) {
+                    var add = [];
+                    merge(more, add, seen);
+                    add.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+                    finish(all.concat(add).slice(0, 20));
+                });
             });
+            function finish(list) {
+                if (!list.length) return call();
+                call({ title: row.title, results: list, url: cats[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
+            }
         };
     }
 
