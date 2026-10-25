@@ -1380,11 +1380,11 @@
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:100vw !important;margin-left:-2.2em !important;margin-right:2.2em !important}' +
-            A + '.card--lmxhero .card__view{height:62vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            A + '.card--lmxhero .card__view{height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
             A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.09)}' +
-            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.55) 22%,rgba(0,0,0,0) 55%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
+            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.55) 20%,rgba(0,0,0,0) 50%),linear-gradient(to bottom,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 22%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
             A + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9;font-weight:500}' +
@@ -1399,6 +1399,8 @@
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             A + '.lmx-hero-line{position:relative}' +
+            A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
+            A + '.lmx-hero-on .head{position:absolute !important;top:0;left:0;right:0;z-index:30;background:transparent !important;box-shadow:none !important}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:width .45s cubic-bezier(.25,.8,.25,1),background-color .45s ease}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
@@ -1840,14 +1842,30 @@
             if (r.height > 0) { box.style.top = Math.round(r.bottom - lr.top - 3.3 * em) + 'px'; box.__placed = true; }
         }
     }
+    // Афіша тягнеться під шапку: прибираємо відступ над першою афішею (шапка стає прозорою й лежить поверх)
+    function pullHero(line) {
+        if (line.__pulled || !document.body.classList.contains('lmx-hero-on')) return;
+        var card = line.querySelector('.card--lmxhero'), view = card && card.querySelector('.card__view');
+        if (!view) return;
+        var top = view.getBoundingClientRect().top;
+        line.__tries = (line.__tries || 0) + 1;
+        if (top > 3) line.style.marginTop = (-Math.round(top)) + 'px';
+        if (top <= 3 || line.__tries > 6) line.__pulled = true;
+    }
     function initDots() {
         if (window.__lmxDots) return;
         window.__lmxDots = true;
         var tm = setInterval(function () {
             safe(function () {
-                if (getStr('lmx_theme', 'default') !== 'apple') return;
-                var c = document.querySelector('.card--lmxhero.focus');
-                if (c) syncDots(c);
+                var on = false;
+                if (getStr('lmx_theme', 'default') === 'apple' && !isMobile()) {
+                    var ln = document.querySelector('.lmx-hero-line');
+                    on = !!(ln && ln.offsetParent !== null);
+                    if (on) pullHero(ln);
+                    var c = document.querySelector('.card--lmxhero.focus');
+                    if (c) syncDots(c);
+                }
+                if (document.body.classList.contains('lmx-hero-on') !== on) document.body.classList.toggle('lmx-hero-on', on);
             });
         }, 200);
         if (tm && tm.unref) tm.unref();
