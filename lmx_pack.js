@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.1 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.2 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -582,6 +582,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.trigger('lmx_btn_compact', true, 'Компактні кнопки', 'Підпис лише в перших трьох і в тієї, що вибрана. У HBO Max і Apple TV кнопки завжди компактні', restyle);
+        H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -1265,6 +1266,29 @@
             '.lmx-ord__off{opacity:.5}' +
             '.lmx-ord__reset{margin-top:.8em;padding:.8em 1em;border-radius:.5em;text-align:center;background:rgba(255,255,255,.08)}' +
             '.lmx-ord__reset.focus{background:#fff;color:#000}' +
+            '.lmx-bh{display:none !important}' +
+            '.lmx-ic{color:var(--lmx-bc)}' +
+            '.lmx-ic svg{color:var(--lmx-bc)}' +
+            '.lmx-ic svg[fill]:not([fill=none]),.lmx-ic svg [fill]:not([fill=none]){fill:var(--lmx-bc) !important}' +
+            '.lmx-ic svg[stroke]:not([stroke=none]),.lmx-ic svg [stroke]:not([stroke=none]){stroke:var(--lmx-bc) !important}' +
+            'body.lmx-bl-icons .full-start__button span{display:none !important}' +
+            'body.lmx-bl-full .full-start__button.full-start__button span{display:inline !important}' +
+            '.full-start__button.lmx-b1.lmx-b1 span{display:inline !important}' +
+            '.full-start__button.lmx-b2.lmx-b2 span{display:none !important}' +
+            '.full-start__button.lmx-b3.lmx-b3 svg{display:none !important}' +
+            '.lmx-edit{opacity:.75}' +
+            '.lmx-be__row{padding:.55em .7em}' +
+            '.lmx-be__ico{width:2em;height:2em;margin-right:.8em;display:flex;align-items:center;justify-content:center;flex:none}' +
+            '.lmx-be__ico svg{width:1.6em;height:1.6em}' +
+            '.lmx-be__big{display:flex;align-items:center;padding:.9em 1em;margin:.45em 0;border-radius:.6em;background:rgba(255,255,255,.09);font-size:1.1em}' +
+            '.lmx-be__big.focus{background:#fff;color:#000}' +
+            '.lmx-be__bi{width:2em;margin-right:.7em;display:flex;justify-content:center}' +
+            '.lmx-be__look b{font-weight:600}' +
+            '.lmx-be__reset{background:#4a2528;justify-content:center;margin-top:1em}' +
+            '.lmx-be__reset.focus{background:#fff;color:#4a2528}' +
+            '.lmx-be__save{background:#27b565;justify-content:center;font-weight:700;letter-spacing:.03em}' +
+            '.lmx-be__save.focus{background:#fff;color:#1a7a43}' +
+            '.lmx-ord__btn[data-act=mode]{font-weight:700;font-size:1.05em}' +
             '.lmx-head-moved{display:none !important}' +
             '.lmx-info{display:flex;flex-wrap:wrap;gap:.5em;margin:.8em 0}' +
             '.lmx-ip{font-size:1.1em;line-height:1;padding:.45em .8em;border-radius:.6em;background:rgba(255,255,255,.12);color:#fff}' +
@@ -2218,6 +2242,7 @@
         var m = e.data && e.data.movie;
         if (!m) return;
         var r = e.object.activity.render();
+        safe(function () { btnsOnFull(r); });
         // Телефон: рідний мобільний вигляд Lampa, без нашого кіно-стилю сторінки (він розрахований на великий екран)
         var useFull = getBool('lmx_full', true) && !isMobile();
         if (!useFull && document.body && document.body.classList) { document.body.classList.remove('lmx-full'); document.body.classList.remove('lmx-logo-on'); }
@@ -2273,10 +2298,399 @@
         safe(function () { hideDupes(r); });
     }
 
+    // ===== КНОПКИ СТОРІНКИ ФІЛЬМУ: порядок, колір, іконки, папки =====
+    function BI(p, f) {
+        return '<svg viewBox="0 0 24 24" width="24" height="24" fill="' + (f ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
+    }
+    var BTN_ICONS = [
+        ['play', 'Відтворити', BI('<path d="M7 4.5l13 7.5-13 7.5z"/>', 1)],
+        ['bolt', 'Блискавка', BI('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', 1)],
+        ['down', 'Завантаження', BI('<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>')],
+        ['star', 'Зірка', BI('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>')],
+        ['heart', 'Серце', BI('<path d="M12 20s-7-4.5-9-9a5 5 0 019-3 5 5 0 019 3c-2 4.5-9 9-9 9z"/>')],
+        ['mark', 'Закладка', BI('<path d="M6 3h12v18l-6-4-6 4z"/>')],
+        ['film', 'Кіно', BI('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 15h18M8 4v16M16 4v16"/>')],
+        ['tv', 'Телевізор', BI('<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>')],
+        ['search', 'Пошук', BI('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>')],
+        ['bell', 'Дзвінок', BI('<path d="M6 16v-5a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/>')],
+        ['globe', 'Глобус', BI('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>')],
+        ['fire', 'Вогонь', BI('<path d="M12 3c1 4 5 5 5 10a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"/>')],
+        ['folder', 'Папка', BI('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>')],
+        ['gear', 'Налаштування', BI('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>')],
+        ['eye', 'Око', BI('<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')],
+        ['list', 'Список', BI('<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>')]
+    ];
+    var BTN_COLORS = [['', 'Типовий'], ['#ffffff', 'Білий'], ['#ff5252', 'Червоний'], ['#ff9800', 'Помаранчевий'], ['#ffd54f', 'Жовтий'],
+        ['#4caf50', 'Зелений'], ['#26c6da', 'Бірюзовий'], ['#42a5f5', 'Блакитний'], ['#7e57c2', 'Фіолетовий'], ['#ec407a', 'Рожевий']];
+    var BTN_LOOKS = [['', 'Стандартний'], ['icons', 'Лише іконки'], ['full', 'З підписами']];
+    var PENCIL = BI('<path d="M4 20l1-4 11-11 3 3L8 19z"/>');
+    var IMGI = BI('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>');
+    var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
+    var CLOSEI = BI('<path d="M6 6l12 12M18 6L6 18"/>');
+
+    var btnLast = null, btnRun = null;
+
+    function iconByKey(k) { for (var i = 0; i < BTN_ICONS.length; i++) if (BTN_ICONS[i][0] === k) return BTN_ICONS[i]; return null; }
+    function strHash(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h).toString(36); }
+    function jsonStore(key, def) {
+        var o = null;
+        try { o = Lampa.Storage.get(key, ''); if (typeof o === 'string') o = o ? JSON.parse(o) : null; } catch (e) { o = null; }
+        return (o && typeof o === 'object') ? o : def;
+    }
+    function bmGet() {
+        var o = jsonStore('lmx_btns', {});
+        o.order = o.order || []; o.hidden = o.hidden || []; o.colors = o.colors || {}; o.icons = o.icons || {};
+        o.names = o.names || {}; o.modes = o.modes || {}; o.folders = o.folders || []; o.color = o.color || ''; o.look = o.look || '';
+        return o;
+    }
+    function bmSave(o) { Lampa.Storage.set('lmx_btns', o); }
+    function knownGet() { return jsonStore('lmx_btn_known', {}); }
+
+    function btnTitleOf(el) {
+        var s = el.querySelector('span');
+        return String((s ? s.textContent : el.textContent) || '').replace(/\s+/g, ' ').trim();
+    }
+    function btnIdOf(el) {
+        var cls = String(el.className || '').split(/\s+/), i, c;
+        for (i = 0; i < cls.length; i++) { c = cls[i]; if (/^(view--|button--)/.test(c) && c !== 'button--priority') return c; }
+        return 't_' + strHash(el.__lmxT || btnTitleOf(el) || 'x');
+    }
+    function btnCollect(cont) {
+        var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
+        els.forEach(function (el) { if (el.__lmxId != null) seen[el.__lmxId] = 1; });
+        els.forEach(function (el) {
+            if (el.__lmxId == null) {
+                el.__lmxT = btnTitleOf(el);
+                var sv = el.querySelector('svg');
+                el.__lmxS = sv ? sv.outerHTML : '';
+                var id = btnIdOf(el);
+                while (seen[id]) id += '#';
+                seen[id] = 1;
+                el.__lmxId = id;
+            }
+            out.push({ el: el, id: el.__lmxId, t: el.__lmxT, s: el.__lmxS });
+        });
+        return out;
+    }
+    function btnTokens(m, ids) {
+        var all = ids.concat(m.folders.map(function (f) { return 'f:' + f.id; })), out = [];
+        m.order.forEach(function (t) { if (all.indexOf(t) >= 0 && out.indexOf(t) < 0) out.push(t); });
+        all.forEach(function (t) { if (out.indexOf(t) < 0) out.push(t); });
+        return out;
+    }
+    function paint(el, col) {
+        if (col) { el.style.setProperty('--lmx-bc', col); el.classList.add('lmx-ic'); }
+        else { el.style.removeProperty('--lmx-bc'); el.classList.remove('lmx-ic'); }
+    }
+
+    function btnApply(r) {
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length) return;
+        var m = bmGet(), list = btnCollect(cont), known = knownGet(), changed = false, map = {}, inFolder = {};
+        list.forEach(function (b) {
+            var k = known[b.id];
+            if (!k || k.t !== b.t || k.s !== b.s) { known[b.id] = { t: b.t, s: b.s }; changed = true; }
+        });
+        if (changed) Lampa.Storage.set('lmx_btn_known', known);
+        cont.find('.lmx-folder, .lmx-edit').remove();
+        m.folders.forEach(function (f) { (f.items || []).forEach(function (id) { inFolder[id] = f.id; }); });
+
+        list.forEach(function (b) {
+            var el = b.el, id = b.id, ik = m.icons[id], ic = ik ? iconByKey(ik) : null, cur = el.querySelector('svg'), nn;
+            map[id] = el;
+            if (ic && el.__lmxSet !== ik) {
+                nn = $(ic[2])[0];
+                if (cur) cur.parentNode.replaceChild(nn, cur); else el.insertBefore(nn, el.firstChild);
+                el.__lmxSet = ik;
+            } else if (!ic && el.__lmxSet && el.__lmxS) {
+                nn = $(el.__lmxS)[0];
+                if (cur) cur.parentNode.replaceChild(nn, cur);
+                el.__lmxSet = null;
+            }
+            var span = el.querySelector('span'), nm = m.names[id] || el.__lmxT;
+            if (span) { if (span.textContent !== nm) span.textContent = nm; }
+            else if (m.names[id]) { span = document.createElement('span'); span.textContent = nm; el.appendChild(span); }
+            paint(el, m.colors[id] || m.color);
+            el.classList.remove('lmx-b1', 'lmx-b2', 'lmx-b3');
+            if (m.modes[id]) el.classList.add('lmx-b' + m.modes[id]);
+            var off = m.hidden.indexOf(id) >= 0 || !!inFolder[id];
+            el.classList.toggle('lmx-bh', off);
+            el.classList.toggle('selector', !off);
+        });
+
+        var fEls = {};
+        m.folders.forEach(function (f) {
+            var items = (f.items || []).filter(function (id) { return map[id]; });
+            if (!items.length) return;
+            var tk = 'f:' + f.id, ic = iconByKey(m.icons[tk] || 'folder') || BTN_ICONS[12];
+            var fe = $('<div class="full-start__button selector lmx-folder"></div>').html(ic[2] + '<span></span>');
+            fe.find('span').text(f.name);
+            paint(fe[0], m.colors[tk] || m.color);
+            var off = m.hidden.indexOf(tk) >= 0;
+            fe[0].classList.toggle('lmx-bh', off);
+            fe[0].classList.toggle('selector', !off);
+            fe.on('hover:enter', function () {
+                var enabled = Lampa.Controller.enabled().name;
+                Lampa.Select.show({
+                    title: f.name,
+                    items: items.map(function (id) { return { title: m.names[id] || map[id].__lmxT || id, id: id }; }),
+                    onBack: function () { Lampa.Controller.toggle(enabled); },
+                    onSelect: function (it) {
+                        Lampa.Controller.toggle(enabled);
+                        setTimeout(function () { $(map[it.id]).trigger('hover:enter'); }, 40);
+                    }
+                });
+            });
+            fEls[tk] = fe[0];
+        });
+
+        btnTokens(m, list.map(function (b) { return b.id; })).forEach(function (t) {
+            var el = map[t] || fEls[t];
+            if (el) cont.append(el);
+        });
+        var ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
+        ed.on('hover:enter', function () { openButtonsEditor(); });
+        cont.append(ed);
+
+        if (document.body && document.body.classList) {
+            document.body.classList.toggle('lmx-bl-icons', m.look === 'icons');
+            document.body.classList.toggle('lmx-bl-full', m.look === 'full');
+        }
+        safe(function () { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); });
+    }
+
+    function btnsOnFull(r) {
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length || !window.$) return;
+        var node = cont[0], timer = 0, busy = false;
+        function sig() { return btnCollect(cont).map(function (b) { return b.id + ':' + b.t; }).sort().join('|'); }
+        function run(force) {
+            if (!document.body.contains(node)) return;
+            var s = sig();
+            if (!force && s === node.__lmxSig) return;
+            busy = true;
+            try { btnApply(r); } catch (e) { console.error('LMX btns', e); }
+            node.__lmxSig = sig();
+            busy = false;
+        }
+        btnLast = r; btnRun = run;
+        run(true);
+        var mo = new MutationObserver(function () {
+            if (busy) return;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                if (!document.body.contains(node)) { mo.disconnect(); return; }
+                run(false);
+            }, 200);
+        });
+        mo.observe(node, { childList: true });
+    }
+
+    function openButtonsEditor() {
+        if (!(Lampa.Modal && Lampa.Modal.open && Lampa.Select && window.$)) return;
+        var known = knownGet(), ids = Object.keys(known);
+        if (!ids.length) { if (Lampa.Noty) Lampa.Noty.show('Спочатку відкрийте будь-який фільм — його кнопки з’являться тут'); return; }
+        var enabled = Lampa.Controller.enabled().name;
+        var m = bmGet(), lastFire = 0;
+        var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
+        wrap.append(top, listEl, bottom);
+
+        function save() { bmSave(m); }
+        function findF(id) { for (var i = 0; i < m.folders.length; i++) if (m.folders[i].id === id) return m.folders[i]; return null; }
+        function isF(t) { return t.indexOf('f:') === 0; }
+        function titleOf(t) {
+            if (isF(t)) { var f = findF(t.slice(2)); return f ? f.name : ''; }
+            return m.names[t] || (known[t] && known[t].t) || t;
+        }
+        function svgOf(t) {
+            var ic = iconByKey(m.icons[t]);
+            if (ic) return ic[2];
+            if (isF(t)) return BTN_ICONS[12][2];
+            return (known[t] && known[t].s) || BI('');
+        }
+        function folderOf(t) {
+            for (var i = 0; i < m.folders.length; i++) if ((m.folders[i].items || []).indexOf(t) >= 0) return m.folders[i];
+            return null;
+        }
+        function focusOn(el) {
+            safe(function () {
+                var root = wrap.closest('.modal__content');
+                if (!root.length) root = $('.modal').eq(0);
+                Lampa.Controller.collectionSet(root);
+                if (el) Lampa.Controller.collectionFocus(el, root);
+            });
+        }
+        function bind(btn, fn) {
+            btn.on('hover:enter click', function () {
+                var n = Date.now();
+                if (n - lastFire < 250) return;
+                lastFire = n;
+                fn(this);
+            });
+        }
+        function pick(title, items, cb) {
+            Lampa.Select.show({
+                title: title,
+                items: items,
+                onBack: function () { Lampa.Controller.toggle('modal'); },
+                onSelect: function (it) { Lampa.Controller.toggle('modal'); setTimeout(function () { cb(it); }, 30); }
+            });
+        }
+        function ask(title, value, cb) {
+            if (Lampa.Input && Lampa.Input.edit) {
+                Lampa.Input.edit({ title: title, value: value || '', free: true, nosave: true }, function (v) {
+                    Lampa.Controller.toggle('modal');
+                    setTimeout(function () { cb(String(v == null ? '' : v).trim()); }, 30);
+                });
+            }
+        }
+        function tokens() { return btnTokens(m, ids); }
+        function rebuild(t, act) {
+            listEl.empty();
+            tokens().forEach(function (tk) { listEl.append(rowFor(tk)); });
+            var row = listEl.children().filter(function () { return $(this).attr('data-t') === t; }).eq(0);
+            var btn = row.find('.lmx-ord__btn').filter(function () { return $(this).attr('data-act') === act; })[0] || listEl.find('.lmx-ord__btn')[0];
+            focusOn(btn);
+        }
+        function move(t, d) {
+            var o = tokens(), i = o.indexOf(t), j = i + d;
+            if (i < 0 || j < 0 || j >= o.length) return;
+            o.splice(i, 1); o.splice(j, 0, t);
+            m.order = o; save();
+        }
+        function rowFor(t) {
+            var folder = isF(t), row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
+            var ico = $('<div class="lmx-be__ico"></div>').html(svgOf(t));
+            paint(ico[0], m.colors[t] || m.color);
+            var nm = $('<div class="lmx-ord__name"></div>').append($('<span></span>').text(titleOf(t)));
+            var f = !folder ? folderOf(t) : null;
+            if (folder) nm.append($('<span class="lmx-ord__sub"></span>').text('Папка'));
+            else if (f) nm.append($('<span class="lmx-ord__sub"></span>').text('У папці «' + f.name + '»'));
+            row.append(ico, nm);
+            var off = m.hidden.indexOf(t) >= 0;
+            var defs = [['edit', PENCIL], ['icon', IMGI], ['color', PALI], ['up', CHEV_UP], ['down', CHEV_DOWN],
+                folder ? ['del', CLOSEI] : ['mode', null], ['vis', off ? BOX_OFF : BOX_ON]];
+            defs.forEach(function (d) {
+                var b = $('<div class="lmx-ord__btn selector"></div>').attr('data-act', d[0]);
+                if (d[0] === 'mode') b.text(m.modes[t] || '1'); else b.html(d[1]);
+                if (d[0] === 'vis' && off) b.addClass('lmx-ord__off');
+                bind(b, function () { act(t, d[0]); });
+                row.append(b);
+            });
+            return row;
+        }
+        function act(t, a) {
+            if (a === 'up') { move(t, -1); rebuild(t, a); }
+            else if (a === 'down') { move(t, 1); rebuild(t, a); }
+            else if (a === 'vis') {
+                var k = m.hidden.indexOf(t);
+                if (k >= 0) m.hidden.splice(k, 1); else m.hidden.push(t);
+                save(); rebuild(t, a);
+            } else if (a === 'mode') {
+                var seq = ['', '2', '3', '1'], cur = m.modes[t] || '';
+                var nx = seq[(seq.indexOf(cur) + 1) % seq.length];
+                if (nx) m.modes[t] = nx; else delete m.modes[t];
+                save(); rebuild(t, a);
+            } else if (a === 'color') {
+                pick('Колір іконки', BTN_COLORS.map(function (c) { return { title: c[1], c: c[0] }; }), function (it) {
+                    if (it.c) m.colors[t] = it.c; else delete m.colors[t];
+                    save(); rebuild(t, a);
+                });
+            } else if (a === 'icon') {
+                var items = [{ title: 'Типова', k: '' }].concat(BTN_ICONS.map(function (i) { return { title: i[1], k: i[0] }; }));
+                pick('Іконка', items, function (it) {
+                    if (it.k) m.icons[t] = it.k; else delete m.icons[t];
+                    save(); rebuild(t, a);
+                });
+            } else if (a === 'edit') {
+                var menu = [{ title: 'Перейменувати', x: 'name' }];
+                if (!isF(t)) {
+                    if (m.folders.length) menu.push({ title: 'Покласти в папку…', x: 'into' });
+                    if (folderOf(t)) menu.push({ title: 'Прибрати з папки', x: 'out' });
+                }
+                if (m.names[t]) menu.push({ title: 'Повернути стару назву', x: 'unname' });
+                pick(titleOf(t), menu, function (it) {
+                    if (it.x === 'name') {
+                        ask('Назва', titleOf(t), function (v) {
+                            if (v) {
+                                if (isF(t)) { var f = findF(t.slice(2)); if (f) f.name = v; } else m.names[t] = v;
+                                save();
+                            }
+                            rebuild(t, a);
+                        });
+                    } else if (it.x === 'unname') { delete m.names[t]; save(); rebuild(t, a); }
+                    else if (it.x === 'out') {
+                        m.folders.forEach(function (f) { f.items = (f.items || []).filter(function (x) { return x !== t; }); });
+                        save(); rebuild(t, a);
+                    } else if (it.x === 'into') {
+                        pick('Папка', m.folders.map(function (f) { return { title: f.name, fid: f.id }; }), function (p) {
+                            m.folders.forEach(function (f) { f.items = (f.items || []).filter(function (x) { return x !== t; }); });
+                            var tf = findF(p.fid);
+                            if (tf) { tf.items = tf.items || []; tf.items.push(t); }
+                            save(); rebuild(t, a);
+                        });
+                    }
+                });
+            } else if (a === 'del') {
+                var id = t.slice(2);
+                m.folders = m.folders.filter(function (f) { return f.id !== id; });
+                m.order = m.order.filter(function (x) { return x !== t; });
+                m.hidden = m.hidden.filter(function (x) { return x !== t; });
+                delete m.colors[t]; delete m.icons[t];
+                save(); rebuild(null, 'edit');
+            }
+        }
+
+        function bigRow(cls, html) { return $('<div class="lmx-be__big selector ' + (cls || '') + '"></div>').html(html); }
+        function buildTop() {
+            top.empty();
+            var mk = bigRow('', '<div class="lmx-be__bi">' + BI('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 11v5M9.5 13.5h5"/>') + '</div><div>Створити папку</div>');
+            bind(mk, function () {
+                ask('Назва папки', 'Папка', function (v) {
+                    if (!v) return focusOn(mk[0]);
+                    m.folders.push({ id: 'F' + Date.now().toString(36), name: v, items: [] });
+                    save(); rebuild(null, 'edit');
+                    if (Lampa.Noty) Lampa.Noty.show('Папку створено. Додайте в неї кнопки через ✎ → «Покласти в папку»');
+                });
+            });
+            var col = bigRow('', '<div class="lmx-be__bi">' + PALI + '</div><div>Колір іконок' + (m.color ? '' : '') + '</div>');
+            bind(col, function () {
+                pick('Колір усіх іконок', BTN_COLORS.map(function (c) { return { title: c[1], c: c[0] }; }), function (it) {
+                    m.color = it.c; save(); buildTop(); rebuild(null, 'edit'); focusOn(top.children()[1]);
+                });
+            });
+            var lk = '';
+            BTN_LOOKS.forEach(function (x) { if (x[0] === m.look) lk = x[1]; });
+            var look = bigRow('lmx-be__look', '<div><b>Вигляд кнопок: ' + lk + '</b><span class="lmx-ord__sub">1 — іконка й підпис, 2 — лише іконка, 3 — лише підпис (для кожної кнопки)</span></div>');
+            bind(look, function () {
+                pick('Вигляд кнопок', BTN_LOOKS.map(function (x) { return { title: x[1], l: x[0] }; }), function (it) {
+                    m.look = it.l; save(); buildTop(); focusOn(top.children()[2]);
+                });
+            });
+            top.append(mk, col, look);
+        }
+
+        var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
+        bind(reset, function () { m = { order: [], hidden: [], colors: {}, icons: {}, names: {}, modes: {}, folders: [], color: '', look: '' }; save(); buildTop(); rebuild(null, 'edit'); });
+        var done = bigRow('lmx-be__save', 'ЗБЕРЕГТИ ТА ЗАКРИТИ');
+        function close() {
+            save();
+            safe(function () { if (btnRun) btnRun(true); });
+            Lampa.Modal.close();
+            Lampa.Controller.toggle(enabled);
+        }
+        bind(done, close);
+        bottom.append(reset, done);
+
+        buildTop();
+        tokens().forEach(function (tk) { listEl.append(rowFor(tk)); });
+        Lampa.Modal.open({ title: 'Порядок кнопок', html: wrap, size: 'medium', mask: true, onBack: close });
+    }
+
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.1';
+    var VERSION = '8.2';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
