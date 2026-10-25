@@ -1186,7 +1186,7 @@
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
-            markCss('next', nNext) + markCss('new', 'purple') + markCss('soon', nSoon) +
+            markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
             '.lmx-ord__row:nth-child(even){background:rgba(255,255,255,.06)}' +
             '.lmx-ord__name{flex:1;min-width:0;font-size:1.15em}' +
@@ -1214,13 +1214,13 @@
                 '.lmx-hist__bar{position:absolute;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.28);z-index:3}' +
                 '.lmx-hist__bar i{display:block;height:100%;background:#fff}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
-                // фон застосунку під тему: стандартна — глибокий синьо-фіолетовий градієнт
-                'html{background:#0a0b1c !important}' +
-                'body{background:linear-gradient(180deg,#1b1a3d 0%,#10112b 45%,#080916 100%) fixed !important}' +
+                // фон застосунку під тему: стандартна — нейтральний графітовий градієнт
+                'html{background:#0b0b0d !important}' +
+                'body{background:linear-gradient(180deg,#1d1e22 0%,#131316 45%,#0b0b0d 100%) fixed !important}' +
                 '.background{display:none !important}' +
                 '.activity,.activity__body,.wrap{background:transparent}' +
                 // панелі інтерфейсу Lampa (меню, налаштування, списки, вікна) — у колір теми
-                'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content,body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:#14152e !important}' +
+                'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content,body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:#17181c !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -1327,7 +1327,7 @@
             // як у застосунку: картки при прокрутці «заходять» ліворуч під бокову панель, а не обрізаються на краю ряду
             T + '.items-line:not(.lmx-hero-line) .scroll{margin-left:-2.2em;padding-left:2.2em;-webkit-mask-image:none !important;mask-image:none !important}' +
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
-            // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
+            // картки: постер без заокруглення, у фокусі біла рамка
             T + '.card,' + T + '.card.focus,' + T + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
@@ -1393,7 +1393,7 @@
             // плитки стрімінгів
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             T + '.card--lmxstudio .card__view{border-radius:0;overflow:visible !important;background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
-            // меню, налаштування, списки: фіолетово-синій акцент у фокусі
+            // меню, налаштування, списки: біле виділення у фокусі
             T + '.menu__item,' + T + '.settings-param,' + T + '.settings-folder,' + T + '.selectbox-item{transition:background-color .2s ease}' +
             T + '.menu__item.focus,' + T + '.menu__item.traverse,' + T + '.menu__item.hover,' +
             T + '.settings-folder.focus,' + T + '.settings-param.focus,' + T + '.selectbox-item.focus,' +
@@ -1421,7 +1421,7 @@
             F + '.full-episode__img{border-radius:.45em;overflow:hidden}' +
             F + '.full-episode.focus .full-episode__img{box-shadow:0 0 0 .2em #fff}' +
             F + '.full-episode__name{font-weight:700}' +
-            // кнопки: біла «Дивитись» + круглі іконки; у фокусі — фіолетовий градієнт
+            // кнопки: біла «Дивитись» + круглі іконки; у фокусі — світліша заливка
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
             F + '.full-start-new__buttons > .full-start__button{width:3em;height:3em;padding:0;border-radius:50%;justify-content:center;background:transparent !important;color:#fff;transition:transform .25s ease,box-shadow .25s ease}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
