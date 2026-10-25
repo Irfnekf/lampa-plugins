@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.0 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v7.1 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -89,7 +89,7 @@
         ['friends', 'З друзями', '12%7C35']
     ];
     ROWS.unshift(
-        { name: 'LmxHero', title: 'Банер', gate: 'lmx_hero', index: -2, custom: function () { return heroCall(this); } },
+        { name: 'LmxHero', title: 'Афіша', gate: 'lmx_hero', index: -2, custom: function () { return heroCall(this); } },
         { name: 'LmxStudios', title: 'Стрімінги', gate: 'lmx_studios', index: -1, custom: function () { return studioCall(this); } }
     );
     var n0 = 30;
@@ -210,6 +210,25 @@
         if (item.call && item.call.__lmx) return item.call.__lmx;
         return null;
     }
+    // Якщо Lampa додає ряди у список вже після нашого фільтра — пропускаємо лише наші
+    function sealCalls(calls) {
+        if (calls.__lmxSealed) return;
+        var ours = {};
+        ROWS.forEach(function (r) { ours[r.name] = 1; });
+        var keep = function (c) { return !getBool('lmx_only_mine', true) || typeof c !== 'function' || !!ours[tagOf(c)]; };
+        try {
+            Object.defineProperty(calls, '__lmxSealed', { value: true });
+            ['push', 'unshift'].forEach(function (m) {
+                var orig = calls[m];
+                Object.defineProperty(calls, m, { value: function () { return orig.apply(this, Array.prototype.slice.call(arguments).filter(keep)); } });
+            });
+            var os = calls.splice;
+            Object.defineProperty(calls, 'splice', { value: function (a, b) {
+                var rest = Array.prototype.slice.call(arguments, 2).filter(keep);
+                return os.apply(this, [a, b].concat(rest));
+            } });
+        } catch (e) {}
+    }
     // Після побудови списку рядів головної — розставляємо за нашим порядком (незалежно від того, як Lampa трактує index)
     function reorderCalls(screen, calls) {
         if (screen !== 'main' || !Array.isArray(calls) || calls.length < 2) return;
@@ -223,16 +242,18 @@
         });
         diag.lastTotal = calls.length;
         diag.lastTagged = tagged;
+        var onlyMine = false;
         if (getBool('lmx_only_mine', true) && tagged > 0) {
             var ours = {};
             ROWS.forEach(function (r) { ours[r.name] = 1; });
             var mine = boxed.filter(function (b) { return ours[tagOf(b.c)]; });
-            if (mine.length) { boxed = mine; tagged = mine.length; }
+            if (mine.length) { boxed = mine; tagged = mine.length; onlyMine = true; }
         }
         if (tagged < 2 && boxed.length === calls.length) return;
         boxed.sort(function (a, b) { return a.key - b.key || a.i - b.i; });
         calls.length = 0;
         boxed.forEach(function (b) { calls.push(b.c); });
+        if (onlyMine) sealCalls(calls);
     }
 
     function patchContentRows() {
@@ -469,12 +490,11 @@
 
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
-        H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати банер, стрімінги та будь-яку підбірку', openOrderModal);
+        H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, стрімінги та будь-яку підбірку', openOrderModal);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
-        H.select('lmx_hero_src', { mix: 'У тренді (фільми й серіали)', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' }, 'mix', 'Що показувати в банері', 'Фільми й серіали з описом та гідним рейтингом. Діє після перезапуску', restart);
 
-        H.select('lmx_hero_hype', { '0': 'Не показувати', '14': 'За 2 тижні', '30': 'За місяць', '60': 'За 2 місяці' }, '30', 'Гучні прем’єри в банері',
-            'Найпопулярніші фільми й серіали, що вийдуть найближчим часом або вийшли нещодавно, з міткою «Скоро» чи «Вже вийшов». Діє в режимах «У тренді» та «Нове й найкраще». Після перезапуску', restart);
+        H.select('lmx_hero_hype', { '0': 'Не показувати', '14': 'За 2 тижні', '30': 'За місяць', '60': 'За 2 місяці' }, '30', 'Гучні прем’єри в Афіші',
+            'Лише найгучніші фільми й серіали, що вийдуть найближчим часом або щойно вийшли, з міткою «Скоро» чи «Вже вийшов». Після перезапуску', restart);
 
         // ---- Фільтри ----
         H.title('lmx_t_filters', 'Фільтри');
@@ -676,9 +696,6 @@
     }
     function esc(t) { return String(t || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-    var HERO_TITLES = { mix: 'У тренді', cinema: 'Зараз у кінотеатрах', fresh: 'Нове й найкраще' };
-    // Що показувати у банері: тренди тижня (фільми й серіали), кінотеатри або свіже з високим рейтингом
-    // Гучні прем'єри: найпопулярніші фільми, що виходять найближчим часом або вийшли нещодавно (вікно в днях з налаштувань)
     function hypeWindow() { return parseInt(getStr('lmx_hero_hype', '30'), 10) || 0; }
     function hypeSources() {
         var w = hypeWindow();
@@ -691,15 +708,12 @@
             ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(-w) + '&first_air_date.lte=' + dayStr(0), 'tv', 1, 'new']
         ];
     }
-    function heroSources(src) {
-        var today = dayStr(0);
-        if (src === 'cinema') return [['movie/now_playing?region=UA', 'movie', 1]];
-        if (src === 'fresh') return hypeSources().concat([
-            ['discover/movie?sort_by=popularity.desc&primary_release_date.gte=' + dayStr(-75) + '&primary_release_date.lte=' + today + '&vote_average.gte=6.5&vote_count.gte=80', 'movie', 1],
-            ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(-120) + '&first_air_date.lte=' + today + '&vote_average.gte=7&vote_count.gte=40', 'tv', 1]
-        ]);
+    // Афіша: тренди тижня + кінотеатри + «гучні» прем'єри (скоро / щойно вийшли)
+    function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
     }
+    // Мінімальна популярність TMDB, щоб прем'єра вважалась «гучною»
+    var HYPE_MIN_POP = 50;
 
     // Кеш запитів до TMDB у пам'яті (8 хв) + об'єднання однакових запитів, що летять одночасно — головна відкривається швидше
     var tcache = {}, tpend = {};
@@ -728,8 +742,7 @@
 
     function heroCall(row) {
         return function (call) {
-            var src = getStr('lmx_hero_src', 'mix');
-            var srcs = heroSources(src), left = srcs.length, all = [], seenIds = {};
+            var srcs = heroSources(), left = srcs.length, all = [], seenIds = {};
             function fin() {
                 if (--left > 0) return;
                 // зливаємо дублікати: звичайний (тренд, кінотеатри) і «гучна прем'єра» з окремих джерел
@@ -747,6 +760,7 @@
                     var d = dayDiff(m.release_date || m.first_air_date);
                     var kind = (m.media_type === 'tv' || (!m.title && m.name)) ? 'tv' : 'movie';
                     if (d === null || !w) return;
+                    if ((m.popularity || 0) < HYPE_MIN_POP) return;
                     if (d > 0 && d <= w) pool['soon_' + kind].push(m);
                     else if (d <= 0 && d >= -w && !(m.vote_count > 30 && m.vote_average < 6)) pool['new_' + kind].push(m);
                 });
@@ -762,6 +776,9 @@
                     if (m.media_type === 'person') return;
                     if (!tag) {
                         if (!e.base) return;
+                        // майбутні прем'єри — лише як «гучні» в межах вікна; решту (напр. через 50 днів) не показуємо
+                        var fd = dayDiff(m.release_date || m.first_air_date);
+                        if (fd !== null && fd > 0) return;
                         if (!(m.overview && String(m.overview).trim())) return;
                         if (m.vote_count > 30 && m.vote_average < 6.3) return;
                     }
@@ -814,7 +831,7 @@
                     };
                     return it;
                 });
-                call({ title: HERO_TITLES[src] || HERO_TITLES.mix, results: items, params: { items: { mapping: 'line', view: 15 } } });
+                call({ title: 'Афіша', results: items, params: { items: { mapping: 'line', view: 15 } } });
             }
             srcs.forEach(function (x) {
                 tget(x[0], { page: 1 }, function (j) {
@@ -1220,6 +1237,7 @@
             T + '.card--lmxhero .card__view{background-repeat:no-repeat !important;background-size:cover !important;background-position:center 25% !important}' +
             T + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9}' +
             T + '.card--lmxhero .lmx-hero__o{font-size:.95em;opacity:.8;line-height:1.35;max-height:2.8em;margin-top:.5em}' +
+            T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{transform:none !important;transition:none !important}' +
             T + '.card--lmxhero.focus .card__view::after,' + T + '.card--lmxhero.hover .card__view::after,' + T + '.card--lmxstudio.focus .card__view::after,' + T + '.card--lmxstudio.hover .card__view::after{display:none !important;animation:none}' +
             T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #8a3bff,0 0 1em rgba(138,59,255,.5) !important}' +
             T + '.card--lmxstudio .card__view{background:linear-gradient(145deg,#1d2040,#0c0d22);border:1px solid rgba(255,255,255,.08)}' +
@@ -1618,9 +1636,11 @@
             if (m.runtime) p.push({ t: fmtDur(m.runtime) });
 
             var ms = m.status;
-            if (ms === 'Released') p.push({ t: 'Вийшов', c: 'lmx-done' });
+            var future = m.release_date && (dayDiff(m.release_date) || 0) > 0;
+            // дата виходу важливіша за статус TMDB (статус «Released» ставиться й до офіційної дати)
+            if (ms === 'Released' && !future) p.push({ t: 'Вийшов', c: 'lmx-done' });
             else if (ms === 'Canceled') p.push({ t: 'Скасовано', c: 'lmx-bad' });
-            else if (ms) {
+            else if (ms || future) {
                 var rd = '';
                 if (m.release_date) {
                     var dd = dayDiff(m.release_date);
@@ -1782,7 +1802,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.0';
+    var VERSION = '7.1';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
