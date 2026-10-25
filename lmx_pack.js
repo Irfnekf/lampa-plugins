@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v7.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -49,8 +49,52 @@
     function market() { return getBool('lmx_market', true); }
     var WATCH = 'watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy';
     // Українські: країна виробництва включає Україну (співпродакшн теж), сортування за популярністю, як у звичайних популярних
-    function uaUrls(kind) {
-        return ['discover/' + kind + '?with_origin_country=UA&sort_by=popularity.desc'];
+    // Українські підбірки: свіже з українських стрімінгів (id беремо з TMDB за назвою), далі — українське за останні роки
+    var UA_PROV_RE = /megogo|netflix|kyivstar|київстар|vodafone|водафон|sweet|oll\.?tv|takflix|apple tv|amazon prime|prime video|disney|max|hbo/i;
+    function this_row(n) { for (var i = 0; i < ROWS.length; i++) if (ROWS[i].name === n) return ROWS[i]; return { title: '' }; }
+    function uaCall(row, kind) {
+        return function (call) {
+            var dateKey = kind === 'movie' ? 'primary_release_date' : 'first_air_date';
+            var today = dayStr(0), from3 = dayStr(-365 * 3), from6 = dayStr(-365 * 6);
+            var base = 'discover/' + kind + '?';
+            function fetchAll(urls, done) {
+                var left = urls.length, out = [];
+                if (!left) return done(out);
+                urls.forEach(function (u, i) {
+                    tget(u, { page: 1 }, function (j) {
+                        out[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path && c.overview && String(c.overview).trim(); });
+                        if (--left === 0) done(out);
+                    }, function () { out[i] = []; if (--left === 0) done(out); });
+                });
+            }
+            function dateOf(c) { return String(c.release_date || c.first_air_date || ''); }
+            function build(ids) {
+                var fresh = [], recent = base + 'with_original_language=uk&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc';
+                if (ids.length) {
+                    var pv = 'with_watch_providers=' + ids.join('%7C') + '&watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads&' + dateKey + '.gte=' + from3 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc&';
+                    fresh.push(base + pv + 'with_original_language=uk');
+                    fresh.push(base + pv + 'with_origin_country=UA');
+                }
+                fresh.push(recent);
+                fresh.push(base + 'with_origin_country=UA&vote_count.gte=3&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=popularity.desc');
+                fetchAll(fresh, function (parts) {
+                    var all = [], seen = {};
+                    parts.forEach(function (part) {
+                        (part || []).forEach(function (c) { if (!seen[c.id]) { seen[c.id] = 1; c.media_type = kind; all.push(c); } });
+                    });
+                    all = all.filter(function (c) { return dateOf(c) && dateOf(c) <= today; });
+                    all.sort(function (a, b) { return dateOf(b).localeCompare(dateOf(a)); });
+                    all = all.slice(0, 20);
+                    if (!all.length) return call();
+                    call({ title: row.title, results: all, url: fresh[fresh.length - 1], source: 'tmdb', page: 1, more: true, total_pages: 2 });
+                });
+            }
+            tget('watch/providers/' + kind + '?watch_region=UA', {}, function (j) {
+                var ids = [];
+                ((j && j.results) || []).forEach(function (p) { if (p && p.provider_name && UA_PROV_RE.test(p.provider_name)) ids.push(p.provider_id); });
+                build(ids.slice(0, 20));
+            }, function () { build([]); });
+        };
     }
     // Для українського ринку: те, що доступне в Україні; без ринку — як було
     function mkt(url, kind) {
@@ -68,8 +112,8 @@
         { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15 },
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
-        { name: 'LmxUaMovies',      title: 'Українське кіно',     urls: function () { return uaUrls('movie'); }, ua: true, index: 18 },
-        { name: 'LmxUaTv',          title: 'Українські серіали',  urls: function () { return uaUrls('tv'); },    ua: true, index: 19 },
+        { name: 'LmxUaMovies',      title: 'Українське кіно',     custom: function () { return uaCall(this_row('LmxUaMovies'), 'movie'); }, index: 18 },
+        { name: 'LmxUaTv',          title: 'Українські серіали',  custom: function () { return uaCall(this_row('LmxUaTv'), 'tv'); }, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
         { name: 'LmxRecs',         title: 'Схоже на те, що ви дивились', custom: function () { return recsCall(this); }, index: 21 }
     ];
@@ -2207,7 +2251,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.5';
+    var VERSION = '7.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
