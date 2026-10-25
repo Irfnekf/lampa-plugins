@@ -1,5 +1,5 @@
 /*
- * LMX Pack v8.8 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v8.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1276,6 +1276,7 @@
             '.full-start__button.lmx-b2.lmx-b2 span{display:none !important}' +
             '.full-start__button.lmx-b3.lmx-b3 svg{display:none !important}' +
             '.lmx-edit{opacity:.75}' +
+            '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
             '.lmx-be__ico{width:2em;height:2em;margin-right:.8em;display:flex;align-items:center;justify-content:center;flex:none}' +
             '.lmx-be__ico svg{width:1.6em;height:1.6em}' +
@@ -2329,7 +2330,7 @@
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
     var CLOSEI = BI('<path d="M6 6l12 12M18 6L6 18"/>');
 
-    var btnLast = null, btnRun = null, btnPageIds = [], btnExtraCount = 0;
+    var btnLast = null, btnRun = null, btnPageIds = [], btnVirtual = null, watchCap = null;
 
     function iconByKey(k) { for (var i = 0; i < BTN_ICONS.length; i++) if (BTN_ICONS[i][0] === k) return BTN_ICONS[i]; return null; }
     function strHash(s) { var h = 0, i; s = String(s); for (i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h).toString(36); }
@@ -2366,17 +2367,6 @@
     }
     function btnCollect(cont, r) {
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
-        // «Показувати всі кнопки»: добираємо й ті, що Lampa ховає поза рядом (їх видно лише в меню «Дивитись»)
-        btnExtraCount = 0;
-        if (r && getBool('lmx_btn_all', false)) {
-            r.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').each(function () {
-                if (els.indexOf(this) >= 0 || $(this).closest('.card, .full-person, .full-descr, .full-episode, .items-line').length) return;
-                var cn = String(this.className || '');
-                if (!/(^|\s)(view--|button--)/.test(cn) && !/(^|\s)full-start__button(\s|$)/.test(cn)) return;
-                els.push(this);
-                btnExtraCount++;
-            });
-        }
         els.forEach(function (el) { if (el.__lmxId != null) seen[el.__lmxId] = 1; });
         els.forEach(function (el) {
             if (el.__lmxId == null) {
@@ -2409,7 +2399,7 @@
         var m = bmGet(), list = btnCollect(cont, r), known = knownGet(), changed = false, map = {}, inFolder = {};
         list.forEach(function (b) {
             var k = known[b.id];
-            if (!k || k.t !== b.t || k.s !== b.s) { known[b.id] = { t: b.t, s: b.s }; changed = true; }
+            var sb = b.el.__lmxSub || ''; if (!k || k.t !== b.t || k.s !== b.s || (k.sub || '') !== sb) { known[b.id] = { t: b.t, s: b.s, sub: sb }; changed = true; }
         });
         if (changed) Lampa.Storage.set('lmx_btn_known', known);
         cont.find('.lmx-folder, .lmx-edit').remove();
@@ -2426,7 +2416,7 @@
         var primary = m.first;
 
         list.forEach(function (b) {
-            var el = b.el, id = b.id, ik = m.icons[id], ic = ik ? iconByKey(ik) : null, cur = el.querySelector('svg'), nn;
+            var el = b.el, id = b.id, ik = m.icons[id], ic = ik ? iconByKey(ik) : null, cur = el.querySelector('svg, img'), nn;
             map[id] = el;
             if (id === primary) {
                 el.classList.remove('lmx-bh', 'lmx-b1', 'lmx-b2', 'lmx-b3', 'lmx-ic', 'hide');
@@ -2450,10 +2440,6 @@
             el.classList.remove('lmx-b1', 'lmx-b2', 'lmx-b3');
             if (m.modes[id]) el.classList.add('lmx-b' + m.modes[id]);
             var off = m.hidden.indexOf(id) >= 0 || !!inFolder[id];
-            if (!off && getBool('lmx_btn_all', false)) {
-                el.classList.remove('hide');
-                if (el.style && el.style.display === 'none') el.style.display = '';
-            }
             el.classList.toggle('lmx-bh', off);
             el.classList.toggle('selector', !off);
         });
@@ -2512,6 +2498,7 @@
         if (!Lampa.Select || !Lampa.Select.show || Lampa.Select.__lmxP) return;
         var orig = Lampa.Select.show;
         Lampa.Select.show = function (o) {
+            if (watchCap) { watchCap.o = o; return; }
             try {
                 if (o && o.items && o.items.length > 1 && Lampa.Controller.enabled().name === 'full_start') {
                     var m = bmGet(), known = knownGet(), off = {};
@@ -2539,6 +2526,51 @@
         Lampa.Select.__lmxP = true;
     }
 
+    // Кнопка «Smart Online» ховає джерела (торренти, онлайн, трейлери) у своє меню «Джерело».
+    // Знімаємо це меню непомітно й робимо з його пунктів звичайні кнопки в ряду
+    function picHtml(p) {
+        if (!p) return BTN_ICONS[0][2];
+        if (typeof p === 'string') return /^\s*</.test(p) ? p : '<img src="' + p.replace(/"/g, '') + '">';
+        if (p.jquery && p[0]) return p[0].outerHTML;
+        if (p.outerHTML) return p.outerHTML;
+        return BTN_ICONS[0][2];
+    }
+    function btnVirtualize(r, cont, cb) {
+        var host = cont.find('.full-start__button').not('.lmx-edit, .lmx-folder, .lmx-virt');
+        var m = bmGet(), prim = null;
+        host.each(function () { if (!prim && this.__lmxId === m.first) prim = this; });
+        if (!prim) prim = host[0];
+        if (!getBool('lmx_btn_all', false)) { cont.find('.lmx-virt').remove(); return cb && cb(0); }
+        if (cont.find('.lmx-virt').length) return cb && cb(cont.find('.lmx-virt').length);
+        if (!prim || !/smart online|дивитись|дивись|смотреть|watch/i.test(String(prim.__lmxT || btnTitleOf(prim)))) return cb && cb(0);
+        watchCap = { o: null };
+        try { $(prim).trigger('hover:enter'); } catch (e) {}
+        var cap = watchCap;
+        setTimeout(function () {
+            watchCap = null;
+            var o = cap.o, n = 0;
+            if (o && o.items && document.body.contains(cont[0])) {
+                o.items.forEach(function (it) {
+                    if (!it || !it.title) return;
+                    var title = String(it.title).replace(/<[^>]*>/g, '').trim(), sub = String(it.subtitle || '').replace(/<[^>]*>/g, '').trim();
+                    var html = picHtml(it.picture || it.icon || it.img || it.image);
+                    var el = $('<div class="full-start__button selector lmx-virt"></div>').html(html + '<span></span>');
+                    el.find('span').text(title);
+                    el[0].__lmxT = title; el[0].__lmxS = html; el[0].__lmxSub = sub;
+                    el[0].__lmxId = 'v:' + strHash(title + '|' + sub);
+                    el.on('hover:enter', function () {
+                        var enabled = Lampa.Controller.enabled().name;
+                        Lampa.Controller.toggle(enabled);
+                        setTimeout(function () { try { if (o.onSelect) o.onSelect(it); } catch (e) { console.error('LMX virt', e); } }, 40);
+                    });
+                    cont.append(el);
+                    n++;
+                });
+            }
+            cb && cb(n);
+        }, 250);
+    }
+
     function btnsOnFull(r) {
         safe(patchSelectHidden);
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
@@ -2556,6 +2588,9 @@
         }
         btnLast = r; btnRun = run;
         run(true);
+        function tryVirt(cb) { btnVirtualize(r, cont, function (n) { if (n || !getBool('lmx_btn_all', false)) run(true); if (cb) cb(n); }); }
+        btnVirtual = tryVirt;
+        if (getBool('lmx_btn_all', false)) [700, 2000, 4500].forEach(function (ms) { setTimeout(function () { if (document.body.contains(node) && !cont.find('.lmx-virt').length) tryVirt(); }, ms); });
         var mo = new MutationObserver(function () {
             if (busy) return;
             clearTimeout(timer);
@@ -2573,7 +2608,7 @@
         if (!ids0.length) { if (Lampa.Noty) Lampa.Noty.show('Спочатку відкрийте будь-який фільм — його кнопки з’являться тут'); return; }
         // порядок, як він зараз на сторінці; невідомі сторінці кнопки — в кінець
         var ids = btnPageIds.filter(function (x) { return known[x]; });
-        ids0.forEach(function (x) { if (ids.indexOf(x) < 0) ids.push(x); });
+        if (!ids.length) ids = ids0;
         var enabled = Lampa.Controller.enabled().name;
         var m = bmGet(), lastFire = 0;
         var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
@@ -2645,7 +2680,7 @@
             paint(ico[0], m.colors[t] || m.color);
             row.find('.lmx-ord__name > span').eq(0).text(titleOf(t));
             var f = !isF(t) ? folderOf(t) : null, sub = row.find('.lmx-ord__sub');
-            sub.text(isF(t) ? 'Папка' : (f ? 'У папці «' + f.name + '»' : ''));
+            sub.text(isF(t) ? 'Папка' : (f ? 'У папці «' + f.name + '»' : ((known[t] && known[t].sub) || '')));
             var off = m.hidden.indexOf(t) >= 0;
             row.find('.lmx-ord__btn[data-act=vis]').html(off ? BOX_OFF : BOX_ON).toggleClass('lmx-ord__off', off);
             row.find('.lmx-ord__btn[data-act=mode]').text(m.modes[t] || '1');
@@ -2667,7 +2702,7 @@
             var row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
             row.append($('<div class="lmx-be__ico"></div>').html(svgOf(t)));
             var nm = $('<div class="lmx-ord__name"></div>').append($('<span></span>').text(titleOf(t)));
-            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Головна кнопка — завжди перша й велика' : ''));
+            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Головна кнопка — завжди перша й велика' : ((known[t] && known[t].sub) || '')));
             row.append(nm);
             if (lock) { row.attr('data-lock', '1'); refresh0(row, t); return row; }
             var off = m.hidden.indexOf(t) >= 0;
@@ -2776,12 +2811,10 @@
             var on = !getBool('lmx_btn_all', false);
             Lampa.Storage.set('lmx_btn_all', on ? 'true' : 'false');
             allText();
-            btnExtraCount = 0;
-            safe(function () { if (btnRun) btnRun(true); });
-            if (on && Lampa.Noty) {
-                Lampa.Noty.show(btnExtraCount ? 'Знайдено прихованих кнопок: ' + btnExtraCount : 'Прихованих кнопок на сторінці не знайдено: меню «Дивитись» будується не з кнопок сторінки');
-            }
-            if (btnExtraCount) reopen();
+            if (btnVirtual) btnVirtual(function (n) {
+                if (on && Lampa.Noty) Lampa.Noty.show(n ? 'Додано кнопок із меню «Дивитись»: ' + n : 'У меню «Дивитись» нічого не знайдено');
+                if (n || !on) reopen();
+            });
         });
         var compactRow = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Підпис лише в перших трьох кнопок і в тієї, що вибрана (стандартна тема)</span></div>');
         function compactText() { compactRow.find('b').text('Компактні кнопки: ' + (getBool('lmx_btn_compact', true) ? 'так' : 'ні')); }
@@ -2818,7 +2851,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '8.8';
+    var VERSION = '8.9';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
