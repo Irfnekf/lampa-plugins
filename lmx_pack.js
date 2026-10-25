@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2451,7 +2451,7 @@
             var sb = b.el.__lmxSub || ''; if (!k || k.t !== b.t || k.s !== b.s || (k.sub || '') !== sb) { known[b.id] = { t: b.t, s: b.s, sub: sb }; changed = true; }
         });
         if (changed) Lampa.Storage.set('lmx_btn_known', known);
-        cont.find('.lmx-folder, .lmx-edit').remove();
+        cont.find('.lmx-folder').remove();
         m.folders.forEach(function (f) { (f.items || []).forEach(function (id) { inFolder[id] = f.id; }); });
 
         // «Показувати всі кнопки» вимкнено: порядок задає сама Lampa (довге натискання на кнопку виносить її першою),
@@ -2485,6 +2485,7 @@
             var span = el.querySelector('span'), nm = m.names[id] || el.__lmxT;
             if (span) { if (span.textContent !== nm) span.textContent = nm; }
             else if (m.names[id]) { span = document.createElement('span'); span.textContent = nm; el.appendChild(span); }
+            if (reorder) el.classList.remove('button--priority');
             paint(el, m.colors[id] || m.color);
             setMode(el, modeOf(id));
             el.classList.toggle('lmx-primary', id === primary);
@@ -2532,11 +2533,21 @@
         }
         cont[0].__lmxWant = reorder ? toks.filter(function (t) { return map[t] || fEls[t]; }) : null;
         btnPageIds = reorder ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
-        var ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
-        ed.on('hover:enter', function () { openButtonsEditor(); });
-        cont.append(ed);
+        var ed = cont[0].__lmxEd;
+        if (!ed) {
+            ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
+            ed.on('hover:enter', function () { openButtonsEditor(); });
+            cont[0].__lmxEd = ed;
+        }
+        if (cont.children().last()[0] !== ed[0]) cont.append(ed);
 
-        safe(function () { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); });
+        // Контролер чіпаємо лише якщо фокус загубився: інакше фокус і прокрутка «стрибають» при кожному оновленні рядка
+        safe(function () {
+            if (Lampa.Controller.enabled().name !== 'full_start') return;
+            var f = cont.find('.focus');
+            if (f.length && f.is(':visible') && f.hasClass('selector')) return;
+            Lampa.Controller.toggle('full_start');
+        });
     }
 
     // Меню «Дивитись» збирає кнопки саме: прибираємо з нього ті, що вимкнено в нашому налаштуванні
@@ -2899,12 +2910,13 @@
         bind(diag, function () {
             var rows = [];
             if (btnLast && btnLast.length) {
+                rows.push({ title: 'Показувати всі кнопки: ' + (getBool('lmx_btn_all', false) ? 'так' : 'ні'), subtitle: getBool('lmx_btn_all', false) ? 'порядок і цифри 1/2/3 діють для всіх кнопок' : 'перша кнопка велика, цифри на ній не діють' });
                 var c = btnLast.find('.full-start-new__buttons, .full-start__buttons').eq(0);
                 c.children().each(function (i) {
-                    if (i > 5) return;
+                    if (i > 4) return;
                     var e = this, lab = labelsOf(e).map(function (x) { return x.tagName.toLowerCase(); }).join(',');
                     rows.push({ title: (i + 1) + '. ' + (e.__lmxId || e.className.split(' ').slice(0, 3).join(' ')),
-                        subtitle: 'class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 90) + ' | дітей: ' + lab + ' | width: ' + (e.style.width || '-') + ' | батько: ' + String(e.parentNode.className).slice(0, 40) });
+                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 80) });
                 });
             }
             if (!rows.length) rows.push({ title: 'Відкрийте сторінку фільму і спробуйте ще раз' });
@@ -2936,7 +2948,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.5';
+    var VERSION = '9.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
