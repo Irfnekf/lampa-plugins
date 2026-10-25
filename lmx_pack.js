@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.7 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1275,6 +1275,8 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x),html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x){width:auto !important;min-width:0 !important;height:3.2em !important;padding:0 1.2em !important;border-radius:2em !important;justify-content:center;font-size:.95em !important}' +
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span,html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x) span{display:inline !important;white-space:nowrap;font-size:1em !important;opacity:1 !important;visibility:visible !important;max-width:none}' +
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
+            'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
+            'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -1531,10 +1533,10 @@
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
             F + '.full-start-new__buttons > .full-start__button{width:3em;height:3em;padding:0;border-radius:50%;justify-content:center;background:transparent !important;color:#fff;transition:transform .25s ease,box-shadow .25s ease}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n){width:auto;padding:0 1.8em;border-radius:2em;background:#fff !important;color:#000;font-weight:700}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span{display:inline !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 1.8em;border-radius:2em;background:#fff !important;color:#000;font-weight:700}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.34) !important;color:#fff;transform:scale(1.08)}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus{background:#fff !important;color:#000;box-shadow:0 0 0 .2em rgba(255,255,255,.4)}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .2em rgba(255,255,255,.4)}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero{width:94vw !important;margin-left:0 !important;margin-right:1em !important}' +
                 T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view{height:52vw !important;border-radius:.8em !important}' +
@@ -1663,10 +1665,10 @@
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center;margin-top:0}' +
             F + '.full-start-new__buttons > .full-start__button{width:3.5em;height:3.5em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;color:#f5f5f7;margin-right:.7em;transition:transform .45s ' + SPRING + '}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n){width:auto;padding:0 2.4em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.08em}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span{display:inline !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 2.4em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.08em}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{transform:scale(1.1);background:rgba(255,255,255,.34) !important;color:#fff}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus{background:#fff !important;color:#000;box-shadow:0 0 0 .18em rgba(255,255,255,.35)}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .18em rgba(255,255,255,.35)}' +
             // нижні розділи сторінки (опис, актори) — у тому ж стилі
             A + '.full-descr__text,' + A + '.full-descr__details{color:#d1d1d6}' +
             A + '.full-person{border-radius:1.1em}' +
@@ -2454,12 +2456,24 @@
         cont.find('.lmx-folder').remove();
         m.folders.forEach(function (f) { (f.items || []).forEach(function (id) { inFolder[id] = f.id; }); });
 
-        // «Показувати всі кнопки» вимкнено: порядок задає сама Lampa (довге натискання на кнопку виносить її першою),
-        // перша кнопка лишається великою (стиль теми). Увімкнено: усі кнопки рівні, порядок і розмір — наші
+        // «Показувати всі кнопки» вимкнено: порядок задає сама Lampa (довге натискання на кнопку виносить її першою).
+        // Увімкнено: порядок і розмір — наші. Порядок задаємо властивістю order (DOM не чіпаємо, щоб не воювати з плагінами).
+        // Перша на екрані кнопка завжди у стилі теми, цифри 1/2/3 на неї не діють
         var allOn = getBool('lmx_btn_all', false);
         var reorder = allOn && (m.order.length > 0 || m.folders.length > 0);
         var ids = list.map(function (b) { return b.id; });
-        var primary = allOn ? '' : (ids[0] || '');
+        var toks = allOn ? btnTokens(m, ids) : ids;
+        var shown = function (t) {
+            if (m.hidden.indexOf(t) >= 0 || inFolder[t]) return false;
+            if (t.indexOf('f:') === 0) {
+                var ok = false;
+                m.folders.forEach(function (f) { if ('f:' + f.id === t) (f.items || []).forEach(function (x) { if (ids.indexOf(x) >= 0) ok = true; }); });
+                return ok;
+            }
+            return true;
+        };
+        var primary = '';
+        toks.forEach(function (t) { if (!primary && shown(t)) primary = t; });
         function modeOf(id) {
             if (id === primary) return '';
             return m.modes[id] || (m.look === 'full' ? '3' : (m.look === 'icons' ? '1' : (allOn ? '1' : '')));
@@ -2485,7 +2499,6 @@
             var span = el.querySelector('span'), nm = m.names[id] || el.__lmxT;
             if (span) { if (span.textContent !== nm) span.textContent = nm; }
             else if (m.names[id]) { span = document.createElement('span'); span.textContent = nm; el.appendChild(span); }
-            if (reorder) el.classList.remove('button--priority');
             paint(el, m.colors[id] || m.color);
             setMode(el, modeOf(id));
             el.classList.toggle('lmx-primary', id === primary);
@@ -2504,6 +2517,7 @@
             paint(fe[0], m.colors[tk] || m.color);
             var off = m.hidden.indexOf(tk) >= 0;
             setMode(fe[0], modeOf(tk));
+            fe[0].classList.toggle('lmx-primary', tk === primary);
             fe[0].classList.toggle('lmx-bh', off);
             fe[0].classList.toggle('selector', !off);
             fe.on('hover:enter', function () {
@@ -2522,17 +2536,17 @@
             fEls[tk] = fe[0];
         });
 
-        var toks = btnTokens(m, ids);
-        if (reorder) {
-            toks.forEach(function (t) {
-                var el = map[t] || fEls[t];
-                if (el) cont.append(el);
-            });
-        } else {
-            Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
-        }
-        cont[0].__lmxWant = reorder ? toks.filter(function (t) { return map[t] || fEls[t]; }) : null;
-        btnPageIds = reorder ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
+        Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
+        var allToks = allOn ? toks.slice() : ids.concat(Object.keys(fEls));
+        if (allOn) m.folders.forEach(function (f) { if (allToks.indexOf('f:' + f.id) < 0) allToks.push('f:' + f.id); });
+        allToks.forEach(function (t, i) {
+            var el = map[t] || fEls[t];
+            if (!el) return;
+            if (reorder) el.style.setProperty('order', String(i), 'important'); else el.style.removeProperty('order');
+        });
+        if (document.body && document.body.classList) document.body.classList.toggle('lmx-all', allOn);
+        cont[0].__lmxWant = null;
+        btnPageIds = allOn ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
         var ed = cont[0].__lmxEd;
         if (!ed) {
             ed = $('<div class="full-start__button selector lmx-edit"></div>').html(PENCIL + '<span>Кнопки</span>');
@@ -2540,6 +2554,7 @@
             cont[0].__lmxEd = ed;
         }
         if (cont.children().last()[0] !== ed[0]) cont.append(ed);
+        ed[0].style.setProperty('order', '9999', 'important');
 
         // Контролер чіпаємо лише якщо фокус загубився: інакше фокус і прокрутка «стрибають» при кожному оновленні рядка
         safe(function () {
@@ -2629,7 +2644,12 @@
         var list = getBool('lmx_btn_all', false) ? menuGet() : [];
         if (!list.length) { cont.find('.lmx-virt').remove(); return; }
         if (cont.find('.lmx-virt').length) return;
+        var have = {}, seenV = {};
+        cont.find('.full-start__button').not('.lmx-virt, .lmx-edit, .lmx-folder').each(function () { have[norm(this.__lmxT || btnTitleOf(this)).toLowerCase()] = 1; });
         list.forEach(function (d) {
+            var key = d.t.toLowerCase() + '|' + (d.sub || '').toLowerCase();
+            if (seenV[key] || (have[d.t.toLowerCase()] && !d.sub)) return;
+            seenV[key] = 1;
             var el = $('<div class="full-start__button selector lmx-virt"></div>').html(d.h + '<span></span>');
             el.find('span').text(d.t);
             el[0].__lmxT = d.t; el[0].__lmxS = d.h; el[0].__lmxSub = d.sub || '';
@@ -2785,11 +2805,11 @@
             followFocus(btnEl);
         }
         function rowFor(t) {
-            var folder = isF(t), lock = !folder && t === first && !getBool('lmx_btn_all', false);
+            var folder = isF(t), lock = t === first;
             var row = $('<div class="lmx-ord__row lmx-be__row"></div>').attr('data-t', t);
             row.append($('<div class="lmx-be__ico"></div>').html(svgOf(t)));
             var nm = $('<div class="lmx-ord__name"></div>').append($('<span></span>').text(titleOf(t)));
-            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Перша кнопка сторінки — велика, поки «Показувати всі кнопки» вимкнено' : ((known[t] && known[t].sub) || '')));
+            nm.append($('<span class="lmx-ord__sub"></span>').text(lock ? 'Перша кнопка — завжди у стилі теми; розмір не змінюється' : ((known[t] && known[t].sub) || '')));
             row.append(nm);
             if (lock) row.attr('data-lock', '1');
             var off = m.hidden.indexOf(t) >= 0;
@@ -2813,7 +2833,7 @@
                 if (k >= 0) m.hidden.splice(k, 1); else m.hidden.push(t);
                 save(); refresh(t);
             } else if (a === 'mode') {
-                if (t === first && !getBool('lmx_btn_all', false)) { if (Lampa.Noty) Lampa.Noty.show('Перша кнопка велика, поки «Показувати всі кнопки» вимкнено. Розмір кнопок змінюється цифрами, коли воно ввімкнено'); return; }
+                if (t === first) { if (Lampa.Noty) Lampa.Noty.show('Перша кнопка завжди у стилі теми. Іконку й колір можна змінити'); return; }
                 var seq = ['1', '2', '3'], cur = m.modes[t] || '1';
                 m.modes[t] = seq[(seq.indexOf(cur) + 1) % seq.length];
                 save(); refresh(t);
@@ -2883,7 +2903,7 @@
                 m.color = it.c; save(); refreshAll();
             });
         });
-        var look = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Цифра біля кнопки: 1 — компактна (іконка), 2 — трохи ширша з підписом, 3 — з повним підписом. Поки «Показувати всі кнопки» вимкнено, перша кнопка велика й порядок задає Lampa; коли ввімкнено — усе налаштовується тут</span></div>');
+        var look = bigRow('lmx-be__look', '<div><b></b><span class="lmx-ord__sub">Цифра біля кнопки: 1 — компактна (іконка), 2 — трохи ширша з підписом, 3 — з повним підписом. Перша кнопка завжди у стилі теми. Порядок: якщо «Показувати всі кнопки» вимкнено — довге натискання на кнопку онлайн-плагіна виносить її першою; ввімкнено — стрілки тут</span></div>');
         function lookText() { look.find('b').text('Вигляд кнопок: ' + lookName()); }
         lookText();
         bind(look, function () {
@@ -2948,7 +2968,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.6';
+    var VERSION = '9.7';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
