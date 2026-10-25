@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.2 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.3 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1270,12 +1270,11 @@
             '.lmx-ic svg{color:var(--lmx-bc)}' +
             '.lmx-ic svg[fill]:not([fill=none]),.lmx-ic svg [fill]:not([fill=none]){fill:var(--lmx-bc) !important}' +
             '.lmx-ic svg[stroke]:not([stroke=none]),.lmx-ic svg [stroke]:not([stroke=none]){stroke:var(--lmx-bc) !important}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m1.lmx-m1{width:3.2em !important;min-width:0 !important;height:3.2em !important;padding:0 !important;border-radius:50% !important;justify-content:center}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m1.lmx-m1 span{display:none !important}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m2.lmx-m2,html body .full-start-new__buttons > .full-start__button.lmx-m3.lmx-m3{width:auto !important;height:3.2em !important;padding:0 1.2em !important;border-radius:2em !important;justify-content:center}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m2.lmx-m2 span,html body .full-start-new__buttons > .full-start__button.lmx-m3.lmx-m3 span{display:inline !important;white-space:nowrap}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m2.lmx-m2 span{max-width:6.5em;overflow:hidden;text-overflow:ellipsis}' +
-            'html body .full-start-new__buttons > .full-start__button.lmx-m3.lmx-m3 span{max-width:none}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-m1:not(#lmx-x){width:3.2em !important;min-width:0 !important;height:3.2em !important;padding:0 !important;border-radius:50% !important;justify-content:center;font-size:.95em !important}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-m1:not(#lmx-x) span{display:none !important}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x),html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x){width:auto !important;min-width:0 !important;height:3.2em !important;padding:0 1.2em !important;border-radius:2em !important;justify-content:center;font-size:.95em !important}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span,html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x) span{display:inline !important;white-space:nowrap;font-size:1em !important;opacity:1 !important;visibility:visible !important;max-width:none}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -2869,7 +2868,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.2';
+    var VERSION = '9.3';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
