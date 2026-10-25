@@ -1,5 +1,5 @@
 /*
- * LMX Pack v9.7 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v9.8 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2716,7 +2716,7 @@
         var ids = btnPageIds.filter(function (x) { return known[x]; });
         if (!ids.length) ids = ids0;
         var enabled = Lampa.Controller.enabled().name;
-        var m = bmGet(), lastFire = 0;
+        var m = bmGet(), lastFire = 0, closed = false;
         var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
         wrap.append(top, listEl, bottom);
         var first = btnPageIds[0] || '';
@@ -2765,6 +2765,7 @@
         function ask(title, value, cb) {
             if (!(Lampa.Input && Lampa.Input.edit)) return;
             save();
+            closed = true;
             Lampa.Modal.close();
             setTimeout(function () {
                 Lampa.Input.edit({ title: title, value: value || '', free: true, nosave: true }, function (v) {
@@ -2775,6 +2776,7 @@
         }
         function reopen() {
             save();
+            closed = true;
             Lampa.Modal.close();
             setTimeout(openButtonsEditor, 120);
         }
@@ -2951,10 +2953,12 @@
         });
         var done = bigRow('lmx-be__save', 'ЗБЕРЕГТИ ТА ЗАКРИТИ');
         function close() {
+            if (closed) return;
+            closed = true;
             save();
             safe(function () { if (btnRun) btnRun(true); });
-            Lampa.Modal.close();
-            Lampa.Controller.toggle(enabled);
+            safe(function () { Lampa.Modal.close(); });
+            safe(function () { Lampa.Controller.toggle(enabled); });
         }
         bind(done, close);
         bottom.append(reset, done);
@@ -2968,7 +2972,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '9.7';
+    var VERSION = '9.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
