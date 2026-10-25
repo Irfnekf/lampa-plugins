@@ -1,5 +1,5 @@
 /*
- * LMX Pack v7.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v7.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -596,7 +596,7 @@
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
             list = list.filter(function (c) { return c && c.id; }).slice(0, 20);
             if (!list.length) return call();
-            if (board()) {
+            {
                 // недосмотрене — першим (у межах групи лишається порядок «найсвіжіше зверху»)
                 var withP = list.map(function (c) { return { c: c, p: watchProgress(c) }; });
                 var part = withP.filter(function (x) { return x.p && x.p.pct < 95; });
@@ -1211,7 +1211,15 @@
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
                 '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0}' +
                 '.lmx-sel.on{opacity:1}' +
-                '.lmx-hist__bar{position:absolute;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.28);z-index:3}' +
+                // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
+                '.card--lmxhist{width:23em !important}' +
+                '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:1em;overflow:hidden;position:relative;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
+                '.card--lmxhist > *:not(.card__view):not(.lmx-sel),.card--lmxhist .card__view > *:not(.lmx-hist__shade):not(.lmx-hist__text):not(.lmx-hist__bar){display:none !important}' +
+                '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:80%;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
+                '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:1.15em;color:#fff;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
+                '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+                '.lmx-hist__m{display:flex;gap:1em;font-size:.85em;line-height:1.3;margin-top:.4em}' +
+                '.lmx-hist__bar{position:absolute;left:0;right:0;bottom:0;height:.36em;background:rgba(255,255,255,.3);z-index:3}' +
                 '.lmx-hist__bar i{display:block;height:100%;background:#fff}' +
                 '.card .card__quality,.card .card__type,.card .card__marker{display:none !important}' +
                 // фон застосунку під тему: стандартна — нейтральний графітовий градієнт
@@ -1386,8 +1394,8 @@
             // історія («Продовжити перегляд»): широкі картки з кадром
             T + '.card--lmxhist{width:23em !important}' +
             T + '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:0;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
-            T + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0;background:linear-gradient(to top,rgba(0,0,0,.8) 0%,rgba(0,0,0,0) 100%)}' +
-            T + '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:.9em;color:#fff}' +
+            T + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:80%;border-radius:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
+            T + '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:1.15em;color:#fff}' +
             T + '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             T + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.5em}' +
             // плитки стрімінгів
@@ -1514,8 +1522,8 @@
             // історія: широкі картки з кадром
             A + '.card--lmxhist{width:24em !important}' +
             A + '.card--lmxhist .card__view{height:13.5em !important;padding-bottom:0 !important;border-radius:1.1em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
-            A + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0 0 1.1em 1.1em;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,0) 100%)}' +
-            A + '.lmx-hist__text{position:absolute;left:1.1em;right:1.1em;bottom:1em;color:#fff}' +
+            A + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:80%;border-radius:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
+            A + '.lmx-hist__text{position:absolute;left:1.1em;right:1.1em;bottom:1.2em;color:#fff}' +
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
@@ -2184,7 +2192,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '7.4';
+    var VERSION = '7.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
