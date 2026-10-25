@@ -1384,7 +1384,7 @@
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after,' + A + '.card--lmxstudio.focus .card__view::after,' + A + '.card--lmxstudio.hover .card__view::after{display:none !important}' +
             A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.09)}' +
-            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.55) 20%,rgba(0,0,0,0) 50%),linear-gradient(to bottom,#3b3b44 0%,rgba(59,59,68,.6) 7%,rgba(59,59,68,0) 24%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
+            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.5) 8%,rgba(44,44,51,0) 24%),linear-gradient(to bottom,#3b3b44 0%,rgba(59,59,68,.5) 4%,rgba(59,59,68,0) 12%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
             A + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9;font-weight:500}' +
@@ -1844,13 +1844,29 @@
         }
     }
     // Автоперегортання афіші: кожні 8 с, після останньої — знову на першу. Не чіпає, поки користувач сам натискає кнопки
+    // Фокус на картці: Navigator у Lampa не глобальний, тому пробуємо кілька способів
+    function focusCard(el, line) {
+        var manual = function () {
+            if (el.classList.contains('focus')) return;
+            try { if (window.Navigator && Navigator.focus) Navigator.focus(el); } catch (e) {}
+            if (el.classList.contains('focus') || !window.$) return;
+            var old = document.querySelectorAll('.card--lmxhero.focus');
+            for (var i = 0; i < old.length; i++) old[i].classList.remove('focus');
+            el.classList.add('focus');
+            window.$(el).trigger('hover:focus');
+        };
+        try {
+            if (window.Lampa && Lampa.Controller && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(el, window.$ ? window.$(line) : line);
+        } catch (e) {}
+        setTimeout(function () { safe(manual); }, 60);
+    }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
         var idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0, now = Date.now();
         if (idx !== ap.idx) { ap.idx = idx; ap.t = now; return; }
         if (now - ap.t < AUTOPLAY_MS) return;
         ap.t = now;
-        if (document.hidden || !line || !window.Navigator || !Navigator.focus) return;
+        if (document.hidden || !line) return;
         var cn = '';
         try { cn = Lampa.Controller.enabled().name; } catch (e) {}
         if (cn && cn !== 'content') return;
@@ -1861,12 +1877,28 @@
             if (k === idx + 1) next = all[i];
         }
         next = next || first;
-        if (next && next !== card) Navigator.focus(next);
+        if (next && next !== card) focusCard(next, line);
     }
     function initDots() {
         if (window.__lmxDots) return;
         window.__lmxDots = true;
-        document.addEventListener('keydown', function () { ap.t = Date.now(); }, true);
+        document.addEventListener('keydown', function (e) {
+            ap.t = Date.now();
+            // «вправо» на останньому баннері — повертаємось на перший
+            if (e && (e.keyCode === 39 || e.key === 'ArrowRight')) {
+                setTimeout(function () {
+                    safe(function () {
+                        var c = document.querySelector('.card--lmxhero.focus');
+                        if (!c) return;
+                        var n = parseInt(c.getAttribute('data-lmxn'), 10) || 0, i = parseInt(c.getAttribute('data-lmxi'), 10) || 0;
+                        if (n > 1 && i === n - 1) {
+                            var line = c.closest('.items-line'), first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
+                            if (first) focusCard(first, line);
+                        }
+                    });
+                }, 60);
+            }
+        }, true);
         var tm = setInterval(function () {
             safe(function () {
                 if (getStr('lmx_theme', 'default') !== 'apple' || isMobile()) return;
