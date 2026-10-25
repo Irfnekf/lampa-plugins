@@ -865,6 +865,7 @@
                                     var h = htmlOf(self, ex);
                                     if (!h) return;
                                     h.addClass('card--lmxhero');
+                                    if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
                                     var view = h.find('.card__view');
                                     view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') === 'apple' ? 'w1280' : (getStr('lmx_theme', 'default') === 'default' ? 'w500' : 'w780')) + ')');
                                     view.find('img').css('opacity', 0);
@@ -1399,6 +1400,10 @@
             A + '.lmx-hero__tag.lmx-t-soon{background:#0a84ff}' +
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
+                        // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
+            A + '.lmx-hero-line .scroll__body{transition:transform .55s cubic-bezier(.22,.8,.22,1) !important}' +
+            A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
+            A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             A + '.lmx-dots{position:absolute;left:50%;bottom:1.3em;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:3;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5)}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
@@ -1406,9 +1411,9 @@
             A + '.card--lmxhist{width:24em !important}' +
             A + '.card--lmxhist .card__view{height:13.5em !important;padding-bottom:0 !important;border-radius:1.1em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
             A + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:70%;border-radius:0 0 1.1em 1.1em;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,0) 100%)}' +
-            A + '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
-            A + '.lmx-hist__t{font-size:1.05em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-            A + '.lmx-hist__m{display:flex;gap:.7em;font-size:.82em;opacity:.85;margin-top:.15em}' +
+            A + '.lmx-hist__text{position:absolute;left:1.1em;right:1.1em;bottom:1em;color:#fff}' +
+            A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
@@ -1643,6 +1648,7 @@
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
+            if (el.classList.contains('card--lmxhero')) { var ln = el.closest('.items-line'); if (ln) ln.classList.add('lmx-hero-line'); }
             if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio') || el.classList.contains('card--lmxhist')) return;
 
             var d = getData(el);
