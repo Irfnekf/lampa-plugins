@@ -848,11 +848,6 @@
                 list = tg.concat(rest.slice(0, lim - tg.length));
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 if (!list.length) return call();
-                var dotsHtml = function (idx) {
-                    var h = '<div class="lmx-dots">';
-                    for (var q = 0; q < list.length; q++) h += '<i' + (q === idx ? ' class="on"' : '') + '></i>';
-                    return h + '</div>';
-                };
                 var items = list.map(function (m, idx) {
                     var it = {};
                     for (var k in m) it[k] = m[k];
@@ -864,7 +859,7 @@
                                 safe(function () {
                                     var h = htmlOf(self, ex);
                                     if (!h) return;
-                                    h.addClass('card--lmxhero');
+                                    h.addClass('card--lmxhero').attr('data-lmxi', idx).attr('data-lmxn', list.length);
                                     if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
                                     var view = h.find('.card__view');
                                     view.css('background-image', 'url(' + imgUrl(m.backdrop_path, getStr('lmx_theme', 'default') === 'apple' ? 'w1280' : (getStr('lmx_theme', 'default') === 'default' ? 'w500' : 'w780')) + ')');
@@ -883,8 +878,7 @@
                                         (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
                                         '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
                                         '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-                                        (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' : '') + '</div>' +
-                                        (getStr('lmx_theme', 'default') === 'apple' ? dotsHtml(idx) : ''));
+                                        (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' : '') + '</div>');
                                 });
                             },
                             onlyEnter: function () { openFull(m); }
@@ -1404,8 +1398,9 @@
             A + '.lmx-hero-line .scroll__body{transition:transform .55s cubic-bezier(.22,.8,.22,1) !important}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
-            A + '.lmx-dots{position:absolute;left:50%;bottom:1.3em;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:3;pointer-events:none}' +
-            A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5)}' +
+            A + '.lmx-hero-line{position:relative}' +
+            A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
+            A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:width .45s cubic-bezier(.25,.8,.25,1),background-color .45s ease}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
             // історія: широкі картки з кадром
             A + '.card--lmxhist{width:24em !important}' +
@@ -1818,6 +1813,46 @@
         });
     }
 
+    // Apple TV: нерухомі точки поверх афіші; активна «перетікає» між точками
+    function syncDots(card) {
+        if (!card) return;
+        var line = card.closest('.items-line');
+        var n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, idx = parseInt(card.getAttribute('data-lmxi'), 10) || 0;
+        if (!line || n < 2) return;
+        var box = line.querySelector('.lmx-dots');
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'lmx-dots';
+            var h = '';
+            for (var q = 0; q < n; q++) h += '<i></i>';
+            box.innerHTML = h;
+            line.appendChild(box);
+        }
+        if (box.__idx !== idx) {
+            var dots = box.children;
+            for (var k = 0; k < dots.length; k++) dots[k].className = k === idx ? 'on' : '';
+            box.__idx = idx;
+        }
+        if (!box.__placed) {
+            var view = card.querySelector('.card__view') || card;
+            var r = view.getBoundingClientRect(), lr = line.getBoundingClientRect();
+            var em = parseFloat(window.getComputedStyle(document.body).fontSize) || 16;
+            if (r.height > 0) { box.style.top = Math.round(r.bottom - lr.top - 3.3 * em) + 'px'; box.__placed = true; }
+        }
+    }
+    function initDots() {
+        if (window.__lmxDots) return;
+        window.__lmxDots = true;
+        var tm = setInterval(function () {
+            safe(function () {
+                if (getStr('lmx_theme', 'default') !== 'apple') return;
+                var c = document.querySelector('.card--lmxhero.focus');
+                if (c) syncDots(c);
+            });
+        }, 200);
+        if (tm && tm.unref) tm.unref();
+    }
+
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
@@ -1910,6 +1945,7 @@
             scan();
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
             safe(initPrefetch);
+            safe(initDots);
         });
     }
 
