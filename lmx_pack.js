@@ -1135,20 +1135,19 @@
             B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
-            B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700;text-shadow:0 2px 10px rgba(0,0,0,.6)}' +
+            B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .25s ease}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .25s ease}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head.lmx-reveal{opacity:1}' +
             // у контейнері font-size:0, тому розміри лише у vw/vh/px (em тут дорівнювали б нулю)
-            B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6))}' +
+            B + '.lmx-logo{display:block;max-width:34vw;max-height:15vh;width:auto;height:auto;margin-bottom:1vh}' +
             B + '.full-start-new__tagline{font-size:1.05em;opacity:.8;margin-top:.3em}' +
             B + '.full-start-new__rate-line{margin:.9em 0 .8em 0}' +
             B + '.full-start-new__details{margin:0 0 .8em -0.3em}' +
             B + '.full-start__background{filter:brightness(.45)}' +
             B + '.background{filter:brightness(.45)}' +
-            B + '.full-start-new__right{text-shadow:0 1px 8px rgba(0,0,0,.85)}' +
             '.lmx-scrim{pointer-events:none;background:linear-gradient(to right,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.25) 100%),linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 55%)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em}' +
@@ -1202,11 +1201,12 @@
             // ряди
             T + '.items-line__title{font-size:1.5em;font-weight:700;letter-spacing:.01em}' +
             // картки: заокруглений постер, біле кільце + фіолетове сяйво у фокусі, плавна анімація
-            T + '.card__view{border-radius:.5em;background:#12131f;transition:transform .4s cubic-bezier(.2,.7,.2,1)}' +
+            T + '.card,' + T + '.card.focus,' + T + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
+            T + '.card__view{border-radius:.5em;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
             // кільце у фокусі — градієнт кольору теми; анімується лише прозорістю (дешево для ТВ, без ривків)
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:block !important;content:"";position:absolute;top:-.24em;left:-.24em;right:-.24em;bottom:-.24em;border:0 !important;border-radius:.75em;background:' + G + ';z-index:-1;pointer-events:none;animation:lmxring .4s ease both}' +
             '@keyframes lmxring{from{opacity:0}to{opacity:1}}' +
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:translateY(-.3em) scale(1.035)}' +
+            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:scale(1.05)}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 .5em .5em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1357,7 +1357,7 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + '}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             F + '.full-start__background{filter:brightness(.52)}' +
-            F + '.full-start-new__right{max-width:44%;text-shadow:0 1px 14px rgba(0,0,0,.75)}' +
+            F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
             F + '.full-start-new__title{font-size:3.4em;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin-bottom:.25em}' +
             F + '.full-start-new__title.lmx-has-logo{font-size:0}' +
