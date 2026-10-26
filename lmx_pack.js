@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.23 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.25 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -251,12 +251,19 @@
     }
 
     // Перехоплення: при реєстрації ряду задаємо йому наше місце, ховаємо за потреби і «мітимо» його call
+    // Зареєстровані ряди: їхній index оновлюємо при кожній побудові головної, щоб зміна порядку діяла без перезапуску
+    var adopted = {};
+    function refreshIndexes() {
+        var order = getOrder();
+        Object.keys(adopted).forEach(function (n) { var r = order.indexOf(n); if (r >= 0) adopted[n].index = r; });
+    }
     function adoptRow(row) {
         if (!row || !row.name) return;
         diag.addCount++;
         seen[row.name] = { title: row.title };
         var r = rankOf(row.name);
         if (r >= 0) row.index = r;
+        adopted[row.name] = row;
         var orig = row.call;
         if (typeof orig === 'function' && !orig.__lmxWrapped) {
             var wrapped = function () {
@@ -337,6 +344,7 @@
             };
             if (typeof origCall === 'function') {
                 CR.call = function (screen, params, calls) {
+                    safe(refreshIndexes);
                     var res = origCall.apply(this, arguments);
                     safe(function () { reorderCalls(screen, calls); });
                     return res;
@@ -1326,8 +1334,9 @@
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
-                '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;opacity:0}' +
+                '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;border-radius:1em;opacity:0;will-change:transform,opacity}' +
                 '.lmx-sel.on{opacity:1}' +
+                '.card--lmxhist .lmx-sel,.card--lmxstudio .lmx-sel{border-radius:0}' +
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
                 '.card--lmxhist{width:23em !important}' +
                 '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:1em;overflow:hidden;position:relative;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
@@ -1469,7 +1478,7 @@
             T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
             T + '.lmx-sel{display:block}' +
             T + '.card:not(.card--lmxhero){position:relative}' +
-            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .5s cubic-bezier(.25,.8,.25,1) !important}' +
+            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .62s cubic-bezier(.3,.75,.25,1) !important;will-change:transform;backface-visibility:hidden}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -2204,7 +2213,7 @@
                     box.style.transformOrigin = '0 0';
                     box.style.transform = 'translate3d(' + (prev.left - nr.left).toFixed(1) + 'px,' + (prev.top - nr.top).toFixed(1) + 'px,0) scale(' + (prev.width / nr.width).toFixed(3) + ',' + (prev.height / nr.height).toFixed(3) + ')';
                     void box.offsetWidth;
-                    box.style.transition = 'transform .2s cubic-bezier(.2,.7,.3,1),opacity .15s ease';
+                    box.style.transition = 'transform .42s cubic-bezier(.22,.85,.28,1),opacity .2s ease';
                     box.style.transform = 'none';
                 }
             } else {
@@ -3115,7 +3124,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.23';
+    var VERSION = '10.25';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
