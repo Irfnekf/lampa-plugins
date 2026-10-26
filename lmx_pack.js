@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.16 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.17 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2129,6 +2129,15 @@
         setTimeout(function () {
             line.classList.add('lmx-hero-snap');
             safe(function () { focusCard(first, line); });
+            // «холодна» картка після стрибка інколи не малюється, доки її не штовхнути: примусово просимо перемалювати
+            var fv = first.querySelector('.card__view');
+            var kick = function () {
+                if (!fv) return;
+                fv.style.willChange = 'auto'; fv.style.opacity = '0.999';
+                void fv.offsetHeight;
+                requestAnimationFrame(function () { fv.style.opacity = ''; fv.style.willChange = ''; });
+            };
+            [0, 120, 400, 900].forEach(function (d) { setTimeout(function () { safe(kick); }, d); });
             setTimeout(function () {
                 line.classList.remove('lmx-hero-fade');
                 setTimeout(function () { line.classList.remove('lmx-hero-snap'); line.__lmxWrapping = false; }, 300);
@@ -3126,7 +3135,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.16';
+    var VERSION = '10.17';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
