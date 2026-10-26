@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.21 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.23 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2121,37 +2121,7 @@
         } catch (e) {}
         setTimeout(function () { safe(manual); }, 60);
     }
-    // Повернення на перший баннер: звичайна прокрутка назад тим самим способом, що й при ручній навігації (стрибки й перестановки карток давали порожній екран)
-    function wrapToFirst(line) {
-        var first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
-        if (!first) return;
-        // повільніша перемотка назад: GPU телевізора встигає намалювати перший баннер, поки він під'їжджає
-        line.classList.add('lmx-hero-wrap');
-        // «привид» першого баннера: картинка, що вже на екрані, плавно проявляється поверх, поки справжня картка під'їжджає
-        var ov = null;
-        safe(function () {
-            var curV = line.querySelector('.card--lmxhero.focus .card__view'), fv = first.querySelector('.card__view');
-            if (!curV || !fv) return;
-            var lr = line.getBoundingClientRect(), vr = curV.getBoundingClientRect();
-            if (!vr.width) return;
-            ov = document.createElement('div');
-            ov.className = 'lmx-hero-ghost';
-            ov.style.cssText = 'position:absolute;left:' + Math.round(vr.left - lr.left) + 'px;top:' + Math.round(vr.top - lr.top) + 'px;width:' + Math.round(vr.width) + 'px;height:' + Math.round(vr.height) +
-                'px;background-size:cover;background-position:center;background-color:#0b0c14;opacity:0;transition:opacity .35s ease;pointer-events:none;z-index:2';
-            ov.style.backgroundImage = fv.style.backgroundImage;
-            var sh = first.querySelector('.lmx-hero__shade');
-            if (sh) ov.appendChild(sh.cloneNode(true));
-            line.appendChild(ov);
-            void ov.offsetWidth;
-            ov.style.opacity = '1';
-        });
-        focusCard(first, line);
-        setTimeout(function () {
-            line.classList.remove('lmx-hero-wrap');
-            if (ov) { ov.style.opacity = '0'; setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400); }
-        }, 1500);
-    }
-    var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
+    var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0, dir: 1 };
     function autoplay(card, line) {
         var raw = parseInt(card.getAttribute('data-lmxi'), 10) || 0, n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, now = Date.now();
         if (raw !== ap.idx) { ap.idx = raw; ap.t = now; return; }
@@ -2161,12 +2131,15 @@
         var cn = '';
         try { cn = Lampa.Controller.enabled().name; } catch (e) {}
         if (cn && /menu|settings|select|modal|head|full|player/i.test(cn)) return;
-        var all = line.querySelectorAll('.card--lmxhero'), next = null;
+        // «Туди й назад»: з першого до останнього, а потім з останнього до першого — кожен перехід звичайний, на один слайд
+        var all = line.querySelectorAll('.card--lmxhero'), next = null, want;
+        if (n > 1 && raw >= n - 1) ap.dir = -1;
+        else if (raw <= 0) ap.dir = 1;
+        want = raw + ap.dir;
         for (var i = 0; i < all.length; i++) {
-            if (parseInt(all[i].getAttribute('data-lmxi'), 10) === raw + 1) next = all[i];
+            if (parseInt(all[i].getAttribute('data-lmxi'), 10) === want) next = all[i];
         }
         if (next && next !== card) focusCard(next, line);
-        else if (!next && n > 1 && raw >= n - 1) wrapToFirst(line);
     }
     // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
     function setCur(el) {
@@ -3142,7 +3115,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.21';
+    var VERSION = '10.23';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
