@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.39 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.44 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1014,7 +1014,7 @@
                                 safe(function () {
                                     var h = htmlOf(self, ex);
                                     if (!h) return;
-                                    h.addClass('card--lmxhero').attr('data-lmxi', idx).attr('data-lmxn', list.length);
+                                    h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', list.length);
                                     if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
                                     var view = h.find('.card__view');
                                     var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
@@ -1638,7 +1638,8 @@
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
             A + '.card--lmxhero .card__view{background-color:#1c1c20;height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
-            A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view{transform:none;box-shadow:none !important}' +
+            A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view{transform:none !important;box-shadow:none !important;transition:none !important}' +
+            A + '.card:not(.card--lmxhero){position:relative}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after{display:none !important}' +
             // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
             A + '.card--lmxstudio .card__view{overflow:visible !important}' +
@@ -1660,7 +1661,7 @@
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
-            A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:width .45s cubic-bezier(.25,.8,.25,1),background-color .45s ease}' +
+            A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:background-color .3s ease}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
             // історія: широкі картки з кадром
             A + '.card--lmxhist{width:24em !important}' +
@@ -2140,7 +2141,7 @@
         } catch (e) {}
         setTimeout(function () { safe(manual); }, 60);
     }
-    var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0, dir: 1 };
+    var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0, dir: 1, touch: null };
     function autoplay(card, line) {
         var raw = parseInt(card.getAttribute('data-lmxi'), 10) || 0, n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, now = Date.now();
         if (raw !== ap.idx) { ap.idx = raw; ap.t = now; return; }
@@ -2167,6 +2168,17 @@
         var old = line.querySelectorAll('.card--lmxhero.lmx-cur');
         for (var i = 0; i < old.length; i++) if (old[i] !== el) old[i].classList.remove('lmx-cur');
         el.classList.add('lmx-cur');
+    }
+    // ТВ скидає з пам'яті розкодовані картинки далеких слайдів — тож заздалегідь «підігріваємо» сусідів поточного слайда (декод у фоні, поки слайд стоїть)
+    function heroTouch(card, line) {
+        var i = parseInt(card.getAttribute('data-lmxi'), 10) || 0, all = line.querySelectorAll('.card--lmxhero');
+        for (var k = 0; k < all.length; k++) {
+            var d = Math.abs((parseInt(all[k].getAttribute('data-lmxi'), 10) || 0) - i);
+            if (d !== 1) continue;
+            var u = all[k].getAttribute('data-lmxu'), im = u && heroImgs[u];
+            if (im && im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
+            else if (u) heroPreload(u);
+        }
     }
     function initDots() {
         if (window.__lmxDots) return;
@@ -2241,6 +2253,7 @@
                 syncDots(c);
                 if (!warmDone && !warmBusy && !heroQ.length && !heroBusy && Date.now() - lastKey > 1500 && (parseInt(c.getAttribute('data-lmxi'), 10) || 0) === 0 && c.closest('.items-line')) { warm(c.closest('.items-line')); return; }
                 if (warmBusy) { ap.t = Date.now(); return; }
+                if (ap.touch !== c) { ap.touch = c; heroTouch(c, c.closest('.items-line')); }
                 autoplay(c, c.closest('.items-line'));
             });
         }, 300);
@@ -3196,7 +3209,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.39';
+    var VERSION = '10.44';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
