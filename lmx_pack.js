@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1275,6 +1275,8 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x),html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x){width:auto !important;min-width:0 !important;height:3.2em !important;padding:0 1.2em !important;border-radius:2em !important;justify-content:center;font-size:.95em !important}' +
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span,html body .full-start-new__buttons .full-start__button.lmx-m3:not(#lmx-x) span{display:inline !important;white-space:nowrap;font-size:1em !important;opacity:1 !important;visibility:visible !important;max-width:none}' +
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
+            'html body.lmx-ci .full-start-new__buttons .full-start__button:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary):not(.lmx-edit):not(.lmx-folder):not(:first-child):not(#lmx-x){width:3.2em !important;min-width:0 !important;height:3.2em !important;padding:0 !important;border-radius:50% !important;justify-content:center;font-size:.95em !important}' +
+            'html body.lmx-ci .full-start-new__buttons .full-start__button:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary):not(.lmx-edit):not(.lmx-folder):not(:first-child):not(#lmx-x) span{display:none !important}' +
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
             'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
             'html body .lmx-renamed > *:not(svg):not(img):not(#lmx-x){display:none !important}' +
@@ -2578,6 +2580,7 @@
             if (reorder) el.style.setProperty('order', String(i), 'important'); else el.style.removeProperty('order');
         });
         if (document.body && document.body.classList) document.body.classList.toggle('lmx-all', allOn);
+        syncCi();
         cont[0].__lmxWant = null;
         btnPageIds = allOn ? toks.filter(function (t) { return t.indexOf('f:') !== 0; }) : ids;
         var ed = cont[0].__lmxEd;
@@ -2742,6 +2745,13 @@
     }
 
     var edPrev = null;
+    // клас на body, щоб компактні кнопки були компактними з першого кадру (до того, як їх обробить скрипт)
+    function syncCi() {
+        safe(function () {
+            var lk = bmGet().look, on = lk === 'icons' || (getBool('lmx_btn_all', false) && lk !== 'full');
+            document.body.classList.toggle('lmx-ci', !!on);
+        });
+    }
     function openButtonsEditor() {
         if (!(Lampa.Modal && Lampa.Modal.open && Lampa.Select && window.$)) return;
         var known = knownGet(), ids0 = Object.keys(known);
@@ -3001,10 +3011,15 @@
             edPrev = null;
             safe(function () { Lampa.Modal.close(); });
             safe(function () { Lampa.Controller.toggle(back); });
-            // страховка: якщо контролер усе ще «modal» (модалки вже немає) — повертаємось на сторінку, щоб Lampa не зависла
-            setTimeout(function () {
-                safe(function () { var n = Lampa.Controller.enabled().name; if (!n || n === 'modal') Lampa.Controller.toggle(back === 'modal' ? 'content' : back); });
-            }, 80);
+            // страховка: Lampa сама повертає контролер після Modal.close, але могла запам'ятати не той — повертаємо свій, коли модалки вже немає
+            [80, 300].forEach(function (d) {
+                setTimeout(function () {
+                    safe(function () {
+                        if (document.querySelector('.modal') || document.querySelector('.selectbox')) return;
+                        Lampa.Controller.toggle(back === 'modal' ? 'content' : back);
+                    });
+                }, d);
+            });
         }
         bind(done, close);
         bottom.append(reset, done);
@@ -3018,7 +3033,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.5';
+    var VERSION = '10.6';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
@@ -3031,6 +3046,7 @@
 
     function start() {
         safe(patchContentRows);
+        safe(syncCi);
         safe(addSettings);
         safe(initRows);
         safe(function () {
