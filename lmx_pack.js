@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.34 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.35 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -857,14 +857,28 @@
     }
     // Банери завантажуємо й декодуємо наперед (картки поза екраном браузер не малює, тож без цього новий слайд спершу порожній/білий)
     var heroImgs = {};
-    function heroPreload(url) {
-        if (heroImgs[url]) return;
+    // Прелоад по черзі: по одній картинці за раз (завантаження+декод), щоб на старті не забивати головний потік і не рвати анімацію першого слайда
+    var heroQ = [], heroBusy = false;
+    function heroNext() {
+        if (heroBusy) return;
+        var url = heroQ.shift();
+        if (!url) return;
+        heroBusy = true;
+        var done = false;
+        function fin() { if (done) return; done = true; heroBusy = false; setTimeout(heroNext, 120); }
         try {
             var im = new Image();
             heroImgs[url] = im;
+            im.onload = function () { if (im.decode) im.decode().then(fin, fin); else fin(); };
+            im.onerror = fin;
             im.src = url;
-            if (im.decode) im.decode().catch(function () {});
-        } catch (e) {}
+            setTimeout(fin, 4000);
+        } catch (e) { fin(); }
+    }
+    function heroPreload(url) {
+        if (heroImgs[url] || heroQ.indexOf(url) >= 0) return;
+        heroQ.push(url);
+        setTimeout(heroNext, 0);
     }
     function makeInstance(d) {
         return Lampa.Maker.make('Card', d, function (module) { return module.only('Card', 'Callback'); });
@@ -3164,7 +3178,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.34';
+    var VERSION = '10.35';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
