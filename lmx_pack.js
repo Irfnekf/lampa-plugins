@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.30 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.31 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2194,53 +2194,34 @@
         window.__lmxSel = true;
         var box = null, cur = null;
         function hide() { if (box) box.classList.remove('on'); cur = null; }
-        // положення картки відносно стрічки ряду: за видимим прямокутником (прокрутка ряду на різницю не впливає)
-        function measure(host, view) {
-            var hr = host.getBoundingClientRect(), vr = view.getBoundingClientRect();
-            return { l: Math.round(vr.left - hr.left) - 3, t: Math.round(vr.top - hr.top) - 3, w: Math.round(vr.width) + 6, h: Math.round(vr.height) + 6 };
-        }
-        // після фокуса картку ще можуть трохи зсунути/збільшити — підганяємо рамку під її остаточне місце
-        function settle(el) {
-            [90, 280, 600].forEach(function (d) {
-                setTimeout(function () {
-                    if (cur !== el || !box || !box.parentNode) return;
-                    safe(function () {
-                        var view = el.querySelector('.card__view') || el, n = measure(box.parentNode, view);
-                        if (!n.w || !n.h) return;
-                        box.style.left = n.l + 'px'; box.style.top = n.t + 'px';
-                        box.style.width = n.w + 'px'; box.style.height = n.h + 'px';
-                        box.__r = n;
-                    });
-                }, d);
-            });
-        }
+        // Рамка — дитина картки, що в фокусі (позиція за розміткою, без жодних вимірів під час руху — тому завжди точно по краях постера).
+        // Ковзання: рамка стартує з місця попередньої картки (різниця розмітки двох карток) і їде до нової разом із рядом
         function follow(el) {
             if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
             if (el.classList.contains('card--lmxhero')) { hide(); return; }
             if (cur === el) return;
             var view = el.querySelector('.card__view') || el;
-            // Рамка живе у стрічці ряду (там же, де картки), тож прокрутка ряду везе її разом із ними, а ковзання рахується лише між картками
-            var host = el.closest('.scroll__body') || el.parentNode;
-            if (!host) return;
             if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
-            if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
-            var n = measure(host, view);
-            var prev = (box.parentNode === host && box.classList.contains('on')) ? box.__r : null;
+            var prevEl = (cur && cur !== el && box.classList.contains('on') && document.body.contains(cur) && cur.parentNode === el.parentNode) ? cur : null;
+            var pr = box.__r;
             box.style.transition = 'none';
             box.style.transform = 'none';
-            if (box.parentNode !== host) host.appendChild(box);
+            if (box.parentNode !== el) el.appendChild(box);
+            var n = { l: view.offsetLeft - 3, t: view.offsetTop - 3, w: view.offsetWidth + 6, h: view.offsetHeight + 6 };
             box.style.left = n.l + 'px';
             box.style.top = n.t + 'px';
             box.style.width = n.w + 'px';
             box.style.height = n.h + 'px';
             box.__r = n;
-            if (prev && n.w && n.h && Math.abs(prev.t - n.t) < 6) {
-                // той самий ряд: ковзаємо від старої картки до нової
-                box.style.transformOrigin = '0 0';
-                box.style.transform = 'translate3d(' + (prev.l - n.l) + 'px,' + (prev.t - n.t) + 'px,0) scale(' + (prev.w / n.w).toFixed(3) + ',' + (prev.h / n.h).toFixed(3) + ')';
-                void box.offsetWidth;
-                box.style.transition = 'transform .38s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
-                box.style.transform = 'none';
+            if (prevEl && pr && n.w && n.h) {
+                var dx = prevEl.offsetLeft + pr.l - (el.offsetLeft + n.l), dy = prevEl.offsetTop + pr.t - (el.offsetTop + n.t);
+                if (Math.abs(dy) < 6) {
+                    box.style.transformOrigin = '0 0';
+                    box.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + (pr.w / n.w).toFixed(3) + ',' + (pr.h / n.h).toFixed(3) + ')';
+                    void box.offsetWidth;
+                    box.style.transition = 'transform .34s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
+                    box.style.transform = 'none';
+                } else { void box.offsetWidth; box.style.transition = 'opacity .12s ease'; }
             } else {
                 // інший ряд: рамка з'являється одразу на новій картці
                 void box.offsetWidth;
@@ -2248,7 +2229,6 @@
             }
             box.classList.add('on');
             cur = el;
-            settle(el);
         }
         window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
         // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
@@ -3151,7 +3131,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.30';
+    var VERSION = '10.31';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
