@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.20 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.21 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1365,6 +1365,7 @@
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
+            '.lmx-hero-line{position:relative}.lmx-hero-line .lmx-dots{z-index:3}' +
             'html body .lmx-hero-line.lmx-hero-wrap .scroll__body{transition:transform 1.2s cubic-bezier(.45,0,.2,1) !important}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
@@ -2126,8 +2127,29 @@
         if (!first) return;
         // повільніша перемотка назад: GPU телевізора встигає намалювати перший баннер, поки він під'їжджає
         line.classList.add('lmx-hero-wrap');
+        // «привид» першого баннера: картинка, що вже на екрані, плавно проявляється поверх, поки справжня картка під'їжджає
+        var ov = null;
+        safe(function () {
+            var curV = line.querySelector('.card--lmxhero.focus .card__view'), fv = first.querySelector('.card__view');
+            if (!curV || !fv) return;
+            var lr = line.getBoundingClientRect(), vr = curV.getBoundingClientRect();
+            if (!vr.width) return;
+            ov = document.createElement('div');
+            ov.className = 'lmx-hero-ghost';
+            ov.style.cssText = 'position:absolute;left:' + Math.round(vr.left - lr.left) + 'px;top:' + Math.round(vr.top - lr.top) + 'px;width:' + Math.round(vr.width) + 'px;height:' + Math.round(vr.height) +
+                'px;background-size:cover;background-position:center;background-color:#0b0c14;opacity:0;transition:opacity .35s ease;pointer-events:none;z-index:2';
+            ov.style.backgroundImage = fv.style.backgroundImage;
+            var sh = first.querySelector('.lmx-hero__shade');
+            if (sh) ov.appendChild(sh.cloneNode(true));
+            line.appendChild(ov);
+            void ov.offsetWidth;
+            ov.style.opacity = '1';
+        });
         focusCard(first, line);
-        setTimeout(function () { line.classList.remove('lmx-hero-wrap'); }, 1500);
+        setTimeout(function () {
+            line.classList.remove('lmx-hero-wrap');
+            if (ov) { ov.style.opacity = '0'; setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400); }
+        }, 1500);
     }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
@@ -3120,7 +3142,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.20';
+    var VERSION = '10.21';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
