@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.15 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.16 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -963,7 +963,7 @@
                         if (!(m.overview && String(m.overview).trim())) return;
                         if (m.vote_count > 30 && m.vote_average < 6.3) return;
                     }
-                    if (tag) m.__tag = tag;
+                    if (tag) m.__tag = tag; else m.__trend = 1;
                     seenIds[id] = 1;
                     list.push(m);
                 });
@@ -1010,7 +1010,7 @@
                                     if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
                                     view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
                                         esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
-                                        (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : '') +
+                                        (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">У тренді</span>' : '')) +
                                         (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
                                         '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
                                         '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
@@ -1375,6 +1375,7 @@
             '.lmx-hero__tag{display:inline-block;padding:.2em .65em;border-radius:.4em;font-weight:700;font-size:.9em;color:#fff;white-space:nowrap}' +
             '.lmx-hero__tag.lmx-t-soon{background:' + cSoon + '}' +
             '.lmx-hero__tag.lmx-t-new{background:' + cDone + '}' +
+            '.lmx-hero__tag.lmx-t-trend{background:#e5484d}' +
             '.card--lmxstudio{width:13em !important}' +
             '.card--lmxstudio .card__view{padding-bottom:0 !important;height:6.5em;border-radius:.8em;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}' +
             '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
@@ -1494,6 +1495,7 @@
             T + '.lmx-hero__tag{border-radius:.25em;text-transform:uppercase;letter-spacing:.05em;font-weight:800}' +
             T + '.lmx-hero__tag.lmx-t-soon{background:' + G + '}' +
             T + '.lmx-hero__tag.lmx-t-new{background:#fff;color:#05060f}' +
+            T + '.lmx-hero__tag.lmx-t-trend{background:rgba(255,255,255,.18);color:#fff}' +
             T + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9}' +
             T + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.85;line-height:1.4;max-height:4.3em;margin-top:.6em}' +
             T + '.lmx-hero__acts{display:flex;flex-direction:column;align-items:flex-start;margin-top:1.1em}' +
@@ -3124,7 +3126,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.15';
+    var VERSION = '10.16';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
