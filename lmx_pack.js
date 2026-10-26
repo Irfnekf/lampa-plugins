@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.14 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.15 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -977,14 +977,11 @@
                 if (!list.length) return call();
                 // зображення афіші тримаємо в пам'яті, щоб при поверненні на перший баннер не було «порожньої» картки
                 safe(function () {
-                    window.__lmxHeroImgs = list.map(function (m) {
-                        var im = new Image();
-                        im.src = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
-                        return im;
-                    });
+                    // спершу легкі мініатюри (з'являються миттєво як підкладка), потім великі зображення
+                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); });
+                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')); });
                 });
-                // у кінець додаємо копію першого баннера: з останнього «вправо» плавно їдемо на неї, а потім непомітно стрибаємо на справжній перший
-                var items = list.concat(list.length > 1 && board() ? [list[0]] : []).map(function (m, idx) {
+                var items = list.map(function (m, idx) {
                     var it = {};
                     for (var k in m) it[k] = m[k];
                     it.params = {
@@ -1000,7 +997,8 @@
                                     var view = h.find('.card__view');
                                     var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
                                     heroPreload(heroUrl);
-                                    view.css('background-image', 'url(' + heroUrl + ')');
+                                    // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
+                                    view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
@@ -1367,6 +1365,7 @@
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
+            '.lmx-hero-line{transition:opacity .25s ease}.lmx-hero-line.lmx-hero-fade{opacity:0}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
             '.lmx-hero__title{font-size:1.5em;font-weight:600;line-height:1.15;margin-bottom:.35em}' +
@@ -2119,52 +2118,25 @@
         } catch (e) {}
         setTimeout(function () { safe(manual); }, 60);
     }
-    // Повернення на перший баннер без «проїзду» через усі інші: короткий стрибок без анімації
+    // Повернення на перший баннер без «проїзду» через усі інші: ряд на мить гасне, стрибає на перший і знову з'являється
     function wrapToFirst(line) {
         var first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
-        if (!first) return;
-        var cl = line.querySelector('.card--lmxhero.focus');
-        var n = cl ? (parseInt(cl.getAttribute('data-lmxn'), 10) || 0) : 0;
-        var raw = cl ? (parseInt(cl.getAttribute('data-lmxi'), 10) || 0) : 0;
-        line.classList.add('lmx-hero-snap');
-        if (cl && n > 1 && raw >= n && cl.parentNode === first.parentNode) {
-            // «холодна» картка першого баннера не встигає промалюватись, тому міняємо їх місцями:
-            // уже промальована копія стає першою, а справжній перший — новою копією в кінці
-            var parent = first.parentNode, after = cl.nextSibling;
-            parent.insertBefore(cl, first);
-            parent.insertBefore(first, after);
-            cl.setAttribute('data-lmxi', '0');
-            first.setAttribute('data-lmxi', String(n));
-            // після перестановки позиція прокрутки лишилась на старому місці (порожній екран) — перерахувати
-            try { if (window.Lampa && Lampa.Controller && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(cl, window.$ ? window.$(line) : line); } catch (e) {}
-            try { if (window.$) window.$(cl).trigger('hover:focus'); } catch (e) {}
-            var fix = function () {
-                safe(function () {
-                    var body = line.querySelector('.scroll__body');
-                    var r = cl.getBoundingClientRect();
-                    if (!body || !r.width) return;
-                    if (Math.abs(r.left) < 4 && r.left > -4) return;
-                    var m = /translate3d\(\s*(-?[\d.]+)px/.exec(body.style.transform || '');
-                    var x = m ? parseFloat(m[1]) : 0;
-                    body.style.transform = 'translate3d(' + Math.round(x - r.left - 1) + 'px,0,0)';
-                });
-            };
-            setTimeout(fix, 50);
-            setTimeout(fix, 250);
-        } else {
-            focusCard(first, line);
-        }
-        setTimeout(function () { line.classList.remove('lmx-hero-snap'); }, 200);
+        if (!first || line.__lmxWrapping) return;
+        line.__lmxWrapping = true;
+        line.classList.add('lmx-hero-fade');
+        setTimeout(function () {
+            line.classList.add('lmx-hero-snap');
+            safe(function () { focusCard(first, line); });
+            setTimeout(function () {
+                line.classList.remove('lmx-hero-fade');
+                setTimeout(function () { line.classList.remove('lmx-hero-snap'); line.__lmxWrapping = false; }, 300);
+            }, 220);
+        }, 260);
     }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
         var raw = parseInt(card.getAttribute('data-lmxi'), 10) || 0, n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, now = Date.now();
         if (raw !== ap.idx) { ap.idx = raw; ap.t = now; return; }
-        // дісталися копії першого баннера — після завершення анімації тихо переходимо на справжній
-        if (n > 1 && raw >= n) {
-            if (now - ap.t >= 650) { wrapToFirst(line); ap.t = now; }
-            return;
-        }
         if (now - ap.t < AUTOPLAY_MS) return;
         ap.t = now;
         if (document.hidden || !line) return;
@@ -2176,6 +2148,7 @@
             if (parseInt(all[i].getAttribute('data-lmxi'), 10) === raw + 1) next = all[i];
         }
         if (next && next !== card) focusCard(next, line);
+        else if (!next && n > 1 && raw >= n - 1) wrapToFirst(line);
     }
     // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
     function setCur(el) {
@@ -3151,7 +3124,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.14';
+    var VERSION = '10.15';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
