@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.4 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.5 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2741,6 +2741,7 @@
         mo.observe(r[0] || node, { childList: true, subtree: true });
     }
 
+    var edPrev = null;
     function openButtonsEditor() {
         if (!(Lampa.Modal && Lampa.Modal.open && Lampa.Select && window.$)) return;
         var known = knownGet(), ids0 = Object.keys(known);
@@ -2749,6 +2750,9 @@
         var ids = btnPageIds.filter(function (x) { return known[x]; });
         if (!ids.length) ids = ids0;
         var enabled = Lampa.Controller.enabled().name;
+        // при повторному відкритті (reopen) поточний контролер уже «modal» — беремо той, що був до першого відкриття
+        if (enabled === 'modal' || !enabled) enabled = edPrev || 'content';
+        edPrev = enabled;
         var m = bmGet(), lastFire = 0, closed = false;
         var wrap = $('<div class="lmx-be"></div>'), top = $('<div></div>'), listEl = $('<div></div>'), bottom = $('<div></div>');
         wrap.append(top, listEl, bottom);
@@ -2993,8 +2997,14 @@
             closed = true;
             save();
             safe(function () { if (btnRun) btnRun(true); });
+            var back = edPrev || enabled;
+            edPrev = null;
             safe(function () { Lampa.Modal.close(); });
-            safe(function () { Lampa.Controller.toggle(enabled); });
+            safe(function () { Lampa.Controller.toggle(back); });
+            // страховка: якщо контролер усе ще «modal» (модалки вже немає) — повертаємось на сторінку, щоб Lampa не зависла
+            setTimeout(function () {
+                safe(function () { var n = Lampa.Controller.enabled().name; if (!n || n === 'modal') Lampa.Controller.toggle(back === 'modal' ? 'content' : back); });
+            }, 80);
         }
         bind(done, close);
         bottom.append(reset, done);
@@ -3008,7 +3018,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.4';
+    var VERSION = '10.5';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
