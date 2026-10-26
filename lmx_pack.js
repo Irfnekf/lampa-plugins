@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.32 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.34 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1334,7 +1334,7 @@
                 '.lmx-box .lmx-pill{background:rgba(30,32,40,.7);border:1px solid rgba(255,255,255,.32)}' +
                 '.card .card__title,.card .card__age,.card .card__vote{display:none !important}' +
                 // власні мітки замість рідних: прибираємо значки якості, типу й маркери Lampa та інших плагінів (наші позначки мають префікс lmx-)
-                '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;border-radius:1em;opacity:0;will-change:transform,opacity}' +
+                '.lmx-sel{display:none;position:absolute;z-index:6;pointer-events:none;box-sizing:border-box;border:.16em solid #fff;border-radius:1em;opacity:0}' +
                 '.lmx-sel.on{opacity:1}' +
                 '.card--lmxhist .lmx-sel,.card--lmxstudio .lmx-sel{border-radius:0}' +
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
@@ -2166,8 +2166,32 @@
         try {
             if (window.$) window.$(document.body).on('hover:focus', '.card--lmxhero', function () { var self = this; safe(function () { setCur(self); }); });
         } catch (e) {}
-        document.addEventListener('keydown', function () {
+        // Ручне перемикання йде тим самим шляхом, що й автоперемикання (focusCard) — однакова анімація без ривків
+        var lastNav = 0;
+        document.addEventListener('keydown', function (ev) {
             ap.t = Date.now();
+            safe(function () {
+                var k = ev.keyCode;
+                if (k !== 37 && k !== 39) return;
+                if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+                if (!document.body.classList.contains('lmx-hbo') && !document.body.classList.contains('lmx-apple')) return;
+                var c = document.querySelector('.card--lmxhero.focus');
+                if (!c) return;
+                var cn = '';
+                try { cn = Lampa.Controller.enabled().name; } catch (e) {}
+                if (cn && /menu|settings|select|modal|head|full|player/i.test(cn)) return;
+                var line = c.closest('.items-line');
+                if (!line) return;
+                var raw = parseInt(c.getAttribute('data-lmxi'), 10) || 0, want = raw + (k === 39 ? 1 : -1), next = null;
+                var all = line.querySelectorAll('.card--lmxhero');
+                for (var i = 0; i < all.length; i++) if (parseInt(all[i].getAttribute('data-lmxi'), 10) === want) next = all[i];
+                if (!next) return; // край: хай Lampa робить своє (вихід у меню тощо)
+                ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+                var now = Date.now();
+                if (now - lastNav < 420) return;
+                lastNav = now;
+                focusCard(next, line);
+            });
         }, true);
         var apple = null, apTick = 0;
         var tm = setInterval(function () {
@@ -2202,9 +2226,7 @@
             if (cur === el) return;
             var view = el.querySelector('.card__view') || el;
             if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
-            var prevEl = (cur && cur !== el && box.classList.contains('on') && document.body.contains(cur) && cur.parentNode === el.parentNode) ? cur : null;
-            var pr = box.__r;
-            box.style.transition = 'none';
+                        box.style.transition = 'none';
             box.style.transform = 'none';
             if (box.parentNode !== el) el.appendChild(box);
             var n = { l: view.offsetLeft - 3, t: view.offsetTop - 3, w: view.offsetWidth + 6, h: view.offsetHeight + 6 };
@@ -2213,20 +2235,12 @@
             box.style.width = n.w + 'px';
             box.style.height = n.h + 'px';
             box.__r = n;
-            if (prevEl && pr && n.w && n.h) {
-                var dx = prevEl.offsetLeft + pr.l - (el.offsetLeft + n.l), dy = prevEl.offsetTop + pr.t - (el.offsetTop + n.t);
-                if (Math.abs(dy) < 6) {
-                    box.style.transformOrigin = '0 0';
-                    box.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + (pr.w / n.w).toFixed(3) + ',' + (pr.h / n.h).toFixed(3) + ')';
-                    void box.offsetWidth;
-                    box.style.transition = 'transform .34s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
-                    box.style.transform = 'none';
-                } else { void box.offsetWidth; box.style.transition = 'opacity .12s ease'; }
-            } else {
-                // інший ряд: рамка з'являється одразу на новій картці
-                void box.offsetWidth;
-                box.style.transition = 'opacity .12s ease';
-            }
+            // без ковзання: рамка — дитина картки, їде разом із рядом (нуль розбіжності), на новій картці лише м'яко з'являється
+            box.style.transformOrigin = '50% 50%';
+            box.style.transform = 'scale(1.035)';
+            void box.offsetWidth;
+            box.style.transition = 'transform .22s ease-out,opacity .18s ease';
+            box.style.transform = 'none';
             box.classList.add('on');
             cur = el;
         }
@@ -3150,7 +3164,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.32';
+    var VERSION = '10.34';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
