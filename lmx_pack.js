@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.38 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.39 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1275,7 +1275,6 @@
     // ===== CSS =====
     function buildCss() {
         var fs = SIZES[getStr('lmx_size', 'm')] || SIZES.m;
-        var cNext = COLORS[getStr('lmx_c_next', 'orange')] || COLORS.orange;
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
         var cSoon = COLORS[getStr('lmx_c_soon', 'blue')] || COLORS.blue;
         var nNext = RGB[getStr('lmx_c_next', 'orange')] ? getStr('lmx_c_next', 'orange') : 'orange';
@@ -1389,7 +1388,6 @@
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '38em' : getStr('lmx_card_size', 'm') === 'l' ? '34em' : '30em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:15em;background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
             '.lmx-hero-line{position:relative}.lmx-hero-line .lmx-dots{z-index:3}' +
-            'html body .lmx-hero-line.lmx-hero-wrap .scroll__body{transition:transform 1.2s cubic-bezier(.45,0,.2,1) !important}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
             '.lmx-hero__title{font-size:1.5em;font-weight:600;line-height:1.15;margin-bottom:.35em}' +
@@ -1530,9 +1528,7 @@
             T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
-            T + '.lmx-hero-snap .lmx-hero__text{transition:none !important}' +
             T + '.lmx-hero-line{position:relative}' +
-            T + '.lmx-hero-snap .scroll__body{transition:none !important}' +
             T + '.lmx-hero-line .items-line__head,' + T + '.lmx-hero-line .items-line__title{display:none !important}' +
             // точки: активна — кільце, що «заповнюється» за час показу слайда
             T + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.8em;z-index:6;pointer-events:none}' +
@@ -1661,9 +1657,7 @@
             A + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
-            A + '.lmx-hero-snap .lmx-hero__text{transition:none !important}' +
             A + '.lmx-hero-line{position:relative}' +
-            A + '.lmx-hero-snap .scroll__body{transition:none !important}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:width .45s cubic-bezier(.25,.8,.25,1),background-color .45s ease}' +
@@ -2253,16 +2247,12 @@
         if (tm && tm.unref) tm.unref();
     }
 
-    // HBO: біла рамка-виділення «пливе» між картками (як у застосунку).
-    // Рамка живе всередині картки, що в фокусі, тож рухається разом із рядом без жодних розрахунків на кадр;
-    // «ковзання» — це одноразова анімація зсуву від попереднього місця (FLIP): два виміри на кожну зміну фокуса
+    // HBO: біла рамка-виділення. Живе всередині картки в фокусі, тож рухається разом із рядом; на новій картці м'яко проявляється.
     function initSelector() {
         if (window.__lmxSel || !window.$) return;
         window.__lmxSel = true;
         var box = null, cur = null;
         function hide() { if (box) box.classList.remove('on'); cur = null; }
-        // Рамка — дитина картки, що в фокусі (позиція за розміткою, без жодних вимірів під час руху — тому завжди точно по краях постера).
-        // Ковзання: рамка стартує з місця попередньої картки (різниця розмітки двох карток) і їде до нової разом із рядом
         function follow(el) {
             if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
             if (el.classList.contains('card--lmxhero')) { hide(); return; }
@@ -2955,7 +2945,6 @@
             });
             return row;
         }
-        function refresh0(row, t) { /* головна кнопка: без змін вигляду */ }
         function act(t, a, el) {
             if (a === 'up') move(t, -1, el);
             else if (a === 'down') move(t, 1, el);
@@ -3207,7 +3196,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.38';
+    var VERSION = '10.39';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
