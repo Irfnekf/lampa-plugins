@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.6 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.8 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1280,7 +1280,7 @@
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
             'html body.lmx-all .full-start-new__buttons .full-start__button.lmx-m3 span{max-width:14em !important;overflow:hidden;text-overflow:ellipsis}' +
             'html body .lmx-renamed > *:not(svg):not(img):not(#lmx-x){display:none !important}' +
-            '.lmx-renamed::after{content:attr(data-lmx-name);white-space:nowrap}' +
+            '.lmx-renamed::after{content:attr(data-lmx-name);white-space:nowrap;display:inline-block;line-height:1.2;vertical-align:middle;font-size:inherit;transform:translateZ(0)}' +
             '.lmx-renamed.lmx-m1::after{display:none}' +
             '.lmx-renamed.lmx-m2::after{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis}' +
             'body.lmx-hbo .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after,body.lmx-apple .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after{display:none}' +
@@ -3030,10 +3030,41 @@
         Lampa.Modal.open({ title: 'Порядок кнопок', html: wrap, size: 'medium', mask: true, onBack: close });
     }
 
+
+    // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
+    function initThemeBtn() {
+        if (!window.$) return;
+        var NAMES = { 'default': 'Стандартна (LMX)', hbo: 'HBO Max', apple: 'Apple TV' };
+        function ensure() {
+            var box = $('.head__actions').eq(0);
+            if (!box.length || box.find('.lmx-themebtn').length) return;
+            var b = $('<div class="head__action selector lmx-themebtn" title="Тема"></div>').html(
+                '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H17a4 4 0 004-4c0-4.4-4-8.2-9-8.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/></svg>');
+            b.on('hover:enter click', function () {
+                var enabled = Lampa.Controller.enabled().name, cur = getStr('lmx_theme', 'default');
+                Lampa.Select.show({
+                    title: 'Тема',
+                    items: Object.keys(NAMES).map(function (k) { return { title: NAMES[k], value: k, selected: k === cur }; }),
+                    onSelect: function (it) {
+                        Lampa.Storage.set('lmx_theme', it.value);
+                        Lampa.Controller.toggle(enabled);
+                        setTimeout(function () { safe(applyStyle); safe(resetCards); }, 80);
+                        if (Lampa.Noty) Lampa.Noty.show('Тема: ' + NAMES[it.value] + '. Сторінка фільму оновиться при наступному відкритті');
+                    },
+                    onBack: function () { Lampa.Controller.toggle(enabled); }
+                });
+            });
+            var st = box.find('.open--settings').eq(0);
+            if (st.length) st.before(b); else box.append(b);
+        }
+        ensure();
+        var n = 0, iv = setInterval(function () { ensure(); if (++n > 20) clearInterval(iv); }, 1500);
+    }
+
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.6';
+    var VERSION = '10.8';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
@@ -3066,6 +3097,7 @@
             safe(initPrefetch);
             safe(initDots);
             safe(initSelector);
+            safe(initThemeBtn);
         });
     }
 
