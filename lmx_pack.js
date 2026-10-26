@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.31 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.32 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -3128,10 +3128,29 @@
         }, true);
     }
 
+    // Фон застосунку в наших темах прихований (.background{display:none}), але Lampa на кожну картку у фокусі все одно качає й міняє його картинку —
+    // це зайва мережа й робота процесора саме під час прокрутки (на ТВ давало «кроки» в анімації). Поки фон прихований — пропускаємо
+    function patchBackground() {
+        var B = window.Lampa && Lampa.Background;
+        if (!B || B.__lmxP) return;
+        ['change', 'immediately'].forEach(function (m) {
+            var orig = B[m];
+            if (typeof orig !== 'function') return;
+            B[m] = function () {
+                try {
+                    var el = document.querySelector('.background');
+                    if (el && window.getComputedStyle(el).display === 'none') return;
+                } catch (e) {}
+                return orig.apply(this, arguments);
+            };
+        });
+        B.__lmxP = true;
+    }
+
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.31';
+    var VERSION = '10.32';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
@@ -3144,6 +3163,7 @@
 
     function start() {
         safe(patchContentRows);
+        safe(patchBackground);
         safe(syncCi);
         safe(addSettings);
         safe(initRows);
