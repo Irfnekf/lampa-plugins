@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.47 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.48 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1385,8 +1385,8 @@
             '.card--lmxhero.focus .card__view,.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
             '.card--lmxhero.focus .card__view::after,.card--lmxstudio.focus .card__view::after{display:none !important}' +
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
-            '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '42em' : getStr('lmx_card_size', 'm') === 'l' ? '38em' : '34em') + ' !important}' +
-            '.card--lmxhero .card__view{padding-bottom:0 !important;height:' + (getStr('lmx_card_size', 'm') === 'xl' ? '21em' : getStr('lmx_card_size', 'm') === 'l' ? '19em' : '17em') + ';background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
+            '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '50em' : getStr('lmx_card_size', 'm') === 'l' ? '45em' : '40em') + ' !important}' +
+            '.card--lmxhero .card__view{padding-bottom:0 !important;height:' + (getStr('lmx_card_size', 'm') === 'xl' ? '25em' : getStr('lmx_card_size', 'm') === 'l' ? '22.5em' : '20em') + ';background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
             '.lmx-hero-line{position:relative}.lmx-hero-line .lmx-dots{z-index:3}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
@@ -3244,7 +3244,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.47';
+    var VERSION = '10.48';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
