@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.35 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.36 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2207,6 +2207,33 @@
                 focusCard(next, line);
             });
         }, true);
+        // Прогрів: один раз невидимо «проїжджаємо» всі слайди, щоб браузер заздалегідь намалював їх (перший реальний перехід без підвисання)
+        var warmDone = false, warmBusy = false, lastKey = 0;
+        document.addEventListener('keydown', function () { lastKey = Date.now(); }, true);
+        function warm(line) {
+            var body = line.querySelector('.scroll__body'), cards = line.querySelectorAll('.card--lmxhero');
+            if (!body || cards.length < 2) { warmDone = true; return; }
+            warmBusy = true;
+            var orig = body.style.transform, i = 1, t0 = Date.now(), aborted = false;
+            line.style.opacity = '0';
+            body.style.setProperty('transition', 'none', 'important');
+            function finish() {
+                body.style.transform = orig;
+                requestAnimationFrame(function () { requestAnimationFrame(function () {
+                    body.style.removeProperty('transition');
+                    line.style.opacity = '';
+                    warmBusy = false; warmDone = true;
+                }); });
+            }
+            function step() {
+                if (lastKey > t0 || document.hidden) aborted = true;
+                if (aborted || i >= cards.length) return finish();
+                body.style.transform = 'translate3d(' + (-cards[i].offsetLeft) + 'px,0,0)';
+                i++;
+                requestAnimationFrame(function () { requestAnimationFrame(step); });
+            }
+            step();
+        }
         var apple = null, apTick = 0;
         var tm = setInterval(function () {
             safe(function () {
@@ -2218,6 +2245,8 @@
                 if (!c) return;
                 setCur(c);
                 syncDots(c);
+                if (!warmDone && !warmBusy && !heroQ.length && !heroBusy && Date.now() - lastKey > 1500 && (parseInt(c.getAttribute('data-lmxi'), 10) || 0) === 0 && c.closest('.items-line')) { warm(c.closest('.items-line')); return; }
+                if (warmBusy) { ap.t = Date.now(); return; }
                 autoplay(c, c.closest('.items-line'));
             });
         }, 300);
@@ -3178,7 +3207,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.35';
+    var VERSION = '10.36';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
