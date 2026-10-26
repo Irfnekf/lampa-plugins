@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.26 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.27 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2197,26 +2197,31 @@
             if (el.classList.contains('card--lmxhero')) { hide(); return; }
             if (cur === el) return;
             var view = el.querySelector('.card__view') || el;
+            // Рамка живе у стрічці ряду (там же, де картки), тож прокрутка ряду везе її разом із ними, а ковзання рахується лише між картками
+            var host = el.closest('.scroll__body') || el.parentNode;
+            if (!host) return;
             if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
-            var prev = (box.parentNode && box.classList.contains('on')) ? box.getBoundingClientRect() : null;
+            if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
+            var hr = host.getBoundingClientRect(), vr = view.getBoundingClientRect();
+            var n = { l: Math.round(vr.left - hr.left) - 3, t: Math.round(vr.top - hr.top) - 3, w: Math.round(vr.width) + 6, h: Math.round(vr.height) + 6 };
+            var prev = (box.parentNode === host && box.classList.contains('on')) ? box.__r : null;
             box.style.transition = 'none';
             box.style.transform = 'none';
-            el.appendChild(box);
-            box.style.left = (view.offsetLeft - 3) + 'px';
-            box.style.top = (view.offsetTop - 3) + 'px';
-            box.style.width = (view.offsetWidth + 6) + 'px';
-            box.style.height = (view.offsetHeight + 6) + 'px';
-            if (prev && prev.width) {
-                var nr = box.getBoundingClientRect();
-                // ковзаємо лише в межах одного ряду; при переході між рядами рамка з'являється одразу на новій картці (разом із рідними мітками Lampa)
-                if (nr.width && nr.height && Math.abs(prev.top - nr.top) < 6) {
-                    box.style.transformOrigin = '0 0';
-                    box.style.transform = 'translate3d(' + (prev.left - nr.left).toFixed(1) + 'px,' + (prev.top - nr.top).toFixed(1) + 'px,0) scale(' + (prev.width / nr.width).toFixed(3) + ',' + (prev.height / nr.height).toFixed(3) + ')';
-                    void box.offsetWidth;
-                    box.style.transition = 'transform .42s cubic-bezier(.22,.85,.28,1),opacity .2s ease';
-                    box.style.transform = 'none';
-                }
+            if (box.parentNode !== host) host.appendChild(box);
+            box.style.left = n.l + 'px';
+            box.style.top = n.t + 'px';
+            box.style.width = n.w + 'px';
+            box.style.height = n.h + 'px';
+            box.__r = n;
+            if (prev && n.w && n.h && Math.abs(prev.t - n.t) < 6) {
+                // той самий ряд: ковзаємо від старої картки до нової
+                box.style.transformOrigin = '0 0';
+                box.style.transform = 'translate3d(' + (prev.l - n.l) + 'px,' + (prev.t - n.t) + 'px,0) scale(' + (prev.w / n.w).toFixed(3) + ',' + (prev.h / n.h).toFixed(3) + ')';
+                void box.offsetWidth;
+                box.style.transition = 'transform .38s cubic-bezier(.25,.8,.25,1),opacity .2s ease';
+                box.style.transform = 'none';
             } else {
+                // інший ряд: рамка з'являється одразу на новій картці
                 void box.offsetWidth;
                 box.style.transition = 'opacity .12s ease';
             }
@@ -3124,7 +3129,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.26';
+    var VERSION = '10.27';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
