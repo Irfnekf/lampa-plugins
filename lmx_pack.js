@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.45 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.46 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1403,6 +1403,32 @@
             '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
             '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
+    // Блоки під описанням на сторінці фільму: серії, актори, коментарі (однаково для всіх тем, кольори беруться з теми)
+    function detailCss() {
+        var D = 'body.lmx-full ';
+        return '' +
+            // Серії: закруглені кадри, номер-бейдж, чисті картки замість пунктиру
+            D + '.full-episode{border-radius:1em}' +
+            D + '.full-episode__img{border-radius:1em;overflow:hidden;background:linear-gradient(135deg,#26272e,#16171b)}' +
+            D + '.full-episode__img img{object-fit:cover}' +
+            D + '.full-episode__num{position:absolute;left:.6em;top:.6em;z-index:2;padding:.1em .6em;border-radius:.5em;background:rgba(0,0,0,.62);font-size:.95em;font-weight:700;line-height:1.5}' +
+            D + '.full-episode__name{font-weight:600;margin-top:.5em}' +
+            D + '.full-episode__date{opacity:.6;font-size:.9em}' +
+            D + '.full-episode--next,' + D + '.full-episode--next .full-episode__img{border:0 !important;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
+            D + '.full-episode.focus::after,' + D + '.full-episode.focus .full-episode__img::after{border-radius:1em}' +
+            // Актори: круглі фото, ім'я під ними, роль приглушена
+            D + '.full-person{display:flex;flex-direction:column;align-items:center;text-align:center;width:9.5em !important;margin-right:1.2em;padding:.4em .2em;border-radius:1em}' +
+            D + '.full-person__photo{width:6.4em !important;height:6.4em !important;border-radius:50% !important;overflow:hidden;margin:0 0 .6em 0 !important;background:#25262c}' +
+            D + '.full-person__photo img{width:100%;height:100%;object-fit:cover;border-radius:50%}' +
+            D + '.full-person__body{margin:0 !important;width:100%}' +
+            D + '.full-person__name{font-size:1.05em;font-weight:600;line-height:1.25;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}' +
+            D + '.full-person__role{font-size:.85em;opacity:.6;margin-top:.15em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            D + '.full-person.focus{background:rgba(255,255,255,.12)}' +
+            // Коментарі: порожня пунктирна картка стає тонкою кнопкою; без коментарів увесь блок ховаємо (див. onFull)
+            D + '.full-review-add{width:auto !important;height:auto !important;min-height:0 !important;padding:.7em 1.4em !important;border:0 !important;border-radius:99em;background:rgba(255,255,255,.1);display:inline-flex;align-items:center;gap:.5em}' +
+            D + '.full-review-add.focus{background:#fff;color:#111}' +
+            D + '.lmx-nocomm{display:none !important}';
+    }
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
     function fullCss() {
         var B = 'body.lmx-full ';
@@ -1756,7 +1782,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + appleCss();
+        s.textContent = buildCss() + themeCss() + appleCss() + detailCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -2303,12 +2329,21 @@
         if (tm && tm.unref) tm.unref();
     }
 
+    // Порожній розділ «Коментарі» (є лише кнопка «додати») ховаємо цілком
+    function hideEmptyComments(r) {
+        r.find('.full-review-add').each(function () {
+            var host = window.$(this).closest('.items-line');
+            if (!host.length) return;
+            host.toggleClass('lmx-nocomm', host.find('.full-review').length === 0);
+        });
+    }
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
         if (!m) return;
         var r = e.object.activity.render();
         safe(function () { btnsOnFull(r); });
+        safe(function () { hideEmptyComments(r); setTimeout(function () { safe(function () { hideEmptyComments(r); }); }, 1500); });
         // Телефон: рідний мобільний вигляд Lampa, без нашого кіно-стилю сторінки (він розрахований на великий екран)
         var useFull = getBool('lmx_full', true) && !isMobile();
         if (!useFull && document.body && document.body.classList) { document.body.classList.remove('lmx-full'); document.body.classList.remove('lmx-logo-on'); }
@@ -3209,7 +3244,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.45';
+    var VERSION = '10.46';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
