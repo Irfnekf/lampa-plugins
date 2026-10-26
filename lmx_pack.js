@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.12 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.13 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -846,6 +846,17 @@
         try { if (Lampa.TMDB && Lampa.TMDB.image) return Lampa.TMDB.image('t/p/' + size + path); } catch (e) {}
         return 'https://image.tmdb.org/t/p/' + size + path;
     }
+    // Банери завантажуємо й декодуємо наперед (картки поза екраном браузер не малює, тож без цього новий слайд спершу порожній/білий)
+    var heroImgs = {};
+    function heroPreload(url) {
+        if (heroImgs[url]) return;
+        try {
+            var im = new Image();
+            heroImgs[url] = im;
+            im.src = url;
+            if (im.decode) im.decode().catch(function () {});
+        } catch (e) {}
+    }
     function makeInstance(d) {
         return Lampa.Maker.make('Card', d, function (module) { return module.only('Card', 'Callback'); });
     }
@@ -986,7 +997,9 @@
                                     h.addClass('card--lmxhero').attr('data-lmxi', idx).attr('data-lmxn', list.length);
                                     if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
                                     var view = h.find('.card__view');
-                                    view.css('background-image', 'url(' + imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500') + ')');
+                                    var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
+                                    heroPreload(heroUrl);
+                                    view.css('background-image', 'url(' + heroUrl + ')');
                                     view.find('img').css('opacity', 0);
                                     h.find('.card__title,.card__age,.card__vote').remove();
                                     var v = Number(m.vote_average) || 0;
@@ -3137,7 +3150,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.12';
+    var VERSION = '10.13';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
