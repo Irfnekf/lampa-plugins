@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.27 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.28 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1478,7 +1478,7 @@
             T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
             T + '.lmx-sel{display:block}' +
             T + '.card:not(.card--lmxhero){position:relative}' +
-            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .62s cubic-bezier(.3,.75,.25,1) !important;will-change:transform;backface-visibility:hidden}' +
+            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .62s cubic-bezier(.3,.75,.25,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -1496,7 +1496,7 @@
             T + '.lmx-pill.lmx-m-soon{background:rgba(5,6,15,.82) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}' +
             // ===== банер-білборд як у HBO Max: афіша на весь екран, текст і кнопки зліва, точки знизу =====
             T + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
-            T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;will-change:transform;height:78vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{background-color:#0b0c14;height:78vh !important;border-radius:0 !important;box-shadow:none !important;transition:none !important;transform:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#0b0b0e 0%,rgba(11,11,14,.5) 8%,rgba(11,11,14,0) 28%),linear-gradient(to bottom,rgba(11,11,14,.7) 0%,rgba(11,11,14,0) 16%),linear-gradient(90deg,rgba(11,11,14,.88) 0%,rgba(11,11,14,.55) 30%,rgba(11,11,14,0) 62%)}' +
             T + '.card--lmxhero .lmx-hero__text{left:4em;right:auto;bottom:5.2em;max-width:40%}' +
             T + '.card--lmxhero .lmx-hero__title{font-size:2.8em;font-weight:800;line-height:1.05;letter-spacing:-.01em;margin-bottom:.35em}' +
@@ -1627,7 +1627,7 @@
             A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
             // ===== банер-білборд =====
             A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
-            A + '.card--lmxhero .card__view{background-color:#1c1c20;will-change:transform;height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
+            A + '.card--lmxhero .card__view{background-color:#1c1c20;height:70vh !important;border-radius:0;box-shadow:none;transition:none !important;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             A + '.card--lmxhero.focus .card__view,' + A + '.card--lmxhero.hover .card__view{transform:none;box-shadow:none !important}' +
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after{display:none !important}' +
             // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
@@ -2202,8 +2202,14 @@
             if (!host) return;
             if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
             if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
-            var hr = host.getBoundingClientRect(), vr = view.getBoundingClientRect();
-            var n = { l: Math.round(vr.left - hr.left) - 3, t: Math.round(vr.top - hr.top) - 3, w: Math.round(vr.width) + 6, h: Math.round(vr.height) + 6 };
+            // позиція рахується за розміткою (offset…), а не за getBoundingClientRect: на початку руху картка ще може бути трохи збільшена/зсунута анімацією
+            var ox = 0, oy = 0, node = view, okc = false;
+            while (node && node !== document.body) {
+                if (node === host) { okc = true; break; }
+                ox += node.offsetLeft; oy += node.offsetTop; node = node.offsetParent;
+            }
+            if (!okc) { var hr = host.getBoundingClientRect(), vr0 = view.getBoundingClientRect(); ox = vr0.left - hr.left; oy = vr0.top - hr.top; }
+            var n = { l: Math.round(ox) - 3, t: Math.round(oy) - 3, w: Math.round(view.offsetWidth) + 6, h: Math.round(view.offsetHeight) + 6 };
             var prev = (box.parentNode === host && box.classList.contains('on')) ? box.__r : null;
             box.style.transition = 'none';
             box.style.transform = 'none';
@@ -3129,7 +3135,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.27';
+    var VERSION = '10.28';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
