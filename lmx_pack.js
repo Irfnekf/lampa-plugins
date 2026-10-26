@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.18 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.19 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2120,42 +2120,11 @@
         } catch (e) {}
         setTimeout(function () { safe(manual); }, 60);
     }
-    // Повернення на перший баннер без «проїзду» через усі інші: ряд на мить гасне, стрибає на перший і знову з'являється
+    // Повернення на перший баннер: звичайна прокрутка назад тим самим способом, що й при ручній навігації (стрибки й перестановки карток давали порожній екран)
     function wrapToFirst(line) {
         var first = line && line.querySelector('.card--lmxhero[data-lmxi="0"]');
-        if (!first || line.__lmxWrapping) return;
-        line.__lmxWrapping = true;
-        line.classList.add('lmx-hero-fade');
-        setTimeout(function () {
-            line.classList.add('lmx-hero-snap');
-            safe(function () { focusCard(first, line); });
-            // «холодна» картка після стрибка інколи не малюється, доки її не штовхнути: примусово просимо перемалювати
-            var fv = first.querySelector('.card__view');
-            var kick = function () {
-                if (!fv) return;
-                fv.style.willChange = 'auto'; fv.style.opacity = '0.999';
-                void fv.offsetHeight;
-                requestAnimationFrame(function () { fv.style.opacity = ''; fv.style.willChange = ''; });
-            };
-            [0, 120, 400, 900].forEach(function (d) { setTimeout(function () { safe(kick); }, d); });
-            // Lampa після стрибка інколи лишає прокрутку на старому місці (порожній екран) — вирівнюємо перший баннер по лівому краю
-            var fix = function () {
-                safe(function () {
-                    var body = line.querySelector('.scroll__body');
-                    var r = first.getBoundingClientRect();
-                    if (!body || !r.width) return;
-                    if (Math.abs(r.left) < 4) return;
-                    var m = /translate3d\(\s*(-?[\d.]+)px/.exec(body.style.transform || '');
-                    var x = m ? parseFloat(m[1]) : 0;
-                    body.style.transform = 'translate3d(' + Math.round(x - r.left - 1) + 'px,0,0)';
-                });
-            };
-            [40, 200, 450, 800].forEach(function (d) { setTimeout(fix, d); });
-            setTimeout(function () {
-                line.classList.remove('lmx-hero-fade');
-                setTimeout(function () { line.classList.remove('lmx-hero-snap'); line.__lmxWrapping = false; }, 700);
-            }, 220);
-        }, 260);
+        if (!first) return;
+        focusCard(first, line);
     }
     var AUTOPLAY_MS = 8000, ap = { idx: -1, t: 0 };
     function autoplay(card, line) {
@@ -3148,7 +3117,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.18';
+    var VERSION = '10.19';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
