@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.25 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.26 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -977,7 +977,7 @@
                 });
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 // «гучні» прем'єри (особливо «скоро») не мають вилітати через ліміт — беремо їх першими, решту добираємо за популярністю
-                var lim = board() ? 8 : 12;
+                var lim = 12;
                 var tg = list.filter(function (m) { return m.__tag === 'soon'; }).concat(list.filter(function (m) { return m.__tag === 'new'; })).slice(0, lim - 2);
                 var rest = list.filter(function (m) { return !m.__tag; });
                 list = tg.concat(rest.slice(0, lim - tg.length));
@@ -1513,7 +1513,7 @@
             T + '.lmx-hero__about i{display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border:.12em solid #fff;border-radius:50%;font-size:.8em;font-style:normal;font-weight:800}' +
             T + '.lmx-hero__btn{display:inline-block;padding:.7em 1.9em;border-radius:99em;background:#fff;color:#000;font-weight:700;font-size:1.02em}' +
             // прокрутка: афіша плавно «в'їжджає», текст проявляється трохи згодом
-            T + '.lmx-hero-line .scroll__body{transition:transform .55s cubic-bezier(.22,.8,.22,1) !important}' +
+            T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             T + '.lmx-hero-snap .lmx-hero__text{transition:none !important}' +
@@ -1644,7 +1644,7 @@
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
-            A + '.lmx-hero-line .scroll__body{transition:transform .55s cubic-bezier(.22,.8,.22,1) !important}' +
+            A + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             A + '.lmx-hero-snap .lmx-hero__text{transition:none !important}' +
@@ -2232,7 +2232,7 @@
                 if (!f) { if (cur) hide(); return; }
                 if (f !== cur) follow(f);
             });
-        }, 120);
+        }, 300);
         if (tm && tm.unref) tm.unref();
     }
 
@@ -3124,7 +3124,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.25';
+    var VERSION = '10.26';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
