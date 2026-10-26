@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.9 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.11 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2753,8 +2753,22 @@
     // клас на body, щоб компактні кнопки були компактними з першого кадру (до того, як їх обробить скрипт)
     function syncCi() {
         safe(function () {
-            var lk = bmGet().look, on = lk === 'icons' || (getBool('lmx_btn_all', false) && lk !== 'full');
+            var m = bmGet(), lk = m.look, on = lk === 'icons' || (getBool('lmx_btn_all', false) && lk !== 'full');
             document.body.classList.toggle('lmx-ci', !!on);
+            // кнопки з явною цифрою 1 теж компактні з першого кадру (за класом кнопки)
+            var cls = {};
+            Object.keys(m.modes || {}).forEach(function (id) {
+                if (m.modes[id] !== '1') return;
+                var c = id.split('|')[0].replace(/#+$/, '');
+                if (/^(view--|button--)[\w-]+$/.test(c)) cls[c] = 1;
+            });
+            var css = Object.keys(cls).map(function (c) {
+                var sel = 'html body .full-start-new__buttons .full-start__button.' + c + ':not(.lmx-m2):not(.lmx-m3):not(.lmx-primary):not(.lmx-edit):not(:first-child):not(#lmx-x)';
+                return sel + '{width:3.2em !important;min-width:0 !important;height:3.2em !important;padding:0 !important;border-radius:50% !important;justify-content:center;font-size:.95em !important}' + sel + ' span{display:none !important}';
+            }).join('');
+            var st = document.getElementById('lmx-pre');
+            if (!st) { st = document.createElement('style'); st.id = 'lmx-pre'; document.head.appendChild(st); }
+            if (st.textContent !== css) st.textContent = css;
         });
     }
     function openButtonsEditor() {
@@ -3065,10 +3079,53 @@
         var n = 0, iv = setInterval(function () { ensure(); if (++n > 20) clearInterval(iv); }, 1500);
     }
 
+
+    // ===== Навігація «вгору/вниз» між рядами кнопок на сторінці фільму =====
+    // Lampa шукає кнопку лише строго під поточною; якщо в нижньому ряду там порожньо, екран просто гортається. Переходимо до найближчої кнопки сусіднього ряду
+    function initBtnRowsNav() {
+        if (!window.$) return;
+        document.addEventListener('keydown', function (ev) {
+            var k = ev.keyCode;
+            if (k !== 40 && k !== 38) return;
+            safe(function () {
+                var cur = document.querySelector('.full-start-new__buttons .full-start__button.focus, .full-start__buttons .full-start__button.focus');
+                if (!cur) return;
+                var cont = cur.parentNode, cr = cur.getBoundingClientRect(), cx = cr.left + cr.width / 2;
+                var all = [].slice.call(cont.children).filter(function (e) {
+                    return e !== cur && e.classList.contains('selector') && e.offsetWidth > 0 && e.getBoundingClientRect().height > 0;
+                });
+                var cand = all.filter(function (e) {
+                    var r = e.getBoundingClientRect();
+                    return k === 40 ? r.top > cr.bottom - cr.height / 2 : r.bottom < cr.top + cr.height / 2;
+                });
+                if (!cand.length) return;
+                // найближчий ряд у потрібному напрямку
+                var rowY = cand.reduce(function (a, e) {
+                    var t = e.getBoundingClientRect().top;
+                    return a === null || (k === 40 ? t < a : t > a) ? t : a;
+                }, null);
+                var row = cand.filter(function (e) { return Math.abs(e.getBoundingClientRect().top - rowY) < cr.height / 2; });
+                // якщо строго під/над є кнопка — нехай працює сама Lampa
+                var overlap = row.some(function (e) { var r = e.getBoundingClientRect(); return r.left < cr.right - 2 && r.right > cr.left + 2; });
+                if (overlap) return;
+                var best = null, bd = 1e9;
+                row.forEach(function (e) {
+                    var r = e.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - cx);
+                    if (d < bd) { bd = d; best = e; }
+                });
+                if (!best) return;
+                ev.preventDefault(); ev.stopPropagation();
+                var done = false;
+                try { Lampa.Controller.collectionFocus(best, $(cont).closest('.scroll')[0] || cont.parentNode); done = best.classList.contains('focus'); } catch (e) {}
+                if (!done) { $(cur).removeClass('focus'); $(best).addClass('focus').trigger('hover:focus'); }
+            });
+        }, true);
+    }
+
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.9';
+    var VERSION = '10.11';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
@@ -3102,6 +3159,7 @@
             safe(initDots);
             safe(initSelector);
             safe(initThemeBtn);
+            safe(initBtnRowsNav);
         });
     }
 
