@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.49 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.50 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1672,7 +1672,7 @@
             // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
             A + '.card--lmxstudio .card__view{overflow:visible !important}' +
             A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07) !important}' +
-            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,#2c2c33 0%,rgba(44,44,51,.5) 8%,rgba(44,44,51,0) 24%),linear-gradient(to bottom,#3b3b44 0%,rgba(59,59,68,.5) 4%,rgba(59,59,68,0) 12%),linear-gradient(90deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 58%)}' +
+            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgb(40,40,46) 0%,rgba(40,40,46,.94) 6%,rgba(40,40,46,.8) 14%,rgba(40,40,46,.56) 24%,rgba(40,40,46,.3) 35%,rgba(40,40,46,.12) 46%,rgba(40,40,46,.03) 56%,rgba(40,40,46,0) 64%),linear-gradient(to bottom,rgba(59,59,68,.9) 0%,rgba(59,59,68,.7) 3%,rgba(59,59,68,.46) 7%,rgba(59,59,68,.24) 12%,rgba(59,59,68,.08) 17%,rgba(59,59,68,0) 23%),linear-gradient(90deg,rgba(0,0,0,.56) 0%,rgba(0,0,0,.4) 18%,rgba(0,0,0,.22) 34%,rgba(0,0,0,.08) 48%,rgba(0,0,0,0) 62%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
             A + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9;font-weight:500}' +
@@ -3246,7 +3246,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.49';
+    var VERSION = '10.50';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
