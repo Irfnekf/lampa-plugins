@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.37 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.38 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1527,7 +1527,6 @@
             T + '.lmx-hero__about i{display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border:.12em solid #fff;border-radius:50%;font-size:.8em;font-style:normal;font-weight:800}' +
             T + '.lmx-hero__btn{display:inline-block;padding:.7em 1.9em;border-radius:99em;background:#fff;color:#000;font-weight:700;font-size:1.02em}' +
             // прокрутка: афіша плавно «в'їжджає», текст проявляється трохи згодом
-            '.card--lmxhero.lmx-far{visibility:hidden}' +
             T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
@@ -1659,7 +1658,6 @@
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
-            A + '.card--lmxhero.lmx-far{visibility:hidden}' +
             A + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
@@ -2175,15 +2173,6 @@
         var old = line.querySelectorAll('.card--lmxhero.lmx-cur');
         for (var i = 0; i < old.length; i++) if (old[i] !== el) old[i].classList.remove('lmx-cur');
         el.classList.add('lmx-cur');
-        // 4K-ТВ: у пам'яті відеокарти тримаємо лише поточний слайд і двох сусідів — решта не малюється й не займає шари
-        var ci = parseInt(el.getAttribute('data-lmxi'), 10) || 0;
-        if (line.__lmxFar === ci) return;
-        line.__lmxFar = ci;
-        var all = line.querySelectorAll('.card--lmxhero');
-        for (var i = 0; i < all.length; i++) {
-            var di = Math.abs((parseInt(all[i].getAttribute('data-lmxi'), 10) || 0) - ci);
-            all[i].classList.toggle('lmx-far', di > 1);
-        }
     }
     function initDots() {
         if (window.__lmxDots) return;
@@ -2219,7 +2208,7 @@
             });
         }, true);
         // Прогрів: один раз невидимо «проїжджаємо» всі слайди, щоб браузер заздалегідь намалював їх (перший реальний перехід без підвисання)
-        var warmDone = true, warmBusy = false, lastKey = 0;
+        var warmDone = false, warmBusy = false, lastKey = 0;
         document.addEventListener('keydown', function () { lastKey = Date.now(); }, true);
         function warm(line) {
             var body = line.querySelector('.scroll__body'), cards = line.querySelectorAll('.card--lmxhero');
@@ -3218,7 +3207,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.37';
+    var VERSION = '10.38';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
