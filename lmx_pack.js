@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.28 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.30 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -2076,9 +2076,11 @@
         if (!window.$ || window.__lmxPre) return;
         window.__lmxPre = true;
         $(document.body).on('hover:focus', '.card', function () {
+            // слайди каруселі міняються самі що 8 с — завантажувати для кожного дані фільму на ходу не можна: це якраз і давало мікрофризи під час прокрутки
+            if (this.classList && this.classList.contains('card--lmxhero')) { clearTimeout(preTimer); return; }
             var d = this.card_data;
             clearTimeout(preTimer);
-            preTimer = setTimeout(function () { prefetchCard(d); }, 300);
+            preTimer = setTimeout(function () { prefetchCard(d); }, 600);
         });
     }
 
@@ -2192,6 +2194,26 @@
         window.__lmxSel = true;
         var box = null, cur = null;
         function hide() { if (box) box.classList.remove('on'); cur = null; }
+        // положення картки відносно стрічки ряду: за видимим прямокутником (прокрутка ряду на різницю не впливає)
+        function measure(host, view) {
+            var hr = host.getBoundingClientRect(), vr = view.getBoundingClientRect();
+            return { l: Math.round(vr.left - hr.left) - 3, t: Math.round(vr.top - hr.top) - 3, w: Math.round(vr.width) + 6, h: Math.round(vr.height) + 6 };
+        }
+        // після фокуса картку ще можуть трохи зсунути/збільшити — підганяємо рамку під її остаточне місце
+        function settle(el) {
+            [90, 280, 600].forEach(function (d) {
+                setTimeout(function () {
+                    if (cur !== el || !box || !box.parentNode) return;
+                    safe(function () {
+                        var view = el.querySelector('.card__view') || el, n = measure(box.parentNode, view);
+                        if (!n.w || !n.h) return;
+                        box.style.left = n.l + 'px'; box.style.top = n.t + 'px';
+                        box.style.width = n.w + 'px'; box.style.height = n.h + 'px';
+                        box.__r = n;
+                    });
+                }, d);
+            });
+        }
         function follow(el) {
             if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
             if (el.classList.contains('card--lmxhero')) { hide(); return; }
@@ -2202,14 +2224,7 @@
             if (!host) return;
             if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
             if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
-            // позиція рахується за розміткою (offset…), а не за getBoundingClientRect: на початку руху картка ще може бути трохи збільшена/зсунута анімацією
-            var ox = 0, oy = 0, node = view, okc = false;
-            while (node && node !== document.body) {
-                if (node === host) { okc = true; break; }
-                ox += node.offsetLeft; oy += node.offsetTop; node = node.offsetParent;
-            }
-            if (!okc) { var hr = host.getBoundingClientRect(), vr0 = view.getBoundingClientRect(); ox = vr0.left - hr.left; oy = vr0.top - hr.top; }
-            var n = { l: Math.round(ox) - 3, t: Math.round(oy) - 3, w: Math.round(view.offsetWidth) + 6, h: Math.round(view.offsetHeight) + 6 };
+            var n = measure(host, view);
             var prev = (box.parentNode === host && box.classList.contains('on')) ? box.__r : null;
             box.style.transition = 'none';
             box.style.transform = 'none';
@@ -2233,6 +2248,7 @@
             }
             box.classList.add('on');
             cur = el;
+            settle(el);
         }
         window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
         // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
@@ -3135,7 +3151,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Одноразово при оновленні до цієї версії — повертаємо порядок рядів за замовчуванням
-    var VERSION = '10.28';
+    var VERSION = '10.30';
     safe(function () {
         var prev = String(Lampa.Storage.get('lmx_ver', '') || '');
         if (prev < '2.1') {
