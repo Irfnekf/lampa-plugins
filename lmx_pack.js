@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.90 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.91 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1025,21 +1025,26 @@
                 function ok(i) { return res[i] && res[i].length >= (i < 4 ? 5 : 8); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
-                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false;
+                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
+                    var dbg = (window.__lmxDbg = window.__lmxDbg || []);
                     function end() {
                         if (fin || --pend > 0) return;
                         fin = true; clearTimeout(t);
                         var out = [];
                         got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
                         res[i] = out;
+                        dbg.push({ s: id, i: i, t: cats[i].title, n: out.length, ms: Date.now() - t0, err: errs });
                         done();
                     }
-                    var t = setTimeout(function () { if (fin) return; fin = true; res[i] = []; done(); }, 15000);
+                    var t = setTimeout(function () { if (fin) return; fin = true; res[i] = []; dbg.push({ s: id, i: i, t: cats[i].title, n: -1, ms: 15000, url: cats[i].url }); done(); }, 15000);
                     for (var pg = 1; pg <= pages; pg++) (function (pg) {
-                        tgetFb(cats[i].url, { page: pg }, function (j) {
-                            got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
-                            end();
-                        }, function () { got[pg - 1] = []; end(); });
+                        var tries = 0;
+                        (function go() {
+                            tgetFb(cats[i].url, { page: pg }, function (j) {
+                                got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
+                                end();
+                            }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[pg - 1] = []; end(); });
+                        })();
                     })(pg);
                 }
                 function loadGroup(emit, finished) {
@@ -2298,24 +2303,29 @@
     // Відступ справа в кінці рядів = відступу зліва (у всіх темах, у т. ч. коли в кінці ряду плитка «Ще»).
     // Лівий відступ міряємо в стартовому положенні прокрутки, правий виставляємо inline-стилем, бо теми мають власні !important
     var padT = 0;
+    // У темах HBO / Apple TV прокрутка Lampa не враховує padding тіла ряду, тож остання картка (і плитка «Ще») впиралася в край.
+    // Тому в кінець ряду ставимо справжній порожній елемент завширшки з лівий відступ — його прокрутка враховує як звичайну картку
     function padFix() {
+        if (!board()) return;
         var act = document.querySelector('.activity--active') || document.body;
-        if (!act) return;
         var ar = act.getBoundingClientRect();
         var lines = act.querySelectorAll('.items-line:not(.lmx-hero-line)');
         for (var i = 0; i < lines.length; i++) {
             try {
                 var body = lines[i].querySelector('.scroll--horizontal .scroll__body');
-                if (!body || !body.firstElementChild) continue;
-                var cs = getComputedStyle(body), first = body.firstElementChild, last = body.lastElementChild;
+                if (!body || !body.firstElementChild || body.firstElementChild.classList.contains('lmx-endpad')) continue;
+                var pad = body.querySelector(':scope > .lmx-endpad');
+                if (!pad) { pad = document.createElement('div'); pad.className = 'lmx-endpad'; pad.style.cssText = 'flex:none;width:0;height:1px;pointer-events:none'; }
+                if (body.lastElementChild !== pad) body.appendChild(pad);
+                body.style.setProperty('padding-right', '0', 'important');
+                var cs = getComputedStyle(body), first = body.firstElementChild, prev = pad.previousElementSibling;
                 var tx = 0;
                 if (cs.transform && cs.transform !== 'none') tx = new DOMMatrix(cs.transform).m41;
                 var left = first.getBoundingClientRect().left - tx - ar.left;
                 var sc = body.parentElement.getBoundingClientRect();
-                var lm = parseFloat(getComputedStyle(last).marginRight) || 0;
-                var pr = Math.round(left - lm - (ar.right - sc.right));
-                if (!(left > 0) || pr < 0 || pr > 160) continue;
-                if (body.__lmxPad !== pr) { body.__lmxPad = pr; body.style.setProperty('padding-right', pr + 'px', 'important'); }
+                var lm = prev ? (parseFloat(getComputedStyle(prev).marginRight) || 0) : 0;
+                var w = Math.round(left - lm - (ar.right - sc.right));
+                if (left > 0 && w >= 0 && w <= 160 && pad.__w !== w) { pad.__w = w; pad.style.width = w + 'px'; }
             } catch (e) {}
         }
     }
@@ -3662,7 +3672,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.90';
+    var VERSION = '10.91';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
