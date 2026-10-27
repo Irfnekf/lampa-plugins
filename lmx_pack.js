@@ -2537,6 +2537,10 @@
         if (el.__lmxMo || !window.MutationObserver) return;
         var hits = 0, t0 = 0;
         var mo = new MutationObserver(function () {
+            // одразу (у тій самій мікрозадачі, до малювання кадру): інакше на 80 мс видно «голу» кнопку без наших стилів
+            var now0 = Date.now();
+            if (now0 - t0 > 3000) { t0 = now0; hits = 0; }
+            if (++hits <= 8 && document.body.contains(el)) { reassertMode(el); mo.takeRecords(); }
             clearTimeout(el.__lmxTm);
             el.__lmxTm = setTimeout(function () {
                 if (!document.body.contains(el)) { mo.disconnect(); el.__lmxMo = null; return; }
@@ -2836,8 +2840,20 @@
         run(true);
         markReady();
         btnScanNow = function (cb) { btnScan(cont, cb); };
-        var mo = new MutationObserver(function () {
+        var mo = new MutationObserver(function (recs) {
             if (busy) return;
+            // з'явилася нова кнопка (Lampa чи плагін перемалювали ряд): стилізуємо одразу, до малювання кадру
+            var fresh = false;
+            for (var i = 0; i < recs.length && !fresh; i++) {
+                for (var j = 0; j < recs[i].addedNodes.length; j++) {
+                    var an = recs[i].addedNodes[j];
+                    if (an.nodeType === 1 && an.classList && an.classList.contains('full-start__button') && !an.__lmxId) { fresh = true; break; }
+                }
+            }
+            if (fresh && document.body.contains(node) && (node.__lmxQuick = (node.__lmxQuick || 0) + 1) < 40) {
+                run(false);
+                mo.takeRecords();
+            }
             clearTimeout(timer);
             timer = setTimeout(function () {
                 if (!document.body.contains(node)) { mo.disconnect(); return; }
@@ -3249,7 +3265,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.53';
+    var VERSION = '10.54';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
