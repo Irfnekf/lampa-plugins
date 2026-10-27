@@ -1456,13 +1456,13 @@
             D + '.full-episode--next,' + D + '.full-episode--next .full-episode__img{border:0 !important;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
             D + '.full-episode.focus::after,' + D + '.full-episode.focus .full-episode__img::after{border-radius:1em}' +
             // Актори: круглі фото, ім'я під ними, роль приглушена
-            D + '.full-person{display:flex;flex-direction:column;align-items:center;text-align:center;width:9.5em !important;margin-right:1.2em;padding:.4em .2em;border-radius:1em}' +
-            D + '.full-person__photo{width:6.4em !important;height:6.4em !important;border-radius:50% !important;overflow:hidden;margin:0 0 .6em 0 !important;background:#25262c}' +
-            D + '.full-person__photo img{width:100%;height:100%;object-fit:cover;border-radius:50%}' +
-            D + '.full-person__body{margin:0 !important;width:100%}' +
-            D + '.full-person__name{font-size:1.05em;font-weight:600;line-height:1.25;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}' +
-            D + '.full-person__role{font-size:.85em;opacity:.6;margin-top:.15em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-            D + '.full-person.focus{background:rgba(255,255,255,.12)}' +
+            D + '.full-person:not(.full-person--small){display:flex;flex-direction:column;align-items:center;text-align:center;width:9.5em !important;margin-right:1.2em;padding:.4em .2em;border-radius:1em}' +
+            D + '.full-person:not(.full-person--small) .full-person__photo{width:6.4em !important;height:6.4em !important;border-radius:50% !important;overflow:hidden;margin:0 0 .6em 0 !important;background:#25262c}' +
+            D + '.full-person:not(.full-person--small) .full-person__photo img{width:100%;height:100%;object-fit:cover;border-radius:50%}' +
+            D + '.full-person:not(.full-person--small) .full-person__body{margin:0 !important;width:100%}' +
+            D + '.full-person:not(.full-person--small) .full-person__name{font-size:1.05em;font-weight:600;line-height:1.25;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}' +
+            D + '.full-person:not(.full-person--small) .full-person__role{font-size:.85em;opacity:.6;margin-top:.15em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            D + '.full-person:not(.full-person--small).focus{background:rgba(255,255,255,.12)}' +
             // Коментарі: порожня пунктирна картка стає тонкою кнопкою; без коментарів увесь блок ховаємо (див. onFull)
             D + '.full-review-add{width:auto !important;height:auto !important;min-height:0 !important;padding:.7em 1.4em !important;border:0 !important;border-radius:99em;background:rgba(255,255,255,.1);display:inline-flex;align-items:center;gap:.5em}' +
             D + '.full-review-add.focus{background:#fff;color:#111}' +
@@ -1543,6 +1543,8 @@
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
+            // запас справа в кінці ряду: остання картка (і рамка фокуса) повністю влазить в екран
+            T + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:3.2em;height:1px}' +
             // як у застосунку: картки при прокрутці «заходять» ліворуч під бокову панель, а не обрізаються на краю ряду
             T + '.items-line:not(.lmx-hero-line) .scroll{margin-left:-2.2em;padding-left:2.2em;-webkit-mask-image:none !important;mask-image:none !important}' +
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
@@ -1738,6 +1740,7 @@
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
+            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:3.2em;height:1px}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(120,120,128,.5);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -3301,7 +3304,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.57';
+    var VERSION = '10.59';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
