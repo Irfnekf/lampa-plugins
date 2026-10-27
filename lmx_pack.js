@@ -864,7 +864,7 @@
 
     // Афіша аніме: найпопулярніше з тих, що виходять просто зараз, плюс до 4 «скоро» (серіали й фільми): 12 слайдів
     function animeHeroList(JA, done) {
-        var t0 = dayStr(0), left = 4, hot = [], soonTv = [], soonMv = [];
+        var t0 = dayStr(0), left = 7, recent = [], top = [], soonTv = [], soonMv = [];
         // у афішу потрапляють лише картки з українським описом (є і/ї/є/ґ) і назвою без ієрогліфів
         function uaOk(m) {
             var ov = String(m.overview || ''), nm = String(m.title || m.name || '');
@@ -873,11 +873,19 @@
         function fin() {
             if (--left > 0) return;
             var seen = {}, out = [];
-            // до 4 «скоро», решту до 12 слайдів — найпопулярніше з того, що виходить зараз
+            // до 4 «скоро»; решту до 12 слайдів: спершу те, що виходить зараз, далі найпопулярніше за весь час
             var soon = soonTv.concat(soonMv).filter(uaOk)
                 .sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
             soon.forEach(function (m) { seen[m.id] = 1; });
-            hot.filter(function (m) { return uaOk(m) && !seen[m.id]; }).slice(0, 12 - soon.length).forEach(function (m) { seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m); });
+            var room = 12 - soon.length;
+            recent.filter(function (m) { return uaOk(m) && !seen[m.id]; }).forEach(function (m) {
+                if (out.length >= room) return;
+                seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m);
+            });
+            top.filter(function (m) { return uaOk(m) && !seen[m.id]; }).forEach(function (m) {
+                if (out.length >= room) return;
+                seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; out.push(m);
+            });
             soon.forEach(function (m) { m.__tag = 'soon'; out.push(m); });
             done(out);
         }
@@ -887,9 +895,13 @@
                 fin();
             }, function () { fin(); });
         }
-        var hotUrl = 'discover/tv?' + JA + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3';
-        get(hotUrl, 'tv', hot, 1);
-        get(hotUrl, 'tv', hot, 2);
+        var recentUrl = 'discover/tv?' + JA + '&air_date.gte=' + dayStr(-30) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=1';
+        var topUrl = 'discover/tv?' + JA + '&sort_by=popularity.desc&vote_count.gte=100';
+        get(recentUrl, 'tv', recent, 1);
+        get(recentUrl, 'tv', recent, 2);
+        get(topUrl, 'tv', top, 1);
+        get(topUrl, 'tv', top, 2);
+        get(topUrl, 'tv', top, 3);
         get('discover/tv?' + JA + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(75) + '&sort_by=popularity.desc', 'tv', soonTv, 1);
         get('discover/movie?' + JA + '&primary_release_date.gte=' + dayStr(1) + '&primary_release_date.lte=' + dayStr(120) + '&sort_by=popularity.desc', 'movie', soonMv, 1);
     }
@@ -969,8 +981,8 @@
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
-                // для аніме й дорам беремо дві сторінки на підбірку (до 40 карток): каталог у них вужчий за західний
-                var pages = isAn ? 2 : 1;
+                // для аніме й дорам беремо три сторінки на підбірку (до 60 карток): каталог у них вужчий за західний
+                var pages = isAn ? 3 : 1;
                 cats.forEach(function (c, i) {
                     var got = [], pend = pages, seenC = {};
                     function one(pg) {
@@ -1168,14 +1180,26 @@
             }
             window.$(line).addClass('lmx-mini').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
         }
+        // Lampa домальовує картки ряду по мірі прокрутки, тому після знаходження ряду стежимо за ним, поки він на екрані
+        var lineMo = null;
+        function watchLine() {
+            if (lineMo) return;
+            var line = findLine();
+            if (!line) return;
+            lineMo = new MutationObserver(function () {
+                if (!document.body.contains(line)) { lineMo.disconnect(); return; }
+                safe(run);
+            });
+            lineMo.observe(line, { childList: true, subtree: true });
+        }
         // одразу при появі карток (до першого малювання кадру), щоб ряд не встигав показатись звичайною підбіркою
-        safe(run);
-        var mo = new MutationObserver(function () { safe(run); });
+        safe(function () { run(); watchLine(); });
+        var mo = new MutationObserver(function () { safe(run); watchLine(); });
         mo.observe(document.body, { childList: true, subtree: true });
         setTimeout(function () { mo.disconnect(); }, 8000);
         var iv = setInterval(function () {
             tries++;
-            safe(run);
+            safe(function () { run(); watchLine(); });
             if (tries > 50) clearInterval(iv);
         }, 200);
     }
@@ -3485,7 +3509,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.71';
+    var VERSION = '10.72';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
