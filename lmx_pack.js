@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.85 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.86 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -716,8 +716,7 @@
             { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' }
         ] },
         netflix: { mf: prov(8), tf: prov(8), extra: [
-            // серіали: і власні (мережа Netflix), і весь каталог Netflix в Україні (ліцензійні теж)
-            { t: 'Популярні серіали на Netflix', k: 'tv', q: prov(8) + '&sort_by=popularity.desc&vote_count.gte=200' },
+            // серіали беремо з усього каталогу Netflix в Україні (власні й ліцензійні), «Оригінали» — окремо
             { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' },
             { t: 'Фантастика й фентезі', k: 'tv', q: prov(8) + '&with_genres=10765&sort_by=popularity.desc&vote_count.gte=100' },
             { t: 'Кримінал і трилери', k: 'tv', q: prov(8) + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc&vote_count.gte=100' },
@@ -874,8 +873,9 @@
         if (c.lead && !forHome) c.lead().forEach(function (e) { out.push(e); });
         out.push({ t: 'Нові фільми', k: 'movie', q: c.mf + '&sort_by=primary_release_date.desc&primary_release_date.lte=' + today + '&vote_count.gte=10' });
         out.push({ t: 'Нові серіали', k: 'tv', q: c.tf + '&sort_by=first_air_date.desc&first_air_date.lte=' + today + '&vote_count.gte=5' });
-        out.push({ t: 'Головні хіти', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
+        // у всіх каталогах, крім аніме: «Популярні фільми» і «Популярні серіали» поруч (порядок важливий: на нього спирається serviceCall)
         out.push({ t: 'Популярні фільми', k: 'movie', q: c.mf + '&sort_by=popularity.desc&vote_count.gte=50' });
+        out.push({ t: key === 'anime' ? 'Головні хіти' : 'Популярні серіали', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
         (typeof c.extra === 'function' ? c.extra() : c.extra).forEach(function (e) { out.push(e); });
         out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
         return out.map(function (e) {
@@ -962,7 +962,7 @@
                 { url: cats[1].url, page: 1, kind: 'tv' }, { url: cats[1].url, page: 2, kind: 'tv' }
             ];
             var filler = [
-                { url: wide(cats[3].url), page: 1, kind: 'movie' }, { url: cats[2].url, page: 1, kind: 'tv' }
+                { url: wide(cats[2].url), page: 1, kind: 'movie' }, { url: cats[3].url, page: 1, kind: 'tv' }
             ];
             function fetchAll(tasks, done) {
                 var left = tasks.length, out = [];
@@ -3586,7 +3586,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.85';
+    var VERSION = '10.86';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
