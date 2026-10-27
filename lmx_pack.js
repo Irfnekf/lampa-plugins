@@ -1160,7 +1160,7 @@
                 }
                 dbg.done++;
             }
-            window.$(line).find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
+            window.$(line).addClass('lmx-mini').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
         }
         var iv = setInterval(function () {
             tries++;
@@ -1592,6 +1592,22 @@
             '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
     // Блоки під описанням на сторінці фільму: серії, актори, коментарі (однаково для всіх тем, кольори беруться з теми)
+    // Компактна афіша для сторінок «Аніме» і «Дорами»: невисока стрічка із закругленнями, наступний слайд визирає справа
+    function miniCss() {
+        var M = 'html body .items-line.lmx-mini ', X = ':not(#lmx-x)';
+        return '' +
+            M + '.card--lmxhero' + X + '{width:62vw !important;margin-left:0 !important;margin-right:1.2em !important}' +
+            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{height:36vh !important;border-radius:1.2em !important;overflow:hidden}' +
+            M + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.35) 38%,rgba(0,0,0,0) 70%),linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 60%) !important}' +
+            M + '.lmx-hero__text' + X + '{left:1.8em !important;right:auto !important;bottom:1.7em !important;max-width:62% !important}' +
+            M + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:700 !important;line-height:1.1 !important;margin-bottom:.3em !important}' +
+            M + '.lmx-hero__meta' + X + '{font-size:.95em !important}' +
+            M + '.lmx-hero__o' + X + '{font-size:.92em !important;max-height:2.8em !important;margin-top:.4em !important}' +
+            M + '.lmx-hero__acts' + X + '{display:none !important}' +
+            M + '.items-line__head' + X + ',' + M + '.items-line__title' + X + '{display:block !important}' +
+            M + '.items-line__head' + X + '{margin-bottom:.4em}' +
+            M + '.lmx-dots' + X + '{left:calc(31vw + 2.2em) !important}';
+    }
     function detailCss() {
         var D = 'body.lmx-full ';
         return '' +
@@ -1975,7 +1991,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + appleCss() + detailCss();
+        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + miniCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -3453,7 +3469,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.67';
+    var VERSION = '10.68';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
