@@ -1,5 +1,5 @@
 /*
- * NoCub v1.1 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.2 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.1';
+    var VERSION = '1.2';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -60,10 +60,36 @@
         { key: 'nocub_recs', sel: '.items-line', re: /^\s*(рекомендац|рекомендаці|схож|similar|recommendations)/i, title: true, onlyFull: true }
     ];
 
+    // Прихований елемент не має лишатися «вибираним» для пульта: інакше фокус потрапляє на невидимий пункт і підсвітка зникає
+    function mark(el, key) {
+        el.classList.add('nocub-hide');
+        el.setAttribute('data-nocub', key);
+        if (el.classList.contains('selector')) { el.classList.remove('selector'); el.setAttribute('data-nocub-sel', '1'); }
+        if (el.classList.contains('focus')) el.classList.remove('focus');
+    }
+    function unmark(el) {
+        el.classList.remove('nocub-hide');
+        el.removeAttribute('data-nocub');
+        if (el.getAttribute('data-nocub-sel')) { el.classList.add('selector'); el.removeAttribute('data-nocub-sel'); }
+    }
+    function scanCss() {
+        Object.keys(CSS).forEach(function (k) {
+            var active = on(k);
+            var sel = CSS[k].join(',');
+            var els;
+            try { els = document.querySelectorAll(sel); } catch (e) { return; }
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                if (active) { if (!el.classList.contains('nocub-hide') || el.getAttribute('data-nocub') !== k) mark(el, k); }
+                else if (el.getAttribute('data-nocub') === k) unmark(el);
+            }
+        });
+    }
     function anyOn() { return ITEMS.some(function (it) { return on(it.key); }); }
     function scan() {
         var any = anyOn();
         if (!any && !document.querySelector('.nocub-hide')) return;
+        scanCss();
         TEXT.forEach(function (rule) {
             var els = document.querySelectorAll(rule.sel);
             var active = on(rule.key);
@@ -83,13 +109,8 @@
                     // Блоки «Рекомендації» ховаємо лише на сторінці фільму, не на головній
                     if (hit && rule.onlyFull && !document.querySelector('.activity--active .full-start-new, .activity--active .full-start')) hit = false;
                 }
-                if (hit) {
-                    el.classList.add('nocub-hide');
-                    el.setAttribute('data-nocub', rule.key);
-                } else if (el.getAttribute('data-nocub') === rule.key) {
-                    el.classList.remove('nocub-hide');
-                    el.removeAttribute('data-nocub');
-                }
+                if (hit) mark(el, rule.key);
+                else if (el.getAttribute('data-nocub') === rule.key) unmark(el);
             }
         });
     }
@@ -138,6 +159,7 @@
         safe(function () {
             Lampa.Listener.follow('full', schedule);
             Lampa.Listener.follow('activity', schedule);
+            if (Lampa.Settings && Lampa.Settings.listener) Lampa.Settings.listener.follow('open', function () { safe(applyBody); safe(scan); });
         });
     }
 
