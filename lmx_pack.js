@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.81 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.82 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1643,7 +1643,10 @@
             (getStr('lmx_card_size', 'm') !== 'm' ?
                 '.items-line .card:not(.card--lmxhero):not(.card--lmxstudio){width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '19.5em' : '17em') + ' !important}' : '') +
             fullCss() +
-            '.card--lmxhero.focus .card__view,.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
+            '.card--lmxstudio.focus .card__view{box-shadow:0 0 0 .22em #fff !important}' +
+            // афіша без рамки, збільшення й «стрибка» з першого кадру (до того, як ряд позначено компактним): інакше при завантаженні рамка мигає
+            '.card--lmxhero,.card--lmxhero.focus,.card--lmxhero.hover{transform:none !important;animation:none !important}' +
+            '.card--lmxhero .card__view,.card--lmxhero.focus .card__view,.card--lmxhero.hover .card__view{transform:none !important;box-shadow:none !important;transition:none !important}' +
             '.card--lmxhero.focus .card__view::after,.card--lmxstudio.focus .card__view::after{display:none !important}' +
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '50em' : getStr('lmx_card_size', 'm') === 'l' ? '45em' : '40em') + ' !important}' +
@@ -3565,7 +3568,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.81';
+    var VERSION = '10.82';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
