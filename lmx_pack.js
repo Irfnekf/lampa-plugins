@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.91 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.93 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -704,7 +704,8 @@
     // Регіон каталогу: SkyShowtime — Польща, Paramount+ — США (в Україні його немає), решта, зокрема Max, — Україна (якщо порожньо — США)
     function prov(id) {
         var region = id === 1773 ? 'PL' : id === 531 ? 'US' : 'UA';
-        return 'with_watch_providers=' + id + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
+        // Prime Video в TMDB має два ідентифікатори (9 і 119): у різних регіонах заповнений то один, то інший
+        return 'with_watch_providers=' + (id === 119 ? '9' + PIPE + '119' : id) + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
     }
     var PIPE = '%7C';
     // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
@@ -946,10 +947,23 @@
     // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
     // Якщо свіжого мало (у сервісів без великого каталогу в Україні) — добираємо популярним
     // Якщо в українському регіоні каталог платформи порожній — той самий запит за регіоном США
+    // Для платформ, у яких TMDB не віддає дані провайдера, запит повторюється за студіями й каналами платформи
+    var ALT = {
+        119: { movie: 'with_companies=20580' + '%7C56178%7C21', tv: 'with_networks=1024' },
+        531: { movie: 'with_companies=4', tv: 'with_networks=4330%7C16%7C67%7C13' }
+    };
+    var PROV_RX = /with_watch_providers=([^&]*)&watch_region=[^&]*&with_watch_monetization_types=[^&]*/;
+    function empty(j) { return !j || !j.results || !j.results.length; }
     function tgetFb(url, params, ok, fail) {
+        function alt(j) {
+            var m = url.match(PROV_RX), k = url.match(/discover\/(movie|tv)/);
+            var a = m && k && ALT[m[1].indexOf('119') >= 0 ? 119 : parseInt(m[1], 10)];
+            if (!empty(j) || !a) return ok(j);
+            tget(url.replace(PROV_RX, a[k[1]]), params, ok, function () { ok(j); });
+        }
         tget(url, params, function (j) {
-            if ((!j || !j.results || !j.results.length) && url.indexOf('watch_region=UA') >= 0) return tget(url.replace('watch_region=UA', 'watch_region=US'), params, ok, fail);
-            ok(j);
+            if (empty(j) && url.indexOf('watch_region=UA') >= 0) return tget(url.replace('watch_region=UA', 'watch_region=US'), params, alt, fail);
+            alt(j);
         }, fail);
     }
     function serviceCall(row, key) {
@@ -3672,7 +3686,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.91';
+    var VERSION = '10.93';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
