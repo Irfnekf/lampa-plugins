@@ -1657,6 +1657,10 @@
             M + '.lmx-hero__acts' + X + '{display:none !important}' +
             M + '.items-line__head' + X + ',' + M + '.items-line__title' + X + '{display:block !important}' +
             M + '.items-line__head' + X + '{margin-bottom:.4em}' +
+            // як у темах HBO та Apple: слайд у фокусі не збільшується, не «стрибає» і не має рамки — просто плавно їде ряд
+            M + '.card--lmxhero' + X + ',' + M + '.card--lmxhero.focus' + X + ',' + M + '.card--lmxhero.hover' + X + '{transform:none !important;animation:none !important}' +
+            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{transform:none !important;box-shadow:none !important;transition:none !important;animation:none !important}' +
+            M + '.card--lmxhero' + X + ' .card__view::after,' + M + '.card--lmxhero.focus' + X + ' .card__view::after,' + M + '.card--lmxhero.hover' + X + ' .card__view::after{display:none !important}' +
             // та сама м'яка анімація перемикання слайдів, що й у темах HBO та Apple
             M + '.scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important}' +
             M + '.lmx-dots' + X + '{display:none !important}';
@@ -3531,7 +3535,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.76';
+    var VERSION = '10.77';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
