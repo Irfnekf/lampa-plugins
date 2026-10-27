@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.87 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.89 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1001,48 +1001,89 @@
     }
 
     // Окрема сторінка сервісу (компонент Lampa)
-    var svcRegistered = false;
+    var svcRegistered = false, svcCache = {};
     function registerServicePage() {
         if (svcRegistered || !Lampa.Component || !Lampa.Component.add || !Lampa.InteractionMain) return;
         svcRegistered = true;
         Lampa.Component.add('lmx_service', function (object) {
             var comp = new Lampa.InteractionMain(object);
             comp.create = function () {
-                var self = this;
+                var self = this, id = object.service_id;
                 this.activity.loader(true);
-                var cats = svcCats(object.service_id), res = new Array(cats.length), isAn = !!(SVC[object.service_id] && SVC[object.service_id].hero), heroL = null, left = cats.length + (isAn ? 1 : 0);
-                function fin() {
-                    if (--left > 0) return;
-                    var data = [];
-                    if (heroL && heroL.length) data.push({ title: (object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
-                    cats.forEach(function (c, i) {
-                        if (res[i] && res[i].length) {
-                            data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, more: true, total_pages: 20 });
-                        }
-                    });
-                    self.activity.loader(false);
-                    if (!data.length) self.empty(); else { self.build(data); if (heroL && heroL.length) heroAttach((object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', heroL); }
-                }
+                var cats = svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = !isAn;
+                var heroTitle = (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро';
+                var cache = svcCache[id];
+                if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
+                var res = cache.res, GROUP = 6, next = 0, busy = false, built = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
-                if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); fin(); }); } catch (e) { fin(); } }
-                // три сторінки на підбірку (до 60 карток): так рядів і карток у каталогах більше
-                // перші ряди — до 60 карток, далі менше (повний список — кнопка «Ще»): так сторінка відкривається швидко
-                cats.forEach(function (c, i) {
-                    var pages = i < 6 ? 3 : i < 16 ? 2 : 1, got = [], pend = pages, seenC = {};
-                    function one(pg) {
-                        tgetFb(c.url, { page: pg }, function (j) {
+                // Ряди вантажимо порціями по 6: перша порція будує сторінку, далі підтягуємо, коли фокус наближається до кінця (як на головній)
+                function rowData(i) {
+                    return { title: cats[i].title, results: res[i], url: cats[i].url, source: 'tmdb', page: 1, more: true, total_pages: 20 };
+                }
+                function fetchRow(i, done) {
+                    if (res[i]) return done();
+                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {};
+                    for (var pg = 1; pg <= pages; pg++) (function (pg) {
+                        tgetFb(cats[i].url, { page: pg }, function (j) {
                             got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
                             end();
                         }, function () { got[pg - 1] = []; end(); });
-                    }
+                    })(pg);
                     function end() {
                         if (--pend > 0) return;
-                        res[i] = [];
-                        got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; res[i].push(x); } }); });
-                        fin();
+                        var out = [];
+                        got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
+                        res[i] = out;
+                        done();
                     }
-                    for (var pg = 1; pg <= pages; pg++) one(pg);
-                });
+                }
+                // порція рядів; якщо в порції порожньо — одразу береться наступна
+                function loadGroup(cb, guard) {
+                    var from = next, to = Math.min(cats.length, from + GROUP), left = to - from, fired = false;
+                    next = to;
+                    if (left <= 0) return cb([]);
+                    function fire() {
+                        if (fired) return;
+                        fired = true;
+                        var rows = [];
+                        for (var i = from; i < to; i++) if (res[i] && res[i].length) rows.push(rowData(i));
+                        if (!rows.length && next < cats.length) return loadGroup(cb);
+                        cb(rows);
+                    }
+                    var t = setTimeout(fire, 6000);
+                    for (var i = from; i < to; i++) fetchRow(i, function () { if (--left === 0) { clearTimeout(t); fire(); } });
+                }
+                function tryBuild() {
+                    if (!heroDone || !firstRows) return;
+                    var data = [];
+                    if (heroL && heroL.length) data.push({ title: heroTitle, results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
+                    data = data.concat(firstRows);
+                    self.activity.loader(false);
+                    if (!data.length) return self.empty();
+                    built = true;
+                    self.build(data);
+                    if (heroL && heroL.length) heroAttach(heroTitle, heroL);
+                    startLazy();
+                }
+                function startLazy() {
+                    var el = self.render(), busy2 = false;
+                    var iv = setInterval(function () {
+                        var root = el && el[0];
+                        if (!root || !document.body.contains(root)) return clearInterval(iv);
+                        if (busy2 || next >= cats.length || typeof self.append !== 'function') { if (next >= cats.length) clearInterval(iv); return; }
+                        var lines = el.find('.items-line'), fi = lines.index(lines.has('.focus').first());
+                        if (fi < 0 || fi < lines.length - 3) return;
+                        busy2 = true;
+                        loadGroup(function (rows) {
+                            try { rows.forEach(function (r) { self.append(r); }); } catch (e) { next = cats.length; }
+                            busy2 = false;
+                        });
+                    }, 400);
+                }
+                var firstRows = null;
+                if (typeof self.append !== 'function') GROUP = cats.length;
+                loadGroup(function (rows) { firstRows = rows; tryBuild(); });
+                if (isAn) { try { animeHeroList(SVC[id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); heroDone = true; tryBuild(); }); } catch (e) { heroDone = true; tryBuild(); } }
                 return this.render();
             };
             comp.onMore = function (data) {
@@ -3585,7 +3626,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.87';
+    var VERSION = '10.89';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
