@@ -1,5 +1,5 @@
 /*
- * NoCub v1.4 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.5 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.4';
+    var VERSION = '1.5';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -20,11 +20,17 @@
         { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
         { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Пункти «Акаунт» / «Увійти» в меню та налаштуваннях' },
         { key: 'nocub_recs', name: 'Рекомендації на сторінці фільму', desc: 'Блоки «Рекомендації» і «Схожі» внизу сторінки фільму' },
-        { key: 'nocub_subscribe', name: 'Кнопка «Підписатися»', desc: 'Підписка на фільм, серіал чи актора (потрібен акаунт CUB)' }
+        { key: 'nocub_subscribe', name: 'Кнопка «Підписатися»', desc: 'Підписка на фільм, серіал чи актора (потрібен акаунт CUB)' },
+        { key: 'nocub_promo', name: 'Акційні кнопки й плашки', desc: 'Сезонні акції CUB (Хелловін, Новий рік, чорна п\'ятниця, знижки, подарунки) — за ознаками в назві', def: true },
+        { key: 'nocub_strict', name: 'Лише відомі кнопки шапки', desc: 'Ховає будь-яку невідому кнопку в шапці (запасний варіант для нових акцій). Кнопки інших плагінів додайте в «Залишити кнопки» нижче', def: false }
     ];
+    var PROMO = ['halloween', 'helloween', 'newyear', 'new-year', 'christmas', 'xmas', 'blackfriday', 'black-friday', 'cybermonday', 'sale', 'promo', 'discount', 'gift', 'valentine', 'easter', 'birthday', 'anniversary'];
+    // Відомі кнопки шапки (решта — «невідомі» для суворого режиму)
+    var KNOWN_HEAD = /open--(search|settings|broadcast|notice|profile|feed|premium)|notice--icon|full--screen|lmx-themebtn|head__back|head__menu|head__logo/;
 
+    function defOf(key) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].key === key) return !!ITEMS[i].def; return false; }
     function on(key) {
-        var v = Lampa.Storage.get(key, 'false');
+        var v = Lampa.Storage.get(key, defOf(key) ? 'true' : 'false');
         return v === true || v === 'true';
     }
 
@@ -38,7 +44,8 @@
         nocub_bell: ['.head__action.notice--icon', '.head__action.open--notice', '.head__action--notice', '.notice--icon'],
         nocub_premium: ['.head__action.halloween__button', '.halloween__button', 'body > .halloween', '.halloween', '.head__action[class*="halloween"]', '.head__action[class*="helloween"]', '.head [class*="premium"]', '.head__action[data-action*="premium"]', '.head__action.open--premium', '.open--premium', '.head [class*="cub-premium"]', '.menu__item[data-action="premium"]', '.settings-folder[data-component="premium"]'],
         nocub_account: ['.menu__item[data-action="account"]', '.settings-folder[data-component="account"]', '.head__action.open--profile'],
-        nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe']
+        nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe'],
+        nocub_promo: PROMO.reduce(function (acc, w) { acc.push('[class^="' + w + '"]', '[class*=" ' + w + '"]'); return acc; }, [])
     };
     var HIDE = '{display:none !important}';
     function css() {
@@ -103,7 +110,10 @@
                 changed = true;
             }
         }
-        if (changed) {
+        // Фокус чіпаємо лише якщо його втрачено (на видимому пункті немає .focus); інакше керування належить Lampa
+        var hasFocus = false, fl = root.querySelectorAll('.selector.focus');
+        for (var f = 0; f < fl.length; f++) if (getComputedStyle(fl[f]).display !== 'none') hasFocus = true;
+        if (changed && !hasFocus) {
             var first = null, all = root.querySelectorAll('.selector');
             for (var j = 0; j < all.length; j++) if (getComputedStyle(all[j]).display !== 'none') { first = all[j]; break; }
             var C = window.Lampa && Lampa.Controller, name = '';
@@ -114,12 +124,27 @@
             }
         }
     }
+    function keepList() {
+        var v = String(Lampa.Storage.get('nocub_keep', '') || '');
+        return v.split(/[,\s]+/).filter(Boolean);
+    }
+    function scanStrict() {
+        var active = on('nocub_strict'), keep = keepList();
+        var els = document.querySelectorAll('.head .head__action');
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i], cn = String(el.className);
+            var known = KNOWN_HEAD.test(cn) || keep.some(function (k) { return cn.indexOf(k) >= 0; });
+            if (active && !known) { if (el.getAttribute('data-nocub') !== 'nocub_strict') mark(el, 'nocub_strict'); }
+            else if (el.getAttribute('data-nocub') === 'nocub_strict') unmark(el);
+        }
+    }
     function anyOn() { return ITEMS.some(function (it) { return on(it.key); }); }
     function scan() {
         var any = anyOn();
         if (any) safe(fixSettingsFocus);
         if (!any && !document.querySelector('.nocub-hide')) return;
         scanCss();
+        scanStrict();
         TEXT.forEach(function (rule) {
             var els = document.querySelectorAll(rule.sel);
             var active = on(rule.key);
@@ -165,10 +190,15 @@
         S.addParam({ component: 'nocub', param: { name: 'nocub_t', type: 'title', default: '' }, field: { name: 'Сховати елементи CUB' } });
         ITEMS.forEach(function (it) {
             S.addParam({
-                component: 'nocub', param: { name: it.key, type: 'trigger', default: false },
+                component: 'nocub', param: { name: it.key, type: 'trigger', default: !!it.def },
                 field: { name: it.name, description: it.desc },
                 onChange: function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); }
             });
+        });
+        S.addParam({
+            component: 'nocub', param: { name: 'nocub_keep', type: 'input', default: '' },
+            field: { name: 'Залишити кнопки', description: 'Для режиму «Лише відомі кнопки шапки»: частини назв класів кнопок інших плагінів через кому' },
+            onChange: function () { setTimeout(function () { safe(scan); }, 50); }
         });
         S.addParam({ component: 'nocub', param: { name: 'nocub_v', type: 'title', default: '' }, field: { name: 'NoCub v' + VERSION + ' · лише ховає елементи, нічого не видаляє' } });
     }
