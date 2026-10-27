@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.52 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.64 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -147,7 +147,7 @@
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773], ['anime', 'Аніме', 9000, 'Аніме: нові серії']
+        ['sky', 'SkyShowtime', 1773], ['anime', 'Аніме', 9000, 'Аніме: нові серії'], ['dorama', 'Дорами', 9001, 'Дорами: нові серії']
     ];
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
@@ -159,7 +159,7 @@
     ];
     ROWS.unshift(
         { name: 'LmxHero', title: 'Афіша', index: -2, custom: function () { return heroCall(this); } },
-        { name: 'LmxStudios', title: 'Стрімінги', index: -1, custom: function () { return studioCall(this); } }
+        { name: 'LmxStudios', title: 'Каталоги', index: -1, custom: function () { return studioCall(this); } }
     );
     var n0 = 30;
     SERVICES.forEach(function (x) {
@@ -567,7 +567,7 @@
 
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
-        H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, стрімінги та будь-яку підбірку', openOrderModal);
+        H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
 
         H.select('lmx_hero_hype', { '0': 'Не показувати', '14': 'За 2 тижні', '30': 'За місяць', '60': 'За 2 місяці' }, '30', 'Гучні прем’єри в Афіші',
@@ -701,6 +701,8 @@
     function prov(id) { return 'with_watch_providers=' + id + '&watch_region=' + (id === 1773 ? 'PL' : 'UA') + '&with_watch_monetization_types=flatrate'; }
     var PIPE = '%7C';
     // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
+    var DR_X = 'with_original_language=LANG&without_genres=16%7C10764%7C10767%7C10763';
+    var DR_KO = DR_X.replace('LANG', 'ko');
     var SVC = {
         hbo: { mf: 'with_companies=174' + PIPE + '49', tf: 'with_networks=49' + PIPE + '3186', extra: [
             { t: 'Max Originals', k: 'tv', q: 'with_networks=3186&sort_by=popularity.desc' },
@@ -748,7 +750,7 @@
             { t: 'Фантастика й фентезі', k: 'tv', q: prov(1773) + '&with_genres=10765&sort_by=popularity.desc' }
         ] },
         // Аніме: не провайдер, а вся японська анімація; студії й теги підтягуються за назвою з TMDB (див. animeResolve)
-        anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16',
+        anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16', hero: 'with_original_language=ja&with_genres=16',
           lead: function () {
             var JA = 'with_original_language=ja&with_genres=16', Y = new Date().getFullYear(), t0 = dayStr(0);
             return [
@@ -780,6 +782,37 @@
                 if (id) out.push({ t: st[1], k: st[2], q: JA + '&with_companies=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
             });
             return out;
+          } },
+        // Дорами: корейські (основа) + японські, китайські й тайські серіали, без анімації, реаліті та ток-шоу
+        dorama: { mf: DR_KO, tf: DR_KO, hero: DR_KO,
+          lead: function () {
+            var Y = new Date().getFullYear(), t0 = dayStr(0);
+            return [
+                { t: 'Зараз виходять', k: 'tv', q: DR_KO + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3' },
+                { t: 'У топі', k: 'tv', q: DR_KO + '&sort_by=popularity.desc&vote_count.gte=150' },
+                { t: 'Новинки цього року', k: 'tv', q: DR_KO + '&first_air_date.gte=' + Y + '-01-01&first_air_date.lte=' + t0 + '&sort_by=popularity.desc' },
+                { t: 'Минулий рік', k: 'tv', q: DR_KO + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc' }
+            ];
+          },
+          extra: function () {
+            var out = [
+                { t: 'Варто переглянути', k: 'tv', q: DR_KO + '&vote_average.gte=7.8&vote_count.gte=200&sort_by=vote_count.desc' },
+                { t: 'З високим рейтингом', k: 'tv', q: DR_KO + '&vote_average.gte=8.3&vote_count.gte=150&sort_by=vote_average.desc' },
+                { t: 'Корейські фільми', k: 'movie', q: 'with_original_language=ko&sort_by=popularity.desc&vote_count.gte=100' },
+                { t: 'Драми', k: 'tv', q: DR_KO + '&with_genres=18&sort_by=popularity.desc' },
+                { t: 'Комедії', k: 'tv', q: DR_KO + '&with_genres=35&sort_by=popularity.desc' },
+                { t: 'Кримінал і трилери', k: 'tv', q: DR_KO + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc' },
+                { t: 'Фентезі та фантастика', k: 'tv', q: DR_KO + '&with_genres=10765&sort_by=popularity.desc' },
+                { t: 'Екшн і пригоди', k: 'tv', q: DR_KO + '&with_genres=10759&sort_by=popularity.desc' },
+                { t: 'Японські дорами', k: 'tv', q: DR_X.replace('LANG', 'ja') + '&sort_by=popularity.desc&vote_count.gte=20' },
+                { t: 'Китайські дорами', k: 'tv', q: DR_X.replace('LANG', 'zh') + '&sort_by=popularity.desc&vote_count.gte=20' },
+                { t: 'Тайські дорами', k: 'tv', q: DR_X.replace('LANG', 'th') + '&sort_by=popularity.desc&vote_count.gte=20' }
+            ], kw = animeCos('lmx_dorama_kw');
+            DORAMA_TAGS.forEach(function (tg) {
+                var id = kw[tg[0]];
+                if (id) out.push({ t: tg[1], k: 'tv', q: DR_KO + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
+            });
+            return out;
           } }
     };
     // Студії аніме: id компаній беремо з TMDB пошуком за назвою (один раз, далі зі сховища)
@@ -792,6 +825,10 @@
     var ANIME_TAGS = [
         ['isekai', 'Ісекай'], ['school', 'Школа'], ['reincarnation', 'Переродження'], ['magic', 'Магія'], ['vampire', 'Вампіри'],
         ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність'], ['shounen', 'Сьонен'], ['romance', 'Романтика']
+    ];
+    var DORAMA_TAGS = [
+        ['romance', 'Романтика'], ['school', 'Школа'], ['medical', 'Лікарі'], ['revenge', 'Помста'], ['time travel', 'Подорожі в часі'],
+        ['historical', 'Історичні'], ['office', 'Офіс'], ['melodrama', 'Мелодрама'], ['love triangle', 'Любовний трикутник']
     ];
     function animeCos(k) { var c = Lampa.Storage.get(k || 'lmx_anime_cos', {}); return c && typeof c === 'object' ? c : {}; }
     function animeResolve(list, store, endpoint) {
@@ -807,6 +844,7 @@
     function animeStudios() {
         animeResolve(ANIME_STUDIOS, 'lmx_anime_cos', 'search/company');
         animeResolve(ANIME_TAGS, 'lmx_anime_kw', 'search/keyword');
+        animeResolve(DORAMA_TAGS, 'lmx_dorama_kw', 'search/keyword');
     }
 
     function svcCats(key, forHome) {
@@ -825,8 +863,8 @@
     }
 
     // Афіша аніме: найпопулярніше з тих, що виходять просто зараз, плюс до 4 «скоро» (серіали й фільми): 12 слайдів
-    function animeHeroList(done) {
-        var JA = 'with_original_language=ja&with_genres=16', t0 = dayStr(0), left = 3, hot = [], soonTv = [], soonMv = [];
+    function animeHeroList(JA, done) {
+        var t0 = dayStr(0), left = 3, hot = [], soonTv = [], soonMv = [];
         function fin() {
             if (--left > 0) return;
             var seen = {}, out = [];
@@ -910,11 +948,11 @@
             comp.create = function () {
                 var self = this;
                 this.activity.loader(true);
-                var cats = svcCats(object.service_id), res = new Array(cats.length), isAn = object.service_id === 'anime', heroL = null, left = cats.length + (isAn ? 1 : 0);
+                var cats = svcCats(object.service_id), res = new Array(cats.length), isAn = !!(SVC[object.service_id] && SVC[object.service_id].hero), heroL = null, left = cats.length + (isAn ? 1 : 0);
                 function fin() {
                     if (--left > 0) return;
                     var data = [];
-                    if (heroL && heroL.length) data.push({ title: 'Аніме: у топі та скоро', results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
+                    if (heroL && heroL.length) data.push({ title: (object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
                     cats.forEach(function (c, i) {
                         if (res[i] && res[i].length) {
                             data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, total_pages: 5 });
@@ -924,7 +962,7 @@
                     if (!data.length) self.empty(); else self.build(data);
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
-                if (isAn) { try { animeHeroList(function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
+                if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
                 cats.forEach(function (c, i) {
                     tget(c.url, { page: 1 }, function (j) {
                         res[i] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
@@ -1151,7 +1189,7 @@
         };
     }
 
-    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a', 9000: '#e5304b' };
+    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
     function studioCall(row) {
         return function (call) {
             var logos = {};
@@ -3363,7 +3401,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.63';
+    var VERSION = '10.64';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
