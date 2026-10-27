@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.89 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.90 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -701,9 +701,9 @@
 
     // ===== Сторінки стрімінгів: як окремий «сайт» сервісу з десятком підбірок =====
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
-    // Регіон каталогу: SkyShowtime — Польща, Max і Paramount+ — США (в Україні їх каталог порожній), решта — Україна
+    // Регіон каталогу: SkyShowtime — Польща, Paramount+ — США (в Україні його немає), решта, зокрема Max, — Україна (якщо порожньо — США)
     function prov(id) {
-        var region = id === 1773 ? 'PL' : (id === 1899 || id === 531) ? 'US' : 'UA';
+        var region = id === 1773 ? 'PL' : id === 531 ? 'US' : 'UA';
         return 'with_watch_providers=' + id + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
     }
     var PIPE = '%7C';
@@ -1014,50 +1014,52 @@
                 var heroTitle = (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро';
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
-                var res = cache.res, GROUP = 6, next = 0, busy = false, built = false;
+                var res = cache.res, GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
-                // Ряди вантажимо порціями по 6: перша порція будує сторінку, далі підтягуємо, коли фокус наближається до кінця (як на головній)
+                // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
+                // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i], url: cats[i].url, source: 'tmdb', page: 1, more: true, total_pages: 20 };
+                    return { title: cats[i].title, results: res[i], url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18, total_pages: 20 };
                 }
+                // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
+                function ok(i) { return res[i] && res[i].length >= (i < 4 ? 5 : 8); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
-                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {};
+                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false;
+                    function end() {
+                        if (fin || --pend > 0) return;
+                        fin = true; clearTimeout(t);
+                        var out = [];
+                        got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
+                        res[i] = out;
+                        done();
+                    }
+                    var t = setTimeout(function () { if (fin) return; fin = true; res[i] = []; done(); }, 15000);
                     for (var pg = 1; pg <= pages; pg++) (function (pg) {
                         tgetFb(cats[i].url, { page: pg }, function (j) {
                             got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
                             end();
                         }, function () { got[pg - 1] = []; end(); });
                     })(pg);
-                    function end() {
-                        if (--pend > 0) return;
-                        var out = [];
-                        got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
-                        res[i] = out;
-                        done();
-                    }
                 }
-                // порція рядів; якщо в порції порожньо — одразу береться наступна
-                function loadGroup(cb, guard) {
-                    var from = next, to = Math.min(cats.length, from + GROUP), left = to - from, fired = false;
+                function loadGroup(emit, finished) {
+                    var from = next, to = Math.min(cats.length, from + GROUP), p = from;
                     next = to;
-                    if (left <= 0) return cb([]);
-                    function fire() {
-                        if (fired) return;
-                        fired = true;
-                        var rows = [];
-                        for (var i = from; i < to; i++) if (res[i] && res[i].length) rows.push(rowData(i));
-                        if (!rows.length && next < cats.length) return loadGroup(cb);
-                        cb(rows);
+                    if (from >= to) return finished();
+                    var over = false;
+                    function flush() {
+                        while (p < to && res[p]) { if (ok(p)) emit(rowData(p)); p++; }
+                        if (p >= to && !over) { over = true; finished(); }
                     }
-                    var t = setTimeout(fire, 6000);
-                    for (var i = from; i < to; i++) fetchRow(i, function () { if (--left === 0) { clearTimeout(t); fire(); } });
+                    for (var i = from; i < to; i++) fetchRow(i, flush);
+                    flush();
                 }
                 function tryBuild() {
-                    if (!heroDone || !firstRows) return;
+                    if (built || !heroDone || !firstReady) return;
                     var data = [];
                     if (heroL && heroL.length) data.push({ title: heroTitle, results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
                     data = data.concat(firstRows);
+                    if (!data.length && next < cats.length) { firstReady = false; return startFirst(); }
                     self.activity.loader(false);
                     if (!data.length) return self.empty();
                     built = true;
@@ -1065,24 +1067,32 @@
                     if (heroL && heroL.length) heroAttach(heroTitle, heroL);
                     startLazy();
                 }
+                function put(r) {
+                    if (built) { try { self.append(r); } catch (e) { next = cats.length; } } else firstRows.push(r);
+                }
+                function startFirst() {
+                    firstRows = [];
+                    var timer = setTimeout(function () { firstReady = true; tryBuild(); }, 8000);
+                    // перша порція будує сторінку, щойно готові 3 верхні ряди (або всі, або минуло 8 с); решта її рядів долучається по мірі готовності
+                    var got = 0;
+                    loadGroup(function (r) { put(r); if (!built && ++got >= 3) { clearTimeout(timer); firstReady = true; tryBuild(); } },
+                        function () { clearTimeout(timer); firstReady = true; tryBuild(); });
+                }
                 function startLazy() {
-                    var el = self.render(), busy2 = false;
+                    var el = self.render(), busy = false;
                     var iv = setInterval(function () {
                         var root = el && el[0];
                         if (!root || !document.body.contains(root)) return clearInterval(iv);
-                        if (busy2 || next >= cats.length || typeof self.append !== 'function') { if (next >= cats.length) clearInterval(iv); return; }
+                        if (next >= cats.length) return clearInterval(iv);
+                        if (busy || typeof self.append !== 'function') return;
                         var lines = el.find('.items-line'), fi = lines.index(lines.has('.focus').first());
                         if (fi < 0 || fi < lines.length - 3) return;
-                        busy2 = true;
-                        loadGroup(function (rows) {
-                            try { rows.forEach(function (r) { self.append(r); }); } catch (e) { next = cats.length; }
-                            busy2 = false;
-                        });
+                        busy = true;
+                        loadGroup(put, function () { busy = false; });
                     }, 400);
                 }
-                var firstRows = null;
                 if (typeof self.append !== 'function') GROUP = cats.length;
-                loadGroup(function (rows) { firstRows = rows; tryBuild(); });
+                startFirst();
                 if (isAn) { try { animeHeroList(SVC[id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); heroDone = true; tryBuild(); }); } catch (e) { heroDone = true; tryBuild(); } }
                 return this.render();
             };
@@ -2284,6 +2294,31 @@
         pumpSoon();
     }, { rootMargin: '300px' }) : null;
 
+
+    // Відступ справа в кінці рядів = відступу зліва (у всіх темах, у т. ч. коли в кінці ряду плитка «Ще»).
+    // Лівий відступ міряємо в стартовому положенні прокрутки, правий виставляємо inline-стилем, бо теми мають власні !important
+    var padT = 0;
+    function padFix() {
+        var act = document.querySelector('.activity--active') || document.body;
+        if (!act) return;
+        var ar = act.getBoundingClientRect();
+        var lines = act.querySelectorAll('.items-line:not(.lmx-hero-line)');
+        for (var i = 0; i < lines.length; i++) {
+            try {
+                var body = lines[i].querySelector('.scroll--horizontal .scroll__body');
+                if (!body || !body.firstElementChild) continue;
+                var cs = getComputedStyle(body), first = body.firstElementChild, last = body.lastElementChild;
+                var tx = 0;
+                if (cs.transform && cs.transform !== 'none') tx = new DOMMatrix(cs.transform).m41;
+                var left = first.getBoundingClientRect().left - tx - ar.left;
+                var sc = body.parentElement.getBoundingClientRect();
+                var lm = parseFloat(getComputedStyle(last).marginRight) || 0;
+                var pr = Math.round(left - lm - (ar.right - sc.right));
+                if (!(left > 0) || pr < 0 || pr > 160) continue;
+                if (body.__lmxPad !== pr) { body.__lmxPad = pr; body.style.setProperty('padding-right', pr + 'px', 'important'); }
+            } catch (e) {}
+        }
+    }
     function scan() {
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
@@ -2309,6 +2344,7 @@
             }
         });
         if (!io) pumpSoon();
+        if (!padT) padT = setTimeout(function () { padT = 0; padFix(); }, 500);
     }
 
     var timer = null;
@@ -3626,7 +3662,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.89';
+    var VERSION = '10.90';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
