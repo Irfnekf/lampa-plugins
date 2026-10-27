@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.93 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.94 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -876,6 +876,42 @@
         });
     }
 
+    // Афіша для платформ (Netflix, HBO, …): що зараз у тренді на платформі — фільми й серіали впереміш; лише з українським описом
+    function svcHeroList(key, done) {
+        var c = SVC[key], left = 6, recMv = [], recTv = [], topMv = [], topTv = [], t0 = dayStr(0);
+        function uaOk(m) {
+            var ov = String(m.overview || '');
+            return m && m.backdrop_path && m.poster_path && ov.length >= 30 && /[іїєґІЇЄҐ]/.test(ov);
+        }
+        function fin() {
+            if (--left > 0) return;
+            var seen = {}, out = [];
+            function take(list, kind, max) {
+                var n = 0;
+                list.filter(uaOk).sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).forEach(function (m) {
+                    if (n >= max || out.length >= 12 || seen[kind + m.id]) return;
+                    seen[kind + m.id] = 1; m.media_type = kind; m.__trend = 1; out.push(m); n++;
+                });
+            }
+            // спершу свіже (4 фільми й 4 серіали), потім найпопулярніше за весь час, поки не наберемо 12
+            take(recMv, 'movie', 4); take(recTv, 'tv', 4);
+            take(topTv, 'tv', 4); take(topMv, 'movie', 4);
+            take(topTv, 'tv', 12); take(topMv, 'movie', 12);
+            // перемішуємо фільми й серіали, щоб поспіль не йшли однакові
+            var mv = out.filter(function (m) { return m.media_type === 'movie'; }), tv = out.filter(function (m) { return m.media_type === 'tv'; }), mix = [];
+            while (mv.length || tv.length) { if (tv.length) mix.push(tv.shift()); if (mv.length) mix.push(mv.shift()); }
+            done(mix.length >= 4 ? mix : []);
+        }
+        function get(url, into, pg) {
+            tgetFb(url, { page: pg || 1 }, function (j) { (j && j.results || []).forEach(function (m) { into.push(m); }); fin(); }, function () { fin(); });
+        }
+        var rm = 'discover/movie?' + c.mf + '&primary_release_date.gte=' + dayStr(-150) + '&primary_release_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=20';
+        var rt = 'discover/tv?' + c.tf + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=20';
+        var tm = 'discover/movie?' + c.mf + '&sort_by=popularity.desc&vote_count.gte=200';
+        var tt = 'discover/tv?' + c.tf + '&sort_by=popularity.desc&vote_count.gte=100';
+        get(rm, recMv, 1); get(rt, recTv, 1); get(tm, topMv, 1); get(tm, topMv, 2); get(tt, topTv, 1); get(tt, topTv, 2);
+    }
+
     // Афіша аніме: найпопулярніше з тих, що виходять просто зараз, плюс до 4 «скоро» (серіали й фільми): 12 слайдів
     function animeHeroList(JA, done) {
         var t0 = dayStr(0), left = 7, recent = [], top = [], soonTv = [], soonMv = [];
@@ -1024,8 +1060,9 @@
             comp.create = function () {
                 var self = this, id = object.service_id;
                 this.activity.loader(true);
-                var cats = svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = !isAn;
-                var heroTitle = (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро';
+                var cats = svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = false;
+                var svcName = (SERVICES.filter(function (x) { return x[0] === id; })[0] || [])[1] || '';
+                var heroTitle = isAn ? (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро' : svcName + ': у тренді';
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
                 var res = cache.res, GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false;
@@ -1112,7 +1149,10 @@
                 }
                 if (typeof self.append !== 'function') GROUP = cats.length;
                 startFirst();
-                if (isAn) { try { animeHeroList(SVC[id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); heroDone = true; tryBuild(); }); } catch (e) { heroDone = true; tryBuild(); } }
+                // афіша: для аніме й дорам — своя, для платформ — тренди платформи; якщо довго вантажиться (4 с), сторінка будується без неї
+                function gotHero(l) { if (heroDone) return; heroDone = true; heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); tryBuild(); }
+                var heroT = setTimeout(function () { if (!heroDone) { heroDone = true; tryBuild(); } }, isAn ? 9000 : 4000);
+                try { (isAn ? animeHeroList(SVC[id].hero, gotHero) : svcHeroList(id, gotHero)); } catch (e) { clearTimeout(heroT); heroDone = true; tryBuild(); }
                 return this.render();
             };
             comp.onMore = function (data) {
@@ -3686,7 +3726,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.93';
+    var VERSION = '10.94';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
