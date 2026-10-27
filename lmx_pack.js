@@ -147,7 +147,7 @@
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773]
+        ['sky', 'SkyShowtime', 1773], ['crunchy', 'Crunchyroll', 283]
     ];
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
@@ -698,7 +698,7 @@
 
     // ===== Сторінки стрімінгів: як окремий «сайт» сервісу з десятком підбірок =====
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
-    function prov(id) { return 'with_watch_providers=' + id + '&watch_region=' + (id === 1773 ? 'PL' : 'UA') + '&with_watch_monetization_types=flatrate'; }
+    function prov(id) { return 'with_watch_providers=' + id + '&watch_region=' + (id === 1773 ? 'PL' : id === 283 ? 'US' : 'UA') + '&with_watch_monetization_types=flatrate'; }
     var PIPE = '%7C';
     // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
     var SVC = {
@@ -746,6 +746,13 @@
             { t: 'Драми', k: 'tv', q: prov(1773) + '&with_genres=18&sort_by=popularity.desc' },
             { t: 'Комедії', k: 'tv', q: prov(1773) + '&with_genres=35&sort_by=popularity.desc' },
             { t: 'Фантастика й фентезі', k: 'tv', q: prov(1773) + '&with_genres=10765&sort_by=popularity.desc' }
+        ] },
+        // Crunchyroll: каталог беремо за регіоном США (в Україні в TMDB він порожній), лише японська анімація
+        crunchy: { mf: prov(283) + '&with_original_language=ja', tf: prov(283) + '&with_original_language=ja', extra: [
+            { t: 'Екшн і пригоди', k: 'tv', q: prov(283) + '&with_original_language=ja&with_genres=10759&sort_by=popularity.desc' },
+            { t: 'Фентезі та ісекай', k: 'tv', q: prov(283) + '&with_original_language=ja&with_genres=10765&sort_by=popularity.desc' },
+            { t: 'Комедії та романтика', k: 'tv', q: prov(283) + '&with_original_language=ja&with_genres=35' + PIPE + '10749&sort_by=popularity.desc' },
+            { t: 'Драми та психологічні', k: 'tv', q: prov(283) + '&with_original_language=ja&with_genres=18' + PIPE + '9648&sort_by=popularity.desc' }
         ] }
     };
     function svcCats(key) {
@@ -1056,7 +1063,7 @@
         };
     }
 
-    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a' };
+    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a', 283: '#f47521' };
     function studioCall(row) {
         return function (call) {
             var logos = {};
@@ -3265,7 +3272,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.55';
+    var VERSION = '10.56';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
