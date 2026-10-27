@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.107 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.108 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -2170,7 +2170,9 @@
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.22) !important;color:#fff !important}' +
                         A + '.selectbox,' + A + '.settings,' + A + '.menu{background:rgba(30,30,35,.98)}' +
-            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content,' + A + '.menu,' + A + '.wrap__left{background:#26262b !important}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:#26262b !important}' +
+            // бокове меню — той самий градієнт, що й фон застосунку (fixed: зверху й знизу кольори збігаються зі сторінкою), лише тонка межа справа
+            A + '.menu,' + A + '.wrap__left{background:linear-gradient(180deg,#3b3b44 0%,#2c2c33 38%,#1f1f24 100%) fixed !important;box-shadow:1px 0 0 rgba(255,255,255,.06)}' +
             A + '.modal__content,' + A + '.selectbox__content{background:#1c1c1e;border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + '}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
@@ -3774,7 +3776,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.107';
+    var VERSION = '10.108';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
