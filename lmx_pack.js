@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.104 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.105 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1823,8 +1823,8 @@
             M + '.scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important}' +
             M + '.lmx-dots' + X + '{display:none !important}';
     }
-    function detailCss() {
-        var D = 'body.lmx-full ';
+    function detailCss(scope) {
+        var D = scope || 'body.lmx-full ';
         return '' +
             // Серії: закруглені кадри, номер-бейдж, чисті картки замість пунктиру
             D + '.full-episode{border-radius:1em}' +
@@ -1847,6 +1847,17 @@
             D + '.full-review-add{width:auto !important;height:auto !important;min-height:0 !important;padding:.7em 1.4em !important;border:0 !important;border-radius:99em;background:rgba(255,255,255,.1);display:inline-flex;align-items:center;gap:.5em}' +
             D + '.full-review-add.focus{background:#fff;color:#111}' +
             D + '.lmx-nocomm{display:none !important}';
+    }
+    // Телефон: сторінка фільму лишається рідною для Lampa (розмітку не чіпаємо), а блоки під описом оформлюємо так само, як на великому екрані:
+    // актори колами, серії картками, порожні коментарі — тонка кнопка; заголовки рядів і назва трохи виразніші
+    function phoneCss() {
+        var P = 'body.lmx-ph ';
+        return '@media (max-width:760px){' +
+            P + '.full-start-new__title{font-size:2.1em;font-weight:800;letter-spacing:-.01em;line-height:1.08}' +
+            P + '.items-line__title{font-size:1.2em;font-weight:700;letter-spacing:.01em}' +
+            P + '.full-person:not(.full-person--small){width:7.6em !important}' +
+            P + '.full-person:not(.full-person--small) .full-person__photo{width:5.2em !important;height:5.2em !important}' +
+        '}';
     }
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
     function fullCss() {
@@ -2202,6 +2213,7 @@
     function applyFullClass() {
         var on = getBool('lmx_full', true) && !isMobile();
         if (document.body && document.body.classList) {
+            document.body.classList.toggle('lmx-ph', getBool('lmx_full', true) && isMobile());
             document.body.classList.toggle('lmx-full', on);
             document.body.classList.toggle('lmx-logo-on', on && getBool('lmx_logo', true));
         }
@@ -2216,7 +2228,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + miniCss();
+        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -3749,7 +3761,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.104';
+    var VERSION = '10.105';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -3896,6 +3908,11 @@
     function fixSettingsFocus() {
         var root = document.querySelector('.settings');
         if (!root) return;
+        // не частіше разу на секунду й лише коли є що виправляти: на телефоні це запобігає зациклюванню відкриття налаштувань
+        var now = Date.now();
+        if (now - (fixSettingsFocus.t || 0) < 1000) return;
+        if (!root.querySelector('.nocub-hide, [data-nocub-sel], .selector')) return;
+        fixSettingsFocus.t = now;
         var changed = false, els = root.querySelectorAll('.selector, [data-nocub-sel="auto"]');
         for (var i = 0; i < els.length; i++) {
             var el = els[i], hidden = getComputedStyle(el).display === 'none';
@@ -3919,7 +3936,6 @@
             var C = window.Lampa && Lampa.Controller, name = '';
             try { name = C.enabled().name || ''; } catch (e) {}
             if (C && /settings/i.test(name)) {
-                try { C.toggle(name); } catch (e) {}
                 if (first && C.collectionFocus) { try { C.collectionFocus(first, root); } catch (e) {} }
             }
         }
