@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.111 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.112 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1797,6 +1797,17 @@
             '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
             '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
+    // Афіша на телефоні (усі теми): слайд на всю ширину екрана, без відступів зліва/справа і без візирання сусіднього слайда
+    function heroPhoneCss() {
+        var L = 'html body .items-line.lmx-hero-line ', X = ':not(#lmx-x)';
+        var C = L + '.card--lmxhero' + X + ',' + L + '.card--lmxhero.focus' + X + ',' + L + '.card--lmxhero.hover' + X;
+        var V = L + '.card--lmxhero' + X + ' .card__view,' + L + '.card--lmxhero.focus' + X + ' .card__view,' + L + '.card--lmxhero.hover' + X + ' .card__view';
+        return '@media (max-width:760px){' +
+            L + '.scroll__content' + X + '{padding-left:0 !important;padding-right:0 !important}' +
+            C + '{width:100vw !important;margin-left:0 !important;margin-right:0 !important}' +
+            V + '{height:56vw !important;border-radius:0 !important}' +
+        '}';
+    }
     // Блоки під описанням на сторінці фільму: серії, актори, коментарі (однаково для всіх тем, кольори беруться з теми)
     // Компактна афіша для сторінок «Аніме» і «Дорами»: невисока стрічка із закругленнями, наступний слайд визирає справа
     function miniCss() {
@@ -2247,7 +2258,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss();
+        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -3799,7 +3810,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.111';
+    var VERSION = '10.112';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
