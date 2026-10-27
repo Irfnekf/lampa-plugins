@@ -864,28 +864,34 @@
 
     // Афіша аніме: найпопулярніше з тих, що виходять просто зараз, плюс до 4 «скоро» (серіали й фільми): 12 слайдів
     function animeHeroList(JA, done) {
-        var t0 = dayStr(0), left = 3, hot = [], soonTv = [], soonMv = [];
+        var t0 = dayStr(0), left = 4, hot = [], soonTv = [], soonMv = [];
+        // у афішу потрапляють лише картки з українським описом (є і/ї/є/ґ) і назвою без ієрогліфів
+        function uaOk(m) {
+            var ov = String(m.overview || ''), nm = String(m.title || m.name || '');
+            return m && m.backdrop_path && m.poster_path && ov.length >= 30 && /[іїєґІЇЄҐ]/.test(ov) && !/[\u3040-\u30ff\u3400-\u9fff]/.test(nm);
+        }
         function fin() {
             if (--left > 0) return;
             var seen = {}, out = [];
-            function ok(m) { return m && m.backdrop_path && m.poster_path && !seen[m.id]; }
             // до 4 «скоро», решту до 12 слайдів — найпопулярніше з того, що виходить зараз
-            var soon = soonTv.concat(soonMv).filter(function (m) { return m && m.backdrop_path && m.poster_path; })
+            var soon = soonTv.concat(soonMv).filter(uaOk)
                 .sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
             soon.forEach(function (m) { seen[m.id] = 1; });
-            hot.filter(ok).slice(0, 12 - soon.length).forEach(function (m) { seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m); });
+            hot.filter(function (m) { return uaOk(m) && !seen[m.id]; }).slice(0, 12 - soon.length).forEach(function (m) { seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m); });
             soon.forEach(function (m) { m.__tag = 'soon'; out.push(m); });
             done(out);
         }
-        function get(url, kind, into) {
-            tget(url, { page: 1 }, function (j) {
+        function get(url, kind, into, pg) {
+            tget(url, { page: pg || 1 }, function (j) {
                 (j && j.results || []).forEach(function (m) { m.media_type = kind; into.push(m); });
                 fin();
             }, function () { fin(); });
         }
-        get('discover/tv?' + JA + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3', 'tv', hot);
-        get('discover/tv?' + JA + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(75) + '&sort_by=popularity.desc', 'tv', soonTv);
-        get('discover/movie?' + JA + '&primary_release_date.gte=' + dayStr(1) + '&primary_release_date.lte=' + dayStr(120) + '&sort_by=popularity.desc', 'movie', soonMv);
+        var hotUrl = 'discover/tv?' + JA + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3';
+        get(hotUrl, 'tv', hot, 1);
+        get(hotUrl, 'tv', hot, 2);
+        get('discover/tv?' + JA + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(75) + '&sort_by=popularity.desc', 'tv', soonTv, 1);
+        get('discover/movie?' + JA + '&primary_release_date.gte=' + dayStr(1) + '&primary_release_date.lte=' + dayStr(120) + '&sort_by=popularity.desc', 'movie', soonMv, 1);
     }
 
     // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
@@ -3469,7 +3475,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.68';
+    var VERSION = '10.69';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
