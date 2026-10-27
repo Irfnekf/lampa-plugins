@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.101 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.102 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1982,8 +1982,6 @@
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
             '@media (min-width:761px){' + T + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
-            // картинки всіх слайдів тримаємо в окремих GPU-шарах, щоб після повернення на перший слайд вона не перемальовувалась із миготінням
-            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .card__view{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}' +
             T + '.lmx-hero-line{position:relative}' +
             T + '.lmx-hero-line .items-line__head,' + T + '.lmx-hero-line .items-line__title{display:none !important}' +
             // точки: активна — кільце, що «заповнюється» за час показу слайда
@@ -2421,6 +2419,17 @@
     }
 
     var timer = null;
+    // Ряд афіші позначаємо одразу, у мікрозадачі перед малюванням (а не після затримки scan), щоб заголовок і розміри не стрибали на старті
+    function markHero() {
+        var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
+        for (var i = 0; i < cs.length; i++) {
+            var ln = cs[i].closest('.items-line');
+            if (!ln) continue;
+            cs[i].classList.add('lmx-hl');
+            ln.classList.add('lmx-hero-line');
+            if (!board() && !ln.classList.contains('lmx-mini--svc')) ln.classList.add('lmx-mini', 'lmx-mini--def');
+        }
+    }
     function schedule() {
         clearTimeout(timer);
         timer = setTimeout(function () { safe(scan); }, 120);
@@ -2654,20 +2663,6 @@
         if (next && next !== card) focusCard(next, line);
     }
     // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
-    // Тема HBO, головна: слайд центруємо точно (Lampa вирівнює картку по краю ряду, тому сусіди з боків були різної ширини)
-    function centerHero(c) {
-        if (!c || !document.body.classList.contains('lmx-hbo') || isMobile()) return;
-        var line = c.closest('.items-line'), body = c.closest('.scroll__body');
-        if (!line || !body || line.classList.contains('lmx-mini')) return;
-        var cs = getComputedStyle(body), m = (cs.transform && cs.transform !== 'none') ? new DOMMatrix(cs.transform).m41 : 0;
-        var ar = (c.closest('.activity') || document.body).getBoundingClientRect();
-        var base = body.getBoundingClientRect().left - m;
-        var want = Math.round(ar.left + (ar.width - c.offsetWidth) / 2 - (base + c.offsetLeft));
-        var str = 'translate3d(' + want + 'px, 0px, 0px)';
-        if (body.__lmxW === want && body.style.transform === body.__lmxS) return;
-        body.style.transform = str;
-        body.__lmxW = want; body.__lmxS = body.style.transform;
-    }
     function setCur(el) {
         var line = el.closest('.items-line');
         if (!line) return;
@@ -2690,7 +2685,7 @@
         if (window.__lmxDots) return;
         window.__lmxDots = true;
         try {
-            if (window.$) window.$(document.body).on('hover:focus', '.card--lmxhero', function () { var self = this; safe(function () { setCur(self); }); safe(function () { centerHero(self); }); requestAnimationFrame(function () { safe(function () { centerHero(self); }); }); setTimeout(function () { safe(function () { centerHero(self); }); }, 40); });
+            if (window.$) window.$(document.body).on('hover:focus', '.card--lmxhero', function () { var self = this; safe(function () { setCur(self); }); });
         } catch (e) {}
         // Ручне перемикання йде тим самим шляхом, що й автоперемикання (focusCard) — однакова анімація без ривків
         var lastNav = 0;
@@ -2721,7 +2716,8 @@
             });
         }, true);
         // Прогрів: один раз невидимо «проїжджаємо» всі слайди, щоб браузер заздалегідь намалював їх (перший реальний перехід без підвисання)
-        var warmDone = false, warmBusy = false, lastKey = 0;
+        // «прогрів» (невидимий проїзд по слайдах) вимкнено: саме він ховав карусель на старті й давав стрибки; картинки прогріває heroPreload
+        var warmDone = true, warmBusy = false, lastKey = 0;
         document.addEventListener('keydown', function () { lastKey = Date.now(); }, true);
         function warm(line) {
             var body = line.querySelector('.scroll__body'), cards = line.querySelectorAll('.card--lmxhero');
@@ -2768,7 +2764,6 @@
                 syncDots(c);
                 if (!warmDone && !warmBusy && !heroQ.length && !heroBusy && Date.now() - lastKey > 1500 && (parseInt(c.getAttribute('data-lmxi'), 10) || 0) === 0 && c.closest('.items-line')) { warm(c.closest('.items-line')); return; }
                 if (warmBusy) { ap.t = Date.now(); return; }
-                centerHero(c);
                 if (ap.touch !== c) { ap.touch = c; heroTouch(c, c.closest('.items-line')); }
                 autoplay(c, c.closest('.items-line'));
             });
@@ -3750,7 +3745,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.101';
+    var VERSION = '10.102';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -3766,6 +3761,7 @@
         safe(function () {
             applyStyle();
             new MutationObserver(function (muts) {
+                safe(markHero);
                 // реагуємо лише коли додались картки, а не на кожну зміну сторінки
                 for (var i = 0; i < muts.length; i++) {
                     var add = muts[i].addedNodes;
