@@ -1168,11 +1168,21 @@
             }
             window.$(line).addClass('lmx-mini').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
         }
+        // одразу при появі карток (до першого малювання кадру), щоб ряд не встигав показатись звичайною підбіркою
+        safe(run);
+        var mo = new MutationObserver(function () { safe(run); });
+        mo.observe(document.body, { childList: true, subtree: true });
+        setTimeout(function () { mo.disconnect(); }, 8000);
         var iv = setInterval(function () {
             tries++;
             safe(run);
             if (tries > 50) clearInterval(iv);
         }, 200);
+    }
+
+    // аніме (японська мова + жанр «анімація») на головній афіші не показуємо: для нього є своя сторінка
+    function isAnimeItem(m) {
+        return !!m && m.original_language === 'ja' && (m.genre_ids || []).indexOf(16) >= 0;
     }
 
     function heroCall(row) {
@@ -1240,7 +1250,7 @@
             }
             srcs.forEach(function (x) {
                 tget(x[0], { page: 1 }, function (j) {
-                    (j && j.results || []).forEach(function (m) { if (x[1] && !m.media_type) m.media_type = x[1]; if (x[3]) m.__hype = x[3]; all.push(m); });
+                    (j && j.results || []).forEach(function (m) { if (isAnimeItem(m)) return; if (x[1] && !m.media_type) m.media_type = x[1]; if (x[3]) m.__hype = x[3]; all.push(m); });
                     fin();
                 }, function () { fin(); });
             });
@@ -1612,7 +1622,7 @@
             M + '.lmx-hero__acts' + X + '{display:none !important}' +
             M + '.items-line__head' + X + ',' + M + '.items-line__title' + X + '{display:block !important}' +
             M + '.items-line__head' + X + '{margin-bottom:.4em}' +
-            M + '.lmx-dots' + X + '{left:calc(31vw + 2.2em) !important}';
+            M + '.lmx-dots' + X + '{display:none !important}';
     }
     function detailCss() {
         var D = 'body.lmx-full ';
@@ -2339,7 +2349,7 @@
         if (!card) return;
         var line = card.closest('.items-line');
         var n = parseInt(card.getAttribute('data-lmxn'), 10) || 0, idx = (parseInt(card.getAttribute('data-lmxi'), 10) || 0) % (n || 1);
-        if (!line || n < 2) return;
+        if (!line || n < 2 || line.classList.contains('lmx-mini')) return;
         var box = line.querySelector('.lmx-dots');
         if (!box) {
             box = document.createElement('div');
@@ -3475,7 +3485,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.69';
+    var VERSION = '10.71';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
