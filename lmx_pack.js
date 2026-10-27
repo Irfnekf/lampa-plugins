@@ -1655,6 +1655,8 @@
             M + '.lmx-hero__acts' + X + '{display:none !important}' +
             M + '.items-line__head' + X + ',' + M + '.items-line__title' + X + '{display:block !important}' +
             M + '.items-line__head' + X + '{margin-bottom:.4em}' +
+            // та сама м'яка анімація перемикання слайдів, що й у темах HBO та Apple
+            M + '.scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important}' +
             M + '.lmx-dots' + X + '{display:none !important}';
     }
     function detailCss() {
@@ -2478,9 +2480,10 @@
                 var k = ev.keyCode;
                 if (k !== 37 && k !== 39) return;
                 if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
-                if (!document.body.classList.contains('lmx-hbo') && !document.body.classList.contains('lmx-apple')) return;
                 var c = document.querySelector('.card--lmxhero.focus');
                 if (!c) return;
+                var boardTheme = document.body.classList.contains('lmx-hbo') || document.body.classList.contains('lmx-apple');
+                if (!boardTheme && !(c.closest('.items-line') && c.closest('.items-line').classList.contains('lmx-mini'))) return;
                 var cn = '';
                 try { cn = Lampa.Controller.enabled().name; } catch (e) {}
                 if (cn && /menu|settings|select|modal|head|full|player/i.test(cn)) return;
@@ -3526,7 +3529,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.73';
+    var VERSION = '10.74';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
