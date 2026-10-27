@@ -1,5 +1,5 @@
 /*
- * NoCub v1.7 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.8 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.7';
+    var VERSION = '1.8';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -70,6 +70,8 @@
 
     // Прихований елемент не має лишатися «вибираним» для пульта: інакше фокус потрапляє на невидимий пункт і підсвітка зникає
     function mark(el, key) {
+        // Кнопки в ряду на сторінці фільму лише ховаємо стилем (body-клас): якщо чіпати їхні класи, LMX перераховує розміри кнопок і перша блимає
+        if (el.closest && el.closest('.full-start-new__buttons, .full-start__buttons')) return;
         el.classList.add('nocub-hide');
         el.setAttribute('data-nocub', key);
         if (el.classList.contains('selector')) { el.classList.remove('selector'); el.setAttribute('data-nocub-sel', '1'); }
