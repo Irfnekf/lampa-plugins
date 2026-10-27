@@ -1,16 +1,19 @@
 /*
- * LMX Pack v10.64 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
- *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
+ * LMX Pack v10.81 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
- *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
- *  3) Три теми: Стандартна (LMX), HBO Max, Apple TV
- *  4) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком
+ *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
+ *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
+ *  4) Теми: Стандартна (LMX), HBO Max, Apple TV; афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
+ *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
+ *  6) NoCub (в кінці файлу): ховає елементи CUB, перемикачі в Налаштування → NoCub
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
  *
  * Структура файлу (зверху вниз):
- *  налаштування → наші ряди → порядок рядів і його екран → сторінка налаштувань → сторінки стрімінгів
- *  → банер і плитки стрімінгів → допоміжне для карток → мітки → CSS (база, тема HBO, тема Apple TV)
- *  → пошук даних картки → малювання на постері → сторінка фільму → запуск
+ *  налаштування → наші ряди → порядок рядів і його екран → сторінка налаштувань → ряди на головній
+ *  → сторінки каталогів (аніме й дорами: афіша зверху) → афіша й плитки каталогів → допоміжне для карток → мітки
+ *  → CSS (база, компактна афіша, тема HBO, тема Apple TV) → пошук даних картки → малювання на постері
+ *  → сторінка фільму → кнопки → запуск → NoCub
  */
 (function () {
     'use strict';
@@ -147,7 +150,7 @@
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773], ['anime', 'Аніме', 9000, 'Аніме: нові серії'], ['dorama', 'Дорами', 9001, 'Дорами: нові серії']
+        ['sky', 'SkyShowtime', 1773], ['anime', 'Аніме', 9000, 'Аніме: популярне зараз'], ['dorama', 'Дорами', 9001, 'Дорами: популярне зараз']
     ];
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
@@ -164,7 +167,7 @@
     var n0 = 30;
     SERVICES.forEach(function (x) {
         ROWS.push({ name: 'LmxSvc_' + x[0], title: x[3] || ('Сьогодні на ' + x[1]), index: n0++,
-            custom: function () { return serviceCall(this, x[0]); } });
+            custom: function () { return (SVC[x[0]] && SVC[x[0]].hero ? popularCall : serviceCall)(this, x[0]); } });
     });
     MOODS.forEach(function (x) {
         ROWS.push({ name: 'LmxMood_' + x[0], title: 'Під настрій: ' + x[1], index: n0++,
@@ -767,11 +770,11 @@
                 { t: 'З високим рейтингом', k: 'tv', q: JA + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc' },
                 { t: 'Аніме-фільми', k: 'movie', q: JA + '&sort_by=popularity.desc&vote_count.gte=100' },
                 { t: 'Найкращі аніме-фільми', k: 'movie', q: JA + '&vote_average.gte=7.6&vote_count.gte=500&sort_by=vote_average.desc' },
-                { t: 'Бойовик та пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759&sort_by=popularity.desc' },
-                { t: 'НФ та фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765&sort_by=popularity.desc' },
+                { t: 'Бойовик і пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759&sort_by=popularity.desc' },
+                { t: 'Фантастика й фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765&sort_by=popularity.desc' },
                 { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35&sort_by=popularity.desc' },
                 { t: 'Драми', k: 'tv', q: 'with_original_language=ja&with_genres=16,18&sort_by=popularity.desc' },
-                { t: 'Детективи й психологічні', k: 'tv', q: 'with_original_language=ja&with_genres=16,9648&sort_by=popularity.desc' }
+                { t: 'Детективи й психологія', k: 'tv', q: 'with_original_language=ja&with_genres=16,9648&sort_by=popularity.desc' }
             ], kw = animeCos('lmx_anime_kw'), co = animeCos('lmx_anime_cos');
             ANIME_TAGS.forEach(function (tg) {
                 var id = kw[tg[0]];
@@ -802,8 +805,8 @@
                 { t: 'Драми', k: 'tv', q: DR_KO + '&with_genres=18&sort_by=popularity.desc' },
                 { t: 'Комедії', k: 'tv', q: DR_KO + '&with_genres=35&sort_by=popularity.desc' },
                 { t: 'Кримінал і трилери', k: 'tv', q: DR_KO + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc' },
-                { t: 'Фентезі та фантастика', k: 'tv', q: DR_KO + '&with_genres=10765&sort_by=popularity.desc' },
-                { t: 'Екшн і пригоди', k: 'tv', q: DR_KO + '&with_genres=10759&sort_by=popularity.desc' },
+                { t: 'Фантастика й фентезі', k: 'tv', q: DR_KO + '&with_genres=10765&sort_by=popularity.desc' },
+                { t: 'Бойовик і пригоди', k: 'tv', q: DR_KO + '&with_genres=10759&sort_by=popularity.desc' },
                 { t: 'Японські дорами', k: 'tv', q: DR_X.replace('LANG', 'ja') + '&sort_by=popularity.desc&vote_count.gte=3' },
                 { t: 'Китайські дорами', k: 'tv', q: DR_X.replace('LANG', 'zh') + '&sort_by=popularity.desc&vote_count.gte=3' },
                 { t: 'Тайські дорами', k: 'tv', q: DR_X.replace('LANG', 'th') + '&sort_by=popularity.desc&vote_count.gte=3' }
@@ -841,7 +844,7 @@
             }, function () {});
         });
     }
-    function animeStudios() {
+    function resolveCatalogRefs() {
         animeResolve(ANIME_STUDIOS, 'lmx_anime_cos', 'search/company');
         animeResolve(ANIME_TAGS, 'lmx_anime_kw', 'search/keyword');
         animeResolve(DORAMA_TAGS, 'lmx_dorama_kw', 'search/keyword');
@@ -904,6 +907,30 @@
         get(topUrl, 'tv', top, 3);
         get('discover/tv?' + JA + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(75) + '&sort_by=popularity.desc', 'tv', soonTv, 1);
         get('discover/movie?' + JA + '&primary_release_date.gte=' + dayStr(1) + '&primary_release_date.lte=' + dayStr(120) + '&sort_by=popularity.desc', 'movie', soonMv, 1);
+    }
+
+    // Ряд аніме й дорам на головній: «Популярне зараз» — серіали й фільми за індексом популярності TMDB (він рахується за свіжою активністю)
+    function popularCall(row, key) {
+        return function (call) {
+            var base = SVC[key].hero, left = 3, parts = [];
+            var tvUrl = 'discover/tv?' + base + '&sort_by=popularity.desc&vote_count.gte=50';
+            var mvUrl = 'discover/movie?' + base + '&sort_by=popularity.desc&vote_count.gte=100';
+            function fin() {
+                if (--left > 0) return;
+                var seen = {}, list = [];
+                parts.forEach(function (arr) { (arr || []).forEach(function (c) { var k = c.media_type + c.id; if (!seen[k]) { seen[k] = 1; list.push(c); } }); });
+                list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+                list = list.slice(0, 20);
+                if (!list.length) return call();
+                call({ title: row.title, results: list, url: tvUrl, source: 'tmdb', page: 1, more: true, total_pages: 5 });
+            }
+            [[tvUrl, 1, 'tv'], [tvUrl, 2, 'tv'], [mvUrl, 1, 'movie']].forEach(function (t, i) {
+                tget(t[0], { page: t[1] }, function (j) {
+                    parts[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; }).map(function (c) { c.media_type = t[2]; return c; });
+                    fin();
+                }, function () { parts[i] = []; fin(); });
+            });
+        };
     }
 
     // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
@@ -1070,7 +1097,7 @@
     // Афіша: тренди тижня + кінотеатри + «гучні» прем'єри (скоро / щойно вийшли)
     // «білборд»-теми (Apple TV та HBO): афіша на весь екран, точки й автопрокрутка
     // розмір картинки афіші скрізь 1280 px: на 4K-телевізорі менші розміри виглядають розмитими
-    function heroSize() { return 'w1280'; }
+    var HERO_IMG = 'w1280';
     function board() { var t = getStr('lmx_theme', 'default'); return t === 'apple' || t === 'hbo'; }
     function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
@@ -1106,14 +1133,14 @@
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
     // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
     function heroDecorate(h, m, idx, n, svc) {
-        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, heroSize(svc))).attr('data-lmxi', idx).attr('data-lmxn', n);
+        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, HERO_IMG)).attr('data-lmxi', idx).attr('data-lmxn', n);
         if (h.closest) {
             var hl = h.closest('.items-line').addClass('lmx-hero-line');
             // компактний вигляд: на сторінках «Аніме»/«Дорами» і на головній у стандартній темі (там розмір карток лишається стандартним)
             if (svc) hl.addClass('lmx-mini lmx-mini--svc'); else if (!board()) hl.addClass('lmx-mini lmx-mini--def');
         }
         var view = h.find('.card__view');
-        var heroUrl = imgUrl(m.backdrop_path, heroSize(svc));
+        var heroUrl = imgUrl(m.backdrop_path, HERO_IMG);
         heroPreload(heroUrl);
         // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
         view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
@@ -1160,7 +1187,7 @@
     // Сторінка сервісу будує ряди без наших params, тому афішу оформлюємо вже на готових картках першого ряду
     function heroAttach(title, list) {
         if (!window.$) return;
-        var n = list.length, tries = 0, dbg = window.__lmxHero = { title: title, n: n, tries: 0, lines: 0, cards: 0, done: 0 };
+        var n = list.length, tries = 0, bodyMo = null, iv = 0;
         function findLine() {
             var found = null;
             document.querySelectorAll('.items-line').forEach(function (l) {
@@ -1170,19 +1197,15 @@
             return found;
         }
         function run() {
-            dbg.tries = tries;
             var line = findLine();
             if (!line) return;
-            dbg.lines = 1;
             var cards = line.querySelectorAll('.card');
-            dbg.cards = cards.length;
             for (var i = 0; i < cards.length && i < n; i++) {
                 var h = window.$(cards[i]);
                 if (!h.hasClass('card--lmxhero')) {
                     h.find('.lmx-cin,.lmx-box').remove();
                     (function (hh, ii) { safe(function () { heroDecorate(hh, list[ii], ii, n, true); }); })(h, i);
                 }
-                dbg.done++;
             }
             window.$(line).addClass('lmx-mini lmx-mini--svc').removeClass('lmx-mini--def').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
         }
@@ -1192,6 +1215,9 @@
             if (lineMo) return;
             var line = findLine();
             if (!line) return;
+            // ряд знайдено: далі стежимо лише за ним, а пошук по всьому документу вимикаємо
+            if (bodyMo) { bodyMo.disconnect(); bodyMo = null; }
+            clearInterval(iv);
             lineMo = new MutationObserver(function () {
                 if (!document.body.contains(line)) { lineMo.disconnect(); return; }
                 safe(run);
@@ -1200,10 +1226,11 @@
         }
         // одразу при появі карток (до першого малювання кадру), щоб ряд не встигав показатись звичайною підбіркою
         safe(function () { run(); watchLine(); });
-        var mo = new MutationObserver(function () { safe(run); watchLine(); });
-        mo.observe(document.body, { childList: true, subtree: true });
-        setTimeout(function () { mo.disconnect(); }, 8000);
-        var iv = setInterval(function () {
+        if (lineMo) return;
+        bodyMo = new MutationObserver(function () { safe(run); watchLine(); });
+        bodyMo.observe(document.body, { childList: true, subtree: true });
+        setTimeout(function () { if (bodyMo) bodyMo.disconnect(); }, 8000);
+        iv = setInterval(function () {
             tries++;
             safe(function () { run(); watchLine(); });
             if (tries > 50) clearInterval(iv);
@@ -1273,7 +1300,7 @@
                 safe(function () {
                     // спершу легкі мініатюри (з'являються миттєво як підкладка), потім великі зображення
                     list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); });
-                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, heroSize(false))); });
+                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, HERO_IMG)); });
                 });
                 var items = heroItems(list);
                 call({ title: 'Афіша', results: items, params: { items: { mapping: 'line', view: 15 } } });
@@ -1646,9 +1673,9 @@
         var S = 'html body .items-line.lmx-mini--svc ', D = 'html body .items-line.lmx-mini--def ';
         return '' +
             // розмір: сторінки «Аніме»/«Дорами» — стрічка з наступним слайдом справа; головна в стандартній темі — стандартні розміри карток
-            S + '.card--lmxhero' + X + '{width:62vw !important;margin-left:0 !important;margin-right:1.2em !important}' + view(S, '36vh') +
-            D + '.card--lmxhero' + X + '{width:' + W + ' !important;margin-left:0 !important;margin-right:1.2em !important}' + view(D, H) +
-            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{border-radius:1.2em !important;overflow:hidden}' +
+            S + '.card--lmxhero' + X + '{width:58vw !important;margin-left:0 !important;margin-right:1.2em !important}' + view(S, '25vw') +
+            '@media (min-width:761px){' + D + '.card--lmxhero' + X + '{width:' + W + ' !important;margin-left:0 !important;margin-right:1.2em !important}' + view(D, H) + '}' +
+            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{border-radius:1.2em !important;overflow:hidden;background-repeat:no-repeat !important;background-size:cover !important;background-position:center 20% !important}' +
             M + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.35) 38%,rgba(0,0,0,0) 70%),linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 60%) !important}' +
             M + '.lmx-hero__text' + X + '{left:1.8em !important;right:auto !important;bottom:1.7em !important;max-width:62% !important}' +
             M + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:700 !important;line-height:1.1 !important;margin-bottom:.3em !important}' +
@@ -3538,7 +3565,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.78';
+    var VERSION = '10.81';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -3550,7 +3577,7 @@
         safe(syncCi);
         safe(addSettings);
         safe(initRows);
-        safe(function () { setTimeout(animeStudios, 3000); });
+        safe(function () { setTimeout(resolveCatalogRefs, 3000); });
         safe(function () {
             applyStyle();
             new MutationObserver(function (muts) {
