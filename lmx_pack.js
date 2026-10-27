@@ -1310,6 +1310,9 @@
             'html body .full-start-new__buttons .full-start__button.lmx-m2:not(#lmx-x) span{max-width:6.5em !important;overflow:hidden;text-overflow:ellipsis}' +
             'html body.lmx-ci .full-start-new__buttons .full-start__button:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary):not(.button--priority):not(.lmx-edit):not(.lmx-folder):not(:first-child):not(#lmx-x){width:3.2em !important;min-width:0 !important;height:3.2em !important;padding:0 !important;border-radius:50% !important;justify-content:center;font-size:.95em !important}' +
             'html body.lmx-ci .full-start-new__buttons .full-start__button:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary):not(.button--priority):not(.lmx-edit):not(.lmx-folder):not(:first-child):not(#lmx-x) span{display:none !important}' +
+            // головна кнопка («Онлайн») ніколи не стискається до іконки, навіть якщо її щойно створили заново і класи LMX ще не виставлені
+            'html body .full-start-new__buttons .full-start__button.button--priority:not(.lmx-m1):not(.lmx-edit):not(#lmx-x){width:auto !important;min-width:0 !important}' +
+            'html body .full-start-new__buttons .full-start__button.button--priority:not(.lmx-m1):not(.lmx-edit):not(#lmx-x) span{display:inline !important}' +
             'body.lmx-hold .full-start-new__buttons:not(.lmx-ready){opacity:0;animation:lmxrev .01s 1.6s forwards}' +
             '@keyframes lmxrev{to{opacity:1}}' +
             'body.lmx-all .full-start-new__buttons{flex-wrap:wrap !important;row-gap:.6em;max-width:100%}' +
@@ -3246,7 +3249,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.52';
+    var VERSION = '10.53';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
