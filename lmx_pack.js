@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.110 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.111 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -2455,7 +2455,26 @@
 
     var timer = null;
     // Ряд афіші позначаємо одразу, у мікрозадачі перед малюванням (а не після затримки scan), щоб заголовок і розміри не стрибали на старті
+    // Сторінка фільму на телефоні: Lampa бере бекдроп у w780 і розтягує на весь екран (на 3x-екрані мильно) — підміняємо на оригінал
+    function hqPoster() {
+        if (window.innerWidth > 480) return;
+        var im = document.querySelectorAll('.full-start-new__img:not([data-lmxhq]),.full-start__img:not([data-lmxhq])');
+        for (var i = 0; i < im.length; i++) (function (el) {
+            el.setAttribute('data-lmxhq', '1');
+            var up = function () {
+                var s = el.getAttribute('src') || '';
+                if (s.indexOf('/t/p/w780/') < 0 && s.indexOf('/t/p/w500/') < 0 && s.indexOf('/t/p/w300/') < 0) return;
+                var big = s.replace(/\/t\/p\/w(780|500|300)\//, '/t/p/original/');
+                var pre = new Image();
+                pre.onload = function () { if (el.getAttribute('src') === s) el.src = big; };
+                pre.src = big;
+            };
+            up();
+            try { new MutationObserver(up).observe(el, { attributes: true, attributeFilter: ['src'] }); } catch (e) {}
+        })(im[i]);
+    }
     function markHero() {
+        hqPoster();
         var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
         for (var i = 0; i < cs.length; i++) {
             var ln = cs[i].closest('.items-line');
@@ -3780,7 +3799,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.110';
+    var VERSION = '10.111';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
