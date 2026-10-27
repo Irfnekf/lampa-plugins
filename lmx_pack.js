@@ -2200,7 +2200,10 @@
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
-            if (el.classList.contains('card--lmxhero')) { var ln = el.closest('.items-line'); if (ln) ln.classList.add('lmx-hero-line'); }
+            if (el.classList.contains('card--lmxhero')) {
+                var ln = el.closest('.items-line');
+                if (ln) { ln.classList.add('lmx-hero-line'); if (!board() && !ln.classList.contains('lmx-mini--svc')) ln.classList.add('lmx-mini', 'lmx-mini--def'); }
+            }
             if (el.classList.contains('card--lmxhero') || el.classList.contains('card--lmxstudio') || el.classList.contains('card--lmxhist')) return;
 
             var d = getData(el);
@@ -3535,7 +3538,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.77';
+    var VERSION = '10.78';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
