@@ -1,5 +1,5 @@
 /*
- * NoCub v1.3 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.4 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.3';
+    var VERSION = '1.4';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -85,9 +85,39 @@
             }
         });
     }
+    // Страховка для пульта: будь-який невидимий (display:none) пункт налаштувань не повинен лишатися «вибираним» — навіть якщо його сховала сама Lampa
+    function fixSettingsFocus() {
+        var root = document.querySelector('.settings');
+        if (!root) return;
+        var changed = false, els = root.querySelectorAll('.selector, [data-nocub-sel="auto"]');
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i], hidden = getComputedStyle(el).display === 'none';
+            if (hidden && el.classList.contains('selector')) {
+                el.classList.remove('selector');
+                el.classList.remove('focus');
+                el.setAttribute('data-nocub-sel', 'auto');
+                changed = true;
+            } else if (!hidden && el.getAttribute('data-nocub-sel') === 'auto') {
+                el.classList.add('selector');
+                el.removeAttribute('data-nocub-sel');
+                changed = true;
+            }
+        }
+        if (changed) {
+            var first = null, all = root.querySelectorAll('.selector');
+            for (var j = 0; j < all.length; j++) if (getComputedStyle(all[j]).display !== 'none') { first = all[j]; break; }
+            var C = window.Lampa && Lampa.Controller, name = '';
+            try { name = C.enabled().name || ''; } catch (e) {}
+            if (C && /settings/i.test(name)) {
+                try { C.toggle(name); } catch (e) {}
+                if (first && C.collectionFocus) { try { C.collectionFocus(first, root); } catch (e) {} }
+            }
+        }
+    }
     function anyOn() { return ITEMS.some(function (it) { return on(it.key); }); }
     function scan() {
         var any = anyOn();
+        if (any) safe(fixSettingsFocus);
         if (!any && !document.querySelector('.nocub-hide')) return;
         scanCss();
         TEXT.forEach(function (rule) {
