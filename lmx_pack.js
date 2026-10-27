@@ -824,6 +824,32 @@
         });
     }
 
+    // Афіша аніме: найпопулярніше з тих, що виходять просто зараз, плюс до 4 «скоро» (серіали й фільми): 12 слайдів
+    function animeHeroList(done) {
+        var JA = 'with_original_language=ja&with_genres=16', t0 = dayStr(0), left = 3, hot = [], soonTv = [], soonMv = [];
+        function fin() {
+            if (--left > 0) return;
+            var seen = {}, out = [];
+            function ok(m) { return m && m.backdrop_path && m.poster_path && !seen[m.id]; }
+            // до 4 «скоро», решту до 12 слайдів — найпопулярніше з того, що виходить зараз
+            var soon = soonTv.concat(soonMv).filter(function (m) { return m && m.backdrop_path && m.poster_path; })
+                .sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
+            soon.forEach(function (m) { seen[m.id] = 1; });
+            hot.filter(ok).slice(0, 12 - soon.length).forEach(function (m) { seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m); });
+            soon.forEach(function (m) { m.__tag = 'soon'; out.push(m); });
+            done(out);
+        }
+        function get(url, kind, into) {
+            tget(url, { page: 1 }, function (j) {
+                (j && j.results || []).forEach(function (m) { m.media_type = kind; into.push(m); });
+                fin();
+            }, function () { fin(); });
+        }
+        get('discover/tv?' + JA + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3', 'tv', hot);
+        get('discover/tv?' + JA + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(75) + '&sort_by=popularity.desc', 'tv', soonTv);
+        get('discover/movie?' + JA + '&primary_release_date.gte=' + dayStr(1) + '&primary_release_date.lte=' + dayStr(120) + '&sort_by=popularity.desc', 'movie', soonMv);
+    }
+
     // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
     // Якщо свіжого мало (у сервісів без великого каталогу в Україні) — добираємо популярним
     function serviceCall(row, key) {
@@ -884,10 +910,11 @@
             comp.create = function () {
                 var self = this;
                 this.activity.loader(true);
-                var cats = svcCats(object.service_id), res = new Array(cats.length), left = cats.length;
+                var cats = svcCats(object.service_id), res = new Array(cats.length), isAn = object.service_id === 'anime', heroL = null, left = cats.length + (isAn ? 1 : 0);
                 function fin() {
                     if (--left > 0) return;
                     var data = [];
+                    if (heroL && heroL.length) data.push({ title: 'Аніме: у топі та скоро', results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
                     cats.forEach(function (c, i) {
                         if (res[i] && res[i].length) {
                             data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, total_pages: 5 });
@@ -897,6 +924,7 @@
                     if (!data.length) self.empty(); else self.build(data);
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
+                if (isAn) { try { animeHeroList(function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
                 cats.forEach(function (c, i) {
                     tget(c.url, { page: 1 }, function (j) {
                         res[i] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
@@ -1005,6 +1033,52 @@
         });
     }
 
+    // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
+    function heroItems(list) {
+            return list.map(function (m, idx) {
+                var it = {};
+                for (var k in m) it[k] = m[k];
+                it.params = {
+                    createInstance: makeInstance,
+                    emit: {
+                        onCreate: function () {
+                            var self = this, ex = arguments[0];
+                            safe(function () {
+                                var h = htmlOf(self, ex);
+                                if (!h) return;
+                                h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', list.length);
+                                if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
+                                var view = h.find('.card__view');
+                                var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
+                                heroPreload(heroUrl);
+                                // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
+                                view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
+                                view.find('img').css('opacity', 0);
+                                h.find('.card__title,.card__age,.card__vote').remove();
+                                var v = Number(m.vote_average) || 0;
+                                var isTv = m.media_type === 'tv' || (!m.title && m.name);
+                                var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
+                                var ov = String(m.overview || '');
+                                if (!ov && m.__tag === 'soon') ov = '';
+                                var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
+                                if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
+                                view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
+                                    esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
+                                    (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '')) +
+                                    (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
+                                    '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
+                                    '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
+                                    (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
+                                        getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
+                            });
+                        },
+                        onlyEnter: function () { openFull(m); }
+                    }
+                };
+                return it;
+            });
+    }
+
     function heroCall(row) {
         return function (call) {
             var srcs = heroSources(), left = srcs.length, all = [], seenIds = {};
@@ -1065,48 +1139,7 @@
                     list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); });
                     list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')); });
                 });
-                var items = list.map(function (m, idx) {
-                    var it = {};
-                    for (var k in m) it[k] = m[k];
-                    it.params = {
-                        createInstance: makeInstance,
-                        emit: {
-                            onCreate: function () {
-                                var self = this, ex = arguments[0];
-                                safe(function () {
-                                    var h = htmlOf(self, ex);
-                                    if (!h) return;
-                                    h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', list.length);
-                                    if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
-                                    var view = h.find('.card__view');
-                                    var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
-                                    heroPreload(heroUrl);
-                                    // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
-                                    view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
-                                    view.find('img').css('opacity', 0);
-                                    h.find('.card__title,.card__age,.card__vote').remove();
-                                    var v = Number(m.vote_average) || 0;
-                                    var isTv = m.media_type === 'tv' || (!m.title && m.name);
-                                    var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
-                                    var ov = String(m.overview || '');
-                                    if (!ov && m.__tag === 'soon') ov = '';
-                                    var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
-                                    if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
-                                    view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
-                                        esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
-                                        (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">У тренді</span>' : '')) +
-                                        (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
-                                        '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
-                                        '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-                                        (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
-                                            getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
-                                });
-                            },
-                            onlyEnter: function () { openFull(m); }
-                        }
-                    };
-                    return it;
-                });
+                var items = heroItems(list);
                 call({ title: 'Афіша', results: items, params: { items: { mapping: 'line', view: 15 } } });
             }
             srcs.forEach(function (x) {
@@ -3330,7 +3363,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.61';
+    var VERSION = '10.63';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
