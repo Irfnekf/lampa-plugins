@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.86 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.87 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -701,74 +701,66 @@
 
     // ===== Сторінки стрімінгів: як окремий «сайт» сервісу з десятком підбірок =====
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
-    function prov(id) { return 'with_watch_providers=' + id + '&watch_region=' + (id === 1773 ? 'PL' : 'UA') + '&with_watch_monetization_types=flatrate'; }
+    // Регіон каталогу: SkyShowtime — Польща, Max і Paramount+ — США (в Україні їх каталог порожній), решта — Україна
+    function prov(id) {
+        var region = id === 1773 ? 'PL' : (id === 1899 || id === 531) ? 'US' : 'UA';
+        return 'with_watch_providers=' + id + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
+    }
     var PIPE = '%7C';
     // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
     var DR_X = 'with_original_language=LANG&without_genres=16%7C10764%7C10767%7C10763';
     var DR_KO = DR_X.replace('LANG', 'ko');
+    // Типовий набір рядів платформи: серіали й фільми за жанрами, країнами та рейтингом (усе в межах каталогу самої платформи)
+    function provSvc(id, own) {
+        var P = prov(id), V = '&sort_by=popularity.desc&vote_count.gte=';
+        function tv(t, q, vc) { return { t: t, k: 'tv', q: P + q + V + (vc || 100) }; }
+        function mv(t, q, vc) { return { t: t, k: 'movie', q: P + q + V + (vc || 100) }; }
+        var rows = own.slice();
+        rows.push(
+            tv('Фантастика й фентезі', '&with_genres=10765'), tv('Кримінал і трилери', '&with_genres=80' + PIPE + '9648'),
+            tv('Драми', '&with_genres=18'), tv('Бойовик і пригоди', '&with_genres=10759'), tv('Комедії', '&with_genres=35'),
+            tv('Реаліті', '&with_genres=10764', 20), tv('Аніме й анімація', '&with_genres=16', 30), tv('Документальні серіали', '&with_genres=99', 20),
+            tv('Корейські серіали', '&with_origin_country=KR', 20), tv('Британські серіали', '&with_origin_country=GB', 30),
+            tv('Іспанські серіали', '&with_origin_country=ES', 20), tv('Скандинавські серіали', '&with_origin_country=SE' + PIPE + 'NO' + PIPE + 'DK' + PIPE + 'FI', 20),
+            { t: 'Найкращі фільми', k: 'movie', q: P + '&vote_average.gte=7.3&vote_count.gte=800&sort_by=vote_average.desc' },
+            mv('Бойовики', '&with_genres=28'), mv('Комедії (фільми)', '&with_genres=35'), mv('Фантастика', '&with_genres=878'),
+            mv('Жахи', '&with_genres=27'), mv('Драми (фільми)', '&with_genres=18'), mv('Трилери', '&with_genres=53'),
+            mv('Кримінал', '&with_genres=80'), mv('Детективи', '&with_genres=9648'), mv('Романтика', '&with_genres=10749'),
+            mv('Пригоди', '&with_genres=12'), mv('Фентезі', '&with_genres=14'), mv('Для всієї сім’ї', '&with_genres=10751'),
+            mv('Анімація', '&with_genres=16'), mv('Документальні фільми', '&with_genres=99', 20),
+            { t: 'Класика (до 2000 року)', k: 'movie', q: P + '&primary_release_date.lte=1999-12-31&vote_count.gte=500&sort_by=vote_average.desc' }
+        );
+        return { mf: P, tf: P, extra: rows };
+    }
     var SVC = {
-        hbo: { mf: 'with_companies=174' + PIPE + '49', tf: 'with_networks=49' + PIPE + '3186', extra: [
-            { t: 'Max Originals', k: 'tv', q: 'with_networks=3186&sort_by=popularity.desc' },
+        // Західні платформи: каталог «що реально є на платформі» (провайдер TMDB) + власні оригінали й студії окремими рядами
+        hbo: provSvc(1899, [
+            { t: 'Max Originals', k: 'tv', q: 'with_networks=49' + PIPE + '3186&sort_by=popularity.desc' },
             { t: 'Блокбастери Warner Bros.', k: 'movie', q: 'with_companies=174&sort_by=revenue.desc&vote_count.gte=1000' },
-            { t: 'Епічні світи (фентезі)', k: 'tv', q: 'with_networks=49' + PIPE + '3186&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Преміальні драми', k: 'tv', q: 'with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' },
-            { t: 'Доросла анімація', k: 'tv', q: 'with_networks=3186' + PIPE + '80&with_genres=16&sort_by=popularity.desc' },
-            { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' }
-        ] },
-        netflix: { mf: prov(8), tf: prov(8), extra: [
-            // серіали беремо з усього каталогу Netflix в Україні (власні й ліцензійні), «Оригінали» — окремо
-            { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' },
-            { t: 'Фантастика й фентезі', k: 'tv', q: prov(8) + '&with_genres=10765&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Кримінал і трилери', k: 'tv', q: prov(8) + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Драми', k: 'tv', q: prov(8) + '&with_genres=18&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Бойовик і пригоди', k: 'tv', q: prov(8) + '&with_genres=10759&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Комедії', k: 'tv', q: prov(8) + '&with_genres=35&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Реаліті', k: 'tv', q: prov(8) + '&with_genres=10764&sort_by=popularity.desc&vote_count.gte=20' },
-            { t: 'Аніме й анімація', k: 'tv', q: prov(8) + '&with_genres=16&sort_by=popularity.desc&vote_count.gte=50' },
-            { t: 'Документальні', k: 'tv', q: prov(8) + '&with_genres=99&sort_by=popularity.desc&vote_count.gte=20' },
-            { t: 'Корейські серіали', k: 'tv', q: prov(8) + '&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=20' },
-            { t: 'Іспанські серіали', k: 'tv', q: prov(8) + '&with_origin_country=ES&sort_by=popularity.desc&vote_count.gte=20' },
-            { t: 'Британські серіали', k: 'tv', q: prov(8) + '&with_origin_country=GB&sort_by=popularity.desc&vote_count.gte=50' },
-            // фільми
-            { t: 'Найкращі фільми', k: 'movie', q: prov(8) + '&vote_average.gte=7.3&vote_count.gte=800&sort_by=vote_average.desc' },
-            { t: 'Бойовики', k: 'movie', q: prov(8) + '&with_genres=28&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Комедії (фільми)', k: 'movie', q: prov(8) + '&with_genres=35&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Фантастика', k: 'movie', q: prov(8) + '&with_genres=878&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Жахи', k: 'movie', q: prov(8) + '&with_genres=27&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Драми (фільми)', k: 'movie', q: prov(8) + '&with_genres=18&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Для всієї сім’ї', k: 'movie', q: prov(8) + '&with_genres=10751&sort_by=popularity.desc&vote_count.gte=100' },
-            { t: 'Документальні фільми', k: 'movie', q: prov(8) + '&with_genres=99&sort_by=popularity.desc&vote_count.gte=20' }
-        ] },
-        apple: { mf: prov(350), tf: 'with_networks=2552', extra: [
-            { t: 'Фантастика', k: 'tv', q: 'with_networks=2552&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Комедії та feel-good', k: 'tv', q: 'with_networks=2552&with_genres=35&sort_by=popularity.desc' },
-            { t: 'Трилери та детективи', k: 'tv', q: 'with_networks=2552&with_genres=9648' + PIPE + '80&sort_by=popularity.desc' },
-            { t: 'Драми', k: 'tv', q: 'with_networks=2552&with_genres=18&sort_by=popularity.desc' }
-        ] },
-        amazon: { mf: prov(119), tf: 'with_networks=1024', extra: [
-            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=1024&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Бойовики й трилери', k: 'tv', q: 'with_networks=1024&with_genres=10759' + PIPE + '80&sort_by=popularity.desc' },
-            { t: 'Комедії', k: 'tv', q: 'with_networks=1024&with_genres=35&sort_by=popularity.desc' },
-            { t: 'Драми', k: 'tv', q: 'with_networks=1024&with_genres=18&sort_by=popularity.desc' }
-        ] },
-        disney: { mf: 'with_companies=2' + PIPE + '3' + PIPE + '420' + PIPE + '1', tf: 'with_networks=2739', extra: [
+            { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' },
+            { t: 'Преміальні драми HBO', k: 'tv', q: 'with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' }
+        ]),
+        netflix: provSvc(8, [
+            { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' }
+        ]),
+        apple: provSvc(350, [
+            { t: 'Оригінали Apple TV+', k: 'tv', q: 'with_networks=2552&sort_by=popularity.desc' }
+        ]),
+        amazon: provSvc(119, [
+            { t: 'Оригінали Prime Video', k: 'tv', q: 'with_networks=1024&sort_by=popularity.desc' }
+        ]),
+        disney: provSvc(337, [
             { t: 'Marvel', k: 'movie', q: 'with_companies=420&sort_by=popularity.desc' },
             { t: 'Зоряні війни', k: 'movie', q: 'with_companies=1&sort_by=popularity.desc' },
             { t: 'Pixar', k: 'movie', q: 'with_companies=3&sort_by=popularity.desc' },
-            { t: 'Серіали Marvel і Зоряних війн', k: 'tv', q: 'with_networks=2739&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Анімація', k: 'tv', q: 'with_networks=2739&with_genres=16&sort_by=popularity.desc' }
-        ] },
-        paramount: { mf: 'with_companies=4', tf: 'with_networks=4330', extra: [
+            { t: 'Walt Disney Animation', k: 'movie', q: 'with_companies=2&sort_by=popularity.desc' },
+            { t: 'Серіали Marvel і Зоряних війн', k: 'tv', q: 'with_networks=2739&with_genres=10765&sort_by=popularity.desc' }
+        ]),
+        paramount: provSvc(531, [
             { t: 'Paramount Pictures', k: 'movie', q: 'with_companies=4&sort_by=popularity.desc' },
-            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=4330&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Драми', k: 'tv', q: 'with_networks=4330&with_genres=18&sort_by=popularity.desc' },
-            { t: 'Реаліті', k: 'tv', q: 'with_networks=4330&with_genres=10764&sort_by=popularity.desc' }
-        ] },
-        sky: { mf: prov(1773), tf: prov(1773), extra: [
-            { t: 'Драми', k: 'tv', q: prov(1773) + '&with_genres=18&sort_by=popularity.desc' },
-            { t: 'Комедії', k: 'tv', q: prov(1773) + '&with_genres=35&sort_by=popularity.desc' },
-            { t: 'Фантастика й фентезі', k: 'tv', q: prov(1773) + '&with_genres=10765&sort_by=popularity.desc' }
-        ] },
+            { t: 'Оригінали Paramount+', k: 'tv', q: 'with_networks=4330&sort_by=popularity.desc' }
+        ]),
+        sky: provSvc(1773, []),
         // Аніме: не провайдер, а вся японська анімація; студії й теги підтягуються за назвою з TMDB (див. animeResolve)
         anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16', hero: 'with_original_language=ja&with_genres=16',
           lead: function () {
@@ -953,6 +945,13 @@
 
     // Ряд на головній: свіжі фільми й серіали сервісу разом, від найновіших.
     // Якщо свіжого мало (у сервісів без великого каталогу в Україні) — добираємо популярним
+    // Якщо в українському регіоні каталог платформи порожній — той самий запит за регіоном США
+    function tgetFb(url, params, ok, fail) {
+        tget(url, params, function (j) {
+            if ((!j || !j.results || !j.results.length) && url.indexOf('watch_region=UA') >= 0) return tget(url.replace('watch_region=UA', 'watch_region=US'), params, ok, fail);
+            ok(j);
+        }, fail);
+    }
     function serviceCall(row, key) {
         return function (call) {
             var cats = svcCats(key, true);
@@ -967,7 +966,7 @@
             function fetchAll(tasks, done) {
                 var left = tasks.length, out = [];
                 tasks.forEach(function (t, i) {
-                    tget(t.url, { page: t.page }, function (j) {
+                    tgetFb(t.url, { page: t.page }, function (j) {
                         out[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; }).map(function (c) { c.media_type = t.kind; return c; });
                         if (--left === 0) done(out);
                     }, function () { out[i] = []; if (--left === 0) done(out); });
@@ -1027,11 +1026,11 @@
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); fin(); }); } catch (e) { fin(); } }
                 // три сторінки на підбірку (до 60 карток): так рядів і карток у каталогах більше
-                var pages = 3;
+                // перші ряди — до 60 карток, далі менше (повний список — кнопка «Ще»): так сторінка відкривається швидко
                 cats.forEach(function (c, i) {
-                    var got = [], pend = pages, seenC = {};
+                    var pages = i < 6 ? 3 : i < 16 ? 2 : 1, got = [], pend = pages, seenC = {};
                     function one(pg) {
-                        tget(c.url, { page: pg }, function (j) {
+                        tgetFb(c.url, { page: pg }, function (j) {
                             got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
                             end();
                         }, function () { got[pg - 1] = []; end(); });
@@ -3586,7 +3585,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.86';
+    var VERSION = '10.87';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
