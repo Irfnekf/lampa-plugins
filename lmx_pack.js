@@ -980,7 +980,7 @@
                     if (!data.length) self.empty(); else { self.build(data); if (heroL && heroL.length) heroAttach((object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', heroL); }
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
-                if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
+                if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); fin(); }); } catch (e) { fin(); } }
                 // для аніме й дорам беремо три сторінки на підбірку (до 60 карток): каталог у них вужчий за західний
                 var pages = isAn ? 3 : 1;
                 cats.forEach(function (c, i) {
@@ -1069,6 +1069,8 @@
     }
     // Афіша: тренди тижня + кінотеатри + «гучні» прем'єри (скоро / щойно вийшли)
     // «білборд»-теми (Apple TV та HBO): афіша на весь екран, точки й автопрокрутка
+    // розмір картинки афіші скрізь 1280 px: на 4K-телевізорі менші розміри виглядають розмитими
+    function heroSize() { return 'w1280'; }
     function board() { var t = getStr('lmx_theme', 'default'); return t === 'apple' || t === 'hbo'; }
     function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
@@ -1104,14 +1106,14 @@
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
     // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
     function heroDecorate(h, m, idx, n, svc) {
-        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', n);
+        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, heroSize(svc))).attr('data-lmxi', idx).attr('data-lmxn', n);
         if (h.closest) {
             var hl = h.closest('.items-line').addClass('lmx-hero-line');
             // компактний вигляд: на сторінках «Аніме»/«Дорами» і на головній у стандартній темі (там розмір карток лишається стандартним)
             if (svc) hl.addClass('lmx-mini lmx-mini--svc'); else if (!board()) hl.addClass('lmx-mini lmx-mini--def');
         }
         var view = h.find('.card__view');
-        var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
+        var heroUrl = imgUrl(m.backdrop_path, heroSize(svc));
         heroPreload(heroUrl);
         // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
         view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
@@ -1271,7 +1273,7 @@
                 safe(function () {
                     // спершу легкі мініатюри (з'являються миттєво як підкладка), потім великі зображення
                     list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); });
-                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')); });
+                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, heroSize(false))); });
                 });
                 var items = heroItems(list);
                 call({ title: 'Афіша', results: items, params: { items: { mapping: 'line', view: 15 } } });
@@ -3529,7 +3531,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.74';
+    var VERSION = '10.76';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
