@@ -1,5 +1,5 @@
 /*
- * NoCub v1.8 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.9 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.8';
+    var VERSION = '1.9';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -18,7 +18,7 @@
         { key: 'nocub_reviews', name: 'Коментарі та відгуки', desc: 'Блок «Коментарі» на сторінці фільму, разом із кнопкою «додати»' },
         { key: 'nocub_bell', name: 'Дзвіночок сповіщень', desc: 'Іконка сповіщень у шапці' },
         { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
-        { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Пункти «Акаунт» / «Увійти» в меню та налаштуваннях' },
+        { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Вбудований акаунт і синхронізація CUB (пункт «Синхронізація», вхід у CUB, профілі). Сторонні плагіни синхронізації не чіпає' },
         { key: 'nocub_recs', name: 'Рекомендації на сторінці фільму', desc: 'Блоки «Рекомендації» і «Схожі» внизу сторінки фільму' },
         { key: 'nocub_subscribe', name: 'Кнопка «Підписатися»', desc: 'Підписка на фільм, серіал чи актора (потрібен акаунт CUB)' },
         { key: 'nocub_promo', name: 'Акційні кнопки й плашки', desc: 'Сезонні акції CUB (Хелловін, Новий рік, чорна п\'ятниця, знижки, подарунки) — за ознаками в назві', def: true },
@@ -61,8 +61,9 @@
     var TEXT = [
         { key: 'nocub_premium', sel: '.head .head__action', html: /premium|преміум|премиум|halloween|helloween|хелоуін|хэллоуин/i },
         { key: 'nocub_premium', sel: '.menu .menu__item', re: /преміум|премиум|premium|запроси|пригласи|invite/i },
-        { key: 'nocub_account', sel: '.menu .menu__item', re: /^\s*(акаунт|аккаунт|account|увійти|войти)(?![a-zа-яіїєґ])/i },
-        { key: 'nocub_account', sel: '.settings-folder', re: /акаунт|аккаунт|cub account/i },
+        // Лише те, що прямо згадує CUB; пункти сторонніх плагінів синхронізації не чіпаємо
+        { key: 'nocub_account', sel: '.menu .menu__item', re: /(увійти|войти|login|sign in).{0,12}cub|cub.{0,12}(акаунт|аккаунт|account)/i },
+        { key: 'nocub_account', sel: '.settings-folder', re: /cub.{0,12}(акаунт|аккаунт|account)|(акаунт|аккаунт|account).{0,12}cub/i },
         { key: 'nocub_subscribe', sel: '.full-start-new__buttons .full-start__button, .full-start__buttons .full-start__button', re: /підписат|подписат|subscribe/i },
         { key: 'nocub_reviews', sel: '.items-line', re: /^\s*(коментар|комментар|відгук|отзыв|comments|reviews)/i, title: true },
         { key: 'nocub_recs', sel: '.items-line', re: /^\s*(рекомендац|рекомендаці|схож|similar|recommendations)/i, title: true, onlyFull: true }
