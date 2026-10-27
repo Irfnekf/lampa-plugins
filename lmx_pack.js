@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.51 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
+ * LMX Pack v10.52 — усе в одному для Lampa: власна головна, сторінки стрімінгів, теми, сторінка фільму
  *  1) Головна: банер, стрімінги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -1461,7 +1461,7 @@
             B + '.full-start__button.focus,' + B + '.full-start-new__buttons .simple-button.focus{background:#fff;color:#111}' +
             (compact ?
                 // підписи показуємо лише у перших трьох кнопок і в тієї, що у фокусі — решта лишається іконками
-                B + '.full-start-new__buttons > .full-start__button:nth-child(n+4) span{display:none}' +
+                B + '.full-start-new__buttons > .full-start__button:nth-child(n+4):not(.button--priority):not(.lmx-primary) span{display:none}' +
                 B + '.full-start-new__buttons > .full-start__button:nth-child(n+4).focus span{display:inline}' : '') +
             B + '.lmx-info .lmx-ip{background:rgba(255,255,255,.14)}' +
             B + '.full-start-new__left{display:none !important}' +
@@ -3246,7 +3246,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.51';
+    var VERSION = '10.52';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
