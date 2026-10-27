@@ -1103,9 +1103,13 @@
 
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
     // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
-    function heroDecorate(h, m, idx, n) {
+    function heroDecorate(h, m, idx, n, svc) {
         h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', n);
-        if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
+        if (h.closest) {
+            var hl = h.closest('.items-line').addClass('lmx-hero-line');
+            // компактний вигляд: на сторінках «Аніме»/«Дорами» і на головній у стандартній темі (там розмір карток лишається стандартним)
+            if (svc) hl.addClass('lmx-mini lmx-mini--svc'); else if (!board()) hl.addClass('lmx-mini lmx-mini--def');
+        }
         var view = h.find('.card__view');
         var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
         heroPreload(heroUrl);
@@ -1174,11 +1178,11 @@
                 var h = window.$(cards[i]);
                 if (!h.hasClass('card--lmxhero')) {
                     h.find('.lmx-cin,.lmx-box').remove();
-                    (function (hh, ii) { safe(function () { heroDecorate(hh, list[ii], ii, n); }); })(h, i);
+                    (function (hh, ii) { safe(function () { heroDecorate(hh, list[ii], ii, n, true); }); })(h, i);
                 }
                 dbg.done++;
             }
-            window.$(line).addClass('lmx-mini').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
+            window.$(line).addClass('lmx-mini lmx-mini--svc').removeClass('lmx-mini--def').find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
         }
         // Lampa домальовує картки ряду по мірі прокрутки, тому після знаходження ряду стежимо за ним, поки він на екрані
         var lineMo = null;
@@ -1635,9 +1639,14 @@
     // Компактна афіша для сторінок «Аніме» і «Дорами»: невисока стрічка із закругленнями, наступний слайд визирає справа
     function miniCss() {
         var M = 'html body .items-line.lmx-mini ', X = ':not(#lmx-x)';
+        var sz = getStr('lmx_card_size', 'm'), W = sz === 'xl' ? '50em' : sz === 'l' ? '45em' : '40em', H = sz === 'xl' ? '25em' : sz === 'l' ? '22.5em' : '20em';
+        function view(L, h) { return L + '.card--lmxhero' + X + ' .card__view,' + L + '.card--lmxhero.focus' + X + ' .card__view,' + L + '.card--lmxhero.hover' + X + ' .card__view{height:' + h + ' !important}'; }
+        var S = 'html body .items-line.lmx-mini--svc ', D = 'html body .items-line.lmx-mini--def ';
         return '' +
-            M + '.card--lmxhero' + X + '{width:62vw !important;margin-left:0 !important;margin-right:1.2em !important}' +
-            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{height:36vh !important;border-radius:1.2em !important;overflow:hidden}' +
+            // розмір: сторінки «Аніме»/«Дорами» — стрічка з наступним слайдом справа; головна в стандартній темі — стандартні розміри карток
+            S + '.card--lmxhero' + X + '{width:62vw !important;margin-left:0 !important;margin-right:1.2em !important}' + view(S, '36vh') +
+            D + '.card--lmxhero' + X + '{width:' + W + ' !important;margin-left:0 !important;margin-right:1.2em !important}' + view(D, H) +
+            M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{border-radius:1.2em !important;overflow:hidden}' +
             M + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.35) 38%,rgba(0,0,0,0) 70%),linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 60%) !important}' +
             M + '.lmx-hero__text' + X + '{left:1.8em !important;right:auto !important;bottom:1.7em !important;max-width:62% !important}' +
             M + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:700 !important;line-height:1.1 !important;margin-bottom:.3em !important}' +
@@ -2521,7 +2530,15 @@
                 if (document.hidden) return;
                 if (++apTick % 10 === 0) apple = null;
                 if (apple === null) apple = board() && !isMobile();
-                if (!apple) return;
+                if (!apple) {
+                    // стандартна тема: лише автоперемикання слайдів (без прогріву й точок)
+                    if (isMobile()) return;
+                    var d = document.querySelector('.card--lmxhero.focus');
+                    if (!d) return;
+                    setCur(d);
+                    autoplay(d, d.closest('.items-line'));
+                    return;
+                }
                 var c = document.querySelector('.card--lmxhero.focus');
                 if (!c) return;
                 setCur(c);
@@ -3509,7 +3526,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.72';
+    var VERSION = '10.73';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
