@@ -1,5 +1,5 @@
 /*
- * NoCub v1.2 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.3 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.2';
+    var VERSION = '1.3';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -36,7 +36,7 @@
         ],
         nocub_reviews: ['.full-review', '.full-review-add', '.full-reviews'],
         nocub_bell: ['.head__action.notice--icon', '.head__action.open--notice', '.head__action--notice', '.notice--icon'],
-        nocub_premium: ['.head [class*="premium"]', '.head__action[data-action*="premium"]', '.head__action.open--premium', '.open--premium', '.head [class*="cub-premium"]', '.menu__item[data-action="premium"]', '.settings-folder[data-component="premium"]'],
+        nocub_premium: ['.head__action.halloween__button', '.halloween__button', 'body > .halloween', '.halloween', '.head__action[class*="halloween"]', '.head__action[class*="helloween"]', '.head [class*="premium"]', '.head__action[data-action*="premium"]', '.head__action.open--premium', '.open--premium', '.head [class*="cub-premium"]', '.menu__item[data-action="premium"]', '.settings-folder[data-component="premium"]'],
         nocub_account: ['.menu__item[data-action="account"]', '.settings-folder[data-component="account"]', '.head__action.open--profile'],
         nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe']
     };
@@ -51,7 +51,7 @@
 
     // Пошук по тексту (коли в елемента немає стабільного класу): ключ → [контейнер, regexp]
     var TEXT = [
-        { key: 'nocub_premium', sel: '.head .head__action', html: /premium|преміум|премиум/i },
+        { key: 'nocub_premium', sel: '.head .head__action', html: /premium|преміум|премиум|halloween|helloween|хелоуін|хэллоуин/i },
         { key: 'nocub_premium', sel: '.menu .menu__item', re: /преміум|премиум|premium|запроси|пригласи|invite/i },
         { key: 'nocub_account', sel: '.menu .menu__item', re: /^\s*(акаунт|аккаунт|account|увійти|войти)(?![a-zа-яіїєґ])/i },
         { key: 'nocub_account', sel: '.settings-folder', re: /акаунт|аккаунт|cub account/i },
