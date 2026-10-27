@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.82 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.85 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -715,12 +715,30 @@
             { t: 'Доросла анімація', k: 'tv', q: 'with_networks=3186' + PIPE + '80&with_genres=16&sort_by=popularity.desc' },
             { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' }
         ] },
-        netflix: { mf: prov(8), tf: 'with_networks=213', extra: [
-            { t: 'Фантастика й фентезі', k: 'tv', q: 'with_networks=213&with_genres=10765&sort_by=popularity.desc' },
-            { t: 'Кримінал і трилери', k: 'tv', q: 'with_networks=213&with_genres=80' + PIPE + '9648&sort_by=popularity.desc' },
-            { t: 'Комедії', k: 'tv', q: 'with_networks=213&with_genres=35&sort_by=popularity.desc' },
-            { t: 'Аніме й анімація', k: 'tv', q: 'with_networks=213&with_genres=16&sort_by=popularity.desc' },
-            { t: 'Документальні', k: 'tv', q: 'with_networks=213&with_genres=99&sort_by=popularity.desc' }
+        netflix: { mf: prov(8), tf: prov(8), extra: [
+            // серіали: і власні (мережа Netflix), і весь каталог Netflix в Україні (ліцензійні теж)
+            { t: 'Популярні серіали на Netflix', k: 'tv', q: prov(8) + '&sort_by=popularity.desc&vote_count.gte=200' },
+            { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' },
+            { t: 'Фантастика й фентезі', k: 'tv', q: prov(8) + '&with_genres=10765&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Кримінал і трилери', k: 'tv', q: prov(8) + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Драми', k: 'tv', q: prov(8) + '&with_genres=18&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Бойовик і пригоди', k: 'tv', q: prov(8) + '&with_genres=10759&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Комедії', k: 'tv', q: prov(8) + '&with_genres=35&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Реаліті', k: 'tv', q: prov(8) + '&with_genres=10764&sort_by=popularity.desc&vote_count.gte=20' },
+            { t: 'Аніме й анімація', k: 'tv', q: prov(8) + '&with_genres=16&sort_by=popularity.desc&vote_count.gte=50' },
+            { t: 'Документальні', k: 'tv', q: prov(8) + '&with_genres=99&sort_by=popularity.desc&vote_count.gte=20' },
+            { t: 'Корейські серіали', k: 'tv', q: prov(8) + '&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=20' },
+            { t: 'Іспанські серіали', k: 'tv', q: prov(8) + '&with_origin_country=ES&sort_by=popularity.desc&vote_count.gte=20' },
+            { t: 'Британські серіали', k: 'tv', q: prov(8) + '&with_origin_country=GB&sort_by=popularity.desc&vote_count.gte=50' },
+            // фільми
+            { t: 'Найкращі фільми', k: 'movie', q: prov(8) + '&vote_average.gte=7.3&vote_count.gte=800&sort_by=vote_average.desc' },
+            { t: 'Бойовики', k: 'movie', q: prov(8) + '&with_genres=28&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Комедії (фільми)', k: 'movie', q: prov(8) + '&with_genres=35&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Фантастика', k: 'movie', q: prov(8) + '&with_genres=878&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Жахи', k: 'movie', q: prov(8) + '&with_genres=27&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Драми (фільми)', k: 'movie', q: prov(8) + '&with_genres=18&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Для всієї сім’ї', k: 'movie', q: prov(8) + '&with_genres=10751&sort_by=popularity.desc&vote_count.gte=100' },
+            { t: 'Документальні фільми', k: 'movie', q: prov(8) + '&with_genres=99&sort_by=popularity.desc&vote_count.gte=20' }
         ] },
         apple: { mf: prov(350), tf: 'with_networks=2552', extra: [
             { t: 'Фантастика', k: 'tv', q: 'with_networks=2552&with_genres=10765&sort_by=popularity.desc' },
@@ -1000,7 +1018,7 @@
                     if (heroL && heroL.length) data.push({ title: (object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
                     cats.forEach(function (c, i) {
                         if (res[i] && res[i].length) {
-                            data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, total_pages: 5 });
+                            data.push({ title: c.title, results: res[i], url: c.url, source: 'tmdb', page: 1, more: true, total_pages: 20 });
                         }
                     });
                     self.activity.loader(false);
@@ -1008,8 +1026,8 @@
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); fin(); }); } catch (e) { fin(); } }
-                // для аніме й дорам беремо три сторінки на підбірку (до 60 карток): каталог у них вужчий за західний
-                var pages = isAn ? 3 : 1;
+                // три сторінки на підбірку (до 60 карток): так рядів і карток у каталогах більше
+                var pages = 3;
                 cats.forEach(function (c, i) {
                     var got = [], pend = pages, seenC = {};
                     function one(pg) {
@@ -1795,8 +1813,8 @@
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
-            // запас справа в кінці ряду, разом з відступом картки рівно як зліва (2.2em): остання картка (і рамка фокуса) повністю влазить в екран
-            T + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:1.4em;height:1px}' +
+            // запас справа в кінці ряду (padding тіла ряду: його враховує прокрутка Lampa, на відміну від псевдоелемента), разом з відступом картки рівно як зліва (2.2em)
+            T + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.4em !important}' +
             // як у застосунку: картки при прокрутці «заходять» ліворуч під бокову панель, а не обрізаються на краю ряду
             T + '.items-line:not(.lmx-hero-line) .scroll{margin-left:-2.2em;padding-left:2.2em;-webkit-mask-image:none !important;mask-image:none !important}' +
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
@@ -1992,7 +2010,7 @@
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
-            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:1.3em;height:1px}' +
+            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.3em !important}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(120,120,128,.5);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -3568,7 +3586,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.82';
+    var VERSION = '10.85';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
