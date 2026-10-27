@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.109 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.110 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1759,7 +1759,9 @@
                 '.background{display:none !important}' +
                 '.activity,.activity__body,.wrap{background:transparent}' +
                 // панелі інтерфейсу Lampa (меню, налаштування, списки, вікна) — у колір теми
-                'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content,body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:#17181c !important}' +
+                'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content{background:#17181c !important}' +
+                // бокове меню в стандартній темі — прозоре, видно той самий градієнт, що й у сторінки
+                'body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:transparent !important;box-shadow:none !important;border:0 !important}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -3778,7 +3780,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.109';
+    var VERSION = '10.110';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
