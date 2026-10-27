@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.98 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.100 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1974,8 +1974,14 @@
             T + '.lmx-hero__btn{display:inline-block;padding:.7em 1.9em;border-radius:99em;background:#fff;color:#000;font-weight:700;font-size:1.02em}' +
             // прокрутка: афіша плавно «в'їжджає», текст проявляється трохи згодом
             T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
+            // слайд на весь екран їде майже вдвічі далі, ніж слайд-стрічка в каталогах (100vw проти 58vw), тож час подовжено пропорційно:
+            // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
+            T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.5s cubic-bezier(.4,0,.2,1) !important}' +
+            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
+            // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
+            '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
             // картинки всіх слайдів тримаємо в окремих GPU-шарах, щоб після повернення на перший слайд вона не перемальовувалась із миготінням
             T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .card__view{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}' +
             T + '.lmx-hero-line{position:relative}' +
@@ -3729,7 +3735,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.98';
+    var VERSION = '10.100';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
