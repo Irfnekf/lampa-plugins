@@ -1,5 +1,5 @@
 /*
- * NoCub v1.6 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.7 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -9,7 +9,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.6';
+    var VERSION = '1.7';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -37,6 +37,7 @@
     // CSS-селектори (прості, без пошуку по тексту)
     var CSS = {
         nocub_reactions: [
+            '.full-start__button.button--reaction', '.button--reaction',
             '.full-start-new__reactions', '.full-start__reactions', '.full-start-new .reaction', '.full-start .reaction',
             '.card__reactions', '.full-reactions'
         ],
