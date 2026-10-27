@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.106 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.107 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1867,8 +1867,9 @@
             P + '.full-start-new__rate-line{padding-top:.4em !important;margin-bottom:1.2em}' +
             P + '.full-start-new__details{opacity:.9}' +
             P + '.full-start-new__buttons{overflow-x:auto;-webkit-overflow-scrolling:touch}' +
-            P + '.full-start-new__buttons .button--play{flex:0 0 auto;background:#fff !important;color:#111 !important;border-radius:99em !important;padding:.7em 1.6em !important;font-weight:700;text-shadow:none}' +
-            P + '.full-start-new__buttons .button--play span{display:inline !important;margin-left:.45em}' +
+            // головна кнопка — завжди перша в ряду (порядок кнопок налаштовується, тож за класом «Дивитись» не орієнтуємось)
+            P + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + P + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{flex:0 0 auto;background:#fff !important;color:#111 !important;border-radius:99em !important;padding:.7em 1.6em !important;font-weight:700;text-shadow:none}' +
+            P + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + P + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important;margin-left:.45em}' +
         '}';
     }
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
@@ -3773,7 +3774,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.106';
+    var VERSION = '10.107';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
