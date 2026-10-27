@@ -1,8 +1,8 @@
 /*
- * LMX Pack v10.113 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.115 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
- *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
+ *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
  *  4) Теми: Стандартна (LMX), HBO Max, Apple TV; афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
  *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
@@ -150,7 +150,7 @@
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773], ['anime', 'Аніме', 9000, 'Аніме: популярне зараз'], ['dorama', 'Дорами', 9001, 'Дорами: популярне зараз']
+        ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['anime', 'Аніме', 9000, 'Аніме: популярне зараз'], ['dorama', 'Дорами', 9001, 'Дорами: популярне зараз']
     ];
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
@@ -166,6 +166,7 @@
     );
     var n0 = 30;
     SERVICES.forEach(function (x) {
+        if (x[0] === 'amc') return; // AMC+ — лише окремий каталог, без ряду на головній
         ROWS.push({ name: 'LmxSvc_' + x[0], title: x[3] || ('Сьогодні на ' + x[1]), index: n0++,
             custom: function () { return (SVC[x[0]] && SVC[x[0]].hero ? popularCall : serviceCall)(this, x[0]); } });
     });
@@ -703,7 +704,7 @@
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
     // Регіон каталогу: SkyShowtime — Польща, Paramount+ — США (в Україні його немає), решта, зокрема Max, — Україна (якщо порожньо — США)
     function prov(id) {
-        var region = id === 1773 ? 'PL' : id === 531 ? 'US' : 'UA';
+        var region = id === 1773 ? 'PL' : (id === 531 || id === 526) ? 'US' : 'UA';
         // Prime Video в TMDB має два ідентифікатори (9 і 119): у різних регіонах заповнений то один, то інший
         return 'with_watch_providers=' + (id === 119 ? '9' + PIPE + '119' : id) + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
     }
@@ -712,11 +713,16 @@
     var DR_X = 'with_original_language=LANG&without_genres=16%7C10764%7C10767%7C10763';
     var DR_KO = DR_X.replace('LANG', 'ko');
     // Типовий набір рядів платформи: серіали й фільми за жанрами, країнами та рейтингом (усе в межах каталогу самої платформи)
-    function provSvc(id, own) {
+    function provSvc(id, own, compact) {
         var P = prov(id), V = '&sort_by=popularity.desc&vote_count.gte=';
         function tv(t, q, vc) { return { t: t, k: 'tv', q: P + q + V + (vc || 100) }; }
         function mv(t, q, vc) { return { t: t, k: 'movie', q: P + q + V + (vc || 100) }; }
         var rows = own.slice();
+        if (compact) {
+            rows.push(tv('Драми', '&with_genres=18', 50), tv('Кримінал і трилери', '&with_genres=80' + PIPE + '9648', 50), tv('Фантастика й фентезі', '&with_genres=10765', 50),
+                mv('Жахи', '&with_genres=27', 30), mv('Трилери', '&with_genres=53', 30), mv('Драми (фільми)', '&with_genres=18', 30));
+            return { mf: P, tf: P, extra: rows };
+        }
         rows.push(
             tv('Фантастика й фентезі', '&with_genres=10765'), tv('Кримінал і трилери', '&with_genres=80' + PIPE + '9648'),
             tv('Драми', '&with_genres=18'), tv('Бойовик і пригоди', '&with_genres=10759'), tv('Комедії', '&with_genres=35'),
@@ -762,6 +768,12 @@
             { t: 'Оригінали Paramount+', k: 'tv', q: 'with_networks=4330&sort_by=popularity.desc' }
         ]),
         sky: provSvc(1773, []),
+        // AMC+: невеликий каталог — мало рядів; франшиза «Ходячі мертві» окремим першим рядом (пошук за назвою, лише серіали франшизи)
+        amc: provSvc(526, [
+            { t: 'Ходячі мертві: уся франшиза', k: 'tv', q: 'query=The%20Walking%20Dead', search: true, min: 3,
+              f: function (x) { return /walking dead/i.test((x.original_name || '') + ' ' + (x.name || '')) || /ходяч/i.test(x.name || ''); } },
+            { t: 'Оригінали AMC', k: 'tv', q: 'with_networks=174&sort_by=popularity.desc&vote_count.gte=100' }
+        ], true),
         // Аніме: не провайдер, а вся японська анімація; студії й теги підтягуються за назвою з TMDB (див. animeResolve)
         anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16', hero: 'with_original_language=ja&with_genres=16',
           lead: function () {
@@ -872,7 +884,7 @@
         (typeof c.extra === 'function' ? c.extra() : c.extra).forEach(function (e) { out.push(e); });
         out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
         return out.map(function (e) {
-            return { title: e.t, url: 'discover/' + e.k + '?' + e.q.replace('{today}', today), kind: e.k };
+            return { title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
         });
     }
 
@@ -986,7 +998,9 @@
     // Для платформ, у яких TMDB не віддає дані провайдера, запит повторюється за студіями й каналами платформи
     var ALT = {
         119: { movie: 'with_companies=20580' + '%7C56178%7C21', tv: 'with_networks=1024' },
-        531: { movie: 'with_companies=4', tv: 'with_networks=4330%7C16%7C67%7C13' }
+        531: { movie: 'with_companies=4', tv: 'with_networks=4330%7C16%7C67%7C13' },
+        // AMC+: якщо TMDB не віддає дані провайдера — серіали каналу AMC; для фільмів заміни немає (порожньо, ряд просто не показується)
+        526: { movie: 'with_companies=0', tv: 'with_networks=174' }
     };
     var PROV_RX = /with_watch_providers=([^&]*)&watch_region=[^&]*&with_watch_monetization_types=[^&]*/;
     function empty(j) { return !j || !j.results || !j.results.length; }
@@ -1074,7 +1088,7 @@
                     return { title: cats[i].title, results: res[i].map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18, total_pages: 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
-                function ok(i) { return res[i] && res[i].length >= (i < 4 ? 5 : 8); }
+                function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
                     var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
@@ -1084,6 +1098,7 @@
                         fin = true; clearTimeout(t);
                         var out = [];
                         got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
+                        if (cats[i].f) out.sort(function (a, b) { return String(a.first_air_date || '').localeCompare(String(b.first_air_date || '')); });
                         res[i] = out;
                         dbg.push({ s: id, i: i, t: cats[i].title, n: out.length, ms: Date.now() - t0, err: errs });
                         done();
@@ -1093,7 +1108,7 @@
                         var tries = 0;
                         (function go() {
                             tgetFb(cats[i].url, { page: pg }, function (j) {
-                                got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
+                                got[pg - 1] = cleanResults(j && j.results, !!cats[i].f).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
                                 end();
                             }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[pg - 1] = []; end(); });
                         })();
@@ -1442,7 +1457,7 @@
         };
     }
 
-    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
+    var PROV_COLORS = { 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 526: '#10202f', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
     function studioCall(row) {
         return function (call) {
             var logos = {};
@@ -1476,7 +1491,11 @@
             }
             tget('watch/providers/movie?watch_region=UA', {}, function (j) {
                 ((j && j.results) || []).forEach(function (p) { logos[p.provider_id] = p.logo_path; });
-                done();
+                // AMC+ є лише в США — його логотип добираємо звідти
+                tget('watch/providers/movie?watch_region=US', {}, function (u) {
+                    ((u && u.results) || []).forEach(function (p) { if (!logos[p.provider_id]) logos[p.provider_id] = p.logo_path; });
+                    done();
+                }, function () { done(); });
             }, function () { done(); });
         };
     }
@@ -1797,16 +1816,16 @@
             '.lmx-studio__logo{width:3.6em;height:3.6em;border-radius:.6em;object-fit:cover}' +
             '.lmx-studio__name{color:#fff;font-size:1.3em;font-weight:600;text-align:center;padding:0 .4em}';
     }
-    // Афіша на телефоні (усі теми): перший слайд впритул до лівого краю, останній — до правого; між слайдами проміжок і сусідній слайд визирає
+    // Афіша на телефоні (усі теми): лівий відступ як у решти рядів (1.5em), слайд не виходить за правий край, справа визирає сусідній
     function heroPhoneCss() {
         var L = 'html body .items-line.lmx-hero-line ', X = ':not(#lmx-x)';
         var C = L + '.card--lmxhero' + X + ',' + L + '.card--lmxhero.focus' + X + ',' + L + '.card--lmxhero.hover' + X;
         var V = L + '.card--lmxhero' + X + ' .card__view,' + L + '.card--lmxhero.focus' + X + ' .card__view,' + L + '.card--lmxhero.hover' + X + ' .card__view';
         return '@media (max-width:760px){' +
-            L + '.scroll__content' + X + '{padding-left:0 !important;padding-right:0 !important}' +
-            C + '{width:88vw !important;margin-left:0 !important;margin-right:.8em !important}' +
+            L + '.scroll__content' + X + '{padding-left:1.5em !important;padding-right:1.5em !important}' +
+            C + '{width:calc(100vw - 4.5em) !important;margin-left:0 !important;margin-right:.8em !important}' +
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
-            V + '{height:50vw !important;border-radius:1em !important}' +
+            V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
         '}';
     }
     // Блоки під описанням на сторінці фільму: серії, актори, коментарі (однаково для всіх тем, кольори беруться з теми)
@@ -3811,7 +3830,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.113';
+    var VERSION = '10.115';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
