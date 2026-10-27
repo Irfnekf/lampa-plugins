@@ -747,22 +747,40 @@
             { t: 'Комедії', k: 'tv', q: prov(1773) + '&with_genres=35&sort_by=popularity.desc' },
             { t: 'Фантастика й фентезі', k: 'tv', q: prov(1773) + '&with_genres=10765&sort_by=popularity.desc' }
         ] },
-        // Аніме: не провайдер, а вся японська анімація; студії підтягуються за назвою з TMDB (див. animeStudios)
-        anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16', extra: function () {
+        // Аніме: не провайдер, а вся японська анімація; студії й теги підтягуються за назвою з TMDB (див. animeResolve)
+        anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16',
+          lead: function () {
+            var JA = 'with_original_language=ja&with_genres=16', Y = new Date().getFullYear(), t0 = dayStr(0);
+            return [
+                { t: 'Зараз дивляться', k: 'tv', q: JA + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3' },
+                { t: 'У топі', k: 'tv', q: JA + '&sort_by=popularity.desc&vote_count.gte=400' },
+                { t: 'Онгоїнги', k: 'tv', q: JA + '&with_status=0&air_date.gte=' + dayStr(-30) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc' },
+                { t: 'Новинки цього року', k: 'tv', q: JA + '&first_air_date.gte=' + Y + '-01-01&first_air_date.lte=' + t0 + '&sort_by=popularity.desc' },
+                { t: 'Минулий рік', k: 'tv', q: JA + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc' }
+            ];
+          },
+          extra: function () {
             var JA = 'with_original_language=ja&with_genres=16', out = [
+                { t: 'Варто переглянути', k: 'tv', q: JA + '&vote_average.gte=7.5&vote_count.gte=500&sort_by=vote_count.desc' },
+                { t: 'З високим рейтингом', k: 'tv', q: JA + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc' },
                 { t: 'Аніме-фільми', k: 'movie', q: JA + '&sort_by=popularity.desc&vote_count.gte=100' },
-                { t: 'Екшн і пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759&sort_by=popularity.desc' },
-                { t: 'Фентезі та ісекай', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765&sort_by=popularity.desc' },
+                { t: 'Найкращі аніме-фільми', k: 'movie', q: JA + '&vote_average.gte=7.6&vote_count.gte=500&sort_by=vote_average.desc' },
+                { t: 'Бойовик та пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759&sort_by=popularity.desc' },
+                { t: 'НФ та фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765&sort_by=popularity.desc' },
                 { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35&sort_by=popularity.desc' },
                 { t: 'Драми', k: 'tv', q: 'with_original_language=ja&with_genres=16,18&sort_by=popularity.desc' },
                 { t: 'Детективи й психологічні', k: 'tv', q: 'with_original_language=ja&with_genres=16,9648&sort_by=popularity.desc' }
-            ], co = animeCos();
+            ], kw = animeCos('lmx_anime_kw'), co = animeCos('lmx_anime_cos');
+            ANIME_TAGS.forEach(function (tg) {
+                var id = kw[tg[0]];
+                if (id) out.push({ t: tg[1], k: 'tv', q: JA + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
+            });
             ANIME_STUDIOS.forEach(function (st) {
                 var id = co[st[0]];
-                if (id) out.push({ t: st[1], k: st[2], q: 'with_original_language=ja&with_genres=16&with_companies=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
+                if (id) out.push({ t: st[1], k: st[2], q: JA + '&with_companies=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
             });
             return out;
-        } }
+          } }
     };
     // Студії аніме: id компаній беремо з TMDB пошуком за назвою (один раз, далі зі сховища)
     var ANIME_STUDIOS = [
@@ -771,22 +789,30 @@
         ['ufotable', 'Ufotable', 'tv'], ['Wit Studio', 'Wit Studio', 'tv'], ['A-1 Pictures', 'A-1 Pictures', 'tv'],
         ['Sunrise', 'Sunrise', 'tv'], ['Production I.G', 'Production I.G', 'tv'], ['CloverWorks', 'CloverWorks', 'tv'], ['Trigger', 'Trigger', 'tv']
     ];
-    function animeCos() { var c = Lampa.Storage.get('lmx_anime_cos', {}); return c && typeof c === 'object' ? c : {}; }
-    function animeStudios() {
-        var co = animeCos(), todo = ANIME_STUDIOS.filter(function (st) { return !co[st[0]]; });
-        if (!todo.length) return;
-        todo.forEach(function (st) {
-            tget('search/company', { query: st[0] }, function (j) {
-                var list = (j && j.results) || [], pick = null;
-                list.forEach(function (r) { if (!pick && String(r.name).toLowerCase() === st[0].toLowerCase()) pick = r; });
-                if (pick) { var c2 = animeCos(); c2[st[0]] = pick.id; Lampa.Storage.set('lmx_anime_cos', c2); }
+    var ANIME_TAGS = [
+        ['isekai', 'Ісекай'], ['school', 'Школа'], ['reincarnation', 'Переродження'], ['magic', 'Магія'], ['vampire', 'Вампіри'],
+        ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність'], ['shounen', 'Сьонен'], ['romance', 'Романтика']
+    ];
+    function animeCos(k) { var c = Lampa.Storage.get(k || 'lmx_anime_cos', {}); return c && typeof c === 'object' ? c : {}; }
+    function animeResolve(list, store, endpoint) {
+        var have = animeCos(store), todo = list.filter(function (it) { return !have[it[0]]; });
+        todo.forEach(function (it) {
+            tget(endpoint, { query: it[0] }, function (j) {
+                var res = (j && j.results) || [], pick = null;
+                res.forEach(function (r) { if (!pick && String(r.name).toLowerCase() === it[0].toLowerCase()) pick = r; });
+                if (pick) { var c2 = animeCos(store); c2[it[0]] = pick.id; Lampa.Storage.set(store, c2); }
             }, function () {});
         });
     }
+    function animeStudios() {
+        animeResolve(ANIME_STUDIOS, 'lmx_anime_cos', 'search/company');
+        animeResolve(ANIME_TAGS, 'lmx_anime_kw', 'search/keyword');
+    }
 
-    function svcCats(key) {
+    function svcCats(key, forHome) {
         var c = SVC[key], today = dayStr(0), out = [];
         if (!c) return out;
+        if (c.lead && !forHome) c.lead().forEach(function (e) { out.push(e); });
         out.push({ t: 'Нові фільми', k: 'movie', q: c.mf + '&sort_by=primary_release_date.desc&primary_release_date.lte=' + today + '&vote_count.gte=10' });
         out.push({ t: 'Нові серіали', k: 'tv', q: c.tf + '&sort_by=first_air_date.desc&first_air_date.lte=' + today + '&vote_count.gte=5' });
         out.push({ t: 'Головні хіти', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
@@ -802,7 +828,7 @@
     // Якщо свіжого мало (у сервісів без великого каталогу в Україні) — добираємо популярним
     function serviceCall(row, key) {
         return function (call) {
-            var cats = svcCats(key);
+            var cats = svcCats(key, true);
             var wide = function (u) { return u.replace('with_watch_monetization_types=flatrate', 'with_watch_monetization_types=flatrate%7Cfree%7Cads'); };
             var fresh = [
                 { url: wide(cats[0].url), page: 1, kind: 'movie' }, { url: wide(cats[0].url), page: 2, kind: 'movie' },
@@ -3304,7 +3330,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.59';
+    var VERSION = '10.60';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
