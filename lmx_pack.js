@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.115 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.116 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -166,7 +166,6 @@
     );
     var n0 = 30;
     SERVICES.forEach(function (x) {
-        if (x[0] === 'amc') return; // AMC+ — лише окремий каталог, без ряду на головній
         ROWS.push({ name: 'LmxSvc_' + x[0], title: x[3] || ('Сьогодні на ' + x[1]), index: n0++,
             custom: function () { return (SVC[x[0]] && SVC[x[0]].hero ? popularCall : serviceCall)(this, x[0]); } });
     });
@@ -212,7 +211,7 @@
     // Порядок за замовчуванням (поки користувач не змінив його сам)
     var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxHistory', 'LmxNowPlaying',
         'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxUaMovies', 'LmxUaTv', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
-        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky'];
+        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky', 'LmxSvc_amc'];
 
     function allRows() {
         var map = {}, list = [];
@@ -3830,7 +3829,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.115';
+    var VERSION = '10.116';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4088,7 +4087,40 @@
         S.addParam({ component: 'nocub', param: { name: 'nocub_v', type: 'title', default: '' }, field: { name: 'NoCub v' + VERSION + ' · лише ховає елементи, нічого не видаляє' } });
     }
 
+    // Сторінка фільму: Lampa перебирає блоки (сезони, актори, рекомендації…) за списком, а не за тим, що видно на екрані.
+    // Прихований блок лишається в списку: «вниз» потрапляло на нього, екран стрибав і фокус зникав. Тому такий блок пропускаємо.
+    function isHiddenBlock(el) {
+        if (!el) return false;
+        return el.offsetParent === null || el.classList.contains('nocub-hide') || !!el.closest('.nocub-hide');
+    }
+    function hookFull(e) {
+        if (!e || e.type !== 'build' || !e.item || !e.link || e.item.__nocubNav) return;
+        var item = e.item, link = e.link, orig = item.toggle;
+        if (typeof orig !== 'function') return;
+        item.__nocubNav = 1;
+        item.toggle = function () {
+            var self = this, args = arguments, el = null;
+            try { el = self.render(true); } catch (x) {}
+            var idx = link.active, last = typeof link.__nocubLast === 'number' ? link.__nocubLast : 0;
+            link.__nocubLast = idx;
+            if (!isHiddenBlock(el)) return orig.apply(self, args);
+            // невидимий блок: йдемо далі в тому ж напрямку, а якщо далі нікуди (край списку) — назад
+            link.__nocubDepth = (link.__nocubDepth || 0) + 1;
+            try {
+                if (link.__nocubDepth > 8) return orig.apply(self, args);
+                var dir = idx > last ? 'down' : idx < last ? 'up' : (link.__nocubDir || 'down');
+                link.__nocubDir = dir;
+                var before = link.active;
+                link.emit(dir);
+                if (link.active === before && dir === 'down') { link.__nocubDir = 'up'; link.emit('up'); }
+            } finally { link.__nocubDepth--; }
+        };
+    }
+
     function start() {
+        safe(function () {
+            Lampa.Listener.follow('full', function (e) { safe(function () { hookFull(e); }); });
+        });
         safe(function () {
             var st = document.createElement('style');
             st.id = 'nocub-css';
