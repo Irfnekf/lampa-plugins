@@ -959,7 +959,7 @@
                         }
                     });
                     self.activity.loader(false);
-                    if (!data.length) self.empty(); else { self.build(data); if (heroL && heroL.length) heroAttach(self.render(), heroL); }
+                    if (!data.length) self.empty(); else { self.build(data); if (heroL && heroL.length) heroAttach((object.service_id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро', heroL); }
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
@@ -1134,26 +1134,39 @@
     }
 
     // Сторінка сервісу будує ряди без наших params, тому афішу оформлюємо вже на готових картках першого ряду
-    function heroAttach(root, list) {
-        if (!root || !root[0] || !window.$ || !window.MutationObserver) return;
-        var n = list.length, mo = null, stop = 0;
-        function run() {
-            var line = root.find('.items-line').eq(0), cards = line.find('.card');
-            if (!cards.length) return;
-            cards.each(function (i) {
-                if (i >= n) return;
-                var h = window.$(this);
-                if (h.hasClass('card--lmxhero')) return;
-                h.find('.lmx-cin,.lmx-box').remove();
-                safe(function () { heroDecorate(h, list[i], i, n); });
+    function heroAttach(title, list) {
+        if (!window.$) return;
+        var n = list.length, tries = 0, dbg = window.__lmxHero = { title: title, n: n, tries: 0, lines: 0, cards: 0, done: 0 };
+        function findLine() {
+            var found = null;
+            document.querySelectorAll('.items-line').forEach(function (l) {
+                var t = l.querySelector('.items-line__title');
+                if (!found && t && String(t.textContent).replace(/\s+/g, ' ').trim() === title) found = l;
             });
+            return found;
         }
-        function clean() { root.find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove(); }
-        run();
-        mo = new MutationObserver(function () { run(); });
-        mo.observe(root[0], { childList: true, subtree: true });
-        [400, 1200, 2500].forEach(function (t) { setTimeout(function () { run(); clean(); }, t); });
-        stop = setTimeout(function () { mo.disconnect(); }, 8000);
+        function run() {
+            dbg.tries = tries;
+            var line = findLine();
+            if (!line) return;
+            dbg.lines = 1;
+            var cards = line.querySelectorAll('.card');
+            dbg.cards = cards.length;
+            for (var i = 0; i < cards.length && i < n; i++) {
+                var h = window.$(cards[i]);
+                if (!h.hasClass('card--lmxhero')) {
+                    h.find('.lmx-cin,.lmx-box').remove();
+                    (function (hh, ii) { safe(function () { heroDecorate(hh, list[ii], ii, n); }); })(h, i);
+                }
+                dbg.done++;
+            }
+            window.$(line).find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove();
+        }
+        var iv = setInterval(function () {
+            tries++;
+            safe(run);
+            if (tries > 50) clearInterval(iv);
+        }, 200);
     }
 
     function heroCall(row) {
@@ -3440,7 +3453,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.66';
+    var VERSION = '10.67';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
