@@ -1,0 +1,141 @@
+/*
+ * NoCub v1.0 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
+ * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
+ * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
+ */
+(function () {
+    'use strict';
+    if (window.__nocub) return;
+    window.__nocub = true;
+
+    var VERSION = '1.0';
+    function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
+
+    // Перемикачі: ключ → що ховаємо
+    var ITEMS = [
+        { key: 'nocub_reactions', name: 'Реакції', desc: 'Кнопки реакцій на картках і на сторінці фільму' },
+        { key: 'nocub_reviews', name: 'Коментарі та відгуки', desc: 'Блок «Коментарі» на сторінці фільму, разом із кнопкою «додати»' },
+        { key: 'nocub_bell', name: 'Дзвіночок сповіщень', desc: 'Іконка сповіщень у шапці' },
+        { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
+        { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Пункти «Акаунт» / «Увійти» в меню та налаштуваннях' },
+        { key: 'nocub_recs', name: 'Рекомендації на сторінці фільму', desc: 'Блоки «Рекомендації» і «Схожі» внизу сторінки фільму' },
+        { key: 'nocub_subscribe', name: 'Кнопка «Підписатися»', desc: 'Підписка на фільм, серіал чи актора (потрібен акаунт CUB)' }
+    ];
+
+    function on(key) {
+        var v = Lampa.Storage.get(key, 'false');
+        return v === true || v === 'true';
+    }
+
+    // CSS-селектори (прості, без пошуку по тексту)
+    var CSS = {
+        nocub_reactions: [
+            '.full-start-new__reactions', '.full-start__reactions', '.full-start-new .reaction', '.full-start .reaction',
+            '.card__reactions', '.full-reactions'
+        ],
+        nocub_reviews: ['.full-review', '.full-review-add', '.full-reviews'],
+        nocub_bell: ['.head__action.notice--icon', '.head__action.open--notice', '.head__action--notice', '.notice--icon'],
+        nocub_premium: ['.head__action.open--premium', '.open--premium', '.menu__item[data-action="premium"]', '.settings-folder[data-component="premium"]'],
+        nocub_account: ['.menu__item[data-action="account"]', '.settings-folder[data-component="account"]', '.head__action.open--profile'],
+        nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe']
+    };
+    var HIDE = '{display:none !important}';
+    function css() {
+        var out = '';
+        Object.keys(CSS).forEach(function (k) {
+            out += CSS[k].map(function (s) { return 'body.' + k + ' ' + s; }).join(',') + HIDE;
+        });
+        return out + '.nocub-hide' + HIDE;
+    }
+
+    // Пошук по тексту (коли в елемента немає стабільного класу): ключ → [контейнер, regexp]
+    var TEXT = [
+        { key: 'nocub_premium', sel: '.menu .menu__item', re: /преміум|премиум|premium|запроси|пригласи|invite/i },
+        { key: 'nocub_account', sel: '.menu .menu__item', re: /^\s*(акаунт|аккаунт|account|увійти|войти)(?![a-zа-яіїєґ])/i },
+        { key: 'nocub_account', sel: '.settings-folder', re: /акаунт|аккаунт|cub account/i },
+        { key: 'nocub_subscribe', sel: '.full-start-new__buttons .full-start__button, .full-start__buttons .full-start__button', re: /підписат|подписат|subscribe/i },
+        { key: 'nocub_reviews', sel: '.items-line', re: /^\s*(коментар|комментар|відгук|отзыв|comments|reviews)/i, title: true },
+        { key: 'nocub_recs', sel: '.items-line', re: /^\s*(рекомендац|рекомендаці|схож|similar|recommendations)/i, title: true, onlyFull: true }
+    ];
+
+    function anyOn() { return ITEMS.some(function (it) { return on(it.key); }); }
+    function scan() {
+        var any = anyOn();
+        if (!any && !document.querySelector('.nocub-hide')) return;
+        TEXT.forEach(function (rule) {
+            var els = document.querySelectorAll(rule.sel);
+            var active = on(rule.key);
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i], hit = false;
+                if (active) {
+                    var txt;
+                    if (rule.title) {
+                        var t = el.querySelector('.items-line__title');
+                        txt = t ? t.textContent : '';
+                    } else txt = el.textContent;
+                    hit = !!txt && rule.re.test(txt.slice(0, 80));
+                    // Блоки «Рекомендації» ховаємо лише на сторінці фільму, не на головній
+                    if (hit && rule.onlyFull && !document.querySelector('.activity--active .full-start-new, .activity--active .full-start')) hit = false;
+                }
+                if (hit) {
+                    el.classList.add('nocub-hide');
+                    el.setAttribute('data-nocub', rule.key);
+                } else if (el.getAttribute('data-nocub') === rule.key) {
+                    el.classList.remove('nocub-hide');
+                    el.removeAttribute('data-nocub');
+                }
+            }
+        });
+    }
+
+    function applyBody() {
+        ITEMS.forEach(function (it) { document.body.classList.toggle(it.key, on(it.key)); });
+    }
+
+    var timer = 0;
+    function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(function () { safe(applyBody); safe(scan); }, 300);
+    }
+
+    function addSettings() {
+        var S = Lampa.SettingsApi;
+        if (!S || !S.addComponent) return;
+        S.addComponent({
+            component: 'nocub', name: 'NoCub',
+            icon: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+        });
+        S.addParam({ component: 'nocub', param: { name: 'nocub_t', type: 'title', default: '' }, field: { name: 'Сховати елементи CUB' } });
+        ITEMS.forEach(function (it) {
+            S.addParam({
+                component: 'nocub', param: { name: it.key, type: 'trigger', default: false },
+                field: { name: it.name, description: it.desc },
+                onChange: function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); }
+            });
+        });
+        S.addParam({ component: 'nocub', param: { name: 'nocub_v', type: 'title', default: '' }, field: { name: 'NoCub v' + VERSION + ' · лише ховає елементи, нічого не видаляє' } });
+    }
+
+    function start() {
+        safe(function () {
+            var st = document.createElement('style');
+            st.id = 'nocub-css';
+            st.textContent = css();
+            document.head.appendChild(st);
+        });
+        safe(addSettings);
+        safe(applyBody);
+        safe(scan);
+        safe(function () {
+            new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+        });
+        safe(function () {
+            Lampa.Listener.follow('full', schedule);
+            Lampa.Listener.follow('activity', schedule);
+        });
+    }
+
+    if (window.appready) start();
+    else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
+})();
