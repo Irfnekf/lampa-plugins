@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.97 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.98 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1976,8 +1976,6 @@
             T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
-            // як у каталогах: текст не «проявляється» після ковзання, а їде разом зі слайдом
-            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{opacity:1 !important;transition:none !important}' +
             // картинки всіх слайдів тримаємо в окремих GPU-шарах, щоб після повернення на перший слайд вона не перемальовувалась із миготінням
             T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .card__view{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}' +
             T + '.lmx-hero-line{position:relative}' +
@@ -3731,7 +3729,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.97';
+    var VERSION = '10.98';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
