@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.94 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.95 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, Аніме, Дорами — окрема сторінка з підбірками
@@ -1065,12 +1065,13 @@
                 var heroTitle = isAn ? (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро' : svcName + ': у тренді';
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
-                var res = cache.res, GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false;
+                var res = cache.res; res.forEach(function (r, i) { if (!r || !r.length) delete res[i]; });
+                var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i], url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18, total_pages: 20 };
+                    return { title: cats[i].title, results: res[i].map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18, total_pages: 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (i < 4 ? 5 : 8); }
@@ -3726,7 +3727,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.94';
+    var VERSION = '10.95';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
