@@ -1569,8 +1569,8 @@
             T + '.activity,' + T + '.activity__body{background:transparent}' +
             // ряди
             T + '.items-line .card:not(.card--lmxhero){margin-right:.8em}' +
-            // запас справа в кінці ряду: остання картка (і рамка фокуса) повністю влазить в екран
-            T + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:3.2em;height:1px}' +
+            // запас справа в кінці ряду, разом з відступом картки рівно як зліва (2.2em): остання картка (і рамка фокуса) повністю влазить в екран
+            T + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:1.4em;height:1px}' +
             // як у застосунку: картки при прокрутці «заходять» ліворуч під бокову панель, а не обрізаються на краю ряду
             T + '.items-line:not(.lmx-hero-line) .scroll{margin-left:-2.2em;padding-left:2.2em;-webkit-mask-image:none !important;mask-image:none !important}' +
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
@@ -1766,7 +1766,7 @@
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
-            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:3.2em;height:1px}' +
+            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body::after{content:"";flex:none;width:1.3em;height:1px}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(120,120,128,.5);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -3330,7 +3330,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.60';
+    var VERSION = '10.61';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
