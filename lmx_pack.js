@@ -788,29 +788,29 @@
           lead: function () {
             var Y = new Date().getFullYear(), t0 = dayStr(0);
             return [
-                { t: 'Зараз виходять', k: 'tv', q: DR_KO + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3' },
-                { t: 'У топі', k: 'tv', q: DR_KO + '&sort_by=popularity.desc&vote_count.gte=150' },
+                { t: 'Зараз виходять', k: 'tv', q: DR_KO + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=1' },
+                { t: 'У топі', k: 'tv', q: DR_KO + '&sort_by=popularity.desc&vote_count.gte=40' },
                 { t: 'Новинки цього року', k: 'tv', q: DR_KO + '&first_air_date.gte=' + Y + '-01-01&first_air_date.lte=' + t0 + '&sort_by=popularity.desc' },
                 { t: 'Минулий рік', k: 'tv', q: DR_KO + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc' }
             ];
           },
           extra: function () {
             var out = [
-                { t: 'Варто переглянути', k: 'tv', q: DR_KO + '&vote_average.gte=7.8&vote_count.gte=200&sort_by=vote_count.desc' },
-                { t: 'З високим рейтингом', k: 'tv', q: DR_KO + '&vote_average.gte=8.3&vote_count.gte=150&sort_by=vote_average.desc' },
-                { t: 'Корейські фільми', k: 'movie', q: 'with_original_language=ko&sort_by=popularity.desc&vote_count.gte=100' },
+                { t: 'Варто переглянути', k: 'tv', q: DR_KO + '&vote_average.gte=7.3&vote_count.gte=60&sort_by=vote_count.desc' },
+                { t: 'З високим рейтингом', k: 'tv', q: DR_KO + '&vote_average.gte=7.9&vote_count.gte=50&sort_by=vote_average.desc' },
+                { t: 'Корейські фільми', k: 'movie', q: 'with_original_language=ko&sort_by=popularity.desc&vote_count.gte=30' },
                 { t: 'Драми', k: 'tv', q: DR_KO + '&with_genres=18&sort_by=popularity.desc' },
                 { t: 'Комедії', k: 'tv', q: DR_KO + '&with_genres=35&sort_by=popularity.desc' },
                 { t: 'Кримінал і трилери', k: 'tv', q: DR_KO + '&with_genres=80' + PIPE + '9648&sort_by=popularity.desc' },
                 { t: 'Фентезі та фантастика', k: 'tv', q: DR_KO + '&with_genres=10765&sort_by=popularity.desc' },
                 { t: 'Екшн і пригоди', k: 'tv', q: DR_KO + '&with_genres=10759&sort_by=popularity.desc' },
-                { t: 'Японські дорами', k: 'tv', q: DR_X.replace('LANG', 'ja') + '&sort_by=popularity.desc&vote_count.gte=20' },
-                { t: 'Китайські дорами', k: 'tv', q: DR_X.replace('LANG', 'zh') + '&sort_by=popularity.desc&vote_count.gte=20' },
-                { t: 'Тайські дорами', k: 'tv', q: DR_X.replace('LANG', 'th') + '&sort_by=popularity.desc&vote_count.gte=20' }
+                { t: 'Японські дорами', k: 'tv', q: DR_X.replace('LANG', 'ja') + '&sort_by=popularity.desc&vote_count.gte=3' },
+                { t: 'Китайські дорами', k: 'tv', q: DR_X.replace('LANG', 'zh') + '&sort_by=popularity.desc&vote_count.gte=3' },
+                { t: 'Тайські дорами', k: 'tv', q: DR_X.replace('LANG', 'th') + '&sort_by=popularity.desc&vote_count.gte=3' }
             ], kw = animeCos('lmx_dorama_kw');
             DORAMA_TAGS.forEach(function (tg) {
                 var id = kw[tg[0]];
-                if (id) out.push({ t: tg[1], k: 'tv', q: DR_KO + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
+                if (id) out.push({ t: tg[1], k: 'tv', q: DR_KO + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=3' });
             });
             return out;
           } }
@@ -959,15 +959,27 @@
                         }
                     });
                     self.activity.loader(false);
-                    if (!data.length) self.empty(); else self.build(data);
+                    if (!data.length) self.empty(); else { self.build(data); if (heroL && heroL.length) heroAttach(self.render(), heroL); }
                 }
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 if (isAn) { try { animeHeroList(SVC[object.service_id].hero, function (l) { heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); }); }); fin(); }); } catch (e) { fin(); } }
+                // для аніме й дорам беремо дві сторінки на підбірку (до 40 карток): каталог у них вужчий за західний
+                var pages = isAn ? 2 : 1;
                 cats.forEach(function (c, i) {
-                    tget(c.url, { page: 1 }, function (j) {
-                        res[i] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
+                    var got = [], pend = pages, seenC = {};
+                    function one(pg) {
+                        tget(c.url, { page: pg }, function (j) {
+                            got[pg - 1] = cleanResults(j && j.results, false).filter(function (x) { return x.poster_path; });
+                            end();
+                        }, function () { got[pg - 1] = []; end(); });
+                    }
+                    function end() {
+                        if (--pend > 0) return;
+                        res[i] = [];
+                        got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; res[i].push(x); } }); });
                         fin();
-                    }, function () { res[i] = []; fin(); });
+                    }
+                    for (var pg = 1; pg <= pages; pg++) one(pg);
                 });
                 return this.render();
             };
@@ -1072,49 +1084,76 @@
     }
 
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
+    // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
+    function heroDecorate(h, m, idx, n) {
+        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', n);
+        if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
+        var view = h.find('.card__view');
+        var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
+        heroPreload(heroUrl);
+        // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
+        view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
+        view.find('img').css('opacity', 0);
+        h.find('.card__title,.card__age,.card__vote').remove();
+        var v = Number(m.vote_average) || 0;
+        var isTv = m.media_type === 'tv' || (!m.title && m.name);
+        var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
+        var ov = String(m.overview || '');
+        if (!ov && m.__tag === 'soon') ov = '';
+        var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
+        if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
+        view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
+            esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
+            (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '')) +
+            (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
+            '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
+            '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
+            (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
+                getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
+    }
     function heroItems(list) {
-            return list.map(function (m, idx) {
-                var it = {};
-                for (var k in m) it[k] = m[k];
-                it.params = {
-                    createInstance: makeInstance,
-                    emit: {
-                        onCreate: function () {
-                            var self = this, ex = arguments[0];
-                            safe(function () {
-                                var h = htmlOf(self, ex);
-                                if (!h) return;
-                                h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500')).attr('data-lmxi', idx).attr('data-lmxn', list.length);
-                                if (h.closest) h.closest('.items-line').addClass('lmx-hero-line');
-                                var view = h.find('.card__view');
-                                var heroUrl = imgUrl(m.backdrop_path, board() ? 'w1280' : 'w500');
-                                heroPreload(heroUrl);
-                                // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
-                                view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
-                                view.find('img').css('opacity', 0);
-                                h.find('.card__title,.card__age,.card__vote').remove();
-                                var v = Number(m.vote_average) || 0;
-                                var isTv = m.media_type === 'tv' || (!m.title && m.name);
-                                var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
-                                var ov = String(m.overview || '');
-                                if (!ov && m.__tag === 'soon') ov = '';
-                                var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
-                                if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
-                                view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
-                                    esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
-                                    (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '')) +
-                                    (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
-                                    '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
-                                    '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-                                    (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
-                                        getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
-                            });
-                        },
-                        onlyEnter: function () { openFull(m); }
-                    }
-                };
-                return it;
+        return list.map(function (m, idx) {
+            var it = {};
+            for (var k in m) it[k] = m[k];
+            it.params = {
+                createInstance: makeInstance,
+                emit: {
+                    onCreate: function () {
+                        var self = this, ex = arguments[0];
+                        safe(function () {
+                            var h = htmlOf(self, ex);
+                            if (!h) return;
+                            heroDecorate(h, m, idx, list.length);
+                        });
+                    },
+                    onlyEnter: function () { openFull(m); }
+                }
+            };
+            return it;
+        });
+    }
+
+    // Сторінка сервісу будує ряди без наших params, тому афішу оформлюємо вже на готових картках першого ряду
+    function heroAttach(root, list) {
+        if (!root || !root[0] || !window.$ || !window.MutationObserver) return;
+        var n = list.length, mo = null, stop = 0;
+        function run() {
+            var line = root.find('.items-line').eq(0), cards = line.find('.card');
+            if (!cards.length) return;
+            cards.each(function (i) {
+                if (i >= n) return;
+                var h = window.$(this);
+                if (h.hasClass('card--lmxhero')) return;
+                h.find('.lmx-cin,.lmx-box').remove();
+                safe(function () { heroDecorate(h, list[i], i, n); });
             });
+        }
+        function clean() { root.find('.card--lmxhero .lmx-cin,.card--lmxhero .lmx-box').remove(); }
+        run();
+        mo = new MutationObserver(function () { run(); });
+        mo.observe(root[0], { childList: true, subtree: true });
+        [400, 1200, 2500].forEach(function (t) { setTimeout(function () { run(); clean(); }, t); });
+        stop = setTimeout(function () { mo.disconnect(); }, 8000);
     }
 
     function heroCall(row) {
@@ -3401,7 +3440,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.64';
+    var VERSION = '10.66';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
