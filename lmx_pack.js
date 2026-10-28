@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.133 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.134 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2093,7 +2093,7 @@
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 1.8em;border-radius:2em;background:rgba(0,0,0,.55) !important;color:#fff;font-weight:700;box-shadow:inset 0 0 0 .1em rgba(255,255,255,.6)}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.34) !important;color:#fff;transform:scale(1.08)}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgba(0,0,0,.7) !important;color:#fff;box-shadow:inset 0 0 0 .1em rgba(255,255,255,.9),0 0 1.6em .3em rgba(255,255,255,.35);transform:scale(1.06);transform-origin:left center;margin-right:1em}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgba(0,0,0,.7) !important;color:#fff;box-shadow:inset 0 0 0 .1em rgba(255,255,255,.9),0 0 1.6em .3em rgba(255,255,255,.35);transform:none !important;margin-right:0 !important}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero{width:94vw !important;margin-left:0 !important;margin-right:1em !important}' +
                 T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view{height:52vw !important;border-radius:.8em !important}' +
@@ -2244,7 +2244,7 @@
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 2.4em;border-radius:99em;background:rgba(255,255,255,.3) !important;color:#fff;font-weight:600;font-size:1.08em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset 0 1px 0 rgba(255,255,255,.55);' + BLUR + '}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{transform:scale(1.1);background:rgba(255,255,255,.34) !important;color:#fff}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgba(255,255,255,.46) !important;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.8),0 0 2em rgba(130,150,255,.4);transform:scale(1.05);transform-origin:left center;margin-right:1.1em}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgba(255,255,255,.46) !important;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.8),0 0 2em rgba(130,150,255,.4);transform:none !important;margin-right:0 !important}' +
             // нижні розділи сторінки (опис, актори) — у тому ж стилі
             A + '.full-descr__text,' + A + '.full-descr__details{color:#d1d1d6}' +
             A + '.full-person{border-radius:1.2em}' +
@@ -3830,7 +3830,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.133';
+    var VERSION = '10.134';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
