@@ -2222,11 +2222,6 @@
             F + '.full-start__background{filter:brightness(.52)}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             A + '.activity.lmx-fullact{background:#06070d !important}' +
-            // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
-            A + '.activity.lmx-fullact{background:#06070d !important}' +
-            // чистий фон: на сторінці фільму без кольорової аврори — нейтральний майже чорний; текст читається за рахунок затемнення кадру
-            'html:has(body.lmx-apple.lmx-full){background:#06070d !important}' +
-            F.trim() + '{background:#06070d !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
             F + '.full-start-new__title{font-size:3.4em;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin-bottom:.25em}' +
