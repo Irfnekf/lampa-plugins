@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.145 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.146 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2552,8 +2552,28 @@
             try { new MutationObserver(up).observe(el, { attributes: true, attributeFilter: ['src'] }); } catch (e) {}
         })(im[i]);
     }
+    // Догрузка карточок у кінець ряду: Lampa перераховує позицію ряду посеред анімації, ряд відкочується вправо й їде знову.
+    // На мить догрузки вимикаємо анімацію зсуву саме в цьому ряду
+    function rowGuard() {
+        var bodies = document.querySelectorAll('.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body:not(.lmx-ag)');
+        for (var i = 0; i < bodies.length; i++) {
+            (function (b) {
+                b.classList.add('lmx-ag');
+                var t = 0;
+                new MutationObserver(function (ms) {
+                    var added = false;
+                    for (var k = 0; k < ms.length && !added; k++) if (ms[k].addedNodes && ms[k].addedNodes.length) added = true;
+                    if (!added) return;
+                    b.style.setProperty('transition', 'none', 'important');
+                    clearTimeout(t);
+                    t = setTimeout(function () { b.style.removeProperty('transition'); }, 350);
+                }).observe(b, { childList: true });
+            })(bodies[i]);
+        }
+    }
     function markHero() {
         hqPoster();
+        safe(rowGuard);
         safe(function () { document.body.classList.toggle('lmx-onfull', !!document.querySelector('.activity--active .full-start-new')); });
         var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
         for (var i = 0; i < cs.length; i++) {
@@ -3867,7 +3887,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.145';
+    var VERSION = '10.146';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
