@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.147 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.148 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2436,15 +2436,16 @@
     }
     function runWork() {
         workTimer = null;
-        var now = Date.now(), left = [], done = 0;
+        var now = Date.now(), left = [], done = 0, fastDone = 0;
         for (var i = 0; i < work.length; i++) {
             var j = work[i];
-            if (j.due > now || (!j.fast && done >= 6)) { left.push(j); continue; }
-            if (!j.fast) done++;
+            // швидкі завдання теж порціями (раніше — всі картки всіх рядів за один прохід, і ТВ підвисав після завантаження)
+            if (j.due > now || (!j.fast && done >= 6) || (j.fast && fastDone >= 18)) { left.push(j); continue; }
+            if (!j.fast) done++; else fastDone++;
             if (document.body.contains(j.el)) safe(j.fn);
         }
         work = left;
-        if (work.length) workTimer = setTimeout(runWork, 120);
+        if (work.length) workTimer = setTimeout(runWork, fastDone >= 18 ? 40 : 120);
     }
 
     var pumpTimer = null;
@@ -2942,7 +2943,7 @@
         var line = null;
         function hide() { if (line) line.classList.remove('lmx-spot'); line = null; }
         function follow(el) {
-            if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
+            return; // клас lmx-spot більше ніде не стилізується — не чіпаємо DOM на кожне виділення
             var ln = el.classList.contains('card--lmxhero') ? null : el.closest('.items-line');
             if (ln && ln.classList.contains('lmx-hero-line')) ln = null;
             if (ln === line) return;
@@ -2952,15 +2953,6 @@
         }
         window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
         // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
-        var tm = setInterval(function () {
-            safe(function () {
-                if (document.hidden || !document.body.classList.contains('lmx-hbo')) return;
-                var f = document.querySelector('.card.focus');
-                if (!f) { if (line) hide(); return; }
-                follow(f);
-            });
-        }, 300);
-        if (tm && tm.unref) tm.unref();
     }
 
     // Порожній розділ «Коментарі» (є лише кнопка «додати») ховаємо цілком
@@ -3897,7 +3889,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.147';
+    var VERSION = '10.148';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
