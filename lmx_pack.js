@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.124 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.125 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3818,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.124';
+    var VERSION = '10.125';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4076,7 +4076,66 @@
         S.addParam({ component: 'nocub', param: { name: 'nocub_v', type: 'title', default: '' }, field: { name: 'NoCub v' + VERSION + ' · лише ховає елементи, нічого не видаляє' } });
     }
 
+    // Сторінка фільму: Lampa перебирає блоки (сезони, актори, коментарі, колекція…) за внутрішнім списком, а не за тим, що видно на екрані.
+    // Порожній блок «Коментарі» (його ховає LMX) і блоки, приховані NoCub, лишаються в списку: «вниз» заходило на них, і Lampa
+    // прокручувала сторінку нагору до нуля. Тому навігацію між блоками робимо самі й перескакуємо такі блоки.
+    function isHiddenBlock(el) {
+        if (!el) return true;
+        if (el.classList.contains('nocub-hide') || el.classList.contains('lmx-nocomm') || el.closest('.nocub-hide')) return true;
+        if (el.classList.contains('items-line')) {
+            // порожні коментарі (лише кнопка «додати») — ховаємо одразу, не чекаючи таймера LMX
+            if (el.querySelector('.full-review-add') && !el.querySelector('.full-review')) { el.classList.add('lmx-nocomm'); return true; }
+            // блок щойно створений, а сканер NoCub ще не встиг його сховати — перевіряємо за правилами самі
+            var t = el.querySelector('.items-line__title'), txt = t ? t.textContent.slice(0, 80) : '';
+            if (txt) {
+                for (var i = 0; i < TEXT.length; i++) {
+                    var r = TEXT[i];
+                    if (r.sel === '.items-line' && r.title && r.re && on(r.key) && r.re.test(txt)) { mark(el, r.key); return true; }
+                }
+            }
+        }
+        return el.offsetParent === null;
+    }
+    // блок без жодного видимого елемента, на який можна стати пультом
+    function deadBlock(item) {
+        var el = null;
+        try { el = item.render(true); } catch (x) {}
+        if (!el || isHiddenBlock(el)) return true;
+        var sel = el.querySelectorAll('.selector');
+        for (var i = 0; i < sel.length; i++) if (sel[i].offsetParent !== null) return false;
+        return true;
+    }
+    // Своя навігація «вгору/вниз» між блоками замість рідної (onlyDown/onlyUp повністю її заміщають)
+    function hookFull(e) {
+        if (!e || e.type !== 'build' || !e.link) return;
+        var link = e.link;
+        if (link.__nocubNav || typeof link.use !== 'function' || !Array.isArray(link.items)) return;
+        link.__nocubNav = 1;
+        function go(d) {
+            var items = link.items, i = link.active + d;
+            while (i >= 0 && i < items.length && deadBlock(items[i])) i += d;
+            if (i < 0) {
+                link.active = 0;
+                var ok = false;
+                try { Lampa.Controller.toggle('head'); ok = true; } catch (x) {}
+                if (!ok && items[0]) items[0].toggle();
+                return;
+            }
+            // нижче видимих блоків немає — лишаємося на поточному
+            if (i >= items.length) i = Math.min(Math.max(link.active, 0), items.length - 1);
+            link.active = i;
+            if (items[i]) items[i].toggle();
+        }
+        link.use({
+            onlyDown: function () { go(1); },
+            onlyUp: function () { go(-1); }
+        });
+    }
+
     function start() {
+        safe(function () {
+            Lampa.Listener.follow('full', function (e) { safe(function () { hookFull(e); }); });
+        });
         safe(function () {
             var st = document.createElement('style');
             st.id = 'nocub-css';
