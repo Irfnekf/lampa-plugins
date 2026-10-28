@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.148 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.150 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2490,6 +2490,8 @@
             try {
                 var body = lines[i].querySelector('.scroll--horizontal .scroll__body');
                 if (!body || !body.firstElementChild || body.firstElementChild.classList.contains('lmx-endpad')) continue;
+                // ряд вже оброблено й нових карток нема — не рахуємо розміри знову (раніше кожен scan перераховував усі ряди, що змушувало ТВ перебудовувати розкладку)
+                if (body.__lmxN === body.children.length && body.lastElementChild && body.lastElementChild.classList.contains('lmx-endpad')) continue;
                 var pad = body.querySelector(':scope > .lmx-endpad');
                 if (!pad) { pad = document.createElement('div'); pad.className = 'lmx-endpad'; pad.style.cssText = 'flex:none;width:0;height:1px;pointer-events:none'; }
                 if (body.lastElementChild !== pad) body.appendChild(pad);
@@ -2502,6 +2504,7 @@
                 var lm = prev ? (parseFloat(getComputedStyle(prev).marginRight) || 0) : 0;
                 var w = Math.round(left - lm - (ar.right - sc.right));
                 if (left > 0 && w >= 0 && w <= 160 && pad.__w !== w) { pad.__w = w; pad.style.width = w + 'px'; }
+                if (left > 0) body.__lmxN = body.children.length;
             } catch (e) {}
         }
     }
@@ -2565,6 +2568,12 @@
                     var added = false;
                     for (var k = 0; k < ms.length && !added; k++) if (ms[k].addedNodes && ms[k].addedNodes.length) added = true;
                     if (!added) return;
+                    // невидимий відступ-«хвіст» (lmx-endpad) має лишатись останнім: Lampa додає нові картки ПІСЛЯ нього, і вони стояли
+                    // правіше, а за 0,5 с padFix переносив хвіст у кінець і картки різко «стрибали» вліво
+                    try {
+                        var pd = b.querySelector(':scope > .lmx-endpad');
+                        if (pd && b.lastElementChild !== pd) b.appendChild(pd);
+                    } catch (e) {}
                     b.style.setProperty('transition', 'none', 'important');
                     clearTimeout(t);
                     t = setTimeout(function () { b.style.removeProperty('transition'); }, 350);
@@ -3889,7 +3898,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.148';
+    var VERSION = '10.150';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
