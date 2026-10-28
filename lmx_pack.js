@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.155 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.156 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -669,12 +669,12 @@
                                 var el = h[0], nb = h.next('.card')[0] || h.prev('.card')[0];
                                 Lampa.Favorite.remove('history', m);
                                 if (Lampa.Noty) Lampa.Noty.show('Прибрано з історії: ' + (m.title || m.name || ''));
-                                if (nb) {
-                                    el.classList.remove('focus');
-                                    nb.classList.add('focus');
-                                    window.$(nb).trigger('hover:focus');
-                                    el.style.display = 'none';
-                                }
+                                // картку прибираємо з DOM повністю і даємо Lampa заново зібрати список виділюваних елементів, інакше навігатор
+                                // лишається «на місці» видаленої картки і стрілки вліво/вправо не працюють (вліво відкривалось б меню)
+                                var sc = h.closest('.scroll')[0];
+                                h.remove();
+                                try { Lampa.Controller.toggle(Lampa.Controller.enabled().name); } catch (e) {}
+                                if (nb) { try { Lampa.Controller.collectionFocus(nb, sc || nb.parentNode); } catch (e) {} }
                             });
                         });
                         // наш обробник має спрацювати раніше за рідне меню картки
@@ -3909,7 +3909,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.155';
+    var VERSION = '10.156';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
