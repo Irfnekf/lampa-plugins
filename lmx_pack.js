@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.156 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.157 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1198,7 +1198,7 @@
         return 'https://image.tmdb.org/t/p/' + size + path;
     }
     // Банери завантажуємо й декодуємо наперед (картки поза екраном браузер не малює, тож без цього новий слайд спершу порожній/білий)
-    var heroImgs = {};
+    var heroImgs = {}, heroImgOrder = [];
     // Прелоад по черзі: по одній картинці за раз (завантаження+декод), щоб на старті не забивати головний потік і не рвати анімацію першого слайда
     var heroQ = [], heroBusy = false;
     function heroNext() {
@@ -1211,6 +1211,8 @@
         try {
             var im = new Image();
             heroImgs[url] = im;
+            heroImgOrder.push(url);
+            while (heroImgOrder.length > 24) delete heroImgs[heroImgOrder.shift()];
             im.onload = function () { if (im.decode) im.decode().then(fin, fin); else fin(); };
             im.onerror = fin;
             im.src = url;
@@ -1629,7 +1631,7 @@
     var CACHE_MIN = 1440;
     var RE_NATIVE_TV = /^\s*(TV|ТВ)\s*$/i;
 
-    var mem = {};
+    var mem = {}, memKeys = [];
     var queue = [];
     var active = 0;
     var hiddenEls = [];
@@ -2159,13 +2161,11 @@
         if (getStr('lmx_theme', 'default') !== 'apple') return '';
         var A = 'body.lmx-apple ';
         var F = 'body.lmx-apple.lmx-full ';
-        var SPRING = 'cubic-bezier(.25,.8,.25,1)';
         var GRAY = '#a1a1a6';
         var GLASS = 'rgba(255,255,255,.13)';
         // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
         var AURORA = 'radial-gradient(70vw 55vh at 12% 8%,rgba(88,86,214,.55),rgba(88,86,214,0) 62%),radial-gradient(60vw 50vh at 88% 18%,rgba(20,190,200,.34),rgba(20,190,200,0) 62%),radial-gradient(70vw 60vh at 72% 100%,rgba(200,60,150,.34),rgba(200,60,150,0) 62%),radial-gradient(60vw 50vh at 0% 100%,rgba(40,90,220,.3),rgba(40,90,220,0) 62%),linear-gradient(180deg,#10122a 0%,#0b0d1c 55%,#080a14 100%)';
         var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
-        var BLUR = 'backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);';
         return '' +
             'html{background:#090b16 !important}' +
             A + '.background{display:none !important}' +
@@ -2437,6 +2437,8 @@
         if (mem[key]) return cb(mem[key]);
         Lampa.Api.sources.tmdb.get(key, {}, function (j) {
             mem[key] = j || {};
+            memKeys.push(key);
+            while (memKeys.length > 300) delete mem[memKeys.shift()];
             cb(mem[key]);
         }, function () {
             cb(null);
@@ -2954,25 +2956,6 @@
             });
         }, 300);
         if (tm && tm.unref) tm.unref();
-    }
-
-    // Тема «Кіно»: ефект «прожектора» — ряд із фокусом отримує клас lmx-spot, решта карток у ньому тьмяніє (стилі в themeCss)
-    function initSelector() {
-        if (window.__lmxSel || !window.$) return;
-        window.__lmxSel = true;
-        var line = null;
-        function hide() { if (line) line.classList.remove('lmx-spot'); line = null; }
-        function follow(el) {
-            return; // клас lmx-spot більше ніде не стилізується — не чіпаємо DOM на кожне виділення
-            var ln = el.classList.contains('card--lmxhero') ? null : el.closest('.items-line');
-            if (ln && ln.classList.contains('lmx-hero-line')) ln = null;
-            if (ln === line) return;
-            if (line) line.classList.remove('lmx-spot');
-            line = ln;
-            if (line) line.classList.add('lmx-spot');
-        }
-        window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
-        // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
     }
 
     // Порожній розділ «Коментарі» (є лише кнопка «додати») ховаємо цілком
@@ -3909,7 +3892,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.156';
+    var VERSION = '10.157';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -3939,7 +3922,6 @@
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
             safe(initPrefetch);
             safe(initDots);
-            safe(initSelector);
             safe(initThemeBtn);
             safe(initBtnRowsNav);
         });
