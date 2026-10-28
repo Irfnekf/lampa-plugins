@@ -1,10 +1,10 @@
 /*
- * LMX Pack v10.116 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.117 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
- *  4) Теми: Стандартна (LMX), HBO Max, Apple TV; афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
+ *  4) Теми: Стандартна (LMX), Кіно (hbo), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
  *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
  *  6) NoCub (в кінці файлу): ховає елементи CUB, перемикачі в Налаштування → NoCub
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
@@ -563,8 +563,8 @@
 
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
-        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'HBO Max', apple: 'Apple TV' }, 'default', 'Тема',
-            'Змінює вигляд карток, банера, меню та сторінки фільму. HBO Max — чорна з білим виділенням, Apple TV — сіра мінімалістична. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
+            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка підсвічується, решта в ряду тьмяніє; Скло — сіра скляна мінімалістична. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
 
@@ -584,7 +584,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
-        H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в стандартній темі, в HBO Max і Apple TV кольори вбудовані', restyle);
+        H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в стандартній темі, у темах «Кіно» і «Скло» кольори вбудовані', restyle);
         H.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро й очікується', 'Лише в стандартній темі', restyle);
         H.select('lmx_c_done', COLOR_NAMES, 'green', 'Колір: «Вийшов» і «Завершено»', 'Статус над кнопками на сторінці фільму, лише в стандартній темі', restyle);
 
@@ -1986,14 +1986,18 @@
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
             // картки: постер без заокруглення, у фокусі біла рамка
             T + '.card,' + T + '.card.focus,' + T + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .45s cubic-bezier(.25,.8,.25,1)}' +
+            T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1)}' +
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
-            T + '.card.focus .card__view,' + T + '.card.hover .card__view{transform:none;box-shadow:none}' +
-            T + '.lmx-sel{display:block}' +
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 .5em 1.6em rgba(0,0,0,.65)}' +
+            T + '.card.focus:not(.card--lmxhero),' + T + '.card.hover:not(.card--lmxhero){z-index:3}' +
+            // «прожектор»: у ряді з фокусом решта карток тьмяніє, активна лишається яскравою
+            T + '.items-line.lmx-spot .card:not(.focus):not(.hover):not(.card--lmxhero) .card__view{opacity:.5}' +
+            T + '.items-line .card:not(.card--lmxhero) .card__view{transition:transform .2s cubic-bezier(.25,.8,.25,1),opacity .2s ease}' +
+            T + '.lmx-sel{display:none !important}' +
             T + '.card:not(.card--lmxhero){position:relative}' +
-            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .38s cubic-bezier(.3,.75,.25,1) !important}' +
+            T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -2129,7 +2133,7 @@
             A + '.items-line__more{background:' + GLASS + ';border-radius:99em;font-weight:600}' +
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            A + '.card__view{border-radius:1.1em;background:#2c2c31;animation:none !important;transition:transform .6s ' + SPRING + '}' +
+            A + '.card__view{border-radius:1.1em;background:#2c2c31;animation:none !important;transition:transform .25s ' + SPRING + '}' +
             A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:scale(1.12)}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
@@ -2855,44 +2859,29 @@
         if (tm && tm.unref) tm.unref();
     }
 
-    // HBO: біла рамка-виділення. Живе всередині картки в фокусі, тож рухається разом із рядом; на новій картці м'яко проявляється.
+    // Тема «Кіно»: ефект «прожектора» — ряд із фокусом отримує клас lmx-spot, решта карток у ньому тьмяніє (стилі в themeCss)
     function initSelector() {
         if (window.__lmxSel || !window.$) return;
         window.__lmxSel = true;
-        var box = null, cur = null;
-        function hide() { if (box) box.classList.remove('on'); cur = null; }
+        var line = null;
+        function hide() { if (line) line.classList.remove('lmx-spot'); line = null; }
         function follow(el) {
             if (!document.body.classList.contains('lmx-hbo') || isMobile()) return;
-            if (el.classList.contains('card--lmxhero')) { hide(); return; }
-            if (cur === el) return;
-            var view = el.querySelector('.card__view') || el;
-            if (!box) { box = document.createElement('div'); box.className = 'lmx-sel'; }
-                        box.style.transition = 'none';
-            box.style.transform = 'none';
-            if (box.parentNode !== el) el.appendChild(box);
-            var n = { l: view.offsetLeft - 3, t: view.offsetTop - 3, w: view.offsetWidth + 6, h: view.offsetHeight + 6 };
-            box.style.left = n.l + 'px';
-            box.style.top = n.t + 'px';
-            box.style.width = n.w + 'px';
-            box.style.height = n.h + 'px';
-            box.__r = n;
-            // без ковзання: рамка — дитина картки, їде разом із рядом (нуль розбіжності), на новій картці лише м'яко з'являється
-            box.style.transformOrigin = '50% 50%';
-            box.style.transform = 'scale(1.035)';
-            void box.offsetWidth;
-            box.style.transition = 'transform .22s ease-out,opacity .18s ease';
-            box.style.transform = 'none';
-            box.classList.add('on');
-            cur = el;
+            var ln = el.classList.contains('card--lmxhero') ? null : el.closest('.items-line');
+            if (ln && ln.classList.contains('lmx-hero-line')) ln = null;
+            if (ln === line) return;
+            if (line) line.classList.remove('lmx-spot');
+            line = ln;
+            if (line) line.classList.add('lmx-spot');
         }
         window.$(document.body).on('hover:focus', '.card', function () { var el = this; safe(function () { follow(el); }); });
         // запасний варіант, якщо подія hover:focus не спрацювала: сам шукаємо картку у фокусі
         var tm = setInterval(function () {
             safe(function () {
                 if (document.hidden || !document.body.classList.contains('lmx-hbo')) return;
-                var f = document.querySelector('.card.focus:not(.card--lmxhero)');
-                if (!f) { if (cur) hide(); return; }
-                if (f !== cur) follow(f);
+                var f = document.querySelector('.card.focus');
+                if (!f) { if (line) hide(); return; }
+                follow(f);
             });
         }, 300);
         if (tm && tm.unref) tm.unref();
@@ -3738,7 +3727,7 @@
     // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
     function initThemeBtn() {
         if (!window.$) return;
-        var NAMES = { 'default': 'Стандартна (LMX)', hbo: 'HBO Max', apple: 'Apple TV' };
+        var NAMES = { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' };
         function ensure() {
             var box = $('.head__actions').eq(0);
             if (!box.length || box.find('.lmx-themebtn').length) return;
@@ -3829,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.116';
+    var VERSION = '10.117';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
