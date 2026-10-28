@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.127 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.128 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2137,12 +2137,13 @@
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             A + '.card__view{border-radius:1.2em;background:rgba(255,255,255,.07);box-shadow:' + RIM + ',0 .5em 1.4em rgba(0,0,0,.35);animation:none !important;transition:transform .25s ' + SPRING + ',box-shadow .25s ease}' +
             A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.1);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.9),0 1em 2.4em rgba(0,0,0,.55),0 0 2.2em rgba(130,150,255,.4)}' +
+            A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus:not(.card--lmxhero) .card__view::before,' + A + '.card.hover:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.08) 28%,rgba(255,255,255,0) 46%);pointer-events:none;z-index:2}' +
             A + '.card.focus{z-index:3}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
-            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.25em 1.25em;background:linear-gradient(to top,rgba(8,10,28,.9) 0%,rgba(8,10,28,.55) 45%,rgba(8,10,28,0) 100%)}' +
+            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.2em 1.2em;background:linear-gradient(to top,rgba(8,10,28,.9) 0%,rgba(8,10,28,.55) 45%,rgba(8,10,28,0) 100%)}' +
             A + '.lmx-cin__t{font-size:1.15em;font-weight:600;letter-spacing:-.015em;line-height:1.15}' +
             A + '.lmx-cin__g{opacity:.6;text-transform:uppercase;letter-spacing:.08em;font-size:.58em;font-weight:600}' +
             A + '.lmx-cin__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
@@ -2209,12 +2210,12 @@
             A + '.settings-folder.focus,' + A + '.settings-param.focus,' + A + '.selectbox-item.focus,' +
             A + '.settings-param-title.focus,' + A + '.simple-button.focus,' + A + '.full-person.focus,' +
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
-            '{background:rgba(255,255,255,.26) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}' +
+            '{background:rgba(255,255,255,.2) !important;color:#fff !important;box-shadow:none}' +
                         A + '.selectbox,' + A + '.settings{background:rgba(6,8,20,.55)}' +
-            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:rgba(24,26,52,.62) !important;' + BLUR + 'box-shadow:' + RIM + ',0 1.2em 3em rgba(0,0,0,.5)}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:linear-gradient(180deg,rgba(18,20,46,.8) 0%,rgba(10,12,30,.86) 100%) !important;' + BLUR + 'box-shadow:0 1.2em 3em rgba(0,0,0,.45) !important;border:0 !important}' +
             // бокове меню — той самий градієнт, що й фон застосунку, без межі. Фарбуємо лише панель на всю висоту (wrap__left): градієнт на вужчому .menu
             // розтягувався б по його власній висоті й давав ступеньку внизу
-            A + '.wrap__left{background:rgba(255,255,255,.07) !important;' + BLUR + 'box-shadow:inset -1px 0 0 rgba(255,255,255,.14) !important;border:0 !important}' +
+            A + '.wrap__left{background:linear-gradient(180deg,rgba(18,20,46,.74) 0%,rgba(10,12,30,.82) 100%) !important;' + BLUR + 'box-shadow:none !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
             A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
@@ -3825,7 +3826,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.127';
+    var VERSION = '10.128';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
