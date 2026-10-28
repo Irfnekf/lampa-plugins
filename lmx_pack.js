@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.154 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.155 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -694,15 +694,10 @@
         return function (call) {
             var list = [];
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
-            list = list.filter(function (c) { return c && c.id; }).slice(0, 20);
+            list = list.filter(function (c) { return c && c.id; }).slice(0, 30);
             if (!list.length) return call();
-            {
-                // недосмотрене — першим (у межах групи лишається порядок «найсвіжіше зверху»)
-                var withP = list.map(function (c) { return { c: c, p: watchProgress(c) }; });
-                var part = withP.filter(function (x) { return x.p && x.p.pct < 95; });
-                var rest = withP.filter(function (x) { return !(x.p && x.p.pct < 95); });
-                list = part.concat(rest).map(function (x) { return histItem(x.c, x.p); });
-            }
+            // порядок — як в історії Lampa: останній переглянутий першим (раніше недосмотрені піднімались нагору, і початок ряду був «не з останнього»)
+            list = list.map(function (c) { return histItem(c, watchProgress(c)); });
             call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
         };
     }
@@ -3914,7 +3909,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.154';
+    var VERSION = '10.155';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
