@@ -39,8 +39,8 @@
     if (window.__lmx_source) return;
     window.__lmx_source = true;
 
-    var VERSION = '1.0.1';
-    var LABEL = 'Мій сервер';
+    var VERSION = '1.1.0';
+    var LABEL = 'UAFilms';
     var PREFIX = 'lmxsrc_';
     var CACHE_MS = 10 * 60 * 1000;
 
@@ -61,13 +61,14 @@
 
     function cfg() {
         var host = String(st('host', '') || '').trim().replace(/\/+$/, '');
+        if (!host || /^https?:\/\/(?:www\.)?films\.aartzz\.pp\.ua$/i.test(host)) host = 'https://bfilms.aartzz.pp.ua';
         if (host && !/^https?:\/\//i.test(host)) host = 'https://' + host;
         return {
             host: host,
             key: String(st('key', '') || '').trim(),
             header: String(st('header', 'x-api-key') || 'x-api-key').trim(),
-            moviePath: String(st('movie_path', '/api/v1/movie/{id}') || '/api/v1/movie/{id}').trim(),
-            tvPath: String(st('tv_path', '/api/v1/tv/{id}/season/{season}') || '/api/v1/tv/{id}/season/{season}').trim(),
+            moviePath: String(st('movie_path', '/api/get?id={id}&type=movie') || '/api/get?id={id}&type=movie').trim(),
+            tvPath: String(st('tv_path', '/api/get?id={id}&type=tv') || '/api/get?id={id}&type=tv').trim(),
             demo: flag('demo', false)
         };
     }
@@ -87,7 +88,7 @@
         var headers = { 'Accept': 'application/json' };
         if (c.key && c.header) headers[c.header] = c.key;
         try { ctl = new AbortController(); } catch (e) {}
-        timer = setTimeout(function () { try { ctl && ctl.abort(); } catch (e) {} end(fail, 'Сервер не відповів вчасно'); }, 20000);
+        timer = setTimeout(function () { try { ctl && ctl.abort(); } catch (e) {} end(fail, 'Сервер не відповів вчасно'); }, 45000);
         fetch(url, { headers: headers, signal: ctl ? ctl.signal : undefined })
             .then(function (r) {
                 if (r.status === 401 || r.status === 403) throw new Error('Сервер відхилив ключ API (' + r.status + ')');
@@ -136,12 +137,54 @@
     function normMovie(resp, ctx) {
         var ad = window.LMX_SOURCE_ADAPTER || ADAPTER;
         if (ad && ad.movie) resp = safe(function () { return ad.movie(resp, ctx); }) || resp;
+        if (resp && resp.providers && typeof resp.providers === 'object') {
+            var fromProviders = [];
+            Object.keys(resp.providers).forEach(function (provider) {
+                var entries = resp.providers[provider];
+                if (!Array.isArray(entries)) return;
+                entries.forEach(function (s) {
+                    if (s && typeof s === 'object') fromProviders.push(Object.assign({}, s, {
+                        name: provider,
+                        voice: s.title || s.voice || s.translation || ''
+                    }));
+                });
+            });
+            return { streams: toStreams(fromProviders) };
+        }
         var list = resp && (resp.streams || resp.sources || resp.items || (Array.isArray(resp) ? resp : null));
         return { streams: toStreams(list) };
     }
     function normTv(resp, ctx) {
         var ad = window.LMX_SOURCE_ADAPTER || ADAPTER;
         if (ad && ad.tv) resp = safe(function () { return ad.tv(resp, ctx); }) || resp;
+        if (resp && resp.providers && typeof resp.providers === 'object') {
+            var byEpisode = {};
+            Object.keys(resp.providers).forEach(function (provider) {
+                var seasons = resp.providers[provider];
+                if (!seasons || typeof seasons !== 'object') return;
+                Object.keys(seasons).forEach(function (seasonNumber) {
+                    if (ctx && ctx.season && Number(seasonNumber) !== Number(ctx.season)) return;
+                    var episodes = seasons[seasonNumber];
+                    if (!episodes || typeof episodes !== 'object') return;
+                    Object.keys(episodes).forEach(function (episodeNumber) {
+                        var key = String(Number(episodeNumber));
+                        if (!byEpisode[key]) byEpisode[key] = { number: Number(episodeNumber), title: '', streams: [] };
+                        var sources = Array.isArray(episodes[episodeNumber]) ? episodes[episodeNumber] : [];
+                        sources.forEach(function (s) {
+                            if (s && typeof s === 'object') byEpisode[key].streams.push(Object.assign({}, s, {
+                                name: provider,
+                                voice: s.title || s.voice || s.translation || ''
+                            }));
+                        });
+                    });
+                });
+            });
+            return { episodes: Object.keys(byEpisode).map(function (k) {
+                var ep = byEpisode[k];
+                ep.streams = toStreams(ep.streams);
+                return ep;
+            }).filter(function (ep) { return ep.streams.length > 0; }).sort(function (a, b) { return a.number - b.number; }) };
+        }
         var list = resp && (resp.episodes || resp.items || (Array.isArray(resp) ? resp : null)) || [];
         var out = [];
         list.forEach(function (e, i) {
@@ -347,11 +390,11 @@
         }
         p('btn', 'trigger', true, 'Кнопка на сторінці фільму', 'Показувати кнопку «' + LABEL + '»');
         p('demo', 'trigger', false, 'Демо-режим', 'Тестові потоки без сервера, щоб перевірити вигляд і плеєр', { onChange: function () { cache = {}; } });
-        p('host', 'input', '', 'Адреса сервера', 'Напр. https://media.example.com', { onChange: function () { cache = {}; } });
+        p('host', 'input', 'https://bfilms.aartzz.pp.ua', 'Адреса сервера API UAFilms', 'API UAFilms (не адреса веб-каталогу)', { onChange: function () { cache = {}; } });
         p('key', 'input', '', 'Ключ API', 'Необов’язково; передається заголовком, не в адресі', { onChange: function () { cache = {}; } });
         p('header', 'input', 'x-api-key', 'Назва заголовка ключа', 'За замовчуванням x-api-key');
-        p('movie_path', 'input', '/api/v1/movie/{id}', 'Шлях для фільмів', '{id} — ID TMDB', { onChange: function () { cache = {}; } });
-        p('tv_path', 'input', '/api/v1/tv/{id}/season/{season}', 'Шлях для серіалів', '{id} — ID TMDB, {season} — номер сезону', { onChange: function () { cache = {}; } });
+        p('movie_path', 'input', '/api/get?id={id}&type=movie', 'Шлях для фільмів', 'UAFilms API; {id} — ID TMDB', { onChange: function () { cache = {}; } });
+        p('tv_path', 'input', '/api/get?id={id}&type=tv', 'Шлях для серіалів', 'UAFilms API; {id} — ID TMDB; сезоны фильтруются в плагине', { onChange: function () { cache = {}; } });
         S.addParam({
             component: 'lmx_source', param: { name: PREFIX + 'test', type: 'button' },
             field: { name: 'Перевірити з’єднання', description: 'Запит до сервера для тестового фільму' },
