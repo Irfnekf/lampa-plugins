@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.120 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.121 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -564,7 +564,7 @@
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
         H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
-            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й підкреслюється білою лінією; Скло — сіра скляна мінімалістична. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Скло — сіра скляна мінімалістична. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
 
@@ -1990,7 +1990,7 @@
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
-            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 .55em 0 -.3em rgba(255,255,255,.95),0 .7em 1.8em rgba(0,0,0,.7)}' +
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 1.6em .3em rgba(255,255,255,.35),0 .8em 1.8em rgba(0,0,0,.7)}' +
             T + '.card.focus:not(.card--lmxhero),' + T + '.card.hover:not(.card--lmxhero){z-index:3}' +
             T + '.items-line .card:not(.card--lmxhero) .card__view{transition:transform .2s cubic-bezier(.25,.8,.25,1),opacity .2s ease}' +
             T + '.lmx-sel{display:none !important}' +
@@ -3816,7 +3816,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.120';
+    var VERSION = '10.121';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
