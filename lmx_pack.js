@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.131 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.132 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2221,7 +2221,8 @@
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             F + '.full-start__background{filter:brightness(.52)}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
-            A + '.activity.lmx-fullact{background:#06070d !important}' +
+            'body.lmx-apple.lmx-onfull{background:#06070d !important}' +
+            'body.lmx-apple.lmx-onfull .head{background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%) !important;box-shadow:none !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
             F + '.full-start-new__title{font-size:3.4em;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin-bottom:.25em}' +
@@ -2516,6 +2517,7 @@
     }
     function markHero() {
         hqPoster();
+        safe(function () { document.body.classList.toggle('lmx-onfull', !!document.querySelector('.activity--active .full-start-new')); });
         var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
         for (var i = 0; i < cs.length; i++) {
             var ln = cs[i].closest('.items-line');
@@ -3828,7 +3830,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.131';
+    var VERSION = '10.132';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
