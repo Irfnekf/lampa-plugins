@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.146 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.147 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2573,8 +2573,15 @@
     }
     function markHero() {
         hqPoster();
-        safe(rowGuard);
-        safe(function () { document.body.classList.toggle('lmx-onfull', !!document.querySelector('.activity--active .full-start-new')); });
+        // ці дві перевірки не потрібні на кожну окрему зміну сторінки: не частіше разу на 150 мс
+        var tnow = Date.now();
+        if (tnow - (markHero.__t || 0) > 150) {
+            markHero.__t = tnow;
+            safe(rowGuard);
+            safe(function () { document.body.classList.toggle('lmx-onfull', !!document.querySelector('.activity--active .full-start-new')); });
+        } else if (!markHero.__q) {
+            markHero.__q = setTimeout(function () { markHero.__q = 0; safe(markHero); }, 160);
+        }
         var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
         for (var i = 0; i < cs.length; i++) {
             var ln = cs[i].closest('.items-line');
@@ -2739,11 +2746,14 @@
     function initPrefetch() {
         if (!window.$ || window.__lmxPre) return;
         window.__lmxPre = true;
+        window.__lmxT0 = Date.now();
         $(document.body).on('hover:focus', '.card', function () {
             // слайди каруселі міняються самі що 8 с — завантажувати для кожного дані фільму на ходу не можна: це якраз і давало мікрофризи під час прокрутки
             if (this.classList && this.classList.contains('card--lmxhero')) { clearTimeout(preTimer); return; }
             var d = this.card_data;
             clearTimeout(preTimer);
+            // перші секунди після запуску ТВ завантажує головну — фонову підгрузку даних фільму відкладаємо
+            if (Date.now() - (window.__lmxT0 || 0) < 10000) return;
             preTimer = setTimeout(function () { prefetchCard(d); }, 600);
         });
     }
@@ -3887,7 +3897,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.146';
+    var VERSION = '10.147';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
