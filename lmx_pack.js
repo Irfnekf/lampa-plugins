@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.125 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.126 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3818,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.125';
+    var VERSION = '10.126';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4111,9 +4111,23 @@
         var link = e.link;
         if (link.__nocubNav || typeof link.use !== 'function' || !Array.isArray(link.items)) return;
         link.__nocubNav = 1;
-        function go(d) {
+        // шукає найближчий живий блок у напрямку d; блоки внизу Lampa створює порціями (за прокруткою), тож якщо перед кінцем створеного
+        // списку самі лише мертві блоки — просимо Lampa створити наступну порцію і шукаємо далі
+        function find(d, guard) {
             var items = link.items, i = link.active + d;
             while (i >= 0 && i < items.length && deadBlock(items[i])) i += d;
+            if (d > 0 && i >= items.length && guard < 20 && link.rows && items.length < link.rows.length) {
+                var before = items.length, keep = link.active;
+                link.active = items.length - 1;
+                try { link.emit('scroll', 0); } catch (x) {}
+                if (link.items.length > before) return find(d, guard + 1);
+                link.active = keep;
+            }
+            return i;
+        }
+        function go(d) {
+            var cur = link.active, items = link.items, i = find(d, 0);
+            items = link.items;
             if (i < 0) {
                 link.active = 0;
                 var ok = false;
@@ -4122,7 +4136,7 @@
                 return;
             }
             // нижче видимих блоків немає — лишаємося на поточному
-            if (i >= items.length) i = Math.min(Math.max(link.active, 0), items.length - 1);
+            if (i >= items.length) i = Math.min(Math.max(cur, 0), items.length - 1);
             link.active = i;
             if (items[i]) items[i].toggle();
         }
