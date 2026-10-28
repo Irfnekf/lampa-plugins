@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.151 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.152 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2246,7 +2246,7 @@
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.2) !important;color:#fff !important;box-shadow:none}' +
                         A + '.selectbox,' + A + '.settings{background:rgba(6,8,20,.55)}' +
-            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:linear-gradient(180deg,rgba(18,20,46,.8) 0%,rgba(10,12,30,.86) 100%) !important;' + BLUR + 'box-shadow:0 1.2em 3em rgba(0,0,0,.45) !important;border:0 !important}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:linear-gradient(180deg,rgba(20,22,50,.95) 0%,rgba(11,13,32,.97) 100%) !important;box-shadow:0 .8em 1.6em rgba(0,0,0,.4) !important;border:0 !important}' +
             // бокове меню — повністю прозоре: крізь нього видно той самий фіксований фон-аврору, тож межі між меню й сторінкою немає
             A + '.wrap__left{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:none !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
@@ -3894,7 +3894,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.151';
+    var VERSION = '10.152';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
