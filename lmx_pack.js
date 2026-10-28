@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.126 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.127 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -564,7 +564,7 @@
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
         H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
-            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Скло — сіра скляна мінімалістична. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
 
@@ -2119,23 +2119,30 @@
         var F = 'body.lmx-apple.lmx-full ';
         var SPRING = 'cubic-bezier(.25,.8,.25,1)';
         var GRAY = '#a1a1a6';
-        var GLASS = 'rgba(120,120,128,.32)';
+        var GLASS = 'rgba(255,255,255,.13)';
+        // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
+        var AURORA = 'radial-gradient(70vw 55vh at 12% 8%,rgba(88,86,214,.55),rgba(88,86,214,0) 62%),radial-gradient(60vw 50vh at 88% 18%,rgba(20,190,200,.34),rgba(20,190,200,0) 62%),radial-gradient(70vw 60vh at 72% 100%,rgba(200,60,150,.34),rgba(200,60,150,0) 62%),radial-gradient(60vw 50vh at 0% 100%,rgba(40,90,220,.3),rgba(40,90,220,0) 62%),linear-gradient(180deg,#10122a 0%,#0b0d1c 55%,#080a14 100%)';
+        var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
+        var BLUR = 'backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);';
         return '' +
-            'html{background:#26262b !important}' +
+            'html{background:#090b16 !important}' +
             A + '.background{display:none !important}' +
-            A + '{background:linear-gradient(180deg,#3b3b44 0%,#2c2c33 38%,#1f1f24 100%) fixed !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
+            A + '{background:' + AURORA + ' fixed !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
             // заголовки рядів
             A + '.items-line__title,' + A + '.items-line__head,' + A + '.items-line{background:none !important;box-shadow:none}' +
             A + '.items-line__title{font-size:1.6em;font-weight:700;letter-spacing:-.022em;color:#f5f5f7}' +
-            A + '.items-line__more{background:' + GLASS + ';border-radius:99em;font-weight:600}' +
+            A + '.items-line__more{background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);border-radius:99em;font-weight:600}' +
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            A + '.card__view{border-radius:1.1em;background:#2c2c31;animation:none !important;transition:transform .25s ' + SPRING + '}' +
-            A + '.card.focus .card__view,' + A + '.card.hover .card__view{transform:scale(1.12)}' +
+            A + '.card__view{border-radius:1.2em;background:rgba(255,255,255,.07);box-shadow:' + RIM + ',0 .5em 1.4em rgba(0,0,0,.35);animation:none !important;transition:transform .25s ' + SPRING + ',box-shadow .25s ease}' +
+            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.1);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.9),0 1em 2.4em rgba(0,0,0,.55),0 0 2.2em rgba(130,150,255,.4)}' +
+            // блік скла на картці у фокусі
+            A + '.card.focus:not(.card--lmxhero) .card__view::before,' + A + '.card.hover:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.08) 28%,rgba(255,255,255,0) 46%);pointer-events:none;z-index:2}' +
+            A + '.card.focus{z-index:3}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
-            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.15em 1.15em;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
+            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.25em 1.25em;background:linear-gradient(to top,rgba(8,10,28,.9) 0%,rgba(8,10,28,.55) 45%,rgba(8,10,28,0) 100%)}' +
             A + '.lmx-cin__t{font-size:1.15em;font-weight:600;letter-spacing:-.015em;line-height:1.15}' +
             A + '.lmx-cin__g{opacity:.6;text-transform:uppercase;letter-spacing:.08em;font-size:.58em;font-weight:600}' +
             A + '.lmx-cin__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
@@ -2143,10 +2150,10 @@
             A + '.lmx-cin__y{opacity:.7;font-weight:500}' +
             // мітки — капсули
             A + '.lmx-pill{border:0 !important;border-radius:99em;font-weight:600;letter-spacing:.02em;padding:.34em .9em}' +
-            A + '.lmx-box .lmx-pill{background:rgba(44,44,46,.88) !important;color:#f5f5f7 !important}' +
+            A + '.lmx-box .lmx-pill{background:rgba(255,255,255,.18) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);' + BLUR + 'color:#fff !important}' +
             A + '.lmx-pill.lmx-m-next{background:#0a84ff !important;color:#fff !important}' +
             A + '.lmx-pill.lmx-m-new{background:#f5f5f7 !important;color:#000 !important}' +
-            A + '.lmx-pill.lmx-m-soon{background:rgba(44,44,46,.92) !important;color:#f5f5f7 !important}' +
+            A + '.lmx-pill.lmx-m-soon{background:rgba(255,255,255,.2) !important;color:#fff !important}' +
             // ===== банер-білборд =====
             A + '.card--lmxhero{contain:layout paint}' +
             A + '.card--lmxhero{width:calc(100vw + 2px) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:calc(2.2em - 1px) !important}' +
@@ -2156,14 +2163,13 @@
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after{display:none !important}' +
             // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
             A + '.card--lmxstudio .card__view{overflow:visible !important}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07) !important}' +
-            A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgb(40,40,46) 0%,rgba(40,40,46,.94) 6%,rgba(40,40,46,.8) 14%,rgba(40,40,46,.56) 24%,rgba(40,40,46,.3) 35%,rgba(40,40,46,.12) 46%,rgba(40,40,46,.03) 56%,rgba(40,40,46,0) 64%),linear-gradient(to bottom,rgba(59,59,68,.9) 0%,rgba(59,59,68,.7) 3%,rgba(59,59,68,.46) 7%,rgba(59,59,68,.24) 12%,rgba(59,59,68,.08) 17%,rgba(59,59,68,0) 23%),linear-gradient(90deg,rgba(0,0,0,.56) 0%,rgba(0,0,0,.4) 18%,rgba(0,0,0,.22) 34%,rgba(0,0,0,.08) 48%,rgba(0,0,0,0) 62%)}' +
+                        A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgb(10,12,24) 0%,rgba(10,12,24,.94) 6%,rgba(10,12,24,.8) 14%,rgba(10,12,24,.56) 24%,rgba(10,12,24,.3) 35%,rgba(10,12,24,.12) 46%,rgba(10,12,24,.03) 56%,rgba(10,12,24,0) 64%),linear-gradient(to bottom,rgba(30,32,66,.9) 0%,rgba(30,32,66,.7) 3%,rgba(30,32,66,.46) 7%,rgba(30,32,66,.24) 12%,rgba(30,32,66,.08) 17%,rgba(30,32,66,0) 23%),linear-gradient(90deg,rgba(0,0,0,.56) 0%,rgba(0,0,0,.4) 18%,rgba(0,0,0,.22) 34%,rgba(0,0,0,.08) 48%,rgba(0,0,0,0) 62%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
             A + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9;font-weight:500}' +
             A + '.card--lmxhero .lmx-hero__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
             A + '.card--lmxhero .lmx-hero__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
-            A + '.lmx-hero__tag{border-radius:99em;font-weight:600;padding:.25em .85em;background:rgba(120,120,128,.55);color:#fff}' +
+            A + '.lmx-hero__tag{border-radius:99em;font-weight:600;padding:.25em .85em;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);color:#fff}' +
             A + '.lmx-hero__tag.lmx-t-soon{background:#0a84ff}' +
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
@@ -2177,12 +2183,12 @@
             A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
-            A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(0,0,0,.35);z-index:6;pointer-events:none}' +
+            A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);z-index:6;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:background-color .3s ease}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
             // історія: широкі картки з кадром
             A + '.card--lmxhist{width:24em !important}' +
-            A + '.card--lmxhist .card__view{height:13.5em !important;padding-bottom:0 !important;border-radius:1.1em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
+            A + '.card--lmxhist .card__view{height:13.5em !important;padding-bottom:0 !important;border-radius:1.2em;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
             A + '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:80%;border-radius:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
             A + '.lmx-hist__text{position:absolute;left:1.1em;right:1.1em;bottom:1.2em;color:#fff}' +
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -2191,26 +2197,27 @@
             A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.3em !important}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
-            A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(120,120,128,.5);color:#fff;font-size:1.1em;font-weight:500}' +
+            A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
             // ===== плитки стрімінгів — як канали Apple TV =====
-            A + '.card--lmxstudio .card__view{background:linear-gradient(160deg,#2c2c2e 0%,#1c1c1e 100%);border-radius:1.15em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}' +
+            A + '.card--lmxstudio .card__view{background:linear-gradient(160deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,.05) 100%) !important;border-radius:1.25em;box-shadow:' + RIM + '}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.08);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.9),0 .8em 2em rgba(0,0,0,.5),0 0 2em rgba(130,150,255,.4) !important}' +
             A + '.lmx-studio__name{font-weight:600;letter-spacing:-.01em}' +
             // ===== шапка, меню, налаштування =====
-            A + '.head__action{border-radius:50%;background:' + GLASS + '}' +
+            A + '.head__action{border-radius:50%;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             A + '.menu__item,' + A + '.settings-param,' + A + '.settings-folder,' + A + '.selectbox-item{border-radius:.9em;transition:background-color .25s ease}' +
             A + '.menu__item.focus,' + A + '.menu__item.traverse,' + A + '.menu__item.hover,' +
             A + '.settings-folder.focus,' + A + '.settings-param.focus,' + A + '.selectbox-item.focus,' +
             A + '.settings-param-title.focus,' + A + '.simple-button.focus,' + A + '.full-person.focus,' +
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
-            '{background:rgba(255,255,255,.22) !important;color:#fff !important}' +
-                        A + '.selectbox,' + A + '.settings,' + A + '.menu{background:rgba(30,30,35,.98)}' +
-            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:#26262b !important}' +
+            '{background:rgba(255,255,255,.26) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}' +
+                        A + '.selectbox,' + A + '.settings{background:rgba(6,8,20,.55)}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:rgba(24,26,52,.62) !important;' + BLUR + 'box-shadow:' + RIM + ',0 1.2em 3em rgba(0,0,0,.5)}' +
             // бокове меню — той самий градієнт, що й фон застосунку, без межі. Фарбуємо лише панель на всю висоту (wrap__left): градієнт на вужчому .menu
             // розтягувався б по його власній висоті й давав ступеньку внизу
-            A + '.wrap__left{background:linear-gradient(180deg,#3b3b44 0%,#2c2c33 38%,#1f1f24 100%) !important;box-shadow:none !important;border:0 !important}' +
+            A + '.wrap__left{background:rgba(255,255,255,.07) !important;' + BLUR + 'box-shadow:inset -1px 0 0 rgba(255,255,255,.14) !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
-            A + '.modal__content,' + A + '.selectbox__content{background:#1c1c1e;border-radius:1.4em}' +
-            A + '.simple-button{border-radius:99em;background:' + GLASS + '}' +
+            A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
+            A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             F + '.full-start__background{filter:brightness(.52)}' +
             F + '.full-start-new__right{max-width:44%}' +
@@ -2229,7 +2236,7 @@
             F + '.lmx-descr__t{-webkit-line-clamp:3}' +
             // кнопки: велика біла капсула «Дивитись» і круглі скляні
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center;margin-top:0}' +
-            F + '.full-start-new__buttons > .full-start__button{width:3.5em;height:3.5em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;color:#f5f5f7;margin-right:.7em;transition:transform .45s ' + SPRING + '}' +
+            F + '.full-start-new__buttons > .full-start__button{width:3.5em;height:3.5em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#f5f5f7;margin-right:.7em;transition:transform .45s ' + SPRING + '}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 2.4em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.08em}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
@@ -2237,7 +2244,7 @@
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .18em rgba(255,255,255,.35);transform:scale(1.04);transform-origin:left center;margin-right:1.1em}' +
             // нижні розділи сторінки (опис, актори) — у тому ж стилі
             A + '.full-descr__text,' + A + '.full-descr__details{color:#d1d1d6}' +
-            A + '.full-person{border-radius:1.1em}' +
+            A + '.full-person{border-radius:1.2em}' +
             '@media (max-width:760px){' +
                 A + '.card--lmxhero{width:94vw !important;margin-left:0 !important;margin-right:1em !important}' +
                 A + '.card--lmxhero .card__view{height:52vw !important;border-radius:1.2em}' +
@@ -3818,7 +3825,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.126';
+    var VERSION = '10.127';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
