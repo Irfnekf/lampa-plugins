@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.153 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.154 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -662,6 +662,26 @@
                             (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
                             (year ? '<span>' + year + '</span>' : '') + '</div></div>' +
                             (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
+                        // довге утримання OK прибирає фільм з історії перегляду (картка зникає, фокус переходить на сусідню)
+                        h.on('hover:long', function (ev) {
+                            ev.stopImmediatePropagation();
+                            safe(function () {
+                                var el = h[0], nb = h.next('.card')[0] || h.prev('.card')[0];
+                                Lampa.Favorite.remove('history', m);
+                                if (Lampa.Noty) Lampa.Noty.show('Прибрано з історії: ' + (m.title || m.name || ''));
+                                if (nb) {
+                                    el.classList.remove('focus');
+                                    nb.classList.add('focus');
+                                    window.$(nb).trigger('hover:focus');
+                                    el.style.display = 'none';
+                                }
+                            });
+                        });
+                        // наш обробник має спрацювати раніше за рідне меню картки
+                        try {
+                            var evs = window.$._data(h[0], 'events'), arr = evs && evs['hover:long'];
+                            if (arr && arr.length > 1) { var mine = arr.pop(); arr.unshift(mine); }
+                        } catch (e) {}
                     });
                 },
                 onlyEnter: function () { openFull(m); }
@@ -3894,7 +3914,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.153';
+    var VERSION = '10.154';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
