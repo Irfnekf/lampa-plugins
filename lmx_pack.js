@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.122 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.123 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1858,6 +1858,8 @@
     function detailCss(scope) {
         var D = scope || 'body.lmx-full ';
         return '' +
+            // Опис у блоці «Детально» — вибираний елемент (відкриває повний текст), але рідна Lampa не показує на ньому фокус: стрілка «вниз» ніби зникала
+            D + '.full-descr__text.focus{background:rgba(255,255,255,.1);border-radius:.8em;padding:.5em .7em;margin:-.5em -.7em}' +
             // Серії: закруглені кадри, номер-бейдж, чисті картки замість пунктиру
             D + '.full-episode{border-radius:1em}' +
             D + '.full-episode__img{border-radius:1em;overflow:hidden;background:linear-gradient(135deg,#26272e,#16171b)}' +
@@ -3816,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.122';
+    var VERSION = '10.123';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4111,11 +4113,13 @@
             // невидимий блок: йдемо далі в тому ж напрямку, а якщо далі нікуди (край списку) — назад
             link.__nocubDepth = (link.__nocubDepth || 0) + 1;
             try {
-                if (link.__nocubDepth > 8) return orig.apply(self, args);
+                // глибока рекурсія — зупиняємось, не чіпаючи прихований блок (його перемикання змушує Lampa прокрутити сторінку нагору)
+                if (link.__nocubDepth > 8) return;
                 var dir = link.__nocubDir || 'down';
-                var before = link.active;
+                // знизу видимих блоків більше немає — повертаємось угору, а не «б'ємося» об кінець списку
+                if (dir === 'down' && link.items && link.active >= link.items.length - 1) dir = 'up';
+                link.__nocubDir = dir;
                 link.emit(dir);
-                if (link.active === before && dir === 'down') { link.__nocubDir = 'up'; link.emit('up'); }
             } finally { link.__nocubDepth--; }
         };
     }
