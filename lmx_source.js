@@ -1,5 +1,5 @@
 /*
- * LMX Source v1.0 — кнопка «Онлайн» на сторінці фільму для ВЛАСНОГО джерела (свій сервер, Jellyfin-міст, власні файли)
+ * LMX Source v1.0.1 — кнопка «Онлайн» на сторінці фільму для ВЛАСНОГО джерела (свій сервер, Jellyfin-міст, власні файли)
  *
  * Плагін не містить жодних джерел і нічого не парсить: він лише звертається до адреси, яку ви вкажете в
  * Налаштування → LMX Source, і показує те, що сервер поверне. Підключати можна лише те, на що у вас є право.
@@ -39,7 +39,7 @@
     if (window.__lmx_source) return;
     window.__lmx_source = true;
 
-    var VERSION = '1.0';
+    var VERSION = '1.0.1';
     var LABEL = 'Мій сервер';
     var PREFIX = 'lmxsrc_';
     var CACHE_MS = 10 * 60 * 1000;
@@ -341,6 +341,7 @@
         });
         function p(name, type, def, title, desc, extra) {
             var o = { component: 'lmx_source', param: { name: PREFIX + name, type: type, default: def }, field: { name: title, description: desc } };
+            if (type === 'input') o.param.values = '';
             if (extra) for (var k in extra) o[k] = extra[k];
             S.addParam(o);
         }
