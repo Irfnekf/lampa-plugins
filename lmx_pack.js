@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.137 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.139 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1303,6 +1303,30 @@
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
                 getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
+        // «+» у темі «Скло»: додає/прибирає з «Обраного». Фокусу не отримує (листання каруселі не чіпаємо): довге OK на картці або клік/тап по «+»
+        safe(function () {
+            var circ = h.find('.lmx-hero__circ');
+            if (!circ.length) return;
+            var cardData = m;
+            function inBook() { try { return !!Lampa.Favorite.check(cardData).book; } catch (e) { return false; } }
+            function paint() { circ.text(inBook() ? '\u2713' : '+'); }
+            function flip() {
+                try {
+                    Lampa.Favorite.toggle('book', cardData);
+                    paint();
+                    if (Lampa.Noty) Lampa.Noty.show(inBook() ? 'Додано до обраного' : 'Прибрано з обраного');
+                } catch (e) {}
+            }
+            paint();
+            circ.on('click', function (ev) { ev.stopPropagation(); ev.preventDefault(); flip(); });
+            h.on('hover:long', function (ev) { ev.stopImmediatePropagation(); flip(); });
+            // наш обробник має спрацювати раніше за рідне меню картки
+            try {
+                var evs = $._data(h[0], 'events');
+                var arr = evs && evs['hover:long'];
+                if (arr && arr.length > 1) { var mine = arr.pop(); arr.unshift(mine); }
+            } catch (e) {}
+        });
     }
     function heroItems(list) {
         return list.map(function (m, idx) {
@@ -2090,7 +2114,10 @@
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center}' +
             F + '.full-start-new__buttons > .full-start__button{width:3em;height:3em;padding:0;border-radius:50%;justify-content:center;background:transparent !important;color:#fff;transition:transform .25s ease,box-shadow .25s ease}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 1.8em;border-radius:2em;background:#fff !important;color:#000;font-weight:700}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;height:auto;min-height:0;padding:.7em 1.9em;border-radius:99em;background:#fff !important;color:#000;font-weight:700;font-size:1.02em;line-height:normal;text-shadow:none !important;box-shadow:none}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) svg,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary svg{display:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{text-shadow:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n)::before,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary::before{content:"\\25B6";margin-right:.5em;font-size:.9em}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.34) !important;color:#fff;transform:scale(1.08)}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .2em rgba(255,255,255,.4);transform:none !important}' +
@@ -2241,7 +2268,10 @@
             F + '.full-start-new__buttons{flex-wrap:nowrap;align-items:center;margin-top:0}' +
             F + '.full-start-new__buttons > .full-start__button{width:3.5em;height:3.5em;padding:0;border-radius:50%;justify-content:center;background:' + GLASS + ' !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#f5f5f7;margin-right:.7em;transition:transform .45s ' + SPRING + '}' +
             F + '.full-start-new__buttons > .full-start__button span{display:none !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;padding:0 2.4em;border-radius:99em;background:rgba(235,235,245,.78) !important;color:#111;font-weight:600;font-size:1.08em;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 .4em 1.2em rgba(0,0,0,.3);' + BLUR + '}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{width:auto;height:auto;min-height:0;padding:.75em 2em;border-radius:99em;background:#f5f5f7 !important;color:#000;font-weight:600;font-size:1.08em;line-height:normal;text-shadow:none !important;box-shadow:none}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) svg,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary svg{display:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{text-shadow:none !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n)::before,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary::before{content:"\\25B6";margin-right:.5em;font-size:.9em}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{transform:scale(1.1);background:rgba(255,255,255,.34) !important;color:#fff}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .14em rgba(255,255,255,.5),0 .5em 1.6em rgba(0,0,0,.4);transform:none !important}' +
@@ -3830,7 +3860,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.137';
+    var VERSION = '10.139';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
