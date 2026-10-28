@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.121 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.122 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1986,18 +1986,18 @@
             T + '.items-line__title{font-size:1.3em;font-weight:700;letter-spacing:.01em}' +
             // картки: постер без заокруглення, у фокусі біла рамка
             T + '.card,' + T + '.card.focus,' + T + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            T + '.card__view{border-radius:0;background:#12131f;animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1)}' +
+            T + '.card__view{border-radius:1em;background:#12131f;animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1)}' +
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
-            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 1.6em .3em rgba(255,255,255,.35),0 .8em 1.8em rgba(0,0,0,.7)}' +
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 .1em rgba(255,255,255,.3),0 0 1.6em .3em rgba(255,255,255,.35),0 .8em 1.8em rgba(0,0,0,.7)}' +
             T + '.card.focus:not(.card--lmxhero),' + T + '.card.hover:not(.card--lmxhero){z-index:3}' +
             T + '.items-line .card:not(.card--lmxhero) .card__view{transition:transform .2s cubic-bezier(.25,.8,.25,1),opacity .2s ease}' +
             T + '.lmx-sel{display:none !important}' +
             T + '.card:not(.card--lmxhero){position:relative}' +
             T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
-            T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
+            T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 1em 1em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
             T + '.lmx-cin__t{font-size:1.2em;line-height:1.15;letter-spacing:-.005em}' +
             T + '.lmx-cin__r{margin-top:.1em}' +
@@ -3816,7 +3816,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.121';
+    var VERSION = '10.122';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
