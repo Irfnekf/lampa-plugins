@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.123 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.124 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1858,8 +1858,6 @@
     function detailCss(scope) {
         var D = scope || 'body.lmx-full ';
         return '' +
-            // Опис у блоці «Детально» — вибираний елемент (відкриває повний текст), але рідна Lampa не показує на ньому фокус: стрілка «вниз» ніби зникала
-            D + '.full-descr__text.focus{background:rgba(255,255,255,.1);border-radius:.8em;padding:.5em .7em;margin:-.5em -.7em}' +
             // Серії: закруглені кадри, номер-бейдж, чисті картки замість пунктиру
             D + '.full-episode{border-radius:1em}' +
             D + '.full-episode__img{border-radius:1em;overflow:hidden;background:linear-gradient(135deg,#26272e,#16171b)}' +
@@ -2901,6 +2899,8 @@
         if (!m) return;
         var r = e.object.activity.render();
         safe(function () { btnsOnFull(r); });
+        // Опис у блоці «Детально» — вибираний елемент без видимого фокуса (рідна Lampa): стрілка «вниз» ніби зникала. Прибираємо його з вибору, фокус одразу йде далі
+        safe(function () { r.find('.full-descr__text').removeClass('selector'); });
         safe(function () { hideEmptyComments(r); setTimeout(function () { safe(function () { hideEmptyComments(r); }); }, 1500); });
         // Телефон: рідний мобільний вигляд Lampa, без нашого кіно-стилю сторінки (він розрахований на великий екран)
         var useFull = getBool('lmx_full', true) && !isMobile();
@@ -3818,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.123';
+    var VERSION = '10.124';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4076,58 +4076,7 @@
         S.addParam({ component: 'nocub', param: { name: 'nocub_v', type: 'title', default: '' }, field: { name: 'NoCub v' + VERSION + ' · лише ховає елементи, нічого не видаляє' } });
     }
 
-    // Сторінка фільму: Lampa перебирає блоки (сезони, актори, рекомендації…) за списком, а не за тим, що видно на екрані.
-    // Прихований блок лишається в списку: «вниз» потрапляло на нього, екран стрибав і фокус зникав. Тому такий блок пропускаємо.
-    function isHiddenBlock(el) {
-        if (!el) return false;
-        if (el.classList.contains('nocub-hide') || el.closest('.nocub-hide')) return true;
-        // блок щойно створений (Lampa додає їх по мірі прокрутки вниз), а сканер ще не встиг його сховати — перевіряємо за правилами самі й ховаємо одразу
-        if (el.classList.contains('items-line')) {
-            var t = el.querySelector('.items-line__title'), txt = t ? t.textContent.slice(0, 80) : '';
-            if (txt) {
-                for (var i = 0; i < TEXT.length; i++) {
-                    var r = TEXT[i];
-                    if (r.sel === '.items-line' && r.title && r.re && on(r.key) && r.re.test(txt)) { mark(el, r.key); return true; }
-                }
-            }
-        }
-        return el.offsetParent === null;
-    }
-    function hookFull(e) {
-        if (!e || e.type !== 'build' || !e.item || !e.link || e.item.__nocubNav) return;
-        var item = e.item, link = e.link, orig = item.toggle;
-        if (typeof orig !== 'function') return;
-        item.__nocubNav = 1;
-        // напрямок запам'ятовуємо за самим натисканням (наш обробник стоїть першим у списку, тож спрацьовує до перемикання блока)
-        if (!link.__nocubUse && typeof link.use === 'function') {
-            link.__nocubUse = 1;
-            link.use({
-                onDown: function () { link.__nocubDir = 'down'; },
-                onUp: function () { link.__nocubDir = 'up'; }
-            }, 0);
-        }
-        item.toggle = function () {
-            var self = this, args = arguments, el = null;
-            try { el = self.render(true); } catch (x) {}
-            if (!isHiddenBlock(el)) return orig.apply(self, args);
-            // невидимий блок: йдемо далі в тому ж напрямку, а якщо далі нікуди (край списку) — назад
-            link.__nocubDepth = (link.__nocubDepth || 0) + 1;
-            try {
-                // глибока рекурсія — зупиняємось, не чіпаючи прихований блок (його перемикання змушує Lampa прокрутити сторінку нагору)
-                if (link.__nocubDepth > 8) return;
-                var dir = link.__nocubDir || 'down';
-                // знизу видимих блоків більше немає — повертаємось угору, а не «б'ємося» об кінець списку
-                if (dir === 'down' && link.items && link.active >= link.items.length - 1) dir = 'up';
-                link.__nocubDir = dir;
-                link.emit(dir);
-            } finally { link.__nocubDepth--; }
-        };
-    }
-
     function start() {
-        safe(function () {
-            Lampa.Listener.follow('full', function (e) { safe(function () { hookFull(e); }); });
-        });
         safe(function () {
             var st = document.createElement('style');
             st.id = 'nocub-css';
