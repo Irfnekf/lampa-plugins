@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.117 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.118 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3818,7 +3818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.117';
+    var VERSION = '10.118';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4080,7 +4080,18 @@
     // Прихований блок лишається в списку: «вниз» потрапляло на нього, екран стрибав і фокус зникав. Тому такий блок пропускаємо.
     function isHiddenBlock(el) {
         if (!el) return false;
-        return el.offsetParent === null || el.classList.contains('nocub-hide') || !!el.closest('.nocub-hide');
+        if (el.classList.contains('nocub-hide') || el.closest('.nocub-hide')) return true;
+        // блок щойно створений (Lampa додає їх по мірі прокрутки вниз), а сканер ще не встиг його сховати — перевіряємо за правилами самі й ховаємо одразу
+        if (el.classList.contains('items-line')) {
+            var t = el.querySelector('.items-line__title'), txt = t ? t.textContent.slice(0, 80) : '';
+            if (txt) {
+                for (var i = 0; i < TEXT.length; i++) {
+                    var r = TEXT[i];
+                    if (r.sel === '.items-line' && r.title && r.re && on(r.key) && r.re.test(txt)) { mark(el, r.key); return true; }
+                }
+            }
+        }
+        return el.offsetParent === null;
     }
     function hookFull(e) {
         if (!e || e.type !== 'build' || !e.item || !e.link || e.item.__nocubNav) return;
