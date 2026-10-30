@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.161 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.162 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -592,6 +592,7 @@
         H.title('lmx_t_page', 'Сторінка фільму');
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_studio', true, 'Студія / канал у підписі', 'На сторінці фільму: перша плашка з назвою телемережі (HBO, Netflix…) або студії виробництва', null);
+        H.trigger('lmx_studios', true, 'Ряд студій на сторінці фільму', 'Після акторів: студії та канали; натискання відкриває підбірку цієї студії', null);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.select('lmx_tint_lvl', { '1': 'Слабкий', '2': 'Середній', '3': 'Сильний' }, '2', 'Сила кольору постера', 'Наскільки яскраво фон і кнопки підсвічуються кольором постера', restyle);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
@@ -2189,9 +2190,9 @@
             // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
             'body.lmx-apple.lmx-onfull.lmx-tint::before{opacity:1;background:radial-gradient(75vw 65vh at 14% 6%,rgba(var(--lmx-acc),' + TL[0] + '),rgba(var(--lmx-acc),0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(var(--lmx-acc),' + TL[1] + '),rgba(var(--lmx-acc),0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)}' +
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons .full-start__button.focus:not(.lmx-primary):not(:first-child){box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
-            // перша кнопка: у спокої біла з легким кольоровим сяйвом, у фокусі заливається кольором постера
+            // перша кнопка: у спокої біла з легким кольоровим сяйвом, у фокусі — обводка кольору постера, як в інших кнопок
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{box-shadow:0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
-            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgb(var(--lmx-acc)) !important;color:#000 !important;box-shadow:0 0 0 .14em rgba(255,255,255,.92),0 0 1.4em rgba(var(--lmx-acc),' + TL[3] + ') !important}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             'body .full-start__button.lmx-liked{color:#ff5a6e}' +
             'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
@@ -3070,11 +3071,61 @@
         img.src = imgUrl(path, 'w92');
     }
 
+    // ===== Ряд «Студії й канали» на сторінці фільму (після акторів): натискання відкриває підбірку цієї студії/каналу =====
+    var studioHooked = false;
+    function studioAvatar(name) {
+        var words = String(name).replace(/[^\wА-Яа-яІіЇїЄєҐґ ]/g, ' ').split(/\s+/).filter(Boolean);
+        var ini = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 3)).toUpperCase();
+        var h = 0, i;
+        for (i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(' + h + ',55%,42%)"/><stop offset="1" stop-color="hsl(' + ((h + 40) % 360) + ',60%,26%)"/></linearGradient></defs><rect width="200" height="200" fill="url(#g)"/><text x="100" y="118" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="' + (ini.length > 2 ? 52 : 70) + '" fill="#fff" text-anchor="middle">' + ini.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</text></svg>';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+    function studioHook() {
+        if (studioHooked || !Lampa.Router || !Lampa.Router.call) return;
+        studioHooked = true;
+        var orig = Lampa.Router.call;
+        Lampa.Router.call = function (name, data) {
+            if (name === 'actor' && data && data.__lmxStudio) {
+                var st = data.__lmxStudio;
+                if (st.kind === 'network') {
+                    return Lampa.Activity.push({ url: 'discover/tv', title: data.name, component: 'category_full', networks: st.id, sort_by: 'vote_count.desc', source: 'tmdb', page: 1 });
+                }
+                return orig.call(this, 'company', { id: st.id, name: data.name, card: st.card });
+            }
+            return orig.apply(this, arguments);
+        };
+    }
+    function studioRow(e, m) {
+        if (!getBool('lmx_studios', true) || !e.link || !e.link.rows || !m) return;
+        var tv = typeOf(m) === 'tv', out = [], seen = {};
+        function add(list, kind) {
+            (list || []).forEach(function (x) {
+                if (!x || !x.id || !x.name) return;
+                var k = String(x.name).toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+                if (seen[k] || out.length >= 8) return;
+                seen[k] = 1;
+                out.push({ id: x.id, name: x.name, img: studioAvatar(String(x.name)), character: kind === 'network' ? 'Канал' : 'Студія', __lmxStudio: { kind: kind, id: x.id, card: m } });
+            });
+        }
+        if (tv) add(m.networks, 'network');
+        add(m.production_companies, 'company');
+        if (!out.length) return;
+        var rows = e.link.rows, built = (e.link.items && e.link.items.length) || 0, pos = -1, i;
+        for (i = 0; i < rows.length; i++) if (rows[i] && rows[i][0] === 'persons') pos = i;
+        if (rows.some(function (r) { return r && r[1] && r[1].__lmxStudios; })) return;
+        pos = Math.max(built, pos + 1);
+        if (pos > rows.length) pos = rows.length;
+        studioHook();
+        rows.splice(pos, 0, ['persons', { results: out, title: tv ? 'Студії та канали' : 'Студії', __lmxStudios: 1 }]);
+    }
+
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
         if (!m) return;
         var r = e.object.activity.render();
+        safe(function () { studioRow(e, m); });
         safe(function () { likeButton(r, m); });
         safe(function () { btnsOnFull(r); });
         safe(function () { posterTint(r, m); });
@@ -4000,7 +4051,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.161';
+    var VERSION = '10.162';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
