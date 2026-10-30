@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.194 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.195 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -98,7 +98,7 @@
     // «Під настрій» — тепер пункт лівого меню (а не шість рядів на головній): головна легша
     function moodMenu() {
         if (!Lampa.Menu || !Lampa.Menu.addButton || document.querySelector('.menu__item.lmx-moodmenu')) return;
-        var ico = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2.5 4 2.5S16 14 16 14"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
+        var ico = '<svg viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2.5 4 2.5S16 14 16 14"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
         var el = Lampa.Menu.addButton(ico, 'Під настрій', function () {
             registerServicePage();
             Lampa.Activity.push({ url: '', title: 'Під настрій', component: 'lmx_service', service_id: 'mood', page: 1 });
@@ -1777,6 +1777,12 @@
         return null;
     }
     // ===== CSS =====
+    function likeCss(pre, col) {
+        var sel = pre + '.full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x)';
+        return sel + ',' + sel + ' span{color:' + col + ' !important}' +
+            sel + ' svg{color:' + col + ' !important;stroke:' + col + ' !important}' +
+            sel + ' svg path{fill:' + col + ' !important;stroke:' + col + ' !important}';
+    }
     function buildCss() {
         var fs = SIZES[getStr('lmx_size', 'm')] || SIZES.m;
         var cDone = COLORS[getStr('lmx_c_done', 'green')] || COLORS.green;
@@ -1906,6 +1912,10 @@
             'body .noty__body{padding:.8em 1.6em;text-align:left}' +
             'body .noty__text{font-size:1.1em;font-weight:600}' +
             '.card--lmxhero.lmx-far{visibility:hidden}' +
+            // лайкнута кнопка: заливка кольором теми (стандартна — біла, «Кино» — фіолетовий, «Скло» — колір постера або м'який синій)
+            likeCss('html body ', '#fff') +
+            likeCss('html body.lmx-hbo ', '#9b8cff') +
+            likeCss('html body.lmx-apple ', 'rgb(var(--lmx-acc,143,155,255))') +
             '#lmx-cinema{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1200;display:flex;align-items:center;justify-content:center;gap:3em;padding:0 8%;background:linear-gradient(90deg,rgba(6,8,16,.93),rgba(6,8,16,.78));color:#fff;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .6s ease,visibility 0s linear .6s}' +
             'body.lmx-cinema #lmx-cinema{opacity:1;visibility:visible;transition:opacity .6s ease}' +
             '#lmx-cinema .lmx-cin-p{height:62vh;max-width:30vw;object-fit:cover;border-radius:1.2em;box-shadow:0 1em 2.4em rgba(0,0,0,.6);flex:none}' +
@@ -2265,12 +2275,6 @@
             // перша кнопка: у спокої біла з легким кольоровим сяйвом, у фокусі — обводка кольору постера, як в інших кнопок
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{box-shadow:0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
-            'body .full-start__button.lmx-liked{color:#ff5a6e}' +
-            'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
-            // у темах «Кино» і стандартній кольори кнопок задаються з !important — перебиваємо їх для лайкнутої кнопки
-            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x),html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) span{color:#ff5a6e !important}' +
-            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) svg{color:#ff5a6e !important;stroke:#ff5a6e !important}' +
-            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) svg path{fill:#ff5a6e !important;stroke:#ff5a6e !important}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
             A + '{background:#090b16 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
@@ -4293,7 +4297,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.194';
+    var VERSION = '10.195';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
