@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.166 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.168 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1573,8 +1573,8 @@
             // основа: лайки (вага 3), плюс кілька останніх з історії (вага 1), щоб добірка не була бідною
             var seeds = [];
             if (fromLikes) {
-                liked.slice(0, 10).forEach(function (c) { seeds.push({ c: c, w: 3 }); });
-                hist.slice(0, 4).forEach(function (c) {
+                liked.slice(0, 7).forEach(function (c) { seeds.push({ c: c, w: 3 }); });
+                hist.slice(0, 3).forEach(function (c) {
                     if (!liked.some(function (l) { return l.id === c.id; })) seeds.push({ c: c, w: 1 });
                 });
             } else hist.slice(0, 6).forEach(function (c) { seeds.push({ c: c, w: 1 }); });
@@ -1601,7 +1601,11 @@
                 recsCache = { key: key, t: Date.now(), data: data };
                 call(data);
             }
-            jobs.forEach(function (j) {
+            // запити йдуть по 3 одночасно, щоб не навантажувати старт головної
+            var qi = 0;
+            function pump() {
+                if (qi >= jobs.length) return;
+                var j = jobs[qi++];
                 tget(j.url, { page: j.page }, function (res) {
                     cleanResults(res && res.results, false).forEach(function (r) {
                         if (!r.poster_path || skip[r.id]) return;
@@ -1609,9 +1613,10 @@
                         if (!score[r.id]) score[r.id] = { c: r, n: 0 };
                         score[r.id].n += j.w;
                     });
-                    fin();
-                }, function () { fin(); });
-            });
+                    fin(); pump();
+                }, function () { fin(); pump(); });
+            }
+            for (var w = 0; w < 3; w++) pump();
         };
     }
 
@@ -2639,17 +2644,20 @@
             })(bodies[i]);
         }
     }
-    function markHero() {
+    function markHero(heroAdded) {
         hqPoster();
-        // ці дві перевірки не потрібні на кожну окрему зміну сторінки: не частіше разу на 150 мс
-        var tnow = Date.now();
+        // ці перевірки не потрібні на кожну окрему зміну сторінки: не частіше разу на 150 мс
+        var tnow = Date.now(), tick = false;
         if (tnow - (markHero.__t || 0) > 150) {
+            tick = true;
             markHero.__t = tnow;
             safe(rowGuard);
             safe(function () { document.body.classList.toggle('lmx-onfull', !!document.querySelector('.activity--active .full-start-new')); });
         } else if (!markHero.__q) {
             markHero.__q = setTimeout(function () { markHero.__q = 0; safe(markHero); }, 160);
         }
+        // пошук афішних карток по всій сторінці — лише коли справді додалась афіша (або в плановий такт)
+        if (heroAdded === false && !tick) return;
         var cs = document.querySelectorAll('.card--lmxhero:not(.lmx-hl)');
         for (var i = 0; i < cs.length; i++) {
             var ln = cs[i].closest('.items-line');
@@ -4084,7 +4092,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.166';
+    var VERSION = '10.168';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4100,15 +4108,20 @@
         safe(function () {
             applyStyle();
             new MutationObserver(function (muts) {
-                safe(markHero);
-                // реагуємо лише коли додались картки, а не на кожну зміну сторінки
+                // дивимось лише на додані вузли: чи з'явились картки й чи є серед них афіша
+                var hero = false, card = false;
                 for (var i = 0; i < muts.length; i++) {
                     var add = muts[i].addedNodes;
                     for (var k = 0; k < add.length; k++) {
                         var n = add[k];
-                        if (n.nodeType === 1 && ((n.classList && n.classList.contains('card')) || (n.querySelector && n.querySelector('.card')))) { schedule(); return; }
+                        if (n.nodeType !== 1) continue;
+                        var cl = n.classList;
+                        if (cl && cl.contains('card')) { card = true; if (cl.contains('card--lmxhero')) hero = true; }
+                        else if (n.querySelector && n.querySelector('.card')) { card = true; if (n.querySelector('.card--lmxhero')) hero = true; }
                     }
                 }
+                safe(function () { markHero(hero); });
+                if (card) schedule();
             }).observe(document.body, { childList: true, subtree: true });
             scan();
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
@@ -4425,7 +4438,16 @@
         safe(applyBody);
         safe(scan);
         safe(function () {
-            new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+            // картки, що догружаються в ряди, NoCub не цікавлять: реагуємо лише на інші додані елементи (меню, налаштування, кнопки, ряди)
+            new MutationObserver(function (muts) {
+                for (var i = 0; i < muts.length; i++) {
+                    var add = muts[i].addedNodes;
+                    for (var k = 0; k < add.length; k++) {
+                        var n = add[k];
+                        if (n.nodeType === 1 && !(n.classList && (n.classList.contains('card') || n.classList.contains('lmx-endpad')))) { schedule(); return; }
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
         });
         safe(function () {
             Lampa.Listener.follow('full', schedule);
