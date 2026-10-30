@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.159 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.161 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -593,6 +593,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_studio', true, 'Студія / канал у підписі', 'На сторінці фільму: перша плашка з назвою телемережі (HBO, Netflix…) або студії виробництва', null);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
+        H.select('lmx_tint_lvl', { '1': 'Слабкий', '2': 'Середній', '3': 'Сильний' }, '2', 'Сила кольору постера', 'Наскільки яскраво фон і кнопки підсвічуються кольором постера', restyle);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
@@ -2176,6 +2177,8 @@
         var GLASS = 'rgba(255,255,255,.13)';
         // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
         var AURORA = 'radial-gradient(70vw 55vh at 12% 8%,rgba(88,86,214,.55),rgba(88,86,214,0) 62%),radial-gradient(60vw 50vh at 88% 18%,rgba(20,190,200,.34),rgba(20,190,200,0) 62%),radial-gradient(70vw 60vh at 72% 100%,rgba(200,60,150,.34),rgba(200,60,150,0) 62%),radial-gradient(60vw 50vh at 0% 100%,rgba(40,90,220,.3),rgba(40,90,220,0) 62%),linear-gradient(180deg,#10122a 0%,#0b0d1c 55%,#080a14 100%)';
+        // сила кольору постера: [фон угорі, фон унизу, сяйво кнопки у спокої, сяйво/рамка у фокусі]
+        var TL = ({ '1': ['.1', '.06', '.18', '.5'], '2': ['.2', '.12', '.3', '.65'], '3': ['.42', '.26', '.45', '.85'] })[getStr('lmx_tint_lvl', '2')] || ['.2', '.12', '.3', '.65'];
         var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
         return '' +
             'html{background:#090b16 !important}' +
@@ -2184,8 +2187,11 @@
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
             'body.lmx-apple.lmx-onfull::before{opacity:.3}' +
             // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
-            'body.lmx-apple.lmx-onfull.lmx-tint::before{opacity:1;background:radial-gradient(75vw 65vh at 14% 6%,rgba(var(--lmx-acc),.5),rgba(var(--lmx-acc),0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(var(--lmx-acc),.3),rgba(var(--lmx-acc),0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)}' +
-            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons .full-start__button.focus:not(.lmx-primary):not(:first-child){box-shadow:0 0 0 .14em rgba(var(--lmx-acc),.9),0 0 1.1em rgba(var(--lmx-acc),.55) !important}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint::before{opacity:1;background:radial-gradient(75vw 65vh at 14% 6%,rgba(var(--lmx-acc),' + TL[0] + '),rgba(var(--lmx-acc),0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(var(--lmx-acc),' + TL[1] + '),rgba(var(--lmx-acc),0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons .full-start__button.focus:not(.lmx-primary):not(:first-child){box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
+            // перша кнопка: у спокої біла з легким кольоровим сяйвом, у фокусі заливається кольором постера
+            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{box-shadow:0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:rgb(var(--lmx-acc)) !important;color:#000 !important;box-shadow:0 0 0 .14em rgba(255,255,255,.92),0 0 1.4em rgba(var(--lmx-acc),' + TL[3] + ') !important}' +
             'body .full-start__button.lmx-liked{color:#ff5a6e}' +
             'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
@@ -3041,8 +3047,9 @@
         }
         if (!best) return null;
         // підсилюємо яскравість, щоб колір читався на темному тлі
-        var mxv = Math.max(best[0], best[1], best[2]) || 1, k = Math.min(1.6, 200 / mxv);
-        return best.map(function (v) { return Math.min(255, Math.round(v * k)); });
+        var mxv = Math.max(best[0], best[1], best[2]) || 1, k = Math.min(1.3, 150 / mxv);
+        var gray = (best[0] + best[1] + best[2]) / 3;
+        return best.map(function (v) { return Math.min(255, Math.round((v * 0.78 + gray * 0.22) * k)); });
     }
     function posterTint(r, m) {
         if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null); return; }
@@ -3993,7 +4000,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.159';
+    var VERSION = '10.161';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
