@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.158 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.159 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -591,6 +591,7 @@
         // ---- Сторінка фільму ----
         H.title('lmx_t_page', 'Сторінка фільму');
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
+        H.trigger('lmx_studio', true, 'Студія / канал у підписі', 'На сторінці фільму: перша плашка з назвою телемережі (HBO, Netflix…) або студії виробництва', null);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
@@ -1798,6 +1799,7 @@
             '.lmx-ip.lmx-done{background:' + cDone + '}' +
             '.lmx-ip.lmx-soon{background:rgba(255,255,255,.12)}' +
             '.lmx-ip.lmx-bad{background:' + COLORS.red + '}' +
+            '.lmx-ip.lmx-studio{font-weight:700;letter-spacing:.02em}' +
             // стиль карток «Кіно» (єдиний)
             ''+
                 '.lmx-tr .lmx-pill,.lmx-box .lmx-pill{font-size:' + (0.72 * fs).toFixed(2) + 'em;padding:.28em .6em;border-radius:.55em;font-weight:500;letter-spacing:.02em}' +
@@ -2645,9 +2647,19 @@
     }
 
     // ===== Всередині картки фільму/серіалу: тривалість і статус =====
+    // Студія/канал: для серіалів — телемережа (HBO, Netflix…), інакше перша студія виробництва
+    function studioName(m, tv) {
+        var list = (tv && m.networks && m.networks.length) ? m.networks : (m.production_companies || []);
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i] && list[i].name;
+            if (n) return String(n);
+        }
+        return '';
+    }
     function infoPills(m) {
         var p = [];
         var tv = typeOf(m) === 'tv';
+        if (getBool('lmx_studio', true)) { var sn = studioName(m, tv); if (sn) p.push({ t: esc(sn), c: 'lmx-studio' }); }
 
         if (tv) {
             var rt = (m.episode_run_time && m.episode_run_time[0]) ||
@@ -3116,6 +3128,8 @@
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
         moveHead(r);
         safe(function () { hideDupes(r); });
+        // Рідний статус Lampa («Скасовано», «Завершено»…) дублює нашу плашку — лишаємо одну
+        if (pills.some(function (x) { return /lmx-(done|bad|next|soon)/.test(x.c || ''); })) r.find('.full-start__status').addClass('hide');
     }
 
     // ===== КНОПКИ СТОРІНКИ ФІЛЬМУ: порядок, колір, іконки, папки =====
@@ -3979,7 +3993,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.158';
+    var VERSION = '10.159';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
