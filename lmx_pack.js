@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.181 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.182 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1607,7 +1607,7 @@
             // основа: лайки (вага 3), плюс кілька останніх з історії (вага 1), щоб добірка не була бідною
             var seeds = [];
             if (fromLikes) {
-                liked.slice(0, 7).forEach(function (c) { seeds.push({ c: c, w: 3 }); });
+                liked.slice(0, 12).forEach(function (c) { seeds.push({ c: c, w: 3 }); });
                 hist.slice(0, 3).forEach(function (c) {
                     if (!liked.some(function (l) { return l.id === c.id; })) seeds.push({ c: c, w: 1 });
                 });
@@ -1620,8 +1620,25 @@
                 var c = x.c, kind = (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie';
                 jobs.push({ url: kind + '/' + c.id + '/recommendations', page: 1, w: x.w, kind: kind });
                 if (x.w >= 3) jobs.push({ url: kind + '/' + c.id + '/similar', page: 1, w: x.w * 0.5, kind: kind });
-                if (x.w >= 3 && idx < 3) jobs.push({ url: kind + '/' + c.id + '/recommendations', page: 2, w: x.w, kind: kind });
+                if (x.w >= 3 && idx < 6) jobs.push({ url: kind + '/' + c.id + '/recommendations', page: 2, w: x.w, kind: kind });
             });
+            // доповнення: популярне в улюблених жанрах (рахуємо жанри лайків), щоб підбірка не була бідною при малій кількості лайків
+            var gc = {}, kc = { movie: 0, tv: 0 };
+            seeds.forEach(function (x) {
+                var c = x.c, g = c.genre_ids || (c.genres || []).map(function (q) { return q && q.id; }) || [];
+                kc[(c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie']++;
+                g.forEach(function (id) { if (id) gc[id] = (gc[id] || 0) + x.w; });
+            });
+            var topG = Object.keys(gc).sort(function (a, b) { return gc[b] - gc[a]; }).slice(0, 2);
+            if (topG.length) {
+                ['movie', 'tv'].forEach(function (kind) {
+                    if (!kc[kind]) return;
+                    var dk = kind === 'movie' ? 'primary_release_date' : 'first_air_date';
+                    var base = 'discover/' + kind + '?with_genres=' + topG.join('%2C') + '&sort_by=vote_average.desc&vote_count.gte=800&' + dk + '.gte=2000-01-01&' + dk + '.lte=' + dayStr(0);
+                    jobs.push({ url: base, page: 1, w: 0.3, kind: kind });
+                    jobs.push({ url: base, page: 2, w: 0.3, kind: kind });
+                });
+            }
             var left = jobs.length;
             function fin() {
                 if (--left > 0) return;
@@ -1629,7 +1646,7 @@
                 arr.sort(function (a, b) {
                     return b.n - a.n || ((b.c.vote_average || 0) * Math.log(2 + (b.c.vote_count || 0))) - ((a.c.vote_average || 0) * Math.log(2 + (a.c.vote_count || 0)));
                 });
-                var full = arr.map(function (x) { return x.c; }).slice(0, 100), out = full.slice(0, 40);
+                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = full.slice(0, 60);
                 if (!out.length) return call();
                 // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
                 recsAll = full;
@@ -4221,7 +4238,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.181';
+    var VERSION = '10.182';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
