@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.165 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.166 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1549,8 +1549,14 @@
         Lampa.Activity.push({ url: '', title: x[1], component: 'lmx_service', service_id: x[0], page: 1 });
     }
 
-    // Рекомендації за історією перегляду: беремо кілька останніх, збираємо «схоже» з TMDB, найчастіші й найпопулярніші зверху
+    // Рекомендації: основа — те, що вам сподобалось (лайк); якщо лайків ще немає — історія перегляду.
+    // З кожного фільму беремо «рекомендації» TMDB і «схоже», найчастіші збіги та вища оцінка — зверху; переглянуте й лайкнуте не показуємо
     var recsCache = null;
+    function favIds(type) {
+        var o = {};
+        try { (Lampa.Favorite.get({ type: type }) || []).forEach(function (c) { if (c && c.id) o[c.id] = 1; }); } catch (e) {}
+        return o;
+    }
     function recsCall(row) {
         return function (call) {
             var hist = [], liked = [];
@@ -1558,37 +1564,50 @@
             try { liked = Lampa.Favorite.get({ type: 'like' }) || []; } catch (e) {}
             hist = hist.filter(function (c) { return c && c.id; });
             liked = liked.filter(function (c) { return c && c.id; });
-            // основа — улюблене (лайк); поки лайків немає, показуємо за історією, щоб ряд не зникав
             var fromLikes = liked.length > 0;
-            var src = fromLikes ? liked : hist;
-            if (!src.length) return call();
+            if (!fromLikes && !hist.length) return call();
             var rowTitle = fromLikes ? 'Схоже на те, що вам сподобалось' : 'Схоже на те, що ви дивились';
-            var watched = {};
-            hist.forEach(function (c) { watched[c.id] = 1; });
-            liked.forEach(function (c) { watched[c.id] = 1; });
-            var base = src.slice(0, fromLikes ? 8 : 6);
-            var key = (fromLikes ? 'L:' : 'H:') + base.map(function (c) { return c.id; }).join(',');
-            if (recsCache && recsCache.key === key) return call(recsCache.data);
+            // вже бачене: історія, лайки та статуси «переглянуто/дивлюсь/відкинуто»
+            var skip = {}, k;
+            ['history', 'like', 'viewed', 'look', 'thrown'].forEach(function (t) { var m = favIds(t); for (k in m) skip[k] = 1; });
+            // основа: лайки (вага 3), плюс кілька останніх з історії (вага 1), щоб добірка не була бідною
+            var seeds = [];
+            if (fromLikes) {
+                liked.slice(0, 10).forEach(function (c) { seeds.push({ c: c, w: 3 }); });
+                hist.slice(0, 4).forEach(function (c) {
+                    if (!liked.some(function (l) { return l.id === c.id; })) seeds.push({ c: c, w: 1 });
+                });
+            } else hist.slice(0, 6).forEach(function (c) { seeds.push({ c: c, w: 1 }); });
+            var key = (fromLikes ? 'L:' : 'H:') + seeds.map(function (x) { return x.c.id; }).join(',');
+            if (recsCache && recsCache.key === key && Date.now() - recsCache.t < 600000) return call(recsCache.data);
 
-            var score = {}, left = base.length;
+            var score = {}, jobs = [];
+            seeds.forEach(function (x, idx) {
+                var c = x.c, kind = (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie';
+                jobs.push({ url: kind + '/' + c.id + '/recommendations', page: 1, w: x.w, kind: kind });
+                if (x.w >= 3) jobs.push({ url: kind + '/' + c.id + '/similar', page: 1, w: x.w * 0.5, kind: kind });
+                if (x.w >= 3 && idx < 3) jobs.push({ url: kind + '/' + c.id + '/recommendations', page: 2, w: x.w, kind: kind });
+            });
+            var left = jobs.length;
             function fin() {
                 if (--left > 0) return;
-                var arr = Object.keys(score).map(function (k) { return score[k]; });
-                arr.sort(function (a, b) { return b.n - a.n || (b.c.popularity || 0) - (a.c.popularity || 0); });
-                var out = arr.map(function (x) { return x.c; }).slice(0, 20);
+                var arr = Object.keys(score).map(function (id) { return score[id]; });
+                arr.sort(function (a, b) {
+                    return b.n - a.n || ((b.c.vote_average || 0) * Math.log(2 + (b.c.vote_count || 0))) - ((a.c.vote_average || 0) * Math.log(2 + (a.c.vote_count || 0)));
+                });
+                var out = arr.map(function (x) { return x.c; }).slice(0, 40);
                 if (!out.length) return call();
                 var data = { title: rowTitle, results: out, source: 'tmdb' };
-                recsCache = { key: key, data: data };
+                recsCache = { key: key, t: Date.now(), data: data };
                 call(data);
             }
-            base.forEach(function (c) {
-                var kind = (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie';
-                tget(kind + '/' + c.id + '/recommendations', { page: 1 }, function (j) {
-                    cleanResults(j && j.results, false).forEach(function (r) {
-                        if (!r.poster_path || watched[r.id]) return;
-                        r.media_type = kind;
+            jobs.forEach(function (j) {
+                tget(j.url, { page: j.page }, function (res) {
+                    cleanResults(res && res.results, false).forEach(function (r) {
+                        if (!r.poster_path || skip[r.id]) return;
+                        r.media_type = j.kind;
                         if (!score[r.id]) score[r.id] = { c: r, n: 0 };
-                        score[r.id].n++;
+                        score[r.id].n += j.w;
                     });
                     fin();
                 }, function () { fin(); });
@@ -4065,7 +4084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.165';
+    var VERSION = '10.166';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
