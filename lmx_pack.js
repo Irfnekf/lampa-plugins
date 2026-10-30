@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.188 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.189 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2254,7 +2254,7 @@
             T + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
             // слайд на весь екран їде майже вдвічі далі, ніж слайд-стрічка в каталогах (100vw проти 58vw), тож час подовжено пропорційно:
             // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
-            T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.5s cubic-bezier(.4,0,.2,1) !important}' +
+            T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.1s cubic-bezier(.4,0,.2,1) !important}' +
             T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s;will-change:opacity}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
@@ -4389,7 +4389,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.188';
+    var VERSION = '10.189';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
