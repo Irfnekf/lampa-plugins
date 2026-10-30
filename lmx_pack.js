@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.199 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.201 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4288,13 +4288,20 @@
     function patchBackground() {
         var B = window.Lampa && Lampa.Background;
         if (!B || B.__lmxP) return;
+        var bgT = 0, bgHid = false;
         ['change', 'immediately'].forEach(function (m) {
             var orig = B[m];
             if (typeof orig !== 'function') return;
             B[m] = function () {
+                // getComputedStyle на кожен фокус примушував браузер перераховувати стилі саме на початку анімації — запам'ятовуємо результат на 2 с
                 try {
-                    var el = document.querySelector('.background');
-                    if (el && window.getComputedStyle(el).display === 'none') return;
+                    var tn = Date.now();
+                    if (tn - bgT > 2000) {
+                        bgT = tn;
+                        var el = document.querySelector('.background');
+                        bgHid = !!el && window.getComputedStyle(el).display === 'none';
+                    }
+                    if (bgHid) return;
                 } catch (e) {}
                 return orig.apply(this, arguments);
             };
@@ -4353,7 +4360,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.199';
+    var VERSION = '10.201';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
