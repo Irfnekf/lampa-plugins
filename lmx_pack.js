@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.196 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.199 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -873,9 +873,12 @@
         out.push({ t: key === 'anime' ? 'Головні хіти' : 'Популярні серіали', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
         (typeof c.extra === 'function' ? c.extra() : c.extra).forEach(function (e) { out.push(e); });
         out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
-        return out.map(function (e) {
+        var mapped = out.map(function (e) {
             return { title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
         });
+        // «Схоже на те, що вам сподобалось» — лише аніме / лише дорами (будується лише на цих сторінках, на головну не впливає)
+        if (!forHome && (key === 'anime' || key === 'dorama')) mapped.splice(1, 0, { title: 'Схоже на те, що вам сподобалось', url: 'lmx://recs/' + key, kind: 'tv', recs: key, min: 6 });
+        return mapped;
     }
 
     // Афіша для платформ (Netflix, HBO, …): що зараз у тренді на платформі — фільми й серіали впереміш; лише з українським описом
@@ -1081,6 +1084,7 @@
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
+                    if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
                     var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     var dbg = (window.__lmxDbg = window.__lmxDbg || []);
                     function end() {
@@ -1126,11 +1130,25 @@
                     if (!data.length) return self.empty();
                     built = true;
                     self.build(data);
+                    moreSoon();
                     if (heroL && heroL.length) heroAttach(heroTitle, heroL);
                     startLazy();
                 }
+                // Плитка «Ще» в кінці ряду з'являється лише після прокрутки; у коротких рядах (усі картки вже на екрані) прокрутки нема, і лишалась тільки маленька кнопка вгорі.
+                // Після побудови (і після кожного дописаного ряду) один раз «будимо» такі ряди, щоб плитка з'явилась
+                var moreT = 0;
+                function moreSoon() {
+                    clearTimeout(moreT);
+                    moreT = setTimeout(function () {
+                        try {
+                            (self.items || []).forEach(function (it) {
+                                if (it && it.emit && it.data && it.data.results && it.items && !it.more && it.data.total_pages > 1 && it.data.results.length === it.items.length) it.emit('scroll');
+                            });
+                        } catch (e) {}
+                    }, 800);
+                }
                 function put(r) {
-                    if (built) { try { self.append(r); } catch (e) { next = cats.length; } } else firstRows.push(r);
+                    if (built) { try { self.append(r); moreSoon(); } catch (e) { next = cats.length; } } else firstRows.push(r);
                 }
                 function startFirst() {
                     firstRows = [];
@@ -1528,20 +1546,24 @@
 
     // Рекомендації: основа — те, що вам сподобалось (лайк); якщо лайків ще немає — історія перегляду.
     // З кожного фільму беремо «рекомендації» TMDB і «схоже», найчастіші збіги та вища оцінка — зверху; переглянуте й лайкнуте не показуємо
-    var recsCache = null;
     function favIds(type) {
         var o = {};
         try { (Lampa.Favorite.get({ type: type }) || []).forEach(function (c) { if (c && c.id) o[c.id] = 1; }); } catch (e) {}
         return o;
     }
-    var recsAll = [];
+    var recsAllBy = {};
+    function genreIds(c) { return c.genre_ids || (c.genres || []).map(function (q) { return q && q.id; }) || []; }
+    // аніме = японська анімація; дорама = корейський серіал
+    function isAnimeC(c) { return !!c && c.original_language === 'ja' && genreIds(c).indexOf(16) >= 0; }
+    function isDoramaC(c) { return !!c && c.original_language === 'ko' && (c.media_type === 'tv' || !!c.name || !!c.first_air_date) && genreIds(c).indexOf(16) < 0; }
     function recsListHook() {
         var T = Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
         if (!T || T.__lmxRecs || !T.list) return;
         T.__lmxRecs = true;
         var orig = T.list;
         T.list = function (params, ok, fail) {
-            if (params && params.url === 'lmx://recs') {
+            if (params && typeof params.url === 'string' && params.url.indexOf('lmx://recs/') === 0) {
+                var recsAll = recsAllBy[params.url.slice(11)] || [];
                 var p = params.page || 1, per = 20;
                 var res = recsAll.slice((p - 1) * per, p * per).map(function (c) { var x = {}, q; for (q in c) x[q] = c[q]; return x; });
                 return ok({ results: res, page: p, total_pages: Math.max(1, Math.ceil(recsAll.length / per)), total_results: recsAll.length, source: 'tmdb' });
@@ -1549,13 +1571,18 @@
             return orig.apply(this, arguments);
         };
     }
-    function recsCall(row) {
-        return function (call) {
+    function recsCall(row) { return function (call) { recsBuild('', call); }; }
+    var recsCaches = {};
+    function recsBuild(mode, call) {
+        {
             var hist = [], liked = [];
             try { hist = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
             try { liked = Lampa.Favorite.get({ type: 'like' }) || []; } catch (e) {}
             hist = hist.filter(function (c) { return c && c.id; });
             liked = liked.filter(function (c) { return c && c.id; });
+            // основа за режимом: на головній — без аніме; на сторінках «Аніме» / «Дорами» — лише своє
+            var okSeed = mode === 'anime' ? isAnimeC : mode === 'dorama' ? isDoramaC : function (c) { return !isAnimeC(c); };
+            hist = hist.filter(okSeed); liked = liked.filter(okSeed);
             var fromLikes = liked.length > 0;
             if (!fromLikes && !hist.length) return call();
             var rowTitle = fromLikes ? 'Схоже на те, що вам сподобалось' : 'Схоже на те, що ви дивились';
@@ -1578,8 +1605,9 @@
                     if (!liked.some(function (l) { return l.id === c.id; })) seeds.push({ c: c, w: 1 });
                 });
             } else hist.slice(0, 6).forEach(function (c) { seeds.push({ c: c, w: 1 }); });
-            var key = (fromLikes ? 'L:' : 'H:') + seeds.map(function (x) { return x.c.id; }).join(',');
-            if (recsCache && recsCache.key === key && Date.now() - recsCache.t < 600000) return call(recsCache.data);
+            var key = mode + (fromLikes ? 'L:' : 'H:') + seeds.map(function (x) { return x.c.id; }).join(',');
+            var rcache = recsCaches[mode];
+            if (rcache && rcache.key === key && Date.now() - rcache.t < 600000) return call(rcache.data);
 
             var score = {}, jobs = [];
             seeds.forEach(function (x, idx) {
@@ -1596,7 +1624,12 @@
                 g.forEach(function (id) { if (id) gc[id] = (gc[id] || 0) + x.w; });
             });
             var topG = Object.keys(gc).sort(function (a, b) { return gc[b] - gc[a]; }).slice(0, 2);
-            if (topG.length) {
+            if (mode) {
+                var dq = mode === 'anime' ? 'with_genres=16&with_original_language=ja&vote_count.gte=300' : 'with_origin_country=KR&vote_count.gte=200';
+                var dbase = 'discover/tv?' + dq + '&sort_by=vote_average.desc&first_air_date.gte=2000-01-01&first_air_date.lte=' + dayStr(0);
+                jobs.push({ url: dbase, page: 1, w: 0.3, kind: 'tv' });
+                jobs.push({ url: dbase, page: 2, w: 0.3, kind: 'tv' });
+            } else if (topG.length) {
                 ['movie', 'tv'].forEach(function (kind) {
                     if (!kc[kind]) return;
                     var dk = kind === 'movie' ? 'primary_release_date' : 'first_air_date';
@@ -1615,10 +1648,10 @@
                 var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = full.slice(0, 60);
                 if (!out.length) return call();
                 // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
-                recsAll = full;
+                recsAllBy[mode] = full;
                 recsListHook();
-                var data = { title: rowTitle, results: out, source: 'tmdb', url: 'lmx://recs', page: 1, more: true, total_pages: Math.max(2, Math.ceil(full.length / 20)) };
-                recsCache = { key: key, t: Date.now(), data: data };
+                var data = { title: rowTitle, results: out, source: 'tmdb', url: 'lmx://recs/' + mode, page: 1, more: true, total_pages: Math.max(2, Math.ceil(full.length / 20)) };
+                recsCaches[mode] = { key: key, t: Date.now(), data: data };
                 call(data);
             }
             // запити йдуть по 3 одночасно, щоб не навантажувати старт головної
@@ -1632,6 +1665,7 @@
                         // дуже старі (до 2000) у «Схоже на те, що вам сподобалось» не беремо
                         var yr = parseInt(String(r.release_date || r.first_air_date || '').slice(0, 4), 10);
                         if (yr && yr < 2000) return;
+                        if (mode === 'anime' ? !isAnimeC(r) : mode === 'dorama' ? !isDoramaC(r) : isAnimeC(r)) return;
                         r.media_type = j.kind;
                         if (!score[r.id]) score[r.id] = { c: r, n: 0 };
                         score[r.id].n += j.w;
@@ -1640,7 +1674,7 @@
                 }, function () { fin(); pump(); });
             }
             for (var w = 0; w < 3; w++) pump();
-        };
+        }
     }
 
     function makeCall(row) {
@@ -1912,6 +1946,7 @@
             'body .noty__body{padding:.8em 1.6em;text-align:left}' +
             'body .noty__text{font-size:1.1em;font-weight:600}' +
             '.card--lmxhero.lmx-far{visibility:hidden}' +
+            'html body .full-start__button.button--book.lmx-bk-off path{fill:transparent !important}' +
             // лайкнута кнопка: заливка кольором теми (стандартна — біла, «Кино» — фіолетовий, «Скло» — колір постера або м'який синій)
             likeCss('html body ', '#fff') +
             likeCss('html body.lmx-hbo ', '#9b8cff') +
@@ -3127,7 +3162,8 @@
         var st = {};
         try { st = Lampa.Favorite.check(c.m) || {}; } catch (e) {}
         var any = ['wath', 'book', 'look', 'viewed', 'scheduled', 'continued', 'thrown'].some(function (k) { return !!st[k]; });
-        c.r.find('.button--book path').attr('fill', any ? 'currentColor' : 'transparent');
+        // класом + CSS (!important), а не атрибутом: так закладка не блимає навіть на мить, поки рідна Lampa виставляє свій колір
+        c.r.find('.button--book').toggleClass('lmx-bk-off', !any);
     }
     function bookFillSoon() { setTimeout(bookFill, 0); setTimeout(bookFill, 200); }
     function likeButton(r, m) {
@@ -3139,6 +3175,7 @@
             likeHooked = true;
             Lampa.Listener.follow('state:changed', function (e) { if (e && e.target === 'favorite') bookFillSoon(); });
         }
+        bookFill();
         setTimeout(bookFill, 700);
         function liked() { try { return !!Lampa.Favorite.check(m).like; } catch (e) { return false; } }
         var el = $('<div class="full-start__button selector button--lmxlike lmx-likebtn">' + HEART + '<span>Подобається</span></div>');
@@ -3150,6 +3187,7 @@
         }
         el.on('hover:enter', function () {
             safe(function () {
+                bookFill();
                 Lampa.Favorite.toggle('like', m);
                 paintLike();
                 bookFillSoon();
@@ -4315,7 +4353,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.196';
+    var VERSION = '10.199';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
