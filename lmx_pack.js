@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.172 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.173 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2944,13 +2944,18 @@
     }
     // ТВ скидає з пам'яті розкодовані картинки далеких слайдів — тож заздалегідь «підігріваємо» сусідів поточного слайда (декод у фоні, поки слайд стоїть)
     function heroTouch(card, line) {
-        var i = parseInt(card.getAttribute('data-lmxi'), 10) || 0, all = line.querySelectorAll('.card--lmxhero');
+        var i = parseInt(card.getAttribute('data-lmxi'), 10) || 0, all = line.querySelectorAll('.card--lmxhero'), n = 0;
         for (var k = 0; k < all.length; k++) {
             var d = Math.abs((parseInt(all[k].getAttribute('data-lmxi'), 10) || 0) - i);
             if (d !== 1) continue;
-            var u = all[k].getAttribute('data-lmxu'), im = u && heroImgs[u];
-            if (im && im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
-            else if (u) heroPreload(u);
+            // сусідів декодуємо по черзі з паузою, а не обох одразу
+            (function (u, delay) {
+                setTimeout(function () {
+                    var im = u && heroImgs[u];
+                    if (im && im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
+                    else if (u) heroPreload(u);
+                }, delay);
+            })(all[k].getAttribute('data-lmxu'), 700 * n++);
         }
     }
     function initDots() {
@@ -3036,7 +3041,17 @@
                 syncDots(c);
                 if (!warmDone && !warmBusy && !heroQ.length && !heroBusy && Date.now() - lastKey > 1500 && (parseInt(c.getAttribute('data-lmxi'), 10) || 0) === 0 && c.closest('.items-line')) { warm(c.closest('.items-line')); return; }
                 if (warmBusy) { ap.t = Date.now(); return; }
-                if (ap.touch !== c) { ap.touch = c; heroTouch(c, c.closest('.items-line')); }
+                // «підігрів» сусідніх слайдів (декод великих картинок) — не в момент, коли слайд доїжджає до місця (це давало мікрорив наприкінці анімації),
+                // а через півтори секунди спокою й порціями по одному слайду
+                if (ap.touch !== c) {
+                    ap.touch = c;
+                    clearTimeout(ap.tt);
+                    ap.tt = setTimeout(function () {
+                        if (!c.isConnected || !c.classList.contains('focus')) return;
+                        var run = function () { safe(function () { heroTouch(c, c.closest('.items-line')); }); };
+                        if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 1500 }); else run();
+                    }, 1500);
+                }
                 autoplay(c, c.closest('.items-line'));
             });
         }, 300);
@@ -4167,7 +4182,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.172';
+    var VERSION = '10.173';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
