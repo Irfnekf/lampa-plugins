@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.206 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.207 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3255,30 +3255,48 @@
             b.classList.add('lmx-tint');
         } else b.classList.remove('lmx-tint');
     }
+    // Домінантний колір: пікселі групуються за відтінком (18 секторів по 20°), перемагає сектор із найбільшою «вагою» (насиченість × середня яскравість),
+    // колір — зважене середнє його пікселів. Так один яскравий піксель (напис, відблиск) не вирішує, а сірі та майже чорні/білі пікселі не рахуються
     function tintFrom(img) {
-        var c = document.createElement('canvas'), W = 24, H = 24;
+        var c = document.createElement('canvas'), W = 32, H = 32;
         c.width = W; c.height = H;
         var g = c.getContext('2d');
         g.drawImage(img, 0, 0, W, H);
-        var d = g.getImageData(0, 0, W, H).data, best = null, bs = -1, i;
+        var d = g.getImageData(0, 0, W, H).data, i, NB = 18;
+        var bw = [], br = [], bg = [], bb = [], ar = 0, ag = 0, ab = 0, an = 0;
+        for (i = 0; i < NB; i++) { bw[i] = 0; br[i] = 0; bg[i] = 0; bb[i] = 0; }
         for (i = 0; i < d.length; i += 4) {
             var R = d[i], G = d[i + 1], B = d[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
-            var sat = mx ? (mx - mn) / mx : 0, lum = (R + G + B) / 3;
-            if (lum < 40 || lum > 235) continue;
-            var sc = sat * 2 + lum / 255;
-            if (sc > bs) { bs = sc; best = [R, G, B]; }
+            var lum = (R + G + B) / 3;
+            if (lum < 30 || lum > 238) continue;
+            ar += R; ag += G; ab += B; an++;
+            var sat = mx ? (mx - mn) / mx : 0;
+            if (sat < 0.18) continue;
+            var df = mx - mn, h;
+            if (mx === R) h = ((G - B) / df + 6) % 6; else if (mx === G) h = (B - R) / df + 2; else h = (R - G) / df + 4;
+            var bi = Math.min(NB - 1, Math.floor(h * 60 / 20));
+            var w = sat * (1 - Math.min(1, Math.abs(lum - 125) / 125) * 0.6);
+            bw[bi] += w; br[bi] += R * w; bg[bi] += G * w; bb[bi] += B * w;
         }
-        if (!best) return null;
+        var best = -1, bs = 0;
+        for (i = 0; i < NB; i++) {
+            var sc = bw[i] + (bw[(i + 1) % NB] + bw[(i + NB - 1) % NB]) * 0.5;
+            if (sc > bs) { bs = sc; best = i; }
+        }
+        var col;
+        if (best >= 0 && bw[best] > 0.6) col = [br[best] / bw[best], bg[best] / bw[best], bb[best] / bw[best]];
+        else if (an) col = [ar / an, ag / an, ab / an];
+        else return null;
         // підсилюємо яскравість, щоб колір читався на темному тлі
-        var mxv = Math.max(best[0], best[1], best[2]) || 1, k = Math.min(1.5, 185 / mxv);
-        var gray = (best[0] + best[1] + best[2]) / 3;
-        return best.map(function (v) { return Math.min(255, Math.round((v * 0.78 + gray * 0.22) * k)); });
+        var mxv = Math.max(col[0], col[1], col[2]) || 1, k = Math.min(1.8, 185 / mxv);
+        var gray = (col[0] + col[1] + col[2]) / 3;
+        return col.map(function (v) { return Math.min(255, Math.round((v * 0.85 + gray * 0.15) * k)); });
     }
     function posterTint(r, m) {
         if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null, r); return; }
         var path = m.poster_path || m.backdrop_path;
         if (!path) { tintApply(null, r); return; }
-        var key = String(m.id);
+        var key = typeOf(m) + m.id; // фільм і серіал можуть мати однаковий id — ключ має це розрізняти
         if (tintCache[key] !== undefined) { tintApply(tintCache[key], r); return; }
         tintApply(null, r);
         var img = new Image();
@@ -4397,7 +4415,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.206';
+    var VERSION = '10.207';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
