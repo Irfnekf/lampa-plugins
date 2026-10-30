@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.202 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.204 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -761,17 +761,14 @@
             return [
                 { t: 'Зараз дивляться', k: 'tv', q: JA + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3' },
                 { t: 'У топі', k: 'tv', q: JA + '&sort_by=popularity.desc&vote_count.gte=400' },
-                { t: 'Онгоїнги', k: 'tv', q: JA + '&with_status=0&air_date.gte=' + dayStr(-30) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc' },
                 { t: 'Новинки цього року', k: 'tv', q: JA + '&first_air_date.gte=' + Y + '-01-01&first_air_date.lte=' + t0 + '&sort_by=popularity.desc' },
                 { t: 'Минулий рік', k: 'tv', q: JA + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc' }
             ];
           },
           extra: function () {
             var JA = 'with_original_language=ja&with_genres=16', out = [
-                { t: 'Варто переглянути', k: 'tv', q: JA + '&vote_average.gte=7.5&vote_count.gte=500&sort_by=vote_count.desc' },
                 { t: 'З високим рейтингом', k: 'tv', q: JA + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc' },
                 { t: 'Аніме-фільми', k: 'movie', q: JA + '&sort_by=popularity.desc&vote_count.gte=100' },
-                { t: 'Найкращі аніме-фільми', k: 'movie', q: JA + '&vote_average.gte=7.6&vote_count.gte=500&sort_by=vote_average.desc' },
                 { t: 'Бойовик і пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759&sort_by=popularity.desc' },
                 { t: 'Фантастика й фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765&sort_by=popularity.desc' },
                 { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35&sort_by=popularity.desc' },
@@ -824,12 +821,11 @@
     var ANIME_STUDIOS = [
         ['Studio Ghibli', 'Studio Ghibli', 'movie'], ['Toei Animation', 'Toei Animation', 'tv'], ['MAPPA', 'MAPPA', 'tv'],
         ['Madhouse', 'Madhouse', 'tv'], ['Bones', 'Bones', 'tv'], ['Kyoto Animation', 'Kyoto Animation', 'tv'],
-        ['ufotable', 'Ufotable', 'tv'], ['Wit Studio', 'Wit Studio', 'tv'], ['A-1 Pictures', 'A-1 Pictures', 'tv'],
-        ['Sunrise', 'Sunrise', 'tv'], ['Production I.G', 'Production I.G', 'tv'], ['CloverWorks', 'CloverWorks', 'tv'], ['Trigger', 'Trigger', 'tv']
+        ['ufotable', 'Ufotable', 'tv'], ['Wit Studio', 'Wit Studio', 'tv'], ['Trigger', 'Trigger', 'tv']
     ];
     var ANIME_TAGS = [
-        ['isekai', 'Ісекай'], ['school', 'Школа'], ['reincarnation', 'Переродження'], ['magic', 'Магія'], ['vampire', 'Вампіри'],
-        ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність'], ['shounen', 'Сьонен'], ['romance', 'Романтика']
+        ['isekai', 'Ісекай'], ['reincarnation', 'Переродження'], ['vampire', 'Вампіри'],
+        ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність']
     ];
     var DORAMA_TAGS = [
         ['romance', 'Романтика'], ['school', 'Школа'], ['medical', 'Лікарі'], ['revenge', 'Помста'], ['time travel', 'Подорожі в часі'],
@@ -873,11 +869,18 @@
         out.push({ t: key === 'anime' ? 'Головні хіти' : 'Популярні серіали', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
         (typeof c.extra === 'function' ? c.extra() : c.extra).forEach(function (e) { out.push(e); });
         out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
+        // аніме: рядів забагато, частина дублює одна одну («Нові серіали» ≈ «Новинки цього року», «Головні хіти» ≈ «У топі» тощо) — прибираємо
+        if (key === 'anime' && !forHome) {
+            var drop = ['Нові серіали', 'Популярні фільми', 'Головні хіти', 'Золота колекція (найвищий рейтинг)'];
+            out = out.filter(function (e) { return drop.indexOf(e.t) < 0; });
+        }
         var mapped = out.map(function (e) {
             return { title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
         });
         // «Схоже на те, що вам сподобалось» — лише аніме / лише дорами (будується лише на цих сторінках, на головну не впливає)
         if (!forHome && (key === 'anime' || key === 'dorama')) mapped.splice(1, 0, { title: 'Схоже на те, що вам сподобалось', url: 'lmx://recs/' + key, kind: 'tv', recs: key, min: 6 });
+        // «Нові серії» — лише на сторінці «Аніме»: улюблене (лайкнуте) аніме, у якого за останні 2 тижні вийшла нова серія
+        if (!forHome && key === 'anime') mapped.unshift({ title: 'Нові серії', url: 'lmx://newep/anime', kind: 'tv', newep: true, min: 1 });
         return mapped;
     }
 
@@ -1078,14 +1081,15 @@
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i].map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18, total_pages: 20 };
+                    return { title: cats[i].title, results: res[i].map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
+                    if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
-                    var pages = i < 3 ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
+                    var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     var dbg = (window.__lmxDbg = window.__lmxDbg || []);
                     function end() {
                         if (fin || --pend > 0) return;
@@ -1675,6 +1679,41 @@
             }
             for (var w = 0; w < 3; w++) pump();
         }
+    }
+
+    // «Нові серії» (аніме): серіали-аніме з лайків, у яких остання серія вийшла за останні 14 днів. Деталі беремо з кешу load(), по 3 запити одночасно
+    var newEpCache = null;
+    function newEpBuild(cb) {
+        var liked = [];
+        try { liked = Lampa.Favorite.get({ type: 'like' }) || []; } catch (e) {}
+        var list = liked.filter(function (c) {
+            return c && c.id && isAnimeC(c) && (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons);
+        }).slice(0, 40);
+        if (!list.length) return cb([]);
+        var key = list.map(function (c) { return c.id; }).join(',') + '|' + dayStr(0);
+        if (newEpCache && newEpCache.key === key && Date.now() - newEpCache.t < 600000) return cb(newEpCache.data);
+        var lo = dayStr(-14), hi = dayStr(0), out = [], qi = 0, left = list.length;
+        function fin() {
+            if (--left > 0) return;
+            out.sort(function (a, b) { return String(b.__ne).localeCompare(String(a.__ne)); });
+            newEpCache = { key: key, t: Date.now(), data: out };
+            cb(out);
+        }
+        function pump() {
+            if (qi >= list.length) return;
+            var c = list[qi++];
+            load(c.id, function (j) {
+                var d = j && j.last_episode_to_air && j.last_episode_to_air.air_date;
+                if (d && d >= lo && d <= hi && j.poster_path) {
+                    out.push({ id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path,
+                        overview: j.overview, vote_average: j.vote_average, vote_count: j.vote_count, first_air_date: j.first_air_date,
+                        original_language: j.original_language, genre_ids: (j.genres || []).map(function (g) { return g.id; }),
+                        media_type: 'tv', __ne: d });
+                }
+                fin(); pump();
+            });
+        }
+        for (var w = 0; w < 3; w++) pump();
     }
 
     function makeCall(row) {
@@ -4360,7 +4399,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.202';
+    var VERSION = '10.204';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
