@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.171 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.172 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -57,7 +57,16 @@
     // Українські студії: ID шукаємо в TMDB за назвою, нічого не зашито
     var UA_STUDIOS = ['Film.UA', '1+1 Media', 'Starlight Media', 'Kyivstar', 'Megogo', 'Plus Plus Studio', 'Dzyga', 'Radar Media', 'Gloria Pictures', '1+1 Ukraine', 'STB', 'ICTV', 'Novy Channel', '2+2', 'Inter Media', 'TRK Ukraina', 'Oll.TV', 'Sweet.tv'];
     function uaStudioIds(done) {
+        // знайдені id студій зберігаємо на тиждень: раніше кожен запуск робив 18 пошукових запитів до TMDB
+        var saved = null;
+        try { saved = Lampa.Storage.get('lmx_ua_cos', ''); if (typeof saved === 'string') saved = saved ? JSON.parse(saved) : null; } catch (e0) { saved = null; }
+        if (saved && saved.ids && saved.ids.length && Date.now() - (saved.t || 0) < 7 * 864e5) return done(saved.ids.slice());
         var left = UA_STUDIOS.length, ids = [];
+        var fin = done;
+        done = function (r) {
+            if (r && r.length) { try { Lampa.Storage.set('lmx_ua_cos', { t: Date.now(), ids: r }); } catch (e1) {} }
+            fin(r);
+        };
         UA_STUDIOS.forEach(function (n) {
             tget('search/company', { query: n, page: 1 }, function (j) {
                 var key = n.toLowerCase().replace(/[^a-z0-9+]/g, '');
@@ -75,7 +84,7 @@
             var base = 'discover/' + kind + '?';
             function fetchAll(urls, done) {
                 var tasks = [];
-                urls.forEach(function (u) { tasks.push([u, 1]); tasks.push([u, 2]); tasks.push([u, 3]); });
+                urls.forEach(function (u) { tasks.push([u, 1]); tasks.push([u, 2]); });
                 var left = tasks.length, out = [];
                 done.totals = {};
                 tasks.forEach(function (t, i) {
@@ -633,8 +642,12 @@
                 return pm > 0 ? { pct: pm } : null;
             }
             var seasons = Math.min(20, Number(c.number_of_seasons) || (c.seasons && c.seasons.length) || 12), best = null;
+            // кількість серій з даних сезонів (якщо є) — замість 40 перевірок на кожен сезон
+            var epc = {};
+            (c.seasons || []).forEach(function (s) { if (s && s.season_number > 0 && s.episode_count > 0) epc[s.season_number] = s.episode_count; });
             for (var sn = 1; sn <= seasons; sn++) {
-                for (var ep = 1; ep <= 40; ep++) {
+                var maxEp = epc[sn] ? Math.min(60, epc[sn] + 3) : 40;
+                for (var ep = 1; ep <= maxEp; ep++) {
                     var pe = pctOf(get(Lampa.Utils.hash([sn, sn > 10 ? ':' : '', ep, name].join(''))));
                     if (pe > 0) best = { pct: pe, s: sn, e: ep };
                 }
@@ -4154,7 +4167,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.171';
+    var VERSION = '10.172';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4506,7 +4519,12 @@
                     var add = muts[i].addedNodes;
                     for (var k = 0; k < add.length; k++) {
                         var n = add[k];
-                        if (n.nodeType === 1 && !(n.classList && (n.classList.contains('card') || n.classList.contains('lmx-endpad')))) { schedule(); return; }
+                        if (n.nodeType !== 1) continue;
+                        // картки та власні елементи LMX (підписи на постерах, точки, шар кольору тощо) NoCub не стосуються
+                        var nc = typeof n.className === 'string' ? n.className : '';
+                        if (n.classList && n.classList.contains('card')) continue;
+                        if (/(^|\s)lmx-(endpad|cin|tr|box|dots|pill|tintbg|hist|logo|info|descr)/.test(nc) || n.id === 'lmx-tintbg') continue;
+                        schedule(); return;
                     }
                 }
             }).observe(document.body, { childList: true, subtree: true });
