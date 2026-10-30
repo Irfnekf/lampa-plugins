@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.189 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.190 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -706,7 +706,7 @@
                             '</div><div class="lmx-hist__m">' + (prog && prog.s ? '<span>С' + prog.s + ' Е' + prog.e + '</span>' : '') +
                             (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
                             (year ? '<span>' + year + '</span>' : '') +
-                            (prog && prog.left > 0 ? '<span class="lmx-hist__left">лишилось ' + fmtDur(prog.left) + '</span>' : '') + '</div></div>' +
+                            (prog && prog.left > 0 ? '<span class="lmx-hist__left">' + (prog.left <= 10 ? 'переглянуто' : 'лишилось ' + fmtDur(prog.left)) + '</span>' : '') + '</div></div>' +
                             (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
                         // довге утримання OK прибирає фільм з історії перегляду (картка зникає, фокус переходить на сусідню)
                         h.on('hover:long', function (ev) {
@@ -731,7 +731,7 @@
                     });
                 },
                 // недодивлене (є прогрес) — відкриваємо сторінку й одразу натискаємо головну кнопку «Дивитись»; мітка гасне, якщо кнопки нема
-                onlyEnter: function () { if (prog && prog.pct > 0 && prog.pct < 95) resumeFlag = { id: m.id, t: Date.now() }; openFull(m); }
+                onlyEnter: function () { if (prog && prog.pct > 0 && prog.pct < 95 && !(prog.left > 0 && prog.left <= 10)) resumeFlag = { id: m.id, t: Date.now() }; openFull(m); }
             }
         };
         return it;
@@ -4389,7 +4389,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.189';
+    var VERSION = '10.190';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
