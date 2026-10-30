@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.168 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.169 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1270,7 +1270,7 @@
     var HYPE_MIN_POP = 50;
 
     // Кеш запитів до TMDB у пам'яті (8 хв) + об'єднання однакових запитів, що летять одночасно — головна відкривається швидше
-    var tcache = {}, tpend = {};
+    var tcache = {}, tpend = {}, tcacheKeys = [];
     function tclone(j) {
         if (!j || !j.results || !j.results.slice) return j;
         var o = {}, k;
@@ -1286,7 +1286,12 @@
         tpend[key] = [[ok, fail]];
         Lampa.Api.sources.tmdb.get(url, params || {}, function (j) {
             var q = tpend[key]; delete tpend[key];
-            if (j) tcache[key] = { t: Date.now(), j: j };
+            if (j) {
+                if (!tcache[key]) tcacheKeys.push(key);
+                tcache[key] = { t: Date.now(), j: j };
+                // кеш відповідей не росте безкінечно (ТВ працює днями): тримаємо найновіші 80
+                while (tcacheKeys.length > 80) delete tcache[tcacheKeys.shift()];
+            }
             q.forEach(function (x) { try { x[0](tclone(j)); } catch (e) {} });
         }, function (err) {
             var q = tpend[key]; delete tpend[key];
@@ -2522,6 +2527,8 @@
     }
     function pump() {
         while (active < MAX_PARALLEL && queue.length) {
+            // картка, яку вже прибрано зі сторінки (ряд перебудовано), запиту не варта
+            if (queue[0] && queue[0].el && queue[0].el.isConnected === false) { queue.shift(); continue; }
             (function (task) {
                 active++;
                 load(task.id, function (j) {
@@ -2808,13 +2815,14 @@
     }
 
     // Попереднє завантаження: поки картка в фокусі, тихо тягнемо логотип і фон — сторінка відкривається швидше
-    var preSeen = {}, preTimer = null;
+    var preSeen = {}, preSeenN = 0, preTimer = null;
     function prefetchCard(d) {
         if (!d || !d.id || isMobile()) return;
         var kind = (d.name || d.first_air_date || d.number_of_seasons) ? 'tv' : 'movie';
         var key = kind + d.id;
         if (preSeen[key]) return;
         preSeen[key] = 1;
+        if (++preSeenN > 800) { preSeen = {}; preSeenN = 0; }
         try {
             // той самий запит, що робить сторінка фільму: Lampa кешує відповідь, і сторінка відкривається майже миттєво
             if (Lampa.Api && Lampa.Api.full) Lampa.Api.full({ id: d.id, method: kind, source: d.source || 'tmdb', card: d }, function () {}, function () {});
@@ -3105,6 +3113,7 @@
         img.onload = function () {
             var rgb = null;
             try { rgb = tintFrom(img); } catch (e) { rgb = null; }
+            if (Object.keys(tintCache).length > 300) tintCache = {};
             tintCache[key] = rgb;
             if (r[0] && document.body.contains(r[0])) tintApply(rgb, r);
         };
@@ -4092,7 +4101,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.168';
+    var VERSION = '10.169';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
