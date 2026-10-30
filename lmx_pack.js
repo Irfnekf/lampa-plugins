@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.204 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.205 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -70,6 +70,9 @@
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
         { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 }
     ];
+
+    // Максимум карток у ряду (головна й каталоги): решта — у «Ще». Менше карток — легше ТВ
+    var ROW_MAX = 24;
 
     // Стрімінги (id провайдерів TMDB) і підбірки «під настрій»
     var SERVICES = [
@@ -645,7 +648,7 @@
         return function (call) {
             var list = [];
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
-            list = list.filter(function (c) { return c && c.id; }).slice(0, 30);
+            list = list.filter(function (c) { return c && c.id; }).slice(0, ROW_MAX);
             if (!list.length) return call();
             // порядок — як в історії Lampa: останній переглянутий першим (раніше недосмотрені піднімались нагору, і початок ряду був «не з останнього»)
             list = list.map(function (c) { return histItem(c, watchProgress(c)); });
@@ -1081,7 +1084,7 @@
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i].map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
+                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
@@ -1649,7 +1652,7 @@
                 arr.sort(function (a, b) {
                     return b.n - a.n || ((b.c.vote_average || 0) * Math.log(2 + (b.c.vote_count || 0))) - ((a.c.vote_average || 0) * Math.log(2 + (a.c.vote_count || 0)));
                 });
-                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = full.slice(0, 60);
+                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = full.slice(0, ROW_MAX);
                 if (!out.length) return call();
                 // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
                 recsAllBy[mode] = full;
@@ -1724,7 +1727,7 @@
                 var best = null, i = 0;
                 function done() {
                     if (best && best.list.length) {
-                        call({ title: row.title, results: best.list, url: best.url, source: 'tmdb', page: 1, more: true, total_pages: Math.max(best.pages, 2) });
+                        call({ title: row.title, results: best.list.slice(0, ROW_MAX), url: best.url, source: 'tmdb', page: 1, more: true, total_pages: Math.max(best.pages, 2) });
                     } else call();
                 }
                 function next() {
@@ -4399,7 +4402,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.204';
+    var VERSION = '10.205';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
