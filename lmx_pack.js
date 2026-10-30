@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.170 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.171 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3373,7 +3373,15 @@
     function watchEl(el) {
         if (el.__lmxMo || !window.MutationObserver) return;
         var hits = 0, t0 = 0;
-        var mo = new MutationObserver(function () {
+        // перехід фокусу (класи focus/hover) режим кнопки не змінює: такі зміни пропускаємо, щоб не переписувати стилі при кожному русі пультом
+        var stripFocus = function (c) { return String(c || '').replace(/\b(focus|hover|animate-trigger-enter|animate-trigger-left)\b/g, '').replace(/\s+/g, ' ').trim(); };
+        var mo = new MutationObserver(function (recs) {
+            var rel = false;
+            for (var q = 0; q < recs.length && !rel; q++) {
+                var rc = recs[q];
+                if (rc.type !== 'attributes' || rc.attributeName === 'style' || stripFocus(rc.oldValue) !== stripFocus(el.className)) rel = true;
+            }
+            if (!rel) return;
             // одразу (у тій самій мікрозадачі, до малювання кадру): інакше на 80 мс видно «голу» кнопку без наших стилів
             var now0 = Date.now();
             if (now0 - t0 > 3000) { t0 = now0; hits = 0; }
@@ -3387,7 +3395,7 @@
                 reassertMode(el);
             }, 80);
         });
-        mo.observe(el, { attributes: true, attributeFilter: ['class', 'style'], childList: true });
+        mo.observe(el, { attributes: true, attributeOldValue: true, attributeFilter: ['class', 'style'], childList: true });
         el.__lmxMo = mo;
     }
 
@@ -3679,6 +3687,10 @@
         btnScanNow = function (cb) { btnScan(cont, cb); };
         var mo = new MutationObserver(function (recs) {
             if (busy) return;
+            // стежимо лише за змінами в самому ряду кнопок або над ним (контейнер могли перемалювати); ряди карток і акторів, що догружаються нижче, нас не стосуються
+            var rel = false;
+            for (var q = 0; q < recs.length && !rel; q++) { var tg = recs[q].target; if (node.contains(tg) || tg.contains(node)) rel = true; }
+            if (!rel) return;
             // з'явилася нова кнопка (Lampa чи плагін перемалювали ряд): стилізуємо одразу, до малювання кадру
             var fresh = false;
             for (var i = 0; i < recs.length && !fresh; i++) {
@@ -4142,7 +4154,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.170';
+    var VERSION = '10.171';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
