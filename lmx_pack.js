@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.184 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.185 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1947,6 +1947,7 @@
             'body .noty--visible{transform:translate(-50%,0)}' +
             'body .noty__body{padding:.8em 1.6em;text-align:left}' +
             'body .noty__text{font-size:1.1em;font-weight:600}' +
+            '.card--lmxhero.lmx-far{visibility:hidden}' +
             '.lmx-hero-line{position:relative}.lmx-hero-line .lmx-dots{z-index:3}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
@@ -3002,6 +3003,19 @@
     function setCur(el) {
         var line = el.closest('.items-line');
         if (!line) return;
+        el.classList.remove('lmx-far');
+        // Вікно слайдів: далекі слайди (далі за сусідів) не малюються й не тримають у пам'яті розкодовані картинки — ТВ менше навантажений під час руху афіші
+        if (!line.classList.contains('lmx-mini') && !isMobile()) {
+            var ci = parseInt(el.getAttribute('data-lmxi'), 10) || 0, nn = line.querySelectorAll('.card--lmxhero').length;
+            if (line.__lmxWin !== ci + ':' + nn) {
+                line.__lmxWin = ci + ':' + nn;
+                var hs = line.querySelectorAll('.card--lmxhero');
+                for (var hi = 0; hi < hs.length; hi++) {
+                    var far = Math.abs((parseInt(hs[hi].getAttribute('data-lmxi'), 10) || 0) - ci) > 1;
+                    if (hs[hi].classList.contains('lmx-far') !== far) hs[hi].classList.toggle('lmx-far', far);
+                }
+            }
+        }
         var old = line.querySelectorAll('.card--lmxhero.lmx-cur');
         for (var i = 0; i < old.length; i++) if (old[i] !== el) old[i].classList.remove('lmx-cur');
         el.classList.add('lmx-cur');
@@ -4246,7 +4260,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.184';
+    var VERSION = '10.185';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
