@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.205 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.206 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -782,10 +782,6 @@
                 var id = kw[tg[0]];
                 if (id) out.push({ t: tg[1], k: 'tv', q: JA + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
             });
-            ANIME_STUDIOS.forEach(function (st) {
-                var id = co[st[0]];
-                if (id) out.push({ t: st[1], k: st[2], q: JA + '&with_companies=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
-            });
             return out;
           } },
         // Дорами: корейські (основа) + японські, китайські й тайські серіали, без анімації, реаліті та ток-шоу
@@ -846,7 +842,6 @@
         });
     }
     function resolveCatalogRefs() {
-        animeResolve(ANIME_STUDIOS, 'lmx_anime_cos', 'search/company');
         animeResolve(ANIME_TAGS, 'lmx_anime_kw', 'search/keyword');
         animeResolve(DORAMA_TAGS, 'lmx_dorama_kw', 'search/keyword');
     }
@@ -4402,7 +4397,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.205';
+    var VERSION = '10.206';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
