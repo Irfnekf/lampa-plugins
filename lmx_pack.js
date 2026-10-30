@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.179 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.180 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1628,6 +1628,9 @@
                 tget(j.url, { page: j.page }, function (res) {
                     cleanResults(res && res.results, false).forEach(function (r) {
                         if (!r.poster_path || skip[r.id]) return;
+                        // дуже старі (до 2000) у «Схоже на те, що вам сподобалось» не беремо
+                        var yr = parseInt(String(r.release_date || r.first_air_date || '').slice(0, 4), 10);
+                        if (yr && yr < 2000) return;
                         r.media_type = j.kind;
                         if (!score[r.id]) score[r.id] = { c: r, n: 0 };
                         score[r.id].n += j.w;
@@ -4200,7 +4203,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.179';
+    var VERSION = '10.180';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
