@@ -1,10 +1,10 @@
 /*
- * LMX Pack v10.192 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.194 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
- *  4) Теми: Стандартна (LMX), Кіно (hbo), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
+ *  4) Теми: Стандартна, Кіно (hbo), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
  *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
  *  6) NoCub (в кінці файлу): ховає елементи CUB, перемикачі в Налаштування → NoCub
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
@@ -495,7 +495,7 @@
 
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
-        H.select('lmx_theme', { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
+        H.select('lmx_theme', { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
             'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
@@ -2267,6 +2267,10 @@
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             'body .full-start__button.lmx-liked{color:#ff5a6e}' +
             'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
+            // у темах «Кино» і стандартній кольори кнопок задаються з !important — перебиваємо їх для лайкнутої кнопки
+            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x),html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) span{color:#ff5a6e !important}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) svg{color:#ff5a6e !important;stroke:#ff5a6e !important}' +
+            'html body .full-start-new__buttons .full-start__button.lmx-liked:not(#lmx-x) svg path{fill:#ff5a6e !important;stroke:#ff5a6e !important}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
             A + '{background:#090b16 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
@@ -4110,7 +4114,7 @@
     // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
     function initThemeBtn() {
         if (!window.$) return;
-        var NAMES = { 'default': 'Стандартна (LMX)', hbo: 'Кіно', apple: 'Скло' };
+        var NAMES = { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло' };
         function ensure() {
             var box = $('.head__actions').eq(0);
             if (!box.length || box.find('.lmx-themebtn').length) return;
@@ -4289,7 +4293,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.192';
+    var VERSION = '10.194';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
