@@ -1,6 +1,6 @@
 /*
- * LMX Pack v10.186 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
- *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
+ * LMX Pack v10.187 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -178,10 +178,29 @@
         ROWS.push({ name: 'LmxSvc_' + x[0], title: x[3] || ('Сьогодні на ' + x[1]), index: n0++,
             custom: function () { return (SVC[x[0]] && SVC[x[0]].hero ? popularCall : serviceCall)(this, x[0]); } });
     });
-    MOODS.forEach(function (x) {
-        ROWS.push({ name: 'LmxMood_' + x[0], title: 'Під настрій: ' + x[1], index: n0++,
-            urls: function () { return ['discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + (market() ? '&region=UA' : '')]; } });
-    });
+    // «Під настрій» — тепер пункт лівого меню (а не шість рядів на головній): головна легша
+    function moodMenu() {
+        if (!Lampa.Menu || !Lampa.Menu.addButton || document.querySelector('.menu__item.lmx-moodmenu')) return;
+        var ico = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2.5 4 2.5S16 14 16 14"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
+        var el = Lampa.Menu.addButton(ico, 'Під настрій', function () {
+            var enabled = 'menu';
+            try { enabled = Lampa.Controller.enabled().name || 'menu'; } catch (e) {}
+            Lampa.Select.show({
+                title: 'Під настрій',
+                items: MOODS.map(function (x) { return { title: x[1], mood: x }; }),
+                onBack: function () { Lampa.Controller.toggle(enabled); },
+                onSelect: function (it) {
+                    var x = it.mood;
+                    Lampa.Controller.toggle(enabled);
+                    Lampa.Activity.push({
+                        url: 'discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + (market() ? '&region=UA' : ''),
+                        title: 'Під настрій: ' + x[1], component: 'category_full', source: 'tmdb', page: 1
+                    });
+                }
+            });
+        });
+        if (el && el[0]) el[0].classList.add('lmx-moodmenu');
+    }
 
     var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
 
@@ -220,7 +239,7 @@
     // Порядок за замовчуванням (поки користувач не змінив його сам)
     var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxHistory', 'LmxNowPlaying',
         'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxUaMovies', 'LmxUaTv', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
-        'LmxMood_relax', 'LmxMood_adrenaline', 'LmxMood_think', 'LmxMood_romance', 'LmxMood_friends', 'LmxMood_scary', 'LmxSvc_sky', 'LmxSvc_amc'];
+        'LmxSvc_sky', 'LmxSvc_amc'];
 
     function allRows() {
         var map = {}, list = [];
@@ -4259,7 +4278,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.186';
+    var VERSION = '10.187';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4270,6 +4289,8 @@
         safe(patchBackground);
         safe(syncCi);
         safe(addSettings);
+        safe(moodMenu);
+        safe(function () { setTimeout(function () { safe(moodMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
         safe(function () {
