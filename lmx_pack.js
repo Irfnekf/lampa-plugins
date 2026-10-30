@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.195 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.196 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3119,10 +3119,27 @@
     }
     // ===== Кнопка «Подобається»: додає у стандартний список Lampa «Подобається» (Закладки) =====
     var HEART = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.6C1.7 7.700 3.700 4.500 7 4.500c2 0 3.500 1.100 5 3 1.500-1.900 3-3 5-3 3.300 0 5.300 3.200 4.200 6.400C19.500 15.900 12 20.500 12 20.500z"/></svg>';
+    // Закладка підсвічується рідною Lampa, коли фільм є в будь-якому списку, зокрема в «Подобається». Нам потрібно, щоб лайк її не засвічував
+    var likeCtx = null, likeHooked = false;
+    function bookFill() {
+        var c = likeCtx;
+        if (!c || !c.r[0] || !document.body.contains(c.r[0])) return;
+        var st = {};
+        try { st = Lampa.Favorite.check(c.m) || {}; } catch (e) {}
+        var any = ['wath', 'book', 'look', 'viewed', 'scheduled', 'continued', 'thrown'].some(function (k) { return !!st[k]; });
+        c.r.find('.button--book path').attr('fill', any ? 'currentColor' : 'transparent');
+    }
+    function bookFillSoon() { setTimeout(bookFill, 0); setTimeout(bookFill, 200); }
     function likeButton(r, m) {
         if (!getBool('lmx_like', true) || !m || !m.id) return;
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length || cont.find('.lmx-likebtn').length) return;
+        likeCtx = { r: r, m: m };
+        if (!likeHooked && Lampa.Listener) {
+            likeHooked = true;
+            Lampa.Listener.follow('state:changed', function (e) { if (e && e.target === 'favorite') bookFillSoon(); });
+        }
+        setTimeout(bookFill, 700);
         function liked() { try { return !!Lampa.Favorite.check(m).like; } catch (e) { return false; } }
         var el = $('<div class="full-start__button selector button--lmxlike lmx-likebtn">' + HEART + '<span>Подобається</span></div>');
         function paintLike() {
@@ -3135,6 +3152,7 @@
             safe(function () {
                 Lampa.Favorite.toggle('like', m);
                 paintLike();
+                bookFillSoon();
                 if (Lampa.Noty) Lampa.Noty.show(liked() ? 'Додано до «Подобається»' : 'Прибрано з «Подобається»');
             });
         });
@@ -4297,7 +4315,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.195';
+    var VERSION = '10.196';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
