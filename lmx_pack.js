@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.180 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.181 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1576,6 +1576,21 @@
         try { (Lampa.Favorite.get({ type: type }) || []).forEach(function (c) { if (c && c.id) o[c.id] = 1; }); } catch (e) {}
         return o;
     }
+    var recsAll = [];
+    function recsListHook() {
+        var T = Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
+        if (!T || T.__lmxRecs || !T.list) return;
+        T.__lmxRecs = true;
+        var orig = T.list;
+        T.list = function (params, ok, fail) {
+            if (params && params.url === 'lmx://recs') {
+                var p = params.page || 1, per = 20;
+                var res = recsAll.slice((p - 1) * per, p * per).map(function (c) { var x = {}, q; for (q in c) x[q] = c[q]; return x; });
+                return ok({ results: res, page: p, total_pages: Math.max(1, Math.ceil(recsAll.length / per)), total_results: recsAll.length, source: 'tmdb' });
+            }
+            return orig.apply(this, arguments);
+        };
+    }
     function recsCall(row) {
         return function (call) {
             var hist = [], liked = [];
@@ -1614,9 +1629,12 @@
                 arr.sort(function (a, b) {
                     return b.n - a.n || ((b.c.vote_average || 0) * Math.log(2 + (b.c.vote_count || 0))) - ((a.c.vote_average || 0) * Math.log(2 + (a.c.vote_count || 0)));
                 });
-                var out = arr.map(function (x) { return x.c; }).slice(0, 40);
+                var full = arr.map(function (x) { return x.c; }).slice(0, 100), out = full.slice(0, 40);
                 if (!out.length) return call();
-                var data = { title: rowTitle, results: out, source: 'tmdb' };
+                // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
+                recsAll = full;
+                recsListHook();
+                var data = { title: rowTitle, results: out, source: 'tmdb', url: 'lmx://recs', page: 1, more: true, total_pages: Math.max(2, Math.ceil(full.length / 20)) };
                 recsCache = { key: key, t: Date.now(), data: data };
                 call(data);
             }
@@ -4203,7 +4221,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.180';
+    var VERSION = '10.181';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
