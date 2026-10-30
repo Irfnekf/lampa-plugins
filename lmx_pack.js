@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.190 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.191 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -184,21 +184,8 @@
         if (!Lampa.Menu || !Lampa.Menu.addButton || document.querySelector('.menu__item.lmx-moodmenu')) return;
         var ico = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2.5 4 2.5S16 14 16 14"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
         var el = Lampa.Menu.addButton(ico, 'Під настрій', function () {
-            var enabled = 'menu';
-            try { enabled = Lampa.Controller.enabled().name || 'menu'; } catch (e) {}
-            Lampa.Select.show({
-                title: 'Під настрій',
-                items: MOODS.map(function (x) { return { title: x[1], mood: x }; }),
-                onBack: function () { Lampa.Controller.toggle(enabled); },
-                onSelect: function (it) {
-                    var x = it.mood;
-                    Lampa.Controller.toggle(enabled);
-                    Lampa.Activity.push({
-                        url: 'discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + (market() ? '&region=UA' : ''),
-                        title: 'Під настрій: ' + x[1], component: 'category_full', source: 'tmdb', page: 1
-                    });
-                }
-            });
+            registerServicePage();
+            Lampa.Activity.push({ url: '', title: 'Під настрій', component: 'lmx_service', service_id: 'mood', page: 1 });
         });
         if (el && el[0]) el[0].classList.add('lmx-moodmenu');
     }
@@ -934,6 +921,16 @@
         animeResolve(DORAMA_TAGS, 'lmx_dorama_kw', 'search/keyword');
     }
 
+    // «Під настрій»: сторінка з рядами по настроях (фільми й серіали); ряди вантажаться порціями, головну це не навантажує
+    var TV_MOODS = { relax: '35', think: '9648%7C10765', adrenaline: '10759%7C80', friends: '10759%7C35' };
+    function moodCats() {
+        var out = [], reg = market() ? '&region=UA' : '';
+        MOODS.forEach(function (x) {
+            out.push({ title: x[1] + ': фільми', kind: 'movie', min: 10, url: 'discover/movie?with_genres=' + x[2] + '&vote_count.gte=300&sort_by=popularity.desc' + reg });
+            if (TV_MOODS[x[0]]) out.push({ title: x[1] + ': серіали', kind: 'tv', min: 10, url: 'discover/tv?with_genres=' + TV_MOODS[x[0]] + '&vote_count.gte=150&sort_by=popularity.desc' });
+        });
+        return out;
+    }
     function svcCats(key, forHome) {
         var c = SVC[key], today = dayStr(0), out = [];
         if (!c) return out;
@@ -1136,7 +1133,7 @@
             comp.create = function () {
                 var self = this, id = object.service_id;
                 this.activity.loader(true);
-                var cats = svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = false;
+                var cats = id === 'mood' ? moodCats() : svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = false;
                 var svcName = (SERVICES.filter(function (x) { return x[0] === id; })[0] || [])[1] || '';
                 var heroTitle = isAn ? (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро' : svcName + ': у тренді';
                 var cache = svcCache[id];
@@ -1230,6 +1227,7 @@
                 // афіша: для аніме й дорам — своя, для платформ — тренди платформи; якщо довго вантажиться (4 с), сторінка будується без неї
                 function gotHero(l) { if (heroDone) return; heroDone = true; heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); tryBuild(); }
                 var heroT = setTimeout(function () { if (!heroDone) { heroDone = true; tryBuild(); } }, isAn ? 9000 : 4000);
+                if (id === 'mood') { clearTimeout(heroT); heroDone = true; tryBuild(); return this.render(); }
                 try { (isAn ? animeHeroList(SVC[id].hero, gotHero) : svcHeroList(id, gotHero)); } catch (e) { clearTimeout(heroT); heroDone = true; tryBuild(); }
                 return this.render();
             };
@@ -4389,7 +4387,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.190';
+    var VERSION = '10.191';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
