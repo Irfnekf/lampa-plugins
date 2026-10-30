@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.169 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.170 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -597,6 +597,7 @@
         H.select('lmx_tint_lvl', { '1': 'Слабкий', '2': 'Середній', '3': 'Сильний' }, '2', 'Сила кольору постера', 'Наскільки яскраво фон і кнопки підсвічуються кольором постера', restyle);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
+        H.button('lmx_perf_btn', 'Перевірити налаштування Lampa', 'Показує, які опції інтерфейсу Lampa (тип фону, скляний стиль, анімація…) вантажать ТВ, і може виставити рекомендовані', function () { safe(perfCheck); });
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
@@ -4081,6 +4082,46 @@
 
     // Фон застосунку в наших темах прихований (.background{display:none}), але Lampa на кожну картку у фокусі все одно качає й міняє його картинку —
     // це зайва мережа й робота процесора саме під час прокрутки (на ТВ давало «кроки» в анімації). Поки фон прихований — пропускаємо
+    // ===== Перевірка налаштувань самої Lampa: що з її інтерфейсних опцій вантажить ТВ або заважає нашим темам =====
+    var PERF = [
+        { key: 'background_type', want: 'simple', bad: function (v) { return v === 'complex'; }, name: 'Тип фону', now: function (v) { return v === 'complex' ? 'Комплексний' : v; }, to: 'Простий' },
+        { key: 'glass_style', want: 'false', bad: function (v) { return v === true || v === 'true'; }, name: 'Скляний стиль', now: function () { return 'увімкнено'; }, to: 'вимкнути' },
+        { key: 'advanced_animation', want: 'false', bad: function (v) { return v === true || v === 'true'; }, name: 'Просунута анімація', now: function () { return 'увімкнено'; }, to: 'вимкнути' },
+        { key: 'animation', want: 'true', bad: function (v) { return v === false || v === 'false'; }, name: 'Анімація', now: function () { return 'вимкнено (ламає плавне листання)'; }, to: 'увімкнути' },
+        { key: 'scroll_type', want: 'css', bad: function (v) { return v === 'js'; }, name: 'Тип прокрутки', now: function () { return 'Javascript'; }, to: 'CSS' },
+        { key: 'light_version', want: 'false', bad: function (v) { return v === true || v === 'true'; }, name: 'Легка версія', now: function () { return 'увімкнено (спрощує вигляд і конфліктує з темами)'; }, to: 'вимкнути' }
+    ];
+    function perfFind() {
+        var out = [];
+        PERF.forEach(function (x) {
+            var v;
+            try { v = Lampa.Storage.field(x.key); } catch (e) { return; }
+            if (v === undefined || v === null) return;
+            if (x.bad(v)) out.push(x);
+        });
+        return out;
+    }
+    function perfCheck() {
+        var list = perfFind();
+        if (!list.length) { if (Lampa.Noty) Lampa.Noty.show('Налаштування Lampa в порядку: нічого, що вантажить ТВ'); return; }
+        var enabled = Lampa.Controller.enabled().name;
+        var items = [{ title: 'Виправити все (' + list.length + ')', all: true }].concat(list.map(function (x) {
+            return { title: x.name + ': ' + x.now(Lampa.Storage.field(x.key)), subtitle: 'Рекомендовано: ' + x.to, key: x.key };
+        }));
+        Lampa.Select.show({
+            title: 'Налаштування Lampa',
+            items: items,
+            onSelect: function (a) {
+                var todo = a.all ? list : list.filter(function (x) { return x.key === a.key; });
+                todo.forEach(function (x) { try { Lampa.Storage.set(x.key, x.want); } catch (e) {} });
+                if (Lampa.Noty) Lampa.Noty.show('Змінено: ' + todo.length + '. Деякі зміни діють після перезапуску Lampa');
+                Lampa.Controller.toggle(enabled);
+                setTimeout(function () { safe(applyStyle); }, 100);
+            },
+            onBack: function () { Lampa.Controller.toggle(enabled); }
+        });
+    }
+
     function patchBackground() {
         var B = window.Lampa && Lampa.Background;
         if (!B || B.__lmxP) return;
@@ -4101,7 +4142,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.169';
+    var VERSION = '10.170';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
