@@ -1,6 +1,6 @@
 /*
- * LMX Pack v10.191 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
- *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, українське кіно й серіали,
+ * LMX Pack v10.192 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
@@ -51,88 +51,6 @@
     }
     function market() { return getBool('lmx_market', true); }
     var WATCH = 'watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy';
-    // Українські: країна виробництва включає Україну (співпродакшн теж), сортування за популярністю, як у звичайних популярних
-    // Українські підбірки: свіже з українських стрімінгів (id беремо з TMDB за назвою), далі — українське за останні роки
-    var UA_PROV_RE = /megogo|netflix|kyivstar|київстар|vodafone|водафон|sweet|oll\.?tv|takflix|apple tv|amazon prime|prime video|disney|max|hbo/i;
-    // Українські студії: ID шукаємо в TMDB за назвою, нічого не зашито
-    var UA_STUDIOS = ['Film.UA', '1+1 Media', 'Starlight Media', 'Kyivstar', 'Megogo', 'Plus Plus Studio', 'Dzyga', 'Radar Media', 'Gloria Pictures', '1+1 Ukraine', 'STB', 'ICTV', 'Novy Channel', '2+2', 'Inter Media', 'TRK Ukraina', 'Oll.TV', 'Sweet.tv'];
-    function uaStudioIds(done) {
-        // знайдені id студій зберігаємо на тиждень: раніше кожен запуск робив 18 пошукових запитів до TMDB
-        var saved = null;
-        try { saved = Lampa.Storage.get('lmx_ua_cos', ''); if (typeof saved === 'string') saved = saved ? JSON.parse(saved) : null; } catch (e0) { saved = null; }
-        if (saved && saved.ids && saved.ids.length && Date.now() - (saved.t || 0) < 7 * 864e5) return done(saved.ids.slice());
-        var left = UA_STUDIOS.length, ids = [];
-        var fin = done;
-        done = function (r) {
-            if (r && r.length) { try { Lampa.Storage.set('lmx_ua_cos', { t: Date.now(), ids: r }); } catch (e1) {} }
-            fin(r);
-        };
-        UA_STUDIOS.forEach(function (n) {
-            tget('search/company', { query: n, page: 1 }, function (j) {
-                var key = n.toLowerCase().replace(/[^a-z0-9+]/g, '');
-                var hit = ((j && j.results) || []).filter(function (c) { return c && String(c.name || '').toLowerCase().replace(/[^a-z0-9+]/g, '').indexOf(key) === 0; })[0];
-                if (hit && ids.indexOf(hit.id) < 0) ids.push(hit.id);
-                if (--left === 0) done(ids);
-            }, function () { if (--left === 0) done(ids); });
-        });
-    }
-    function this_row(n) { for (var i = 0; i < ROWS.length; i++) if (ROWS[i].name === n) return ROWS[i]; return { title: '' }; }
-    function uaCall(row, kind) {
-        return function (call) {
-            var dateKey = kind === 'movie' ? 'primary_release_date' : 'first_air_date';
-            var today = dayStr(0), from3 = dayStr(-365 * 3), from6 = dayStr(-365 * 4);
-            var base = 'discover/' + kind + '?';
-            function fetchAll(urls, done) {
-                var tasks = [];
-                urls.forEach(function (u) { tasks.push([u, 1]); tasks.push([u, 2]); });
-                var left = tasks.length, out = [];
-                done.totals = {};
-                tasks.forEach(function (t, i) {
-                    tget(t[0], { page: t[1] }, function (j) {
-                        if (j && j.total_results) done.totals[t[0]] = j.total_results;
-                        out[i] = cleanResults(j && j.results, true).filter(function (c) { return c.poster_path && c.overview && String(c.overview).trim(); });
-                        if (--left === 0) done(out);
-                    }, function () { out[i] = []; if (--left === 0) done(out); });
-                });
-            }
-            function dateOf(c) { return String(c.release_date || c.first_air_date || ''); }
-            function build(ids, cids) {
-                var recent = base + 'with_original_language=uk&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc';
-                var fresh = [];
-                if (ids.length) {
-                    var pv = 'with_watch_providers=' + ids.join('%7C') + '&watch_region=UA&with_watch_monetization_types=flatrate%7Cfree%7Cads&' + dateKey + '.gte=' + from3 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc&';
-                    fresh.push(base + pv + 'with_original_language=uk');
-                    fresh.push(base + pv + 'with_origin_country=UA');
-                }
-                if (cids && cids.length) fresh.push(base + 'with_companies=' + cids.join('%7C') + '&' + dateKey + '.gte=' + from3 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
-                fresh.push(recent);
-                var from10 = from6;
-                fresh.push(base + 'with_original_language=uk&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
-                fresh.push(base + 'with_origin_country=UA&' + dateKey + '.gte=' + from10 + '&' + dateKey + '.lte=' + today + '&sort_by=' + dateKey + '.desc');
-                fresh.push(base + 'with_origin_country=UA&' + dateKey + '.gte=' + from6 + '&' + dateKey + '.lte=' + today + '&sort_by=popularity.desc');
-                var cb = function (parts) {
-                    var all = [], seen = {};
-                    parts.forEach(function (part) {
-                        (part || []).forEach(function (c) { if (!seen[c.id]) { seen[c.id] = 1; c.media_type = kind; all.push(c); } });
-                    });
-                    all = all.filter(function (c) { return dateOf(c) && dateOf(c) <= today; });
-                    all.sort(function (a, b) { return dateOf(b).localeCompare(dateOf(a)); });
-                    all = all.slice(0, 20);
-                    if (!all.length) return call();
-                    // «Ще» відкриває одну TMDB-вибірку: беремо найширшу
-                    var wideUrl = recent, best = 0, tot = cb.totals || {};
-                    fresh.forEach(function (u) { if ((tot[u] || 0) > best) { best = tot[u]; wideUrl = u; } });
-                    call({ title: row.title, results: all, url: wideUrl, source: 'tmdb', page: 1, more: true, total_pages: 20 });
-                };
-                fetchAll(fresh, cb);
-            }
-            tget('watch/providers/' + kind + '?watch_region=UA', {}, function (j) {
-                var ids = [];
-                ((j && j.results) || []).forEach(function (p) { if (p && p.provider_name && UA_PROV_RE.test(p.provider_name)) ids.push(p.provider_id); });
-                uaStudioIds(function (cids) { build(ids.slice(0, 20), cids); });
-            }, function () { uaStudioIds(function (cids) { build([], cids); }); });
-        };
-    }
     // Для українського ринку: те, що доступне в Україні; без ринку — як було
     function mkt(url, kind) {
         if (!market()) return [url];
@@ -149,8 +67,6 @@
         { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15 },
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
-        { name: 'LmxUaMovies',      title: 'Українське кіно',     custom: function () { return uaCall(this_row('LmxUaMovies'), 'movie'); }, index: 18 },
-        { name: 'LmxUaTv',          title: 'Українські серіали',  custom: function () { return uaCall(this_row('LmxUaTv'), 'tv'); }, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
         { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 }
     ];
@@ -159,7 +75,7 @@
     var SERVICES = [
         ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350], ['hbo', 'HBO / Max', 1899],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['megogo', 'Megogo', 9002], ['anime', 'Аніме', 9000, 'Аніме: популярне зараз'], ['dorama', 'Дорами', 9001, 'Дорами: популярне зараз']
+        ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['ua', 'Українське', 9003], ['anime', 'Аніме', 9000, 'Аніме: популярне зараз'], ['dorama', 'Дорами', 9001, 'Дорами: популярне зараз']
     ];
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
@@ -175,7 +91,7 @@
     );
     var n0 = 30;
     SERVICES.forEach(function (x) {
-        if (x[0] === 'megogo') return; // лише в «Каталогах», рядом на головній не додаємо
+        if (x[0] === 'ua') return; // лише в «Каталогах», рядом на головній не додаємо
         ROWS.push({ name: 'LmxSvc_' + x[0], title: x[3] || ('Сьогодні на ' + x[1]), index: n0++,
             custom: function () { return (SVC[x[0]] && SVC[x[0]].hero ? popularCall : serviceCall)(this, x[0]); } });
     });
@@ -226,7 +142,7 @@
 
     // Порядок за замовчуванням (поки користувач не змінив його сам)
     var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxHistory', 'LmxNowPlaying',
-        'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxUaMovies', 'LmxUaTv', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
+        'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
         'LmxSvc_sky', 'LmxSvc_amc'];
 
     function allRows() {
@@ -789,6 +705,21 @@
         return { mf: P, tf: P, extra: rows };
     }
     var SVC = {
+        // Українське: фільми й серіали, зняті в Україні (за країною виробництва)
+        ua: { mf: 'with_origin_country=UA', tf: 'with_origin_country=UA', extra: [
+            { t: 'Комедії', k: 'movie', q: 'with_origin_country=UA&with_genres=35&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Драми (фільми)', k: 'movie', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Бойовики', k: 'movie', q: 'with_origin_country=UA&with_genres=28&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Військові', k: 'movie', q: 'with_origin_country=UA&with_genres=10752&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Мультфільми', k: 'movie', q: 'with_origin_country=UA&with_genres=16&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Документальні фільми', k: 'movie', q: 'with_origin_country=UA&with_genres=99&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Серіали: драми', k: 'tv', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Серіали: комедії', k: 'tv', q: 'with_origin_country=UA&with_genres=35&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Серіали: кримінал', k: 'tv', q: 'with_origin_country=UA&with_genres=80&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Українською мовою (фільми)', k: 'movie', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Українською мовою (серіали)', k: 'tv', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Класика (до 2000 року)', k: 'movie', q: 'with_origin_country=UA&primary_release_date.lte=1999-12-31&sort_by=vote_average.desc&vote_count.gte=20', min: 5 }
+        ] },
         // Західні платформи: каталог «що реально є на платформі» (провайдер TMDB) + власні оригінали й студії окремими рядами
         hbo: provSvc(1899, [
             { t: 'Max Originals', k: 'tv', q: 'with_networks=49' + PIPE + '3186&sort_by=popularity.desc' },
@@ -1548,39 +1479,12 @@
         };
     }
 
-    // Megogo: id провайдера в TMDB не зашитий — шукаємо за назвою в списку провайдерів України й запам'ятовуємо на 2 тижні
-    var MEGO = { id: 0, logo: '' };
-    function buildMegogo() {
-        if (!MEGO.id || SVC.megogo) return;
-        var P = prov(MEGO.id);
-        SVC.megogo = provSvc(MEGO.id, [
-            { t: 'Українське на Megogo (фільми)', k: 'movie', q: P + '&with_original_language=uk&sort_by=popularity.desc' },
-            { t: 'Українське на Megogo (серіали)', k: 'tv', q: P + '&with_original_language=uk&sort_by=popularity.desc' }
-        ], true);
-    }
-    function megoFromList(list) {
-        var hit = null;
-        (list || []).forEach(function (p) { if (!hit && p && /^megogo/i.test(String(p.provider_name || ''))) hit = p; });
-        if (hit) {
-            MEGO.id = hit.provider_id; MEGO.logo = hit.logo_path || MEGO.logo;
-            try { Lampa.Storage.set('lmx_megogo', { id: MEGO.id, logo: MEGO.logo, t: Date.now() }); } catch (e) {}
-            buildMegogo();
-        }
-        return !!hit;
-    }
-    try {
-        var mgs = Lampa.Storage.get('lmx_megogo', '');
-        if (typeof mgs === 'string') mgs = mgs ? JSON.parse(mgs) : null;
-        if (mgs && mgs.id && Date.now() - (mgs.t || 0) < 14 * 864e5) { MEGO.id = mgs.id; MEGO.logo = mgs.logo || ''; buildMegogo(); }
-    } catch (e) {}
-
-    var PROV_COLORS = { 9002: '#13203a', 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 526: '#10202f', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
+    var PROV_COLORS = { 9003: '#0057b7', 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 526: '#10202f', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
     function studioCall(row) {
         return function (call) {
             var logos = {};
             function done() {
-                logos[9002] = MEGO.logo;
-                var items = SERVICES.filter(function (x) { return x[0] !== 'megogo' || MEGO.id; }).map(function (x) {
+                var items = SERVICES.map(function (x) {
                     return {
                         id: 'lmxstudio' + x[2], title: x[1], params: {
                             createInstance: makeInstance,
@@ -1609,7 +1513,6 @@
             }
             tget('watch/providers/movie?watch_region=UA', {}, function (j) {
                 ((j && j.results) || []).forEach(function (p) { logos[p.provider_id] = p.logo_path; });
-                megoFromList(j && j.results);
                 // AMC+ є лише в США — його логотип добираємо звідти
                 tget('watch/providers/movie?watch_region=US', {}, function (u) {
                     ((u && u.results) || []).forEach(function (p) { if (!logos[p.provider_id]) logos[p.provider_id] = p.logo_path; });
@@ -1619,7 +1522,6 @@
         };
     }
     function openService(x) {
-        if (x[0] === 'megogo' && !SVC.megogo) { if (Lampa.Noty) Lampa.Noty.show('Megogo зараз недоступний в TMDB'); return; }
         registerServicePage();
         Lampa.Activity.push({ url: '', title: x[1], component: 'lmx_service', service_id: x[0], page: 1 });
     }
@@ -4387,7 +4289,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.191';
+    var VERSION = '10.192';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
