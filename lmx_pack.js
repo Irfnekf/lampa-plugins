@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.173 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.174 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2135,7 +2135,7 @@
             // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
             T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.5s cubic-bezier(.4,0,.2,1) !important}' +
             T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
-            T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
+            T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s;will-change:opacity}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
             '@media (min-width:761px){' + T + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
@@ -2292,7 +2292,7 @@
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
             A + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
-            A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
+            A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s;will-change:opacity}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // як у каталогах і в темі HBO: слайд трохи вужчий за екран, справа видно край наступного; перехід довший (слайд їде на весь екран), текст проявляється трохи згодом
             '@media (min-width:761px){' + A + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
@@ -4182,7 +4182,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.173';
+    var VERSION = '10.174';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
