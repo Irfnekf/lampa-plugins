@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.163 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.164 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2179,7 +2179,7 @@
         // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
         var AURORA = 'radial-gradient(70vw 55vh at 12% 8%,rgba(88,86,214,.55),rgba(88,86,214,0) 62%),radial-gradient(60vw 50vh at 88% 18%,rgba(20,190,200,.34),rgba(20,190,200,0) 62%),radial-gradient(70vw 60vh at 72% 100%,rgba(200,60,150,.34),rgba(200,60,150,0) 62%),radial-gradient(60vw 50vh at 0% 100%,rgba(40,90,220,.3),rgba(40,90,220,0) 62%),linear-gradient(180deg,#10122a 0%,#0b0d1c 55%,#080a14 100%)';
         // сила кольору постера: [фон угорі, фон унизу, сяйво кнопки у спокої, сяйво/рамка у фокусі]
-        var TL = ({ '1': ['.2', '.12', '.3', '.7'], '2': ['.36', '.22', '.42', '.85'], '3': ['.55', '.34', '.6', '1'] })[getStr('lmx_tint_lvl', '2')] || ['.36', '.22', '.42', '.85'];
+        var TL = tintTL();
         var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
         return '' +
             'html{background:#090b16 !important}' +
@@ -2188,7 +2188,8 @@
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
             'body.lmx-apple.lmx-onfull::before{opacity:.3}' +
             // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
-            'body.lmx-apple.lmx-onfull.lmx-tint::before{opacity:1;background:radial-gradient(75vw 65vh at 14% 6%,rgba(var(--lmx-acc),' + TL[0] + '),rgba(var(--lmx-acc),0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(var(--lmx-acc),' + TL[1] + '),rgba(var(--lmx-acc),0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)}' +
+            '#lmx-tintbg{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;transform:translateZ(0)}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint #lmx-tintbg{display:block}' +
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons .full-start__button.focus:not(.lmx-primary):not(:first-child){box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             // перша кнопка: у спокої біла з легким кольоровим сяйвом, у фокусі — обводка кольору постера, як в інших кнопок
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{box-shadow:0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
@@ -3027,11 +3028,22 @@
 
     // ===== Колір постера для сторінки фільму (тема «Скло»): один раз зменшуємо картинку й беремо найнасиченіший колір =====
     var tintCache = {};
-    function tintApply(rgb) {
+    function tintTL() {
+        return ({ '1': ['.2', '.12', '.3', '.7'], '2': ['.36', '.22', '.42', '.85'], '3': ['.55', '.34', '.6', '1'] })[getStr('lmx_tint_lvl', '2')] || ['.36', '.22', '.42', '.85'];
+    }
+    // Колір ставимо не на body (інакше стиль перераховується для всієї сторінки), а на окремий шар і на контейнер кнопок
+    function tintApply(rgb, r) {
         var b = document.body;
         if (!b) return;
-        if (rgb) { b.style.setProperty('--lmx-acc', rgb.join(',')); b.classList.add('lmx-tint'); }
-        else b.classList.remove('lmx-tint');
+        var layer = document.getElementById('lmx-tintbg');
+        if (rgb) {
+            var TL = tintTL(), c = rgb.join(',');
+            if (!layer) { layer = document.createElement('div'); layer.id = 'lmx-tintbg'; b.appendChild(layer); }
+            layer.style.background = 'radial-gradient(75vw 65vh at 14% 6%,rgba(' + c + ',' + TL[0] + '),rgba(' + c + ',0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(' + c + ',' + TL[1] + '),rgba(' + c + ',0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)';
+            var box = r && r.find ? r.find('.full-start-new__buttons').eq(0) : null;
+            if (box && box.length) box[0].style.setProperty('--lmx-acc', c);
+            b.classList.add('lmx-tint');
+        } else b.classList.remove('lmx-tint');
     }
     function tintFrom(img) {
         var c = document.createElement('canvas'), W = 24, H = 24;
@@ -3053,19 +3065,19 @@
         return best.map(function (v) { return Math.min(255, Math.round((v * 0.78 + gray * 0.22) * k)); });
     }
     function posterTint(r, m) {
-        if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null); return; }
+        if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null, r); return; }
         var path = m.poster_path || m.backdrop_path;
-        if (!path) { tintApply(null); return; }
+        if (!path) { tintApply(null, r); return; }
         var key = String(m.id);
-        if (tintCache[key] !== undefined) { tintApply(tintCache[key]); return; }
-        tintApply(null);
+        if (tintCache[key] !== undefined) { tintApply(tintCache[key], r); return; }
+        tintApply(null, r);
         var img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function () {
             var rgb = null;
             try { rgb = tintFrom(img); } catch (e) { rgb = null; }
             tintCache[key] = rgb;
-            if (r[0] && document.body.contains(r[0])) tintApply(rgb);
+            if (r[0] && document.body.contains(r[0])) tintApply(rgb, r);
         };
         img.onerror = function () { tintCache[key] = null; };
         img.src = imgUrl(path, 'w92');
@@ -4051,7 +4063,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.163';
+    var VERSION = '10.164';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
