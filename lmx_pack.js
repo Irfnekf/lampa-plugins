@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.185 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.186 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2144,7 +2144,7 @@
             // у фокусі — біла рамка і легке збільшення, як у застосунку HBO Max
             T + '.card.focus .card__view::after,' + T + '.card.hover .card__view::after{display:none !important}' +
             // сама картка у фокусі не змінюється: її обводить біла рамка, що пливе між картками (.lmx-sel, малюється скриптом)
-            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.05);box-shadow:0 0 0 .1em rgba(255,255,255,.3),0 0 1.6em .3em rgba(255,255,255,.35),0 .8em 1.8em rgba(0,0,0,.7)}' +
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.05);box-shadow:0 0 0 .12em rgba(255,255,255,.55),0 .5em 1em rgba(0,0,0,.6)}' +
             T + '.card.focus:not(.card--lmxhero),' + T + '.card.hover:not(.card--lmxhero){z-index:3}' +
             T + '.items-line .card:not(.card--lmxhero) .card__view{transition:transform .2s cubic-bezier(.25,.8,.25,1),opacity .2s ease}' +
             T + '.lmx-sel{display:none !important}' +
@@ -2302,7 +2302,6 @@
             'body .full-start__button.lmx-liked{color:#ff5a6e}' +
             'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
-            A + '.items-line:not(.lmx-hero-line) .scroll__body{will-change:transform}' +
             A + '{background:#090b16 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
             // заголовки рядів
@@ -2312,7 +2311,7 @@
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             A + '.card__view{border-radius:1.2em;background:rgba(255,255,255,.07);box-shadow:' + RIM + ',0 .3em .8em rgba(0,0,0,.3);animation:none !important;transition:none !important}' +
-            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.9),0 .6em 1.2em rgba(0,0,0,.5),0 0 1.2em rgba(130,150,255,.4)}' +
+            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.8),0 .45em .9em rgba(0,0,0,.5)}' +
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus:not(.card--lmxhero) .card__view::before,' + A + '.card.hover:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.08) 28%,rgba(255,255,255,0) 46%);pointer-events:none;z-index:2}' +
@@ -4260,7 +4259,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.185';
+    var VERSION = '10.186';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
