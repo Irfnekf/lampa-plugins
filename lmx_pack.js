@@ -1,7 +1,7 @@
 /*
- * LMX Pack v10.157 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.158 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
- *     історія та «Схоже на те, що ви дивились»; порядок і видимість рядів налаштовуються
+ *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
  *  4) Теми: Стандартна (LMX), Кіно (hbo), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
@@ -143,7 +143,7 @@
         { name: 'LmxUaMovies',      title: 'Українське кіно',     custom: function () { return uaCall(this_row('LmxUaMovies'), 'movie'); }, index: 18 },
         { name: 'LmxUaTv',          title: 'Українські серіали',  custom: function () { return uaCall(this_row('LmxUaTv'), 'tv'); }, index: 19 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
-        { name: 'LmxRecs',         title: 'Схоже на те, що ви дивились', custom: function () { return recsCall(this); }, index: 21 }
+        { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 }
     ];
 
     // Стрімінги (id провайдерів TMDB) і підбірки «під настрій»
@@ -591,6 +591,8 @@
         // ---- Сторінка фільму ----
         H.title('lmx_t_page', 'Сторінка фільму');
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
+        H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
+        H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
@@ -1548,14 +1550,21 @@
     var recsCache = null;
     function recsCall(row) {
         return function (call) {
-            var hist = [];
+            var hist = [], liked = [];
             try { hist = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
+            try { liked = Lampa.Favorite.get({ type: 'like' }) || []; } catch (e) {}
             hist = hist.filter(function (c) { return c && c.id; });
-            if (!hist.length) return call();
+            liked = liked.filter(function (c) { return c && c.id; });
+            // основа — улюблене (лайк); поки лайків немає, показуємо за історією, щоб ряд не зникав
+            var fromLikes = liked.length > 0;
+            var src = fromLikes ? liked : hist;
+            if (!src.length) return call();
+            var rowTitle = fromLikes ? 'Схоже на те, що вам сподобалось' : 'Схоже на те, що ви дивились';
             var watched = {};
             hist.forEach(function (c) { watched[c.id] = 1; });
-            var base = hist.slice(0, 6);
-            var key = base.map(function (c) { return c.id; }).join(',');
+            liked.forEach(function (c) { watched[c.id] = 1; });
+            var base = src.slice(0, fromLikes ? 8 : 6);
+            var key = (fromLikes ? 'L:' : 'H:') + base.map(function (c) { return c.id; }).join(',');
             if (recsCache && recsCache.key === key) return call(recsCache.data);
 
             var score = {}, left = base.length;
@@ -1565,7 +1574,7 @@
                 arr.sort(function (a, b) { return b.n - a.n || (b.c.popularity || 0) - (a.c.popularity || 0); });
                 var out = arr.map(function (x) { return x.c; }).slice(0, 20);
                 if (!out.length) return call();
-                var data = { title: row.title, results: out, source: 'tmdb' };
+                var data = { title: rowTitle, results: out, source: 'tmdb' };
                 recsCache = { key: key, data: data };
                 call(data);
             }
@@ -2172,6 +2181,11 @@
             // аврора — окремий статичний шар (малюється один раз і не перемальовується при русі карток; на ТВ це суттєво легше)
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
             'body.lmx-apple.lmx-onfull::before{opacity:.3}' +
+            // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
+            'body.lmx-apple.lmx-onfull.lmx-tint::before{opacity:1;background:radial-gradient(75vw 65vh at 14% 6%,rgba(var(--lmx-acc),.5),rgba(var(--lmx-acc),0) 64%),radial-gradient(65vw 55vh at 92% 100%,rgba(var(--lmx-acc),.3),rgba(var(--lmx-acc),0) 64%),linear-gradient(180deg,#0d0f1f 0%,#080a14 100%)}' +
+            'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons .full-start__button.focus:not(.lmx-primary):not(:first-child){box-shadow:0 0 0 .14em rgba(var(--lmx-acc),.9),0 0 1.1em rgba(var(--lmx-acc),.55) !important}' +
+            'body .full-start__button.lmx-liked{color:#ff5a6e}' +
+            'body .full-start__button.lmx-liked svg path{fill:currentColor}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
             A + '.items-line:not(.lmx-hero-line) .scroll__body{will-change:transform}' +
             A + '{background:#090b16 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
@@ -2966,12 +2980,85 @@
             host.toggleClass('lmx-nocomm', host.find('.full-review').length === 0);
         });
     }
+    // ===== Кнопка «Подобається»: додає у стандартний список Lampa «Подобається» (Закладки) =====
+    var HEART = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.6C1.7 7.700 3.700 4.500 7 4.500c2 0 3.500 1.100 5 3 1.500-1.900 3-3 5-3 3.300 0 5.300 3.200 4.200 6.400C19.500 15.900 12 20.500 12 20.500z"/></svg>';
+    function likeButton(r, m) {
+        if (!getBool('lmx_like', true) || !m || !m.id) return;
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length || cont.find('.lmx-likebtn').length) return;
+        function liked() { try { return !!Lampa.Favorite.check(m).like; } catch (e) { return false; } }
+        var el = $('<div class="full-start__button selector button--lmxlike lmx-likebtn">' + HEART + '<span>Подобається</span></div>');
+        function paintLike() {
+            var on = liked();
+            el[0].classList.toggle('lmx-liked', on);
+            el.find('span').text(on ? 'Вам подобається' : 'Подобається');
+            el[0].__lmxT = on ? 'Вам подобається' : 'Подобається';
+        }
+        el.on('hover:enter', function () {
+            safe(function () {
+                Lampa.Favorite.toggle('like', m);
+                paintLike();
+                if (Lampa.Noty) Lampa.Noty.show(liked() ? 'Додано до «Подобається»' : 'Прибрано з «Подобається»');
+            });
+        });
+        paintLike();
+        var after = cont.find('.button--book').first();
+        if (after.length) after.after(el); else cont.append(el);
+    }
+
+    // ===== Колір постера для сторінки фільму (тема «Скло»): один раз зменшуємо картинку й беремо найнасиченіший колір =====
+    var tintCache = {};
+    function tintApply(rgb) {
+        var b = document.body;
+        if (!b) return;
+        if (rgb) { b.style.setProperty('--lmx-acc', rgb.join(',')); b.classList.add('lmx-tint'); }
+        else b.classList.remove('lmx-tint');
+    }
+    function tintFrom(img) {
+        var c = document.createElement('canvas'), W = 24, H = 24;
+        c.width = W; c.height = H;
+        var g = c.getContext('2d');
+        g.drawImage(img, 0, 0, W, H);
+        var d = g.getImageData(0, 0, W, H).data, best = null, bs = -1, i;
+        for (i = 0; i < d.length; i += 4) {
+            var R = d[i], G = d[i + 1], B = d[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+            var sat = mx ? (mx - mn) / mx : 0, lum = (R + G + B) / 3;
+            if (lum < 40 || lum > 235) continue;
+            var sc = sat * 2 + lum / 255;
+            if (sc > bs) { bs = sc; best = [R, G, B]; }
+        }
+        if (!best) return null;
+        // підсилюємо яскравість, щоб колір читався на темному тлі
+        var mxv = Math.max(best[0], best[1], best[2]) || 1, k = Math.min(1.6, 200 / mxv);
+        return best.map(function (v) { return Math.min(255, Math.round(v * k)); });
+    }
+    function posterTint(r, m) {
+        if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null); return; }
+        var path = m.poster_path || m.backdrop_path;
+        if (!path) { tintApply(null); return; }
+        var key = String(m.id);
+        if (tintCache[key] !== undefined) { tintApply(tintCache[key]); return; }
+        tintApply(null);
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+            var rgb = null;
+            try { rgb = tintFrom(img); } catch (e) { rgb = null; }
+            tintCache[key] = rgb;
+            if (r[0] && document.body.contains(r[0])) tintApply(rgb);
+        };
+        img.onerror = function () { tintCache[key] = null; };
+        img.src = imgUrl(path, 'w92');
+    }
+
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
         if (!m) return;
         var r = e.object.activity.render();
+        safe(function () { likeButton(r, m); });
         safe(function () { btnsOnFull(r); });
+        safe(function () { posterTint(r, m); });
         // Опис у блоці «Детально» — вибираний елемент без видимого фокуса (рідна Lampa): стрілка «вниз» ніби зникала. Прибираємо його з вибору, фокус одразу йде далі
         safe(function () { r.find('.full-descr__text').removeClass('selector'); });
         safe(function () { var mark = function () { var a = r.closest('.activity'); if (a.length) a.addClass('lmx-fullact'); }; mark(); setTimeout(function () { safe(mark); }, 600); });
@@ -3057,7 +3144,7 @@
         ['#4caf50', 'Зелений'], ['#26c6da', 'Бірюзовий'], ['#42a5f5', 'Блакитний'], ['#7e57c2', 'Фіолетовий'], ['#ec407a', 'Рожевий']];
     var BTN_LOOKS = [['', 'Стандартний'], ['icons', 'Усі компактні (1)'], ['full', 'Усі з підписом (3)']];
     var BTN_NAMES = { 'button--book': 'Закладки', 'button--reaction': 'Реакції', 'button--subscribe': 'Підписатися', 'button--options': 'Опції',
-        'button--play': 'Дивитись', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
+        'button--play': 'Дивитись', 'button--lmxlike': 'Подобається', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
     var PENCIL = BI('<path d="M4 20l1-4 11-11 3 3L8 19z"/>');
     var IMGI = BI('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>');
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
@@ -3892,7 +3979,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.157';
+    var VERSION = '10.158';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
