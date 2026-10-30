@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.177 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.179 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», підбірки під настрій, TMDB, українське кіно й серіали,
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1896,6 +1896,11 @@
             '.lmx-hero__o{font-size:.85em;opacity:.85;margin-top:.35em;line-height:1.3;max-height:2.7em;overflow:hidden}' +
             '.card--lmxhero{width:' + (getStr('lmx_card_size', 'm') === 'xl' ? '50em' : getStr('lmx_card_size', 'm') === 'l' ? '45em' : '40em') + ' !important}' +
             '.card--lmxhero .card__view{padding-bottom:0 !important;height:' + (getStr('lmx_card_size', 'm') === 'xl' ? '25em' : getStr('lmx_card_size', 'm') === 'l' ? '22.5em' : '20em') + ';background-size:cover;background-position:center;border-radius:.8em;overflow:hidden;position:relative}' +
+            // сповіщення Lampa у стандартній темі: компактна темна плашка внизу по центру з акцентною смужкою (теми «Кино»/«Скло» перекривають своїм виглядом)
+            'body .noty{left:50%;right:auto;bottom:2.4em;max-width:70vw;border-radius:.8em;background:rgba(24,26,34,.96);color:#fff;border-left:.35em solid #65eaa7;box-shadow:0 .6em 1.6em rgba(0,0,0,.5);transform:translate(-50%,200%)}' +
+            'body .noty--visible{transform:translate(-50%,0)}' +
+            'body .noty__body{padding:.8em 1.6em;text-align:left}' +
+            'body .noty__text{font-size:1.1em;font-weight:600}' +
             '.lmx-hero-line{position:relative}.lmx-hero-line .lmx-dots{z-index:3}' +
             '.lmx-hero__shade{position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}' +
             '.lmx-hero__text{position:absolute;left:1em;right:1em;bottom:.8em;color:#fff}' +
@@ -2145,6 +2150,11 @@
             T + '.lmx-hero-line{position:relative}' +
             T + '.lmx-hero-line .items-line__head,' + T + '.lmx-hero-line .items-line__title{display:none !important}' +
             // точки: активна — кільце, що «заповнюється» за час показу слайда
+            // сповіщення Lampa («Додано до…») у стилі теми: плашка внизу по центру замість зеленої смуги на всю ширину
+            T + '.noty{left:50%;right:auto;bottom:2.4em;max-width:70vw;border-radius:.6em;background:rgba(14,15,20,.96);color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:0 .6em 1.6em rgba(0,0,0,.6);transform:translate(-50%,200%)}' +
+            T + '.noty--visible{transform:translate(-50%,0)}' +
+            T + '.noty__body{padding:.8em 1.6em;text-align:center}' +
+            T + '.noty__text{font-size:1.1em;font-weight:600;letter-spacing:.01em}' +
             T + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.8em;z-index:6;pointer-events:none}' +
             T + '.lmx-dots i{display:block;position:relative;width:.55em;height:.55em;border-radius:50%;background:rgba(255,255,255,.45)}' +
             T + '.lmx-dots i.on{width:1.3em;height:1.3em;background:transparent;box-shadow:inset 0 0 0 .14em rgba(255,255,255,.3)}' +
@@ -2303,6 +2313,11 @@
             A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
+            // сповіщення Lampa («Додано до…») у стилі теми «Скло»: напівпрозора плашка-таблетка внизу по центру
+            A + '.noty{left:50%;right:auto;bottom:2.4em;max-width:70vw;border-radius:99em;background:rgba(36,38,60,.92);color:#fff;border:1px solid rgba(255,255,255,.22);box-shadow:0 .6em 1.6em rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18);transform:translate(-50%,200%)}' +
+            A + '.noty--visible{transform:translate(-50%,0)}' +
+            A + '.noty__body{padding:.75em 1.8em;text-align:center}' +
+            A + '.noty__text{font-size:1.1em;font-weight:600}' +
             A + '.lmx-dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:.55em;padding:.6em 1em;border-radius:99em;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);z-index:6;pointer-events:none}' +
             A + '.lmx-dots i{display:block;width:.5em;height:.5em;border-radius:50%;background:rgba(255,255,255,.5);transition:background-color .3s ease}' +
             A + '.lmx-dots i.on{width:2.2em;border-radius:99em;background:#fff}' +
@@ -4185,7 +4200,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.177';
+    var VERSION = '10.179';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
