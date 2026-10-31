@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.216 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.217 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1963,6 +1963,11 @@
                 'body:not(.lmx-hbo):not(.lmx-apple) .settings__content,body:not(.lmx-hbo):not(.lmx-apple) .selectbox__content,body:not(.lmx-hbo):not(.lmx-apple) .modal__content{background:#17181c !important}' +
                 // бокове меню в стандартній темі — прозоре, видно той самий градієнт, що й у сторінки
                 'body:not(.lmx-hbo):not(.lmx-apple) .menu,body:not(.lmx-hbo):not(.lmx-apple) .wrap__left{background:transparent !important;box-shadow:none !important;border:0 !important}' +
+                // «Полегшена версія» Lampa: ліве меню завжди на екрані й займає місце. Повертаємо поведінку звичайної версії — меню ховається за краєм і виїжджає при відкритті
+                '@media screen and (min-width:768px){' +
+                    'body.light--version .wrap__left{position:relative !important;width:15em !important;margin-left:-15em !important}' +
+                    'body.light--version.menu--open .wrap__left,body.light--version.menu--open .wrap__content{transform:translate3d(15em,0,0)}' +
+                '}' +
                 '.lmx-cin{position:absolute;left:0;right:0;bottom:0;padding:2.2em .7em .6em;color:#fff;z-index:2;pointer-events:none;border-radius:0 0 1em 1em;' +
                     'background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-cin__g{font-size:' + (0.72 * fs).toFixed(2) + 'em;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -3387,6 +3392,18 @@
             if (++tries < 4) setTimeout(go, 500);
         })();
     }
+    // «Полегшена версія» Lampa не вантажить фонову картинку на сторінці фільму (звичайна версія — вантажить). Додаємо її самі так само, як це робить Lampa
+    function lightBackground(e, r, m) {
+        if (!(Lampa.Storage && Lampa.Storage.field && Lampa.Storage.field('light_version')) || window.innerWidth <= 790) return;
+        var path = m && m.backdrop_path;
+        if (!path || r.find('.full-start__background').length) return;
+        var host = e.body && e.body.length ? e.body : r;
+        var img = $('<img class="full-start__background">');
+        host.prepend(img);
+        var url = imgUrl(path, 'w1280');
+        if (Lampa.Utils && Lampa.Utils.imgLoad) Lampa.Utils.imgLoad(img, url, function (el) { $(el).addClass('loaded'); });
+        else { var pre = new Image(); pre.onload = function () { img.attr('src', url).addClass('loaded'); }; pre.src = url; }
+    }
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
@@ -3397,6 +3414,7 @@
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
+        safe(function () { lightBackground(e, r, m); });
         // Опис у блоці «Детально» — вибираний елемент без видимого фокуса (рідна Lampa): стрілка «вниз» ніби зникала. Прибираємо його з вибору, фокус одразу йде далі
         safe(function () { r.find('.full-descr__text').removeClass('selector'); });
         safe(function () { var mark = function () { var a = r.closest('.activity'); if (a.length) a.addClass('lmx-fullact'); }; mark(); setTimeout(function () { safe(mark); }, 600); });
@@ -4426,7 +4444,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.216';
+    var VERSION = '10.217';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
