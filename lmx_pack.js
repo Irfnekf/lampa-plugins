@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.212 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.213 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4423,7 +4423,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.212';
+    var VERSION = '10.213';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4525,9 +4525,12 @@
         nocub_promo: PROMO.reduce(function (acc, w) { acc.push('[class^="' + w + '"]', '[class*=" ' + w + '"]'); return acc; }, [])
     };
     var HIDE = '{display:none !important}';
+    // Правила лише для ввімкнених перемикачів: селектори на кшталт [class*="sale"] браузер перевіряє для КОЖНОГО елемента сторінки при кожному перерахунку стилів, навіть якщо перемикач вимкнено
+    var lastCss = null;
     function css() {
         var out = '';
         Object.keys(CSS).forEach(function (k) {
+            if (!on(k)) return;
             out += CSS[k].map(function (s) { return 'body.' + k + ' ' + s; }).join(',') + HIDE;
         });
         return out + '.nocub-hide' + HIDE;
@@ -4563,7 +4566,7 @@
     function scanCss() {
         Object.keys(CSS).forEach(function (k) {
             var active = on(k);
-            var sel = CSS[k].join(',');
+            var sel = active ? CSS[k].join(',') : '[data-nocub="' + k + '"]'; // вимкнений перемикач: шукаємо лише вже позначені елементи, щоб їх повернути
             var els;
             try { els = document.querySelectorAll(sel); } catch (e) { return; }
             for (var i = 0; i < els.length; i++) {
@@ -4631,8 +4634,8 @@
         scanCss();
         scanStrict();
         TEXT.forEach(function (rule) {
-            var els = document.querySelectorAll(rule.sel);
             var active = on(rule.key);
+            var els = document.querySelectorAll(active ? rule.sel : '[data-nocub="' + rule.key + '"]');
             for (var i = 0; i < els.length; i++) {
                 var el = els[i], hit = false;
                 if (active) {
@@ -4656,6 +4659,8 @@
     }
 
     function applyBody() {
+        var c = css(), st = document.getElementById('nocub-css');
+        if (st && c !== lastCss) { st.textContent = c; lastCss = c; }
         ITEMS.forEach(function (it) { document.body.classList.toggle(it.key, on(it.key)); });
     }
 
@@ -4765,7 +4770,7 @@
         safe(function () {
             var st = document.createElement('style');
             st.id = 'nocub-css';
-            st.textContent = css();
+            st.textContent = lastCss = css();
             document.head.appendChild(st);
         });
         safe(addSettings);
