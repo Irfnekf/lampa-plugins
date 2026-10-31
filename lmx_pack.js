@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.220 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.221 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4430,9 +4430,18 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.220';
+    var VERSION = '10.221';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
+    });
+    // Затемнення країв (штатне налаштування Lampa «mask») — важкий шар поверх екрана: один раз за встановлення вимикаємо, далі вибір користувача не чіпаємо
+    safe(function () {
+        if (Lampa.Storage.get('lmx_mask_off', '') === true || Lampa.Storage.get('lmx_mask_off', '') === 'true') return;
+        Lampa.Storage.set('lmx_mask_off', true);
+        if (Lampa.Storage.field('mask')) {
+            Lampa.Storage.set('mask', false);
+            if (document.body) document.body.classList.add('no--mask');
+        }
     });
     safe(patchContentRows);
 
