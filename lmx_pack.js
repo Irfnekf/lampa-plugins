@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.213 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.214 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3284,6 +3284,8 @@
             if (mx === R) h = ((G - B) / df + 6) % 6; else if (mx === G) h = (B - R) / df + 2; else h = (R - G) / df + 4;
             var bi = Math.min(NB - 1, Math.floor(h * 60 / 20));
             var w = sat * (1 - Math.min(1, Math.abs(lum - 125) / 125) * 0.6);
+            // відтінки шкіри (помаранчево-рожеві, помірна насиченість) на обличчях часто переважають і дають брудний колір — зменшуємо їхню вагу
+            if (h >= 0.1 && h <= 0.9 && sat < 0.62) w *= 0.45;
             bw[bi] += w; br[bi] += R * w; bg[bi] += G * w; bb[bi] += B * w;
         }
         var best = -1, bs = 0;
@@ -3302,7 +3304,8 @@
     }
     function posterTint(r, m) {
         if (!getBool('lmx_tint', true) || getStr('lmx_theme', 'default') !== 'apple' || !m || !m.id) { tintApply(null, r); return; }
-        var path = m.poster_path || m.backdrop_path;
+        // колір беремо з бекдропу — це кадр, який користувач бачить на сторінці (постер має іншу палітру й давав невідповідний відтінок)
+        var path = m.backdrop_path || m.poster_path, big = !!m.backdrop_path;
         if (!path) { tintApply(null, r); return; }
         var key = typeOf(m) + m.id; // фільм і серіал можуть мати однаковий id — ключ має це розрізняти
         if (tintCache[key] !== undefined) { tintApply(tintCache[key], r); return; }
@@ -3317,7 +3320,7 @@
             if (r[0] && document.body.contains(r[0])) tintApply(rgb, r);
         };
         img.onerror = function () { tintCache[key] = null; };
-        img.src = imgUrl(path, 'w92');
+        img.src = imgUrl(path, big ? 'w300' : 'w92');
     }
 
     // ===== Ряд «Студії й канали» на сторінці фільму (після акторів): натискання відкриває підбірку цієї студії/каналу =====
@@ -4423,7 +4426,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.213';
+    var VERSION = '10.214';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
