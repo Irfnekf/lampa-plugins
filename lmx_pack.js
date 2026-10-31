@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.207 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.210 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -73,6 +73,8 @@
 
     // Максимум карток у ряду (головна й каталоги): решта — у «Ще». Менше карток — легше ТВ
     var ROW_MAX = 24;
+    // Слайдів у афіші (головна й каталоги): кожен тримає велику картинку в пам'яті ТВ
+    var HERO_MAX = 9;
 
     // Стрімінги (id провайдерів TMDB) і підбірки «під настрій»
     var SERVICES = [
@@ -895,11 +897,11 @@
             function take(list, kind, max) {
                 var n = 0;
                 list.filter(uaOk).sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).forEach(function (m) {
-                    if (n >= max || out.length >= 12 || seen[kind + m.id]) return;
+                    if (n >= max || out.length >= HERO_MAX || seen[kind + m.id]) return;
                     seen[kind + m.id] = 1; m.media_type = kind; m.__trend = 1; out.push(m); n++;
                 });
             }
-            // спершу свіже (4 фільми й 4 серіали), потім найпопулярніше за весь час, поки не наберемо 12
+            // спершу свіже (4 фільми й 4 серіали), потім найпопулярніше за весь час, поки не наберемо HERO_MAX
             take(recMv, 'movie', 4); take(recTv, 'tv', 4);
             take(topTv, 'tv', 4); take(topMv, 'movie', 4);
             take(topTv, 'tv', 12); take(topMv, 'movie', 12);
@@ -929,11 +931,11 @@
         function fin() {
             if (--left > 0) return;
             var seen = {}, out = [];
-            // до 4 «скоро»; решту до 12 слайдів: спершу те, що виходить зараз, далі найпопулярніше за весь час
+            // до 4 «скоро»; решту до HERO_MAX слайдів: спершу те, що виходить зараз, далі найпопулярніше за весь час
             var soon = soonTv.concat(soonMv).filter(uaOk)
                 .sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
             soon.forEach(function (m) { seen[m.id] = 1; });
-            var room = 12 - soon.length;
+            var room = HERO_MAX - soon.length;
             recent.filter(function (m) { return uaOk(m) && !seen[m.id]; }).forEach(function (m) {
                 if (out.length >= room) return;
                 seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m);
@@ -1167,7 +1169,10 @@
                         if (!root || !document.body.contains(root)) return clearInterval(iv);
                         if (next >= cats.length) return clearInterval(iv);
                         if (busy || typeof self.append !== 'function') return;
-                        var lines = el.find('.items-line'), fi = lines.index(lines.has('.focus').first());
+                        // один пошук фокусу замість обходу всіх рядів: цей таймер іде, доки не догрузяться всі ряди
+                        var fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line');
+                        if (!fl) return;
+                        var lines = root.querySelectorAll('.items-line'), fi = [].indexOf.call(lines, fl);
                         if (fi < 0 || fi < lines.length - 3) return;
                         busy = true;
                         loadGroup(put, function () { busy = false; });
@@ -1475,7 +1480,7 @@
                 });
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 // «гучні» прем'єри (особливо «скоро») не мають вилітати через ліміт — беремо їх першими, решту добираємо за популярністю
-                var lim = 12;
+                var lim = HERO_MAX;
                 var tg = list.filter(function (m) { return m.__tag === 'soon'; }).concat(list.filter(function (m) { return m.__tag === 'new'; })).slice(0, lim - 2);
                 var rest = list.filter(function (m) { return !m.__tag; });
                 list = tg.concat(rest.slice(0, lim - tg.length));
@@ -2962,6 +2967,8 @@
         } catch (err) {}
     }
     function initPrefetch() {
+        // Предзавантаження даних і картинок при фокусі на картці вимкнено (менше фонових запитів і декодування під час гортання). Щоб повернути — прибрати наступний рядок
+        return;
         if (!window.$ || window.__lmxPre) return;
         window.__lmxPre = true;
         window.__lmxT0 = Date.now();
@@ -3154,14 +3161,14 @@
                     if (isMobile()) return;
                     var d = document.querySelector('.card--lmxhero.focus');
                     if (!d) return;
-                    setCur(d);
+                    if (ap.cur !== d) { ap.cur = d; setCur(d); }
                     autoplay(d, d.closest('.items-line'));
                     return;
                 }
                 var c = document.querySelector('.card--lmxhero.focus');
                 if (!c) return;
-                setCur(c);
-                syncDots(c);
+                // позначку слайда й точки перераховуємо лише коли змінилась картка у фокусі, а не кожні 300 мс
+                if (ap.cur !== c) { ap.cur = c; setCur(c); syncDots(c); }
                 if (!warmDone && !warmBusy && !heroQ.length && !heroBusy && Date.now() - lastKey > 1500 && (parseInt(c.getAttribute('data-lmxi'), 10) || 0) === 0 && c.closest('.items-line')) { warm(c.closest('.items-line')); return; }
                 if (warmBusy) { ap.t = Date.now(); return; }
                 // «підігрів» сусідніх слайдів (декод великих картинок) — не в момент, коли слайд доїжджає до місця (це давало мікрорив наприкінці анімації),
@@ -4415,7 +4422,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.207';
+    var VERSION = '10.210';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
