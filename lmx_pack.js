@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.210 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.212 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1091,6 +1091,7 @@
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
                     var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     var dbg = (window.__lmxDbg = window.__lmxDbg || []);
+                    if (dbg.length > 200) dbg.splice(0, 100);
                     function end() {
                         if (fin || --pend > 0) return;
                         fin = true; clearTimeout(t);
@@ -1769,7 +1770,6 @@
     var mem = {}, memKeys = [];
     var queue = [];
     var active = 0;
-    var hiddenEls = [];
 
     function typeOf(d) {
         if (d.media_type === 'tv' || d.media_type === 'movie') return d.media_type;
@@ -2547,9 +2547,10 @@
         return null;
     }
 
+    // Сховані елементи не тримаємо в масиві (раніше кожна прибрана зі сторінки картка лишалась у пам'яті ТВ назавжди) — лише позначаємо атрибутом
     function hideEl(el) {
         el.style.display = 'none';
-        hiddenEls.push(el);
+        el.setAttribute('data-lmxhid', '1');
     }
 
     // Стандартний значок «TV» — лише серед прямих дітей постера, без глибокого обходу й getComputedStyle (дешево)
@@ -2810,8 +2811,8 @@
 
     // після зміни стилю: прибрати наші елементи, показати сховане, перемалювати
     function resetCards() {
-        hiddenEls.forEach(function (e) { e.style.display = ''; });
-        hiddenEls = [];
+        var hid = document.querySelectorAll('[data-lmxhid]');
+        for (var hi = 0; hi < hid.length; hi++) { hid[hi].style.display = ''; hid[hi].removeAttribute('data-lmxhid'); }
         var mine = document.querySelectorAll('.lmx-box,.lmx-tr,.lmx-cin');
         for (var i = 0; i < mine.length; i++) mine[i].parentNode.removeChild(mine[i]);
         var cards = document.querySelectorAll('.card[data-lmx]');
@@ -4422,7 +4423,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.210';
+    var VERSION = '10.212';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
