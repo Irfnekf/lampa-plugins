@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.224 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.225 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1222,10 +1222,17 @@
             setTimeout(fin, 4000);
         } catch (e) { fin(); }
     }
-    function heroPreload(url) {
-        if (heroImgs[url] || heroQ.indexOf(url) >= 0) return;
-        heroQ.push(url);
+    function heroPreload(url, front) {
+        if (heroImgs[url]) return;
+        var qi = heroQ.indexOf(url);
+        if (qi >= 0) { if (front && qi > 0) { heroQ.splice(qi, 1); heroQ.unshift(url); } return; }
+        if (front) heroQ.unshift(url); else heroQ.push(url);
         setTimeout(heroNext, 0);
+    }
+    // картинка слайда вже завантажена й декодована?
+    function heroReady(url) {
+        var im = url && heroImgs[url];
+        return !!(im && im.complete && im.naturalWidth > 0);
     }
     function makeInstance(d) {
         return Lampa.Maker.make('Card', d, function (module) { return module.only('Card', 'Callback'); });
@@ -1490,8 +1497,10 @@
                 // зображення афіші тримаємо в пам'яті, щоб при поверненні на перший баннер не було «порожньої» картки
                 safe(function () {
                     // спершу легкі мініатюри (з'являються миттєво як підкладка), потім великі зображення
+                    // порядок: великі картинки перших трьох слайдів (їх побачимо одразу), далі мініатюри всіх, далі великі решти
+                    list.slice(0, 3).forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, HERO_IMG)); });
                     list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w300')); });
-                    list.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, HERO_IMG)); });
+                    list.slice(3).forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, HERO_IMG)); });
                 });
                 var items = heroItems(list);
                 call({ title: 'Афіша', results: items, params: { items: { mapping: 'line', view: 15 } } });
@@ -2243,7 +2252,7 @@
             // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
             T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.1s cubic-bezier(.4,0,.2,1) !important}' +
             T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
-            T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s;will-change:opacity}' +
+            T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
             '@media (min-width:761px){' + T + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
@@ -2404,7 +2413,7 @@
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
             A + '.lmx-hero-line .scroll__body{transition:transform .9s cubic-bezier(.4,0,.2,1) !important;will-change:transform}' +
-            A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s;will-change:opacity}' +
+            A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // як у каталогах і в темі HBO: слайд трохи вужчий за екран, справа видно край наступного; перехід довший (слайд їде на весь екран), текст проявляється трохи згодом
             '@media (min-width:761px){' + A + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
@@ -3053,7 +3062,17 @@
         for (var i = 0; i < all.length; i++) {
             if (parseInt(all[i].getAttribute('data-lmxi'), 10) === want) next = all[i];
         }
-        if (next && next !== card) focusCard(next, line);
+        if (next && next !== card) {
+            // наступний слайд ще не завантажений/не декодований (старт Lampa): перегортання на нього давало б ривок — підштовхуємо його в чергу й пробуємо за 0,7 с
+            var nu = next.getAttribute('data-lmxu');
+            if (nu && !heroReady(nu) && (ap.wait = (ap.wait || 0) + 1) <= 25) {
+                heroPreload(nu, true);
+                ap.t = now - (AUTOPLAY_MS - 700);
+                return;
+            }
+            ap.wait = 0;
+            focusCard(next, line);
+        }
     }
     // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
     function setCur(el) {
@@ -4474,7 +4493,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.224';
+    var VERSION = '10.225';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
