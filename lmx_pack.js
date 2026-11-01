@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.239 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.240 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1917,9 +1917,7 @@
             '.lmx-renamed.lmx-m1::after{display:none}' +
             '.lmx-renamed.lmx-m2::after{display:inline-block;max-width:6.5em;overflow:hidden;text-overflow:ellipsis}' +
             'body.lmx-hbo .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after,body.lmx-apple .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after{display:none}' +
-            '.lmx-iconed svg:not(.lmx-ico):not(.lmx-ico *),.lmx-iconed img,.lmx-iconed picture,.lmx-iconed [class*="logo"]{display:none !important}' +
-            '.lmx-iconed > .lmx-ico{display:inline-block !important;flex:0 0 auto}' +
-            'body.lmx-ph .lmx-iconed::before{content:none !important;display:none !important;background:none !important}' +
+            '.lmx-iconed > svg:not(.lmx-ico),.lmx-iconed > img{display:none !important}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -3620,15 +3618,6 @@
     }
     function reassertMode(el) {
         var d = el.__lmxD || '', cl = el.classList;
-        // чужий плагін (напр. онлайн) міг перемалювати вміст кнопки й стерти нашу іконку: повертаємо
-        if (el.__lmxIcH && cl.contains('lmx-iconed')) {
-            var hasI = false, k;
-            for (k = 0; k < el.children.length; k++) if (el.children[k].classList.contains('lmx-ico')) { hasI = true; break; }
-            if (!hasI) {
-                var ni = $(el.__lmxIcH)[0];
-                if (ni) { ni.classList.add('lmx-ico'); el.insertBefore(ni, el.firstChild); }
-            }
-        }
         ['1', '2', '3', 'P'].forEach(function (x) { var on = d === x; if (cl.contains('lmx-m' + x) !== on) cl.toggle('lmx-m' + x, on); });
         var n = !!el.__lmxN;
         if (cl.contains('lmx-n') !== n) cl.toggle('lmx-n', n);
@@ -3710,13 +3699,11 @@
                     el.insertBefore(mineIco, el.firstChild);
                     el.__lmxSet = ik;
                 }
-                el.__lmxIcH = ic[2];
                 if (!el.classList.contains('lmx-iconed')) el.classList.add('lmx-iconed');
             } else {
                 if (mineIco) el.removeChild(mineIco);
                 el.classList.remove('lmx-iconed');
                 el.__lmxSet = null;
-                el.__lmxIcH = null;
             }
             // Перейменування: рідний напис не чіпаємо (його можуть читати плагіни), нове ім'я показує CSS з атрибута
             if (m.names[id]) {
@@ -4298,7 +4285,7 @@
                     if (i > 4) return;
                     var e = this, lab = labelsOf(e).map(function (x) { return x.tagName.toLowerCase(); }).join(',');
                     rows.push({ title: (i + 1) + '. ' + (e.__lmxId || e.className.split(' ').slice(0, 3).join(' ')),
-                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | v' + VERSION + ' | ікона: ' + (e.__lmxSet || '-') + ' | вміст: ' + $(e).children().map(function () { return this.tagName.toLowerCase() + (this.className && this.className.baseVal === undefined ? '.' + String(this.className).split(' ')[0] : (this.classList && this.classList.contains('lmx-ico') ? '.lmx-ico' : '')); }).get().join(',') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 120) });
+                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 80) });
                 });
             }
             if (!rows.length) rows.push({ title: 'Відкрийте сторінку фільму і спробуйте ще раз' });
@@ -4532,7 +4519,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.239';
+    var VERSION = '10.240';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
