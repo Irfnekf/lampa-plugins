@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.20';
+    var VERSION = '1.21';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -570,7 +570,13 @@
         if (!server()) { if (manual) noty('Не вказана адреса сервера'); setStatus('Немає адреси сервера', false); return cb(false); }
         if (!syncActive()) { if (manual) noty('Увімкнена синхронізація CUB — LMX Sync вимкнено'); return cb(false); }
         busy = true;
-        var st = getState(), now = Date.now() + (st0skew()), col = collect(st, now, { synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
+        var st = getState(), now = Date.now() + (st0skew());
+        // Повне зчитування з сервера (since=0) — безпечне й нічого не затирає (діють ті самі правила «новіше/більше виграє»). Робимо його:
+        // вручну («Синхронізувати зараз»), один раз після оновлення плагіна і коли локальних таймкодів стало вдвічі менше, ніж пам'ятає стан (дані пристрою очищали)
+        var tlNow = Object.keys(tlData()).length, tsn = 0, tk;
+        for (tk in (st.tsnap || {})) tsn++;
+        if (manual || st.pullv !== 2 || (tsn >= 20 && tlNow < tsn * 0.5)) { st.since = 0; if (tsn >= 20 && tlNow < tsn * 0.5) st.tsnap = {}; }
+        var col = collect(st, now, { synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
         for (i = 0; i < ops.length; i += CHUNK) chunks.push(ops.slice(i, i + CHUNK));
         if (!chunks.length) chunks.push([]);
         var rows = [], n = 0, pushed = ops.length;
@@ -629,6 +635,7 @@
                 for (th in res.tl) if (res.tl[th] && typeof res.tl[th] === 'object' && res.tl[th].updated) tu[th] = res.tl[th].updated;
                 st.tu = tu;
                 st.last = Date.now();
+                st.pullv = 2;
                 if (st.refNext) delete st.refNext;
                 if (st.refRecent) delete st.refRecent;
                 st.chk = 1;
