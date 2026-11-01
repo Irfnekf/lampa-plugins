@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.229 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.230 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -35,7 +35,7 @@
     var LMXP = null;
     try {
         var psrc = (document.currentScript && document.currentScript.src) || '';
-        if (/[?&]perf=1/.test(psrc)) LMXP = { log: [], last: 0, ev: '', evT: 0, safeMax: 0, safeName: '', frames: 0, slow: 0, worst: 0, win: [] };
+        if (/[?&]perf=1/.test(psrc)) LMXP = { src: psrc,  log: [], last: 0, ev: '', evT: 0, safeMax: 0, safeName: '', frames: 0, slow: 0, worst: 0, win: [] };
     } catch (e) {}
     function safe(fn) {
         if (LMXP) {
@@ -64,6 +64,25 @@
             }, 0);
         }); } catch (e) {}
         try { new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { LMXP.lt = Math.round(en.duration); LMXP.ltT = performance.now(); }); }).observe({ entryTypes: ['longtask'] }); } catch (e) {}
+        // Експерименти для пошуку причини гальм: адреса плагіна з «&x=1,3» вимикає відповідні шматки оформлення (лише в режимі &perf=1)
+        try {
+            var xm = /[?&]x=([\d,]+)/.exec(document.currentScript ? document.currentScript.src : '') || /[?&]x=([\d,]+)/.exec(LMXP.src || '');
+            if (xm) {
+                var XC = {
+                    '1': '#lmx-tintbg{display:none !important}',
+                    '2': 'body.lmx-apple::before{display:none !important}',
+                    '3': '.card--lmxhero,.card--lmxhero .lmx-hero__text,.lmx-hero-line .scroll__body{will-change:auto !important}',
+                    '4': '.lmx-dots{display:none !important}',
+                    '5': '.lmx-hero__text,.lmx-hero__shade{display:none !important}',
+                    '6': '.card{will-change:auto !important}',
+                    '7': '.card--lmxhero .card__view{background-image:none !important}',
+                    '8': '.card__view,.card__img{border-radius:0 !important}'
+                }, css = '', xl = xm[1].split(',');
+                xl.forEach(function (k) { if (XC[k]) css += XC[k]; });
+                var xs = document.createElement('style'); xs.textContent = css; document.head.appendChild(xs);
+                LMXP.xs = xl.join(',');
+            }
+        } catch (e) {}
         var t00 = performance.now();
         function tick(now) {
             if (LMXP.last) {
@@ -83,7 +102,7 @@
             if (!LMXP.draw || now - LMXP.draw > 500) {
                 LMXP.draw = now;
                 if (!LMXP.nT || now - LMXP.nT > 3000) { LMXP.nT = now; LMXP.nodes = document.getElementsByTagName('*').length; }
-                box.textContent = 'вузлів DOM ' + LMXP.nodes + '  FPS ' + LMXP.win.length + '  повільних кадрів (>40мс): ' + LMXP.slow + '  найгірший: ' + Math.round(LMXP.worst) + 'мс\n' + LMXP.log.join('\n');
+                box.textContent = (LMXP.xs ? 'ТЕСТ ' + LMXP.xs + '  ' : '') + 'вузлів DOM ' + LMXP.nodes + '  FPS ' + LMXP.win.length + '  повільних кадрів (>40мс): ' + LMXP.slow + '  найгірший: ' + Math.round(LMXP.worst) + 'мс\n' + LMXP.log.join('\n');
             }
             requestAnimationFrame(tick);
         }
@@ -2054,6 +2073,8 @@
             '.card--lmxhero.lmx-far{visibility:hidden}' +
             // поточний і сусідні слайди — окремі шари: під час перегортання їх лише зсуває відеокарта, без повторного малювання картинок
             '.lmx-hero-line:not(.lmx-mini) .card--lmxhero:not(.lmx-far){will-change:transform}' +
+            // текст слайда — теж готовий шар: поява тексту не створює шар посеред руху афіші й не смикає наприкінці
+            '.lmx-hero-line:not(.lmx-mini) .card--lmxhero:not(.lmx-far) .lmx-hero__text{will-change:opacity}' +
             'html body .full-start__button.button--book.lmx-bk-off path{fill:transparent !important}' +
             // лайкнута кнопка: заливка кольором теми (стандартна — біла, «Кино» — фіолетовий, «Скло» — колір постера або м'який синій)
             likeCss('html body ', '#fff') +
@@ -4563,7 +4584,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.229';
+    var VERSION = '10.230';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
