@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.16';
+    var VERSION = '1.17';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -320,9 +320,13 @@
     }
 
     // ───────── Мережа ─────────
-    function post(path, body, ok, fail) {
+    var ERR_TXT = {
+        quota: 'Перевищено ліміт записів', no_bot: 'Бот не знає цей код: отримайте код у Telegram-бота командою /code', too_often: 'Копії можна слати не частіше разу на хвилину',
+        tg: 'Telegram не прийняв файл', no_backup: 'У Telegram ще немає копії', too_large: 'Копія завелика', bad_value: 'Некоректні дані'
+    };
+    function post(path, body, ok, fail, tmo) {
         var url = server() + path, done = false;
-        var t = setTimeout(function () { if (!done) { done = true; fail('Сервер не відповідає'); } }, 20000);
+        var t = setTimeout(function () { if (!done) { done = true; fail('Сервер не відповідає'); } }, tmo || 20000);
         try {
             var x = new XMLHttpRequest();
             x.open('POST', url, true);
@@ -333,7 +337,7 @@
                 var j = null;
                 try { j = JSON.parse(x.responseText); } catch (e) {}
                 if (x.status === 200 && j && j.ok) ok(j);
-                else fail(j && j.error === 'quota' ? 'Перевищено ліміт записів' : 'Помилка сервера (' + (x.status || 'мережа') + ')');
+                else fail(j && ERR_TXT[j.error] ? ERR_TXT[j.error] : 'Помилка сервера (' + (x.status || 'мережа') + ')');
             };
             x.send(JSON.stringify(body));
         } catch (e) { done = true; clearTimeout(t); fail('Помилка запиту'); }
@@ -383,20 +387,104 @@
         sset('lmx_sync_state', st);
         noty('Відновлено копію від ' + new Date(b.t).toLocaleString());
     }
+    // ───────── Резервні копії в Telegram ─────────
+    function backupPayload() {
+        var fav = favData(), tl = tlData(), out = { v: 1, t: Date.now(), fav: {}, tl: {} }, h, e, o;
+        CATS.forEach(function (c) { out.fav[c] = fav[c].slice(); });
+        out.fav.card = fav.card.map(slim);
+        for (h in tl) {
+            e = tl[h];
+            if (!e || typeof e !== 'object') continue;
+            o = tlSlim(e);
+            if (e.updated) o.updated = e.updated;
+            out.tl[h] = o;
+        }
+        return JSON.stringify(out);
+    }
+    function tgStat(ok, extra) {
+        var o = sget('lmx_sync_tgbak', null);
+        if (!o || typeof o !== 'object') o = {};
+        o.tried = Date.now();
+        if (ok) { o.okAt = Date.now(); o.err = ''; } else o.err = extra || 'помилка';
+        sset('lmx_sync_tgbak', o);
+    }
+    // Лише вручну (кнопка в налаштуваннях): автоматично нічого в Telegram не надсилається
+    function sendTgBackup(reason, manual, cb) {
+        cb = cb || function () {};
+        if (!code() || !server()) { if (manual) noty('Спочатку створіть або введіть код'); return cb(false); }
+        var payload = backupPayload();
+        post('/api/backup', { u: uidOf(code()), data: payload, reason: reason || '' }, function () {
+            tgStat(true);
+            if (manual) noty('Копію надіслано в Telegram-бот');
+            cb(true);
+        }, function (err) {
+            tgStat(false, err);
+            if (manual) noty('Копія не надіслана: ' + err);
+            cb(false);
+        }, 60000);
+    }
+    // Повертає дані з копії, нічого не видаляючи: списки — порядок із копії, а наявне лише дописуємо; таймкоди — виграє більший прогрес або новіший запис
+    function applyBackup(b) {
+        var fav = favData(), tl = tlData(), st = getState(), added = 0, tlAdded = 0, c, h, k;
+        makeBackup(true);
+        CATS.forEach(function (cat) {
+            var src = b.fav && Array.isArray(b.fav[cat]) ? b.fav[cat] : [], seen = {}, out = [];
+            src.concat(fav[cat]).forEach(function (id) { if (!seen[id]) { seen[id] = 1; out.push(id); } });
+            added += Math.max(0, out.length - fav[cat].length);
+            fav[cat] = out;
+        });
+        ((b.fav && b.fav.card) || []).forEach(function (cd) { if (cd && cd.id && !cardOf(fav, cd.id)) fav.card.push(cd); });
+        for (h in (b.tl || {})) {
+            c = b.tl[h]; k = tl[h];
+            if (!c || typeof c !== 'object') continue;
+            if (!k || typeof k !== 'object' || Number(c.percent || 0) > Number(k.percent || 0) || (c.updated || 0) > (k.updated || 0)) {
+                tl[h] = c; tlAdded++;
+            }
+        }
+        applying = true;
+        sset('favorite', fav); sset(tlFile(), tl);
+        try { Lampa.Favorite.read(); } catch (e) {}
+        try { Lampa.Timeline.read(); } catch (e) {}
+        setTimeout(function () { applying = false; }, 1500);
+        // відновлене має поїхати й на сервер: наступна синхронізація шле всі списки з порядком цього пристрою
+        st.refNext = 1; sset('lmx_sync_state', st);
+        schedule(1500);
+        noty('Відновлено з Telegram: додано в списки ' + added + ', таймкодів ' + tlAdded);
+    }
+    function restoreFromTg() {
+        if (!code()) { noty('Спочатку створіть або введіть код'); return; }
+        noty('Завантажую копію з Telegram…');
+        post('/api/backup', { u: uidOf(code()), op: 'get' }, function (j) {
+            var b = null;
+            try { b = JSON.parse(j.data); } catch (e) {}
+            if (!b || !b.fav) { noty('Файл копії пошкоджений'); return; }
+            var enabled = Lampa.Controller.enabled().name;
+            Lampa.Select.show({
+                title: 'Відновити з копії від ' + new Date(b.t || j.t).toLocaleString() + '?',
+                items: [
+                    { title: 'Так, відновити', subtitle: 'історія: ' + (b.fav.history || []).length + ', таймкодів: ' + Object.keys(b.tl || {}).length + '. Наявні дані не видаляються', yes: true },
+                    { title: 'Ні' }
+                ],
+                onSelect: function (a) { Lampa.Controller.toggle(enabled); if (a.yes) safe(function () { applyBackup(b); }); },
+                onBack: function () { Lampa.Controller.toggle(enabled); }
+            });
+        }, function (err) { noty('Не вдалося: ' + err); }, 60000);
+    }
     function fmtAgo(t) {
         if (!t) return '—';
         var m = Math.round((Date.now() - t) / 60000);
         return m < 1 ? 'щойно' : m < 60 ? m + ' хв тому' : m < 1440 ? Math.round(m / 60) + ' год тому' : Math.round(m / 1440) + ' дн тому';
     }
     function showStatus() {
-        var o = sget('lmx_sync_stat', {}) || {}, bak = sget('lmx_sync_bak', []);
+        var o = sget('lmx_sync_stat', {}) || {}, bak = sget('lmx_sync_bak', []), tg = sget('lmx_sync_tgbak', {}) || {};
         var rows = [
             ['Версія', VERSION],
             ['Код', code() ? 'є (' + pretty(code()).slice(0, 4) + '-••••-••••-••••)' : 'не створено'],
             ['Сервер', server().replace(/^https?:\/\//, '')],
             ['Остання синхронізація', o.okAt ? fmtAgo(o.okAt) + (typeof o.sent === 'number' ? ' (надіслано ' + o.sent + ', отримано ' + o.got + ')' : '') : '—'],
             ['Остання помилка', o.errAt && (o.errAt > (o.okAt || 0)) ? fmtAgo(o.errAt) + ': ' + o.err : 'немає'],
-            ['Резервні копії', Array.isArray(bak) && bak.length ? bak.map(function (b) { return new Date(b.t).toLocaleString(); }).join('; ') : 'немає']
+            ['Копії на пристрої', Array.isArray(bak) && bak.length ? bak.map(function (b) { return new Date(b.t).toLocaleString(); }).join('; ') : 'немає'],
+            ['Копія в Telegram', tg.okAt ? fmtAgo(tg.okAt) : (tg.err ? 'не надіслана: ' + tg.err : 'ще не надсилалась')]
         ];
         var html = '<div style="padding:.5em 0">' + rows.map(function (r) {
             return '<div style="display:flex;gap:1em;margin:.45em 0;font-size:1.15em"><div style="width:11em;opacity:.6;flex:none">' + r[0] + '</div><div style="word-break:break-word">' + String(r[1]).replace(/</g, '&lt;') + '</div></div>';
@@ -622,6 +710,8 @@
             if (!code()) { noty('Код не створено'); return; }
             showCode();
         });
+        btn('tgbak', 'Надіслати копію в Telegram', 'Закладки, історія й таймкоди файлом у ваш чат із ботом', function () { sendTgBackup('вручну', true); });
+        btn('tgrestore', 'Відновити з Telegram', 'Повернути дані з останньої копії в Telegram (наявні не видаляються)', restoreFromTg);
         btn('restore', 'Відновити з копії', 'Повернути закладки й таймкоди, які були до останніх змін від синхронізації', function () {
             var list = sget('lmx_sync_bak', []);
             if (!Array.isArray(list) || !list.length) { noty('Резервних копій ще немає'); return; }
@@ -680,5 +770,5 @@
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 
     // для тестів
-    window.LMX_SYNC = { restore: restoreBackup, mirror: mirrorHistory, sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
+    window.LMX_SYNC = { tgBackup: sendTgBackup, tgPayload: backupPayload, applyBackup: applyBackup, restore: restoreBackup, mirror: mirrorHistory, sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
 })();
