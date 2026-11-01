@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.13';
+    var VERSION = '1.16';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -93,7 +93,7 @@
     function server() { return String(sget('lmx_sync_server', '') || DEFAULT_SERVER || '').replace(/\/+$/, ''); }
     function getState() {
         var s = sget('lmx_sync_state', null);
-        if (!s || typeof s !== 'object' || s.u !== uidOf(code())) s = { u: uidOf(code()), snap: {}, since: 0, tpush: 0, last: 0, ss: null, sts: {}, ft: {} };
+        if (!s || typeof s !== 'object' || s.u !== uidOf(code())) s = { u: uidOf(code()), snap: {}, since: 0, last: 0, ss: null, sts: {}, ft: {} };
         if (!s.snap) s.snap = {};
         if (!s.sts) s.sts = {};
         if (!s.ft) s.ft = {};
@@ -151,7 +151,7 @@
     function tlSlim(e) { var o = {}; TKEEP.forEach(function (k) { if (typeof e[k] !== 'undefined') o[k] = e[k]; }); return o; }
 
     // ───────── Ядро: збір змін, застосування чужих ─────────
-    // Повертає { ops, snapNext (стан закладок на момент збору), tmark }
+    // Повертає { ops, cur, curS, curT, stamp, first, front, susp }
     // Штучний час «давно» для старих записів: зберігає порядок списку (позиція 0 — найновіше), але завжди старший за будь-який справжній перегляд
     var SYN_BASE = 1500000000000, SYN_LEG = 1400000000000;
     function collect(st, now, o) {
@@ -202,7 +202,7 @@
             if (u !== e.updated) stamp[h] = u;
             ops.push({ k: 't:' + h, v: JSON.stringify(tlSlim(e)), t: u, d: 0 });
         }
-        return { ops: ops, cur: cur, curS: curS, curT: curT, stamp: stamp, first: first, tmark: now, front: front, susp: susp };
+        return { ops: ops, cur: cur, curS: curS, curT: curT, stamp: stamp, first: first, front: front, susp: susp };
     }
     // Час останнього перегляду картки за таймкодами (file_view): це реальний час, однаковий на всіх пристроях. 0 — невідомо
     var wtEnd = 0;
@@ -212,7 +212,7 @@
             if (!card || !Lampa.Utils || !Lampa.Utils.hash) return 0;
             var name = card.original_title || card.original_name || card.title || card.name || '';
             if (!name) return 0;
-            var best = 0, v, h, sn, ep, u;
+            var best = 0, v, sn, ep, u;
             function chk(hash) { v = tl[hash]; if (v && typeof v === 'object') { u = v.updated || 0; if (u > best) best = u; } }
             var isTv = card.media_type === 'tv' || !!card.name || !!card.first_air_date || !!card.number_of_seasons;
             if (!isTv) { chk(Lampa.Utils.hash(name)); return best; }
@@ -287,7 +287,13 @@
                 // Раніше будь-який чужий запис затирав локальний без поля updated — через це таймкоди «губились»
                 var rp = Number(v.percent || 0), lp = locOk ? Number(loc.percent || 0) : 0;
                 if (!locOk) doIt = true;
-                else if (r.t <= 1) doIt = locU <= 1 && (ctx.first ? true : rp > lp);   // старий запис без часу: після першого підключення не перебиває існуюче; при першому підключенні сервер — еталон
+                else if (locU <= 1 && ctx.first) {
+                    // перше підключення, локальний запис старий (без часу): виграє той, де переглянуто більше — прогрес не губимо.
+                    // Якщо переміг локальний — позначаємо його свіжим, щоб він поїхав на сервер і на інші пристрої
+                    doIt = rp > lp;
+                    if (!doIt && lp > rp && ctx.now) { loc.updated = ctx.now; delete ctx.tsnap[p[1]]; tlCh = true; ctx.repush = (ctx.repush || 0) + 1; }
+                }
+                else if (r.t <= 1) doIt = locU <= 1 && rp > lp;          // старий запис без часу ніколи не перебиває те, що вже є
                 else if (locU <= 1) doIt = true;                         // локальний старий, а на сервері є справжній час — беремо серверний
                 else if (r.t > locU) doIt = true;
                 else if (r.t === locU) doIt = rp > lp;
@@ -303,7 +309,6 @@
             }
         }
         // порядок у списках: найновіше зверху (за часом додавання на будь-якому пристрої); записи з однаковим часом (зокрема старі, t=0) лишаються в своєму порядку
-        if (ctx.fixHist) catCh.history = 1;
         Object.keys(catCh).forEach(function (cat) {
             if (cat === 'history') { if (sortHistory(fav, tl, ctx.ft)) favCh = true; return; }
             var arr = fav[cat].map(function (id, i) { return { id: id, i: i, t: ctx.ft['f:' + cat + ':' + id] || 0 }; });
@@ -336,7 +341,71 @@
 
     var busy = false, applying = false, timer = 0, retryN = 0;
     var status = { text: '', ok: true };
-    function setStatus(t, ok) { status.text = t; status.ok = ok !== false; }
+    function setStatus(t, ok, extra) {
+        status.text = t; status.ok = ok !== false;
+        // зберігаємо, щоб «Стан» показував останній результат і після перезапуску
+        var o = sget('lmx_sync_stat', null);
+        if (!o || typeof o !== 'object') o = {};
+        if (status.ok) { o.okAt = Date.now(); if (extra) { o.sent = extra.sent; o.got = extra.got; } }
+        else { o.errAt = Date.now(); o.err = t; }
+        sset('lmx_sync_stat', o);
+    }
+
+    // ───────── Резервні копії ─────────
+    // Перед змінами від синхронізації зберігаємо закладки й таймкоди цього пристрою (до двох копій, не частіше разу на годину, першу — завжди):
+    // якщо щось піде не так, їх можна повернути кнопкою «Відновити з копії»
+    function makeBackup(force) {
+        try {
+            var list = sget('lmx_sync_bak', []);
+            if (!Array.isArray(list)) list = [];
+            if (!force && list.length && Date.now() - list[0].t < 3600000) return;
+            var entry = { t: Date.now(), fav: favData(), tl: tlData() };
+            list.unshift(entry);
+            list = list.slice(0, 2);
+            try { Lampa.Storage.set('lmx_sync_bak', list); }
+            catch (e) { try { Lampa.Storage.set('lmx_sync_bak', [entry]); } catch (e2) {} }
+        } catch (e3) {}
+    }
+    function restoreBackup(ix) {
+        var list = sget('lmx_sync_bak', []);
+        if (!Array.isArray(list) || !list[ix]) { noty('Копії немає'); return; }
+        var b = list[ix], st = getState(), snap = {}, tsnap = {}, tu = {}, h;
+        applying = true;
+        sset('favorite', b.fav); sset(tlFile(), b.tl);
+        try { Lampa.Favorite.read(); } catch (e) {}
+        try { Lampa.Timeline.read(); } catch (e) {}
+        setTimeout(function () { applying = false; }, 1500);
+        // стан підганяємо під відновлене, щоб відновлення не пішло на сервер як «масове видалення»
+        var fk = favKeys(favData()), k;
+        for (k in fk) snap[k] = 1;
+        for (h in b.tl) if (b.tl[h] && typeof b.tl[h] === 'object') { tsnap[h] = [b.tl[h].time, b.tl[h].percent, b.tl[h].duration].join('|'); if (b.tl[h].updated) tu[h] = b.tl[h].updated; }
+        st.snap = snap; st.tsnap = tsnap; st.tu = tu;
+        sset('lmx_sync_state', st);
+        noty('Відновлено копію від ' + new Date(b.t).toLocaleString());
+    }
+    function fmtAgo(t) {
+        if (!t) return '—';
+        var m = Math.round((Date.now() - t) / 60000);
+        return m < 1 ? 'щойно' : m < 60 ? m + ' хв тому' : m < 1440 ? Math.round(m / 60) + ' год тому' : Math.round(m / 1440) + ' дн тому';
+    }
+    function showStatus() {
+        var o = sget('lmx_sync_stat', {}) || {}, bak = sget('lmx_sync_bak', []);
+        var rows = [
+            ['Версія', VERSION],
+            ['Код', code() ? 'є (' + pretty(code()).slice(0, 4) + '-••••-••••-••••)' : 'не створено'],
+            ['Сервер', server().replace(/^https?:\/\//, '')],
+            ['Остання синхронізація', o.okAt ? fmtAgo(o.okAt) + (typeof o.sent === 'number' ? ' (надіслано ' + o.sent + ', отримано ' + o.got + ')' : '') : '—'],
+            ['Остання помилка', o.errAt && (o.errAt > (o.okAt || 0)) ? fmtAgo(o.errAt) + ': ' + o.err : 'немає'],
+            ['Резервні копії', Array.isArray(bak) && bak.length ? bak.map(function (b) { return new Date(b.t).toLocaleString(); }).join('; ') : 'немає']
+        ];
+        var html = '<div style="padding:.5em 0">' + rows.map(function (r) {
+            return '<div style="display:flex;gap:1em;margin:.45em 0;font-size:1.15em"><div style="width:11em;opacity:.6;flex:none">' + r[0] + '</div><div style="word-break:break-word">' + String(r[1]).replace(/</g, '&lt;') + '</div></div>';
+        }).join('') + '</div>';
+        try {
+            var enabled = Lampa.Controller.enabled().name;
+            Lampa.Modal.open({ title: 'LMX Sync — стан', html: $(html), size: 'medium', onBack: function () { Lampa.Modal.close(); Lampa.Controller.toggle(enabled); } });
+        } catch (e) { noty(code() ? (status.text || 'Код є, синхронізація ще не запускалась') : 'Код не створено'); }
+    }
 
     // Годинник пристрою (особливо ТВ) може йти неправильно: раз на 6 годин питаємо в сервера час і виправляємо мітки змін
     function sync(manual, cb) {
@@ -408,7 +477,7 @@
                 for (k in col.cur) snapNext[k] = 1;
                 if (col.susp) col.susp.forEach(function (sk) { snapNext[sk] = 1; });
                 applying = true;
-                var ctx = { first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {}, fixHist: !st.hfix, stamp: col.stamp, tsnap: {} }, k2;
+                var ctx = { now: now, first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {}, stamp: col.stamp, tsnap: {} }, k2;
                 for (k2 in col.curT) ctx.tsnap[k2] = col.curT[k2];
                 for (k2 in col.curS) ctx.ss[k2] = col.curS[k2];
                 // що ми щойно надіслали — вважаємо актуальним у цей момент
@@ -416,16 +485,17 @@
                     if (o.k.indexOf('s:') === 0) ctx.sts[o.k.slice(2)] = o.t;
                     else if (o.k.indexOf('f:') === 0) { if (o.d) delete ctx.ft[o.k]; else ctx.ft[o.k] = o.t; }
                 });
+                if (rows.length) makeBackup(!!col.first);
                 var res = applyRows(rows, snapNext, ctx);
-                st.ss = ctx.ss; st.sts = ctx.sts; st.ft = ctx.ft; st.hfront = res.fav.history.length ? res.fav.history[0] : null; st.hfix = 1;
+                st.ss = ctx.ss; st.sts = ctx.sts; st.ft = ctx.ft; st.hfront = res.fav.history.length ? res.fav.history[0] : null;
                 if (res.favChanged) { sset('favorite', res.fav); try { Lampa.Favorite.read(); } catch (e) {} }
                 if (res.tlChanged) { sset(tlFile(), res.tl); try { Lampa.Timeline.read(); } catch (e) {} }
                 setTimeout(function () { applying = false; }, 1500);
+                if (ctx.repush) schedule(3000); // локальний прогрес переміг серверний — відправимо його окремим проходом
                 if (res.settingsChanged.length) settingsApplied(res.settingsChanged.length, manual || col.first);
                 st.snap = snapNext;
                 // запас у 10 с: запис, що сервер зберіг із трохи старішою міткою st (паралельні запити), не загубиться; повторне застосування безпечне
                 st.since = Math.max(st.since, maxSt - 10000);
-                st.tpush = col.tmark - 1;
                 st.tsnap = ctx.tsnap;
                 var tu = {}, th;
                 for (th in res.tl) if (res.tl[th] && typeof res.tl[th] === 'object' && res.tl[th].updated) tu[th] = res.tl[th].updated;
@@ -435,7 +505,7 @@
                 st.chk = 1;
                 sset('lmx_sync_state', st);
                 var got = rows.length;
-                setStatus('Синхронізовано ' + new Date().toLocaleTimeString().slice(0, 5) + ' (надіслано: ' + pushed + ', отримано: ' + got + ')', true);
+                setStatus('Синхронізовано ' + new Date().toLocaleTimeString().slice(0, 5) + ' (надіслано: ' + pushed + ', отримано: ' + got + ')', true, { sent: pushed, got: got });
                 if (manual) noty('Синхронізовано. Надіслано: ' + pushed + ', отримано: ' + got);
             });
             fin();
@@ -480,6 +550,7 @@
                     st.ft['f:history:' + x.id] = x.t; st.snap['f:history:' + x.id] = 1;
                 });
                 fav.history.forEach(function (id) { if (!inSrv[id]) out.push(id); });
+                makeBackup(false);
                 fav.history = out;
                 applying = true;
                 sset('favorite', fav); try { Lampa.Favorite.read(); } catch (e) {}
@@ -529,9 +600,7 @@
         function btn(name, title, desc, fn) {
             S.addParam({ component: 'lmx_sync', param: { name: 'lmx_sync_' + name, type: 'button' }, field: { name: title, description: desc }, onChange: function () { safe(fn); } });
         }
-        btn('status', 'Стан', 'Натисніть, щоб побачити поточний стан', function () {
-            noty(code() ? (status.text || 'Код є, синхронізація ще не запускалась') : 'Код не створено');
-        });
+        btn('status', 'Стан', 'Версія, остання синхронізація, помилки, резервні копії', showStatus);
         btn('create', 'Створити код', 'Новий особистий код для вашого облікового запису', function () {
             if (code()) { noty('Код уже є. Щоб створити новий — спочатку «Вийти (забути код)»'); return; }
             saveCode(genCode());
@@ -553,26 +622,23 @@
             if (!code()) { noty('Код не створено'); return; }
             showCode();
         });
-        btn('fixhist', 'Виправити порядок історії', 'Впорядкувати історію за реальним часом перегляду (за таймкодами)', function () {
-            var fav = favData(), tl = tlData(), ch;
-            applying = true;
-            ch = sortHistory(fav, tl, getState().ft || {});
-            if (ch) { sset('favorite', fav); try { Lampa.Favorite.read(); } catch (e) {} }
-            setTimeout(function () { applying = false; }, 1500);
-            noty(ch ? 'Історію впорядковано за часом перегляду' : 'Порядок історії вже правильний');
-        });
-        btn('ref', 'Зробити цей пристрій еталоном', 'Порядок списків і історії з цього пристрою стане однаковим на всіх інших (новіші перегляди не зачіпаються)', function () {
-            if (!code()) { noty('Код не створено'); return; }
-            var st = getState(); st.refNext = 1; sset('lmx_sync_state', st);
-            noty('Надсилаю порядок з цього пристрою…');
-            sync(true);
+        btn('restore', 'Відновити з копії', 'Повернути закладки й таймкоди, які були до останніх змін від синхронізації', function () {
+            var list = sget('lmx_sync_bak', []);
+            if (!Array.isArray(list) || !list.length) { noty('Резервних копій ще немає'); return; }
+            var enabled = Lampa.Controller.enabled().name;
+            Lampa.Select.show({
+                title: 'Відновити з копії',
+                items: list.map(function (b, i) { return { title: new Date(b.t).toLocaleString(), subtitle: 'історія: ' + ((b.fav && b.fav.history) || []).length + ', таймкодів: ' + Object.keys(b.tl || {}).length, ix: i }; }),
+                onSelect: function (a) { Lampa.Controller.toggle(enabled); restoreBackup(a.ix); },
+                onBack: function () { Lampa.Controller.toggle(enabled); }
+            });
         });
         btn('mirror', 'Історія як на сервері', 'Виставити порядок історії точно за сервером (однаково на всіх пристроях)', function () { mirrorHistory(); });
         btn('now', 'Синхронізувати зараз', 'Надіслати зміни й отримати чужі', function () { sync(true); });
         btn('reset', 'Вийти (забути код)', 'Цей пристрій перестане синхронізуватись. Дані на сервері та на пристрої лишаються', function () {
             sset('lmx_sync_code', '');
             sset('lmx_sync_state', '');
-            setStatus('', true);
+            status.text = ''; status.ok = true; sset('lmx_sync_stat', '');
             noty('Код забуто. Синхронізацію вимкнено');
         });
         S.addParam({
@@ -602,17 +668,17 @@
         });
         safe(function () {
             document.addEventListener('visibilitychange', function () {
-                if (!document.hidden && code() && Date.now() - (getState().last || 0) > 120000) schedule(2500);
+                if (!document.hidden && code() && Date.now() - (getState().last || 0) > 30000) schedule(1500);
             });
         });
         // раз на 20 хвилин, поки застосунок відкритий і видимий — щоб зміни з інших пристроїв підтягувались у фоні (1 легкий запит)
         safe(function () { setInterval(function () { if (!document.hidden && code() && Date.now() - (getState().last || 0) > 15 * 60000) schedule(1000); }, 5 * 60000); });
         // перша синхронізація після запуску: Lampa вже завантажила закладки й таймкоди
-        schedule(6000);
+        schedule(3000);
     }
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 
     // для тестів
-    window.LMX_SYNC = { mirror: mirrorHistory, sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
+    window.LMX_SYNC = { restore: restoreBackup, mirror: mirrorHistory, sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
 })();

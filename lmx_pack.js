@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.255 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.256 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -826,12 +826,6 @@
             return out;
           } }
     };
-    // Студії аніме: id компаній беремо з TMDB пошуком за назвою (один раз, далі зі сховища)
-    var ANIME_STUDIOS = [
-        ['Studio Ghibli', 'Studio Ghibli', 'movie'], ['Toei Animation', 'Toei Animation', 'tv'], ['MAPPA', 'MAPPA', 'tv'],
-        ['Madhouse', 'Madhouse', 'tv'], ['Bones', 'Bones', 'tv'], ['Kyoto Animation', 'Kyoto Animation', 'tv'],
-        ['ufotable', 'Ufotable', 'tv'], ['Wit Studio', 'Wit Studio', 'tv'], ['Trigger', 'Trigger', 'tv']
-    ];
     var ANIME_TAGS = [
         ['isekai', 'Ісекай'], ['reincarnation', 'Переродження'], ['vampire', 'Вампіри'],
         ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність']
@@ -3098,46 +3092,6 @@
         setTimeout(function () { reveal(r); }, 1800);
     }
 
-    // Попереднє завантаження: поки картка в фокусі, тихо тягнемо логотип і фон — сторінка відкривається швидше
-    var preSeen = {}, preSeenN = 0, preTimer = null;
-    function prefetchCard(d) {
-        if (!d || !d.id || isMobile()) return;
-        var kind = (d.name || d.first_air_date || d.number_of_seasons) ? 'tv' : 'movie';
-        var key = kind + d.id;
-        if (preSeen[key]) return;
-        preSeen[key] = 1;
-        if (++preSeenN > 800) { preSeen = {}; preSeenN = 0; }
-        try {
-            // той самий запит, що робить сторінка фільму: Lampa кешує відповідь, і сторінка відкривається майже миттєво
-            if (Lampa.Api && Lampa.Api.full) Lampa.Api.full({ id: d.id, method: kind, source: d.source || 'tmdb', card: d }, function () {}, function () {});
-        } catch (e0) {}
-        try {
-            if (d.backdrop_path) { var b = new Image(); b.src = imgUrl(d.backdrop_path, 'w1280'); }
-            if (getBool('lmx_logo', true) && !(key in logoCache)) {
-                Lampa.Api.sources.tmdb.get(kind + '/' + d.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
-                    logoCache[key] = pickLogo(j && j.logos);
-                    if (logoCache[key]) { var im = new Image(); im.src = imgUrl(logoCache[key], 'w780'); }
-                }, function () {});
-            }
-        } catch (err) {}
-    }
-    function initPrefetch() {
-        // Предзавантаження даних і картинок при фокусі на картці вимкнено (менше фонових запитів і декодування під час гортання). Щоб повернути — прибрати наступний рядок
-        return;
-        if (!window.$ || window.__lmxPre) return;
-        window.__lmxPre = true;
-        window.__lmxT0 = Date.now();
-        $(document.body).on('hover:focus', '.card', function () {
-            // слайди каруселі міняються самі що 8 с — завантажувати для кожного дані фільму на ходу не можна: це якраз і давало мікрофризи під час прокрутки
-            if (this.classList && this.classList.contains('card--lmxhero')) { clearTimeout(preTimer); return; }
-            var d = this.card_data;
-            clearTimeout(preTimer);
-            // перші секунди після запуску ТВ завантажує головну — фонову підгрузку даних фільму відкладаємо
-            if (Date.now() - (window.__lmxT0 || 0) < 10000) return;
-            preTimer = setTimeout(function () { prefetchCard(d); }, 600);
-        });
-    }
-
     // Apple TV: нерухомі точки поверх афіші; активна «перетікає» між точками
     function syncDots(card) {
         if (!card) return;
@@ -4689,7 +4643,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.255';
+    var VERSION = '10.256';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4779,7 +4733,6 @@
                     }, ms);
                 });
             });
-            safe(initPrefetch);
             safe(initDots);
             safe(initThemeBtn);
             safe(initCinema);
