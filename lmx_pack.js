@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.258 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.259 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -618,7 +618,7 @@
                         h.find('.card__title,.card__age,.card__vote').remove();
                         var v = Number(m.vote_average) || 0;
                         var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
-                        view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">&#9654;&nbsp; ' + esc(m.title || m.name) +
+                        view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">&#9654;&#xFE0E;&nbsp; ' + esc(m.title || m.name) +
                             '</div><div class="lmx-hist__m">' + (prog && prog.s ? '<span>С' + prog.s + ' Е' + prog.e + '</span>' : '') +
                             (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
                             (year ? '<span>' + year + '</span>' : '') +
@@ -1356,8 +1356,8 @@
             '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
             (getStr('lmx_theme', 'default') === 'prem' && GENRES[(m.genre_ids || [])[0]] ? '<span>' + GENRES[(m.genre_ids || [])[0]] + '</span>' : '') +
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-            (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
-                (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
+            (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
+                (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитися</span></div>' : '') + '</div>');
         // «+» у темі «Скло»: додає/прибирає з «Обраного». Фокусу не отримує (листання каруселі не чіпаємо): довге OK на картці або клік/тап по «+»
         safe(function () {
             var circ = h.find('.lmx-hero__circ');
@@ -2059,9 +2059,13 @@
     // Афіша на телефоні (усі теми): лівий відступ як у решти рядів (1.5em), слайд не виходить за правий край, справа визирає сусідній
     function heroPhoneCss() {
         var L = 'html body .items-line.lmx-hero-line ', X = ':not(#lmx-x)';
+        // кругла кнопка «+/✓» на афіші: стилі не залежать від теми (раніше без «Скла» лишалася голим символом, ще й зліва від кнопки)
+        var K = L + '.lmx-hero__acts' + X + ' ';
         var C = L + '.card--lmxhero' + X + ',' + L + '.card--lmxhero.focus' + X + ',' + L + '.card--lmxhero.hover' + X;
         var V = L + '.card--lmxhero' + X + ' .card__view,' + L + '.card--lmxhero.focus' + X + ' .card__view,' + L + '.card--lmxhero.hover' + X + ' .card__view';
-        return '@media (max-width:760px){' +
+        return K + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:2.6em;height:2.6em;margin:0 0 0 .8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500;line-height:1}' +
+            L + '.lmx-hero__acts' + X + ':has(.lmx-hero__circ){flex-direction:row !important;justify-content:flex-start !important;align-items:center}' +
+            '@media (max-width:760px){' +
             L + '.scroll__content' + X + '{padding-left:1.5em !important;padding-right:1.5em !important}' +
             C + '{width:calc(100vw - 4.5em) !important;margin-left:0 !important;margin-right:.8em !important}' +
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
@@ -4645,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.258';
+    var VERSION = '10.259';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
