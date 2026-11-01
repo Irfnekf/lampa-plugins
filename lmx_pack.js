@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.253 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.254 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4648,7 +4648,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.253';
+    var VERSION = '10.254';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4662,6 +4662,27 @@
         }
     });
     safe(patchContentRows);
+
+    // Довге натискання на кнопку в меню «Дивитись» зберігає хеш її HTML. Наш плагін додає кнопкам класи/стилі/іконки,
+    // тому після перезапуску хеш не збігався і «перша кнопка» злітала. Хешуємо лише «чисті» класи кнопки (без lmx-*, стилів і вмісту)
+    safe(function () {
+        var U = Lampa.Utils;
+        if (!U || !U.hash || U.__lmxHash) return;
+        var orig = U.hash;
+        U.__lmxHash = 1;
+        U.hash = function (str) {
+            try {
+                if (typeof str === 'string' && str.indexOf('full-start__button') >= 0 && /^\s*<(div|a|button)\b/.test(str)) {
+                    var m = /^\s*<[a-z]+[^>]*?\sclass="([^"]*)"/.exec(str);
+                    if (m) {
+                        var cl = m[1].split(/\s+/).filter(function (c) { return c && !/^(lmx-|focus$|button--priority$|hide$|selector$)/.test(c); }).sort().join(' ');
+                        return orig.call(U, 'lmxbtn:' + cl);
+                    }
+                }
+            } catch (e) {}
+            return orig.apply(U, arguments);
+        };
+    });
 
     function start() {
         safe(patchContentRows);

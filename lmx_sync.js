@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.6';
+    var VERSION = '1.7';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -410,18 +410,9 @@
         step();
     }
 
-    function reloadApp() { setTimeout(function () { try { window.location.reload(); } catch (e) { location.href = location.href; } }, 400); }
-    // Налаштування з іншого пристрою діють після перезапуску: перезапускаємо самі, якщо зараз не йде відтворення
+    // Налаштування з іншого пристрою вже записані; вони подіють при наступному запуску Lampa. Жодних перезапусків і сповіщень у фоні
     function settingsApplied(n, force) {
-        var playing = false;
-        try { playing = !!(Lampa.Player && Lampa.Player.opened && Lampa.Player.opened()); } catch (e) {}
-        if (playing) return;
-        // не частіше разу на 10 хвилин: захист від зациклення перезапусків, якщо якесь налаштування щоразу переписується
-        var lastRl = Number(sget('lmx_sync_rl', 0)) || 0;
-        if (Date.now() - lastRl < 600000) { noty('Налаштування з іншого пристрою застосовано. Перезапустіть Lampa, щоб вони подіяли'); return; }
-        sset('lmx_sync_rl', Date.now());
-        noty('Налаштування з іншого пристрою застосовано (' + n + '). Перезапуск…');
-        setTimeout(reloadApp, 1800);
+        if (force) noty('Налаштування оновлено (' + n + '). Подіють при наступному запуску Lampa');
     }
     function schedule(ms) {
         if (!code()) return;
