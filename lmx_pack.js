@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.254 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.255 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3929,9 +3929,50 @@
         });
     }
 
+    // Закріплена довгим натисканням кнопка: Lampa зберігає лише хеш HTML кнопки, який легко «ламається». Тримаємо власну копію
+    // (за класами кнопки) і при відкритті сторінки, якщо закріплення зникло, відновлюємо його в Lampa
+    var PIN_T0 = Date.now(), pinWatched = false;
+    function pinKey(el) {
+        var cl = String(el.className || '').split(/\s+/).filter(function (c) { return /^(view--|button--)/.test(c) && c !== 'button--priority'; });
+        return cl.length ? cl.sort().join(' ') : 't:' + norm(btnTitleOf(el));
+    }
+    function pinWatch() {
+        if (pinWatched || !Lampa.Storage || !Lampa.Storage.listener) return;
+        pinWatched = true;
+        Lampa.Storage.listener.follow('change', function (e) {
+            if (!e || e.name !== 'full_btn_priority') return;
+            if (e.value) {
+                setTimeout(function () {
+                    safe(function () {
+                        var c = document.querySelector('.full-start-new__buttons .button--priority, .full-start__buttons .button--priority');
+                        if (c) Lampa.Storage.set('lmx_btn_pin', pinKey(c));
+                    });
+                }, 300);
+            } else if (Date.now() - PIN_T0 > 10000) Lampa.Storage.set('lmx_btn_pin', '');
+        });
+    }
+    function pinRestore(r, cont) {
+        safe(function () {
+            pinWatch();
+            if (cont.find('.button--priority').length) return;
+            var pin = String(Lampa.Storage.get('lmx_btn_pin', '') || '');
+            if (!pin) return;
+            var host = r[0]; host.__lmxPinN = (host.__lmxPinN || 0) + 1;
+            if (host.__lmxPinN > 12) return;
+            var hit = null;
+            r.find('.buttons--container > .full-start__button').not('.hide').each(function () { if (!hit && pinKey(this) === pin) hit = window.$(this); });
+            if (!hit) return;
+            var h = Lampa.Utils.hash(hit.clone().removeClass('focus').prop('outerHTML'));
+            // Lampa збирає кнопки при кожному перемиканні контролера: після виправлення значення перемикаємо, щоб закріплена з'явилась одразу
+            if (String(Lampa.Storage.get('full_btn_priority', '')) !== String(h)) Lampa.Storage.set('full_btn_priority', h);
+            if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start');
+        });
+    }
+
     function btnApply(r) {
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length) return;
+        pinRestore(r, cont);
         btnVirtualize(r, cont);
         var m = bmGet(), list = btnCollect(cont, r), known = knownGet(), changed = false, map = {}, inFolder = {};
         list.forEach(function (b) {
@@ -4648,7 +4689,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.254';
+    var VERSION = '10.255';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
