@@ -15,11 +15,11 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.8';
+    var VERSION = '1.9';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
-    var CHUNK = 400;
+    var CHUNK = 100;
 
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Sync', e); } catch (x) {} } }
     function noty(t) { try { Lampa.Noty.show(t); } catch (e) {} }
@@ -399,7 +399,8 @@
                 setTimeout(function () { applying = false; }, 1500);
                 if (res.settingsChanged.length) settingsApplied(res.settingsChanged.length, manual || col.first);
                 st.snap = snapNext;
-                st.since = Math.max(st.since, maxSt);
+                // запас у 10 с: запис, що сервер зберіг із трохи старішою міткою st (паралельні запити), не загубиться; повторне застосування безпечне
+                st.since = Math.max(st.since, maxSt - 10000);
                 st.tpush = col.tmark - 1;
                 st.tsnap = ctx.tsnap;
                 var tu = {}, th;
