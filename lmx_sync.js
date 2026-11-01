@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.17';
+    var VERSION = '1.18';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -470,6 +470,31 @@
             });
         }, function (err) { noty('Не вдалося: ' + err); }, 60000);
     }
+    function askFirstSync() {
+        var enabled;
+        try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
+        function back() { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
+        try {
+            Lampa.Select.show({
+                title: 'Код збережено. Що далі?',
+                items: [
+                    { title: 'Спершу копія в Telegram, потім синхронізація', subtitle: 'Рекомендовано, якщо на цьому пристрої є важливі таймкоди', k: 'both' },
+                    { title: 'Синхронізувати без копії', k: 'sync' },
+                    { title: 'Поки не синхронізувати', subtitle: 'Синхронізація почнеться, коли натиснете «Синхронізувати зараз»', k: 'wait' }
+                ],
+                onSelect: function (a) {
+                    back();
+                    if (a.k === 'sync') setTimeout(function () { sync(true); }, 300);
+                    else if (a.k === 'both') sendTgBackup('перед підключенням пристрою', true, function (okb) {
+                        if (okb) sync(true);
+                        else noty('Копія не надіслана, синхронізацію не запущено. Виправте причину або натисніть «Синхронізувати зараз»');
+                    });
+                    else noty('Синхронізація на паузі. Копія: «Надіслати копію в Telegram»; запуск: «Синхронізувати зараз»');
+                },
+                onBack: function () { back(); noty('Синхронізація на паузі. Запуск: «Синхронізувати зараз»'); }
+            });
+        } catch (e) { noty('Синхронізація на паузі. Копія: «Надіслати копію в Telegram»; запуск: «Синхронізувати зараз»'); }
+    }
     function fmtAgo(t) {
         if (!t) return '—';
         var m = Math.round((Date.now() - t) / 60000);
@@ -498,6 +523,8 @@
     // Годинник пристрою (особливо ТВ) може йти неправильно: раз на 6 годин питаємо в сервера час і виправляємо мітки змін
     function sync(manual, cb) {
         cb = cb || function () {};
+        // «Пауза»: після введення коду синхронізація не стартує сама, поки користувач не вирішить (див. «Ввести код»)
+        if (sget('lmx_sync_hold', '')) { if (!manual) return cb(false); sset('lmx_sync_hold', ''); }
         var st0 = getState();
         if (busy || !code() || !server() || !syncActive() || (st0.skewAt && Date.now() - st0.skewAt < 6 * 3600000)) return syncCore(manual, cb);
         busy = true;
@@ -703,7 +730,9 @@
                 if (!codeOk(v)) { noty('Невірний код: потрібно 16 цифр'); return; }
                 saveCode(v);
                 sset('lmx_sync_state', '');
-                setTimeout(function () { sync(true); }, 800);
+                // Не синхронізуємо відразу: даємо вибір, щоб можна було спершу зберегти копію (на пристрої можуть бути єдині таймкоди)
+                sset('lmx_sync_hold', '1');
+                askFirstSync();
             });
         });
         btn('show', 'Показати мій код', 'Щоб ввести його на іншому пристрої', function () {
@@ -729,6 +758,7 @@
             sset('lmx_sync_code', '');
             sset('lmx_sync_state', '');
             status.text = ''; status.ok = true; sset('lmx_sync_stat', '');
+            sset('lmx_sync_hold', '');
             noty('Код забуто. Синхронізацію вимкнено');
         });
         S.addParam({
