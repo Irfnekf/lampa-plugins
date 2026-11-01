@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.234 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.235 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2648,12 +2648,17 @@
 
     // Відкладена робота над картками: невеликими порціями, щоб не гальмувати підвантаження списків
     var work = [], workTimer = null;
+    // Поки користувач гортає стрілками (і ~0,45 с після), нашу відкладену роботу з DOM не робимо: вона збігалась з анімацією руху й давала мікрофризи
+    var navT = 0;
+    document.addEventListener('keydown', function (e) { var k = e.keyCode; if (k >= 37 && k <= 40) navT = Date.now(); }, true);
+    function navBusy() { return Date.now() - navT < 450; }
     function addWork(job) {
         work.push(job);
         if (!workTimer) workTimer = setTimeout(runWork, 30);
     }
     function runWork() {
         workTimer = null;
+        if (navBusy()) { workTimer = setTimeout(runWork, 160); return; }
         var now = Date.now(), left = [], done = 0, fastDone = 0;
         for (var i = 0; i < work.length; i++) {
             var j = work[i];
@@ -2753,7 +2758,11 @@
             }
         });
         if (!io) pumpSoon();
-        if (!padT) padT = setTimeout(function () { padT = 0; padFix(); }, 500);
+        if (!padT) padT = setTimeout(function padLater() {
+            padT = 0;
+            if (navBusy()) { padT = setTimeout(padLater, 300); return; }
+            padFix();
+        }, 500);
     }
 
     var timer = null;
@@ -4510,7 +4519,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.234';
+    var VERSION = '10.235';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
