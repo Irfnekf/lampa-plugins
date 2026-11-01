@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.235 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.236 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4519,7 +4519,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.235';
+    var VERSION = '10.236';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4579,7 +4579,7 @@
 
 // ───────── NoCub (раніше окремий плагін nocub.js): ховає елементи CUB, перемикачі в Налаштування → NoCub ─────────
 /*
- * NoCub v1.9 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
+ * NoCub v1.10 — ховає елементи CUB в інтерфейсі Lampa (для особистого використання).
  * Усі пункти — окремі перемикачі в Налаштування → NoCub, за замовчуванням ВИМКНЕНІ.
  * Плагін лише ховає елементи стилем (нічого не видаляє і не блокує запитів), тож вимкнений перемикач повертає все назад.
  * Не чіпає: проксі TMDB, закладки/історію/таймкоди, каталог розширень, оновлення Lampa, рекламу у плеєрі.
@@ -4589,7 +4589,7 @@
     if (window.__nocub) return;
     window.__nocub = true;
 
-    var VERSION = '1.9';
+    var VERSION = '1.10';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('NoCub', e); } catch (x) {} } }
 
     // Перемикачі: ключ → що ховаємо
@@ -4602,6 +4602,7 @@
         { key: 'nocub_meta', name: 'Метадані та настрої', desc: 'Блоки «Метадані» (темп, екшн, насильство, страх, гумор) і «Настрої» на сторінці фільму; є не в усіх фільмів' },
         { key: 'nocub_recs', name: 'Рекомендації на сторінці фільму', desc: 'Блоки «Рекомендації» і «Схожі» внизу сторінки фільму' },
         { key: 'nocub_subscribe', name: 'Кнопка «Підписатися»', desc: 'Підписка на фільм, серіал чи актора (потрібен акаунт CUB)' },
+        { key: 'nocub_shots', name: 'Shots', desc: 'Короткі відео Shots: пункт меню, ряд на головній, кнопка на сторінці фільму, мітки й запис у плеєрі, розділ у налаштуваннях' },
         { key: 'nocub_promo', name: 'Акційні кнопки й плашки', desc: 'Сезонні акції CUB (Хелловін, Новий рік, чорна п\'ятниця, знижки, подарунки) — за ознаками в назві', def: true },
         { key: 'nocub_strict', name: 'Лише відомі кнопки шапки', desc: 'Ховає будь-яку невідому кнопку в шапці (запасний варіант для нових акцій). Кнопки інших плагінів додайте в «Залишити кнопки» нижче', def: false }
     ];
@@ -4627,6 +4628,7 @@
         nocub_premium: ['.head__action.halloween__button', '.halloween__button', 'body > .halloween', '.halloween', '.head__action[class*="halloween"]', '.head__action[class*="helloween"]', '.head [class*="premium"]', '.head__action[data-action*="premium"]', '.head__action.open--premium', '.open--premium', '.head [class*="cub-premium"]', '.menu__item[data-action="premium"]', '.settings-folder[data-component="premium"]'],
         nocub_account: ['.menu__item[data-action="account"]', '.settings-folder[data-component="account"]', '.head__action.open--profile'],
         nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe'],
+        nocub_shots: ['.shots-view-button', '.shots-player-button', '.shots-player-segments', '.shots-player-recorder', '.settings-folder[data-component="shots"]'],
         nocub_promo: PROMO.reduce(function (acc, w) { acc.push('[class^="' + w + '"]', '[class*=" ' + w + '"]'); return acc; }, [])
     };
     var HIDE = '{display:none !important}';
@@ -4648,6 +4650,8 @@
         // Лише те, що прямо згадує CUB; пункти сторонніх плагінів синхронізації не чіпаємо
         { key: 'nocub_account', sel: '.menu .menu__item', re: /(увійти|войти|login|sign in).{0,12}cub|cub.{0,12}(акаунт|аккаунт|account)/i },
         { key: 'nocub_account', sel: '.settings-folder', re: /cub.{0,12}(акаунт|аккаунт|account)|(акаунт|аккаунт|account).{0,12}cub/i },
+        { key: 'nocub_shots', sel: '.menu .menu__item', re: /^\s*shots\s*$/i },
+        { key: 'nocub_shots', sel: '.items-line', re: /^\s*shots\b/i, title: true },
         { key: 'nocub_subscribe', sel: '.full-start-new__buttons .full-start__button, .full-start__buttons .full-start__button', re: /підписат|подписат|subscribe/i },
         { key: 'nocub_reviews', sel: '.items-line', re: /^\s*(коментар|комментар|відгук|отзыв|comments|reviews)/i, title: true },
         { key: 'nocub_meta', sel: '.items-line', re: /^\s*(метадан|метаданн|metadata|настро|настроен|moods?\b)/i, title: true, onlyFull: true },
@@ -4763,8 +4767,19 @@
         });
     }
 
+    // Ряд Shots на головній Lampa сама вміє вимикати (налаштування рядів): тоді його дані навіть не вантажаться. Вимикаємо разом із нашим перемикачем і повертаємо, лише якщо вимкнули ми
+    function shotsRow() {
+        var key = 'content_rows_shots_main', cur = Lampa.Storage.get(key, 'true'), mine = Lampa.Storage.get('nocub_shots_rowoff', false);
+        if (on('nocub_shots')) {
+            if (cur === true || cur === 'true') { Lampa.Storage.set(key, false); Lampa.Storage.set('nocub_shots_rowoff', true); }
+        } else if (mine === true || mine === 'true') {
+            Lampa.Storage.set(key, true); Lampa.Storage.set('nocub_shots_rowoff', false);
+        }
+    }
     function applyBody() {
+        safe(shotsRow);
         var c = css(), st = document.getElementById('nocub-css');
+
         if (st && c !== lastCss) { st.textContent = c; lastCss = c; }
         ITEMS.forEach(function (it) { document.body.classList.toggle(it.key, on(it.key)); });
     }
