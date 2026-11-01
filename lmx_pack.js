@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.246 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.249 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1489,6 +1489,8 @@
                     var tag = tagOf[id];
                     if (!m.backdrop_path || seenIds[id]) return;
                     if (m.media_type === 'person') return;
+                    // в афішу потрапляють лише тайтли з українським описом (порожній або англійський — не показуємо)
+                    if (!/[а-яіїєґ]/i.test(String(m.overview || ''))) return;
                     if (!tag) {
                         if (!e.base) return;
                         // майбутні прем'єри — лише як «гучні» в межах вікна; решту (напр. через 50 днів) не показуємо
@@ -2387,19 +2389,19 @@
             T + '.lmx-hero__kick .lmx-hero__tag{padding:0;background:none !important;color:#e9a24a;font-size:1em;letter-spacing:.18em;border-radius:0}' +
             T + '.card--lmxhero .lmx-hero__title{display:block;font-family:' + D + ';text-transform:uppercase;font-weight:700;font-size:1em;line-height:1;letter-spacing:.01em;margin:0 0 .9em;padding:0;overflow:visible}' +
             T + '.lmx-w1{display:block;line-height:1;padding:.04em 0 .06em;word-break:break-word;overflow-wrap:anywhere}' +
-            T + '.lmx-w1.lmx-s1{font-size:6.6em}' +
-            T + '.lmx-w1.lmx-s2{font-size:5em}' +
-            T + '.lmx-w1.lmx-s3{font-size:3.8em}' +
-            T + '.lmx-w1.lmx-s4{font-size:2.9em}' +
-            T + '.lmx-w2{display:block;margin-top:.5em;font-size:1.7em;font-weight:500;line-height:1.1;letter-spacing:.34em;color:rgba(255,255,255,.88)}' +
-            T + '.card--lmxhero .lmx-hero__meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1.1em;font-size:1.1em;opacity:1;color:#d8dcea;margin:0}' +
+            T + '.lmx-w1.lmx-s1{font-size:5.5em}' +
+            T + '.lmx-w1.lmx-s2{font-size:4.3em}' +
+            T + '.lmx-w1.lmx-s3{font-size:3.3em}' +
+            T + '.lmx-w1.lmx-s4{font-size:2.6em}' +
+            T + '.lmx-w2{display:block;margin-top:.5em;font-size:1.45em;font-weight:500;line-height:1.1;letter-spacing:.34em;color:rgba(255,255,255,.88)}' +
+            T + '.card--lmxhero .lmx-hero__meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1.1em;font-size:1em;opacity:1;color:#d8dcea;margin:0}' +
             T + '.card--lmxhero .lmx-hero__v{background:none;padding:0;color:#fff !important;-webkit-text-fill-color:#fff;font-weight:700}' +
             T + '.card--lmxhero .lmx-hero__v i{-webkit-text-fill-color:#e9a24a;color:#e9a24a}' +
             T + '.card--lmxhero .lmx-hero__o{max-width:34em;font-size:1.02em;line-height:1.5;max-height:4.6em;margin-top:1em;color:#d8dcea;opacity:1}' +
             // кнопки афіші: біла прямокутна й скляна
             T + '.lmx-hero__acts{display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:.9em;margin-top:1.6em}' +
-            T + '.lmx-hero__btn{border-radius:.7em;padding:.75em 2.3em;background:#fff;color:#0a0b10;font-weight:700}' +
-            T + '.lmx-hero__about{margin:0;padding:.75em 1.7em;border-radius:.7em;background:rgba(255,255,255,.16);font-weight:600}' +
+            T + '.lmx-hero__btn{border-radius:.7em;font-size:.92em;padding:.7em 2em;background:#fff;color:#0a0b10;font-weight:700}' +
+            T + '.lmx-hero__about{margin:0;font-size:.92em;padding:.7em 1.5em;border-radius:.7em;background:rgba(255,255,255,.16);font-weight:600}' +
             T + '.lmx-hero__about i{display:none}' +
             // точки: смужки справа внизу афіші
             T + '.lmx-dots{left:auto;right:4.5em;transform:none;gap:.5em;top:auto}' +
@@ -2434,12 +2436,13 @@
             F + '.full-episode__num{font-family:' + D + ';font-weight:600}' +
             // малі каруселі в каталогах: компактний текст у межах слайда
             N + '.lmx-mini .lmx-hero__text' + X + '{top:auto !important}' +
-            N + '.lmx-mini .lmx-hero__kick' + X + '{font-size:.7em;margin-bottom:.3em}' +
-            N + '.lmx-mini .lmx-hero__title' + X + '{margin-bottom:.4em !important;font-size:1.3em !important}' +
+            N + '.lmx-mini .lmx-hero__kick' + X + '{font-size:.85em;margin-bottom:.35em}' +
+            N + '.lmx-mini .lmx-hero__title' + X + '{margin-bottom:.45em !important;font-size:1.75em !important}' +
             N + '.lmx-mini .lmx-w1,' + N + '.lmx-mini .lmx-w1.lmx-s1,' + N + '.lmx-mini .lmx-w1.lmx-s2,' + N + '.lmx-mini .lmx-w1.lmx-s3,' + N + '.lmx-mini .lmx-w1.lmx-s4' + X + '{font-size:1em;line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
             N + '.lmx-mini .lmx-w2' + X + '{font-size:.5em;margin-top:.25em;letter-spacing:.14em;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}' +
-            N + '.lmx-mini .lmx-hero__meta' + X + '{font-size:.85em !important;gap:.3em .8em}' +
+            N + '.lmx-mini .lmx-hero__meta' + X + '{font-size:1.05em !important;gap:.3em .9em}' +
             N + '.lmx-mini .lmx-hero__o' + X + '{display:none !important}' +
+            '@media (min-width:761px){' + N + '.lmx-mini .lmx-hero__acts' + X + '{display:flex !important;margin-top:.9em;gap:.7em;font-size:.95em}}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view{height:56vw !important}' +
                 T + '.card--lmxhero .lmx-hero__text{left:1.2em;top:auto;bottom:1.2em;max-width:88%}' +
@@ -4631,7 +4634,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.246';
+    var VERSION = '10.249';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4675,6 +4678,31 @@
             }).observe(document.body, { childList: true, subtree: true });
             scan();
             Lampa.Listener.follow('full', function (e) { safe(function () { onFull(e); }); });
+            // Повернення на сторінку фільму (напр. з «Онлайн»): Lampa повертає фокус на «останній» елемент, який через порядок кнопок
+            // може бути не першим на екрані. Якщо пульт ще не чіпали — ставимо фокус на першу видиму кнопку
+            Lampa.Listener.follow('activity', function (e) {
+                if (!e || e.type !== 'start' || e.component !== 'full') return;
+                var t0 = Date.now();
+                [120, 450, 1000].forEach(function (ms) {
+                    setTimeout(function () {
+                        safe(function () {
+                            if ((window.__lmxKeyT || 0) > t0) return;
+                            if (Lampa.Controller.enabled().name !== 'full_start') return;
+                            var c0 = document.querySelector('.activity--active .full-start-new__buttons, .activity--active .full-start__buttons');
+                            if (!c0) return;
+                            var best = null, bo = 1e9, i, el, o;
+                            for (i = 0; i < c0.children.length; i++) {
+                                el = c0.children[i];
+                                if (!el.classList.contains('selector') || el.classList.contains('lmx-edit') || el.offsetWidth <= 0) continue;
+                                o = parseInt(el.style.order, 10); if (isNaN(o)) o = i;
+                                if (o < bo) { bo = o; best = el; }
+                            }
+                            var cf = c0.querySelector('.focus');
+                            if (best && cf && cf !== best) Lampa.Controller.collectionFocus(best, window.$ ? window.$(c0).closest('.scroll')[0] || c0.parentNode : c0.parentNode);
+                        });
+                    }, ms);
+                });
+            });
             safe(initPrefetch);
             safe(initDots);
             safe(initThemeBtn);
