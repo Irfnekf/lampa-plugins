@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.19';
+    var VERSION = '1.20';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -159,7 +159,8 @@
         var d = favData(), cur = favKeys(d), ops = [], k, parts;
         var pos = {};
         if (o.synth || o.all || !st.ss) CATS.forEach(function (c) { d[c].forEach(function (id, i) { pos['f:' + c + ':' + id] = i; }); });
-        function synT(key) { return SYN_BASE - (pos[key] || 0) * 1000; }
+        // «Відновлення»: записи мають перебити видалення на сервері (надгробки), тому ставимо справжній час із збереженням порядку (позиція 0 — найновіше)
+        function synT(key) { return o.recent ? now - (pos[key] || 0) * 10 : SYN_BASE - (pos[key] || 0) * 1000; }
         // записи цього пристрою, яких на сервері ще не було: ставимо нижче «еталонних», зберігаючи їхній порядок — тоді на всіх пристроях він однаковий
         function legT(key) { return SYN_LEG - (pos[key] || 0) * 1000; }
         var first0 = !st.ss;
@@ -178,7 +179,7 @@
         for (k in st.snap) { snapN++; if (!cur[k]) dels.push(k); }
         var susp = null;
         // Запобіжник: раптове зникнення більшості записів схоже на збій читання списків, а не на дії користувача — видалення не шлемо
-        if (dels.length > 20 && dels.length > snapN * 0.5) susp = dels;
+        if ((dels.length > 20 && dels.length > snapN * 0.5) || (dels.length >= 5 && dels.length >= snapN * 0.8)) susp = dels;
         else dels.forEach(function (dk) { ops.push({ k: dk, v: null, t: now, d: 1 }); });
         var first = !st.ss, ss = st.ss || {}, curS = {};
         // налаштування: при першому запуску на цьому пристрої (first) шлемо їх із t=0 — вони лише заповнюють порожнє на сервері й не затирають чужі
@@ -447,7 +448,8 @@
         try { Lampa.Timeline.read(); } catch (e) {}
         setTimeout(function () { applying = false; }, 1500);
         // відновлене має поїхати й на сервер: наступна синхронізація шле всі списки з порядком цього пристрою
-        st.refNext = 1; sset('lmx_sync_state', st);
+        // старий знімок стану скидаємо: інакше записи, яких на пристрої тимчасово не було, пішли б на сервер як видалені
+        st.snap = {}; st.refNext = 1; st.refRecent = 1; sset('lmx_sync_state', st);
         schedule(1500);
         noty('Відновлено з Telegram: додано в списки ' + added + ', таймкодів ' + tlAdded);
     }
@@ -568,7 +570,7 @@
         if (!server()) { if (manual) noty('Не вказана адреса сервера'); setStatus('Немає адреси сервера', false); return cb(false); }
         if (!syncActive()) { if (manual) noty('Увімкнена синхронізація CUB — LMX Sync вимкнено'); return cb(false); }
         busy = true;
-        var st = getState(), now = Date.now() + (st0skew()), col = collect(st, now, { synth: !!st.empty, all: !!st.refNext }), ops = col.ops, chunks = [], i;
+        var st = getState(), now = Date.now() + (st0skew()), col = collect(st, now, { synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
         for (i = 0; i < ops.length; i += CHUNK) chunks.push(ops.slice(i, i + CHUNK));
         if (!chunks.length) chunks.push([]);
         var rows = [], n = 0, pushed = ops.length;
@@ -628,6 +630,7 @@
                 st.tu = tu;
                 st.last = Date.now();
                 if (st.refNext) delete st.refNext;
+                if (st.refRecent) delete st.refRecent;
                 st.chk = 1;
                 sset('lmx_sync_state', st);
                 var got = rows.length;
