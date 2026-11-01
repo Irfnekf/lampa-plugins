@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.9';
+    var VERSION = '1.10';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -152,14 +152,20 @@
 
     // ───────── Ядро: збір змін, застосування чужих ─────────
     // Повертає { ops, snapNext (стан закладок на момент збору), tmark }
-    function collect(st, now) {
+    // Штучний час «давно» для старих записів: зберігає порядок списку (позиція 0 — найновіше), але завжди старший за будь-який справжній перегляд
+    var SYN_BASE = 1500000000000;
+    function collect(st, now, o) {
+        o = o || {};
         var d = favData(), cur = favKeys(d), ops = [], k, parts;
+        var pos = {};
+        if (o.synth || o.all) CATS.forEach(function (c) { d[c].forEach(function (id, i) { pos['f:' + c + ':' + id] = i; }); });
+        function synT(key) { return SYN_BASE - (pos[key] || 0) * 1000; }
         var first0 = !st.ss;
         // Записи, що були на пристрої ДО першої синхронізації, мають t=0: вони не «молодші» за те, що вже є в акаунті, і не перебивають порядок.
         // Нове (додане після) має справжній час — за ним історія й списки впорядковуються між пристроями
-        for (k in cur) if (!st.snap[k]) {
+        for (k in cur) if (!st.snap[k] || o.all) {
             parts = k.split(':');
-            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: first0 ? 0 : now, d: 0 });
+            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: (first0 || o.all) ? ((o.synth || o.all) ? synT(k) : 0) : now, d: 0 });
         }
         // повторний перегляд: Lampa піднімає картку на початок історії — це свіжа подія, оновлюємо її час, щоб вона піднялась і на інших пристроях
         var front = d.history.length ? d.history[0] : null;
@@ -278,8 +284,8 @@
                 // Раніше будь-який чужий запис затирав локальний без поля updated — через це таймкоди «губились»
                 var rp = Number(v.percent || 0), lp = locOk ? Number(loc.percent || 0) : 0;
                 if (!locOk) doIt = true;
-                else if (r.t <= 1) doIt = locU <= 1 && rp > lp;          // «старий» запис без часу ніколи не перебиває те, що вже є
-                else if (locU <= 1) doIt = ctx.first ? rp > lp : true;   // локальний старий: при першій синхронізації вирішує прогрес
+                else if (r.t <= 1) doIt = locU <= 1 && (ctx.first ? true : rp > lp);   // старий запис без часу: після першого підключення не перебиває існуюче; при першому підключенні сервер — еталон
+                else if (locU <= 1) doIt = true;                         // локальний старий, а на сервері є справжній час — беремо серверний
                 else if (r.t > locU) doIt = true;
                 else if (r.t === locU) doIt = rp > lp;
                 else doIt = false;
@@ -344,12 +350,27 @@
     function st0skew() { var x = getState(); return Number(x.skew) || 0; }
     function syncCore(manual, cb) {
         cb = cb || function () {};
+        var s0 = getState();
+        // Перше підключення пристрою: дивимось, чи є вже дані на сервері. Якщо є — сервер еталон (наші старі записи не перебивають його порядок);
+        // якщо порожній — цей пристрій стає еталоном, і його порядок списків зберігається штучним «давнім» часом
+        if (!busy && code() && server() && syncActive() && !s0.ss && !s0.chk) {
+            busy = true;
+            return post('/api/sync', { u: s0.u, since: 0, ops: [] }, function (j) {
+                busy = false;
+                s0.chk = 1; s0.empty = !(j.rows && j.rows.length);
+                sset('lmx_sync_state', s0);
+                syncRun(manual, cb);
+            }, function (err) { busy = false; setStatus(err, false); if (manual) noty('Синхронізація: ' + err); cb(false); });
+        }
+        syncRun(manual, cb);
+    }
+    function syncRun(manual, cb) {
         if (busy) return cb(false);
         if (!code()) { if (manual) noty('Спочатку створіть або введіть код'); return cb(false); }
         if (!server()) { if (manual) noty('Не вказана адреса сервера'); setStatus('Немає адреси сервера', false); return cb(false); }
         if (!syncActive()) { if (manual) noty('Увімкнена синхронізація CUB — LMX Sync вимкнено'); return cb(false); }
         busy = true;
-        var st = getState(), now = Date.now() + (st0skew()), col = collect(st, now), ops = col.ops, chunks = [], i;
+        var st = getState(), now = Date.now() + (st0skew()), col = collect(st, now, { synth: !!st.empty, all: !!st.refNext }), ops = col.ops, chunks = [], i;
         for (i = 0; i < ops.length; i += CHUNK) chunks.push(ops.slice(i, i + CHUNK));
         if (!chunks.length) chunks.push([]);
         var rows = [], n = 0, pushed = ops.length;
@@ -407,6 +428,8 @@
                 for (th in res.tl) if (res.tl[th] && typeof res.tl[th] === 'object' && res.tl[th].updated) tu[th] = res.tl[th].updated;
                 st.tu = tu;
                 st.last = Date.now();
+                if (st.refNext) delete st.refNext;
+                st.chk = 1;
                 sset('lmx_sync_state', st);
                 var got = rows.length;
                 setStatus('Синхронізовано ' + new Date().toLocaleTimeString().slice(0, 5) + ' (надіслано: ' + pushed + ', отримано: ' + got + ')', true);
@@ -489,6 +512,12 @@
             if (ch) { sset('favorite', fav); try { Lampa.Favorite.read(); } catch (e) {} }
             setTimeout(function () { applying = false; }, 1500);
             noty(ch ? 'Історію впорядковано за часом перегляду' : 'Порядок історії вже правильний');
+        });
+        btn('ref', 'Зробити цей пристрій еталоном', 'Порядок списків і історії з цього пристрою стане однаковим на всіх інших (новіші перегляди не зачіпаються)', function () {
+            if (!code()) { noty('Код не створено'); return; }
+            var st = getState(); st.refNext = 1; sset('lmx_sync_state', st);
+            noty('Надсилаю порядок з цього пристрою…');
+            sync(true);
         });
         btn('now', 'Синхронізувати зараз', 'Надіслати зміни й отримати чужі', function () { sync(true); });
         btn('reset', 'Вийти (забути код)', 'Цей пристрій перестане синхронізуватись. Дані на сервері та на пристрої лишаються', function () {
