@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.228 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.229 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2052,6 +2052,8 @@
             'body .noty__body{padding:.8em 1.6em;text-align:left}' +
             'body .noty__text{font-size:1.1em;font-weight:600}' +
             '.card--lmxhero.lmx-far{visibility:hidden}' +
+            // поточний і сусідні слайди — окремі шари: під час перегортання їх лише зсуває відеокарта, без повторного малювання картинок
+            '.lmx-hero-line:not(.lmx-mini) .card--lmxhero:not(.lmx-far){will-change:transform}' +
             'html body .full-start__button.button--book.lmx-bk-off path{fill:transparent !important}' +
             // лайкнута кнопка: заливка кольором теми (стандартна — біла, «Кино» — фіолетовий, «Скло» — колір постера або м'який синій)
             likeCss('html body ', '#fff') +
@@ -3130,10 +3132,23 @@
         }
     }
     // Поточний баннер лишається «активним» (текст видно), навіть коли фокус пішов на меню чи кнопки шапки
+    // Коли велика картинка слайда вже завантажена й декодована, підкладку-мініатюру (другий шар фону) прибираємо: менше малювання під час руху
+    function heroFlat(card) {
+        if (card.__lmxFlat) return;
+        var u = card.getAttribute('data-lmxu');
+        if (!u || !heroReady(u)) return;
+        var v = card.querySelector('.card__view');
+        if (!v) return;
+        v.style.backgroundImage = 'url(' + u + ')';
+        card.__lmxFlat = 1;
+    }
     function setCur(el) {
         var line = el.closest('.items-line');
         if (!line) return;
         el.classList.remove('lmx-far');
+        heroFlat(el);
+        var sib = el.previousElementSibling; if (sib && sib.classList.contains('card--lmxhero')) heroFlat(sib);
+        sib = el.nextElementSibling; if (sib && sib.classList.contains('card--lmxhero')) heroFlat(sib);
         // Вікно слайдів: далекі слайди (далі за сусідів) не малюються й не тримають у пам'яті розкодовані картинки — ТВ менше навантажений під час руху афіші
         if (!line.classList.contains('lmx-mini') && !isMobile()) {
             var ci = parseInt(el.getAttribute('data-lmxi'), 10) || 0, nn = line.querySelectorAll('.card--lmxhero').length;
@@ -4548,7 +4563,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.228';
+    var VERSION = '10.229';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
