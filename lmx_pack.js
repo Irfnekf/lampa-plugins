@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.237 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.238 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3619,6 +3619,15 @@
     }
     function reassertMode(el) {
         var d = el.__lmxD || '', cl = el.classList;
+        // чужий плагін (напр. онлайн) міг перемалювати вміст кнопки й стерти нашу іконку: повертаємо
+        if (el.__lmxIcH && cl.contains('lmx-iconed')) {
+            var hasI = false, k;
+            for (k = 0; k < el.children.length; k++) if (el.children[k].classList.contains('lmx-ico')) { hasI = true; break; }
+            if (!hasI) {
+                var ni = $(el.__lmxIcH)[0];
+                if (ni) { ni.classList.add('lmx-ico'); el.insertBefore(ni, el.firstChild); }
+            }
+        }
         ['1', '2', '3', 'P'].forEach(function (x) { var on = d === x; if (cl.contains('lmx-m' + x) !== on) cl.toggle('lmx-m' + x, on); });
         var n = !!el.__lmxN;
         if (cl.contains('lmx-n') !== n) cl.toggle('lmx-n', n);
@@ -3700,11 +3709,13 @@
                     el.insertBefore(mineIco, el.firstChild);
                     el.__lmxSet = ik;
                 }
+                el.__lmxIcH = ic[2];
                 if (!el.classList.contains('lmx-iconed')) el.classList.add('lmx-iconed');
             } else {
                 if (mineIco) el.removeChild(mineIco);
                 el.classList.remove('lmx-iconed');
                 el.__lmxSet = null;
+                el.__lmxIcH = null;
             }
             // Перейменування: рідний напис не чіпаємо (його можуть читати плагіни), нове ім'я показує CSS з атрибута
             if (m.names[id]) {
@@ -4520,7 +4531,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.237';
+    var VERSION = '10.238';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
