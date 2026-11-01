@@ -65,10 +65,56 @@ export async function handleSync(body, env, nowMs) {
   return [{ ok: 1, now, rows, more }, 200];
 }
 
+
+// ───────── Telegram-бот: видає й нагадує код синхронізації ─────────
+// Потрібні змінні Worker: BOT_TOKEN (токен від BotFather), TG_SECRET (довільний секрет вебхука), необов'язково TG_MAX_USERS (за замовчуванням 100)
+function genCode() {
+  const arr = new Uint8Array(64);
+  crypto.getRandomValues(arr);
+  let out = '';
+  for (let i = 0; i < arr.length && out.length < 16; i++) if (arr[i] < 250) out += String(arr[i] % 10);
+  return out.length === 16 ? out : genCode();
+}
+const pretty = (c) => c.replace(/(\d{4})(?=\d)/g, '$1-');
+async function tgSend(env, chat, text) {
+  await fetch('https://api.telegram.org/bot' + env.BOT_TOKEN + '/sendMessage', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' })
+  });
+}
+export async function handleTg(update, env) {
+  const m = update && update.message;
+  if (!m || !m.chat || m.chat.type !== 'private' || typeof m.text !== 'string') return;
+  const id = String(m.from && m.from.id || m.chat.id);
+  const cmd = m.text.trim().split(/\s+/)[0].toLowerCase().replace(/@.*$/, '');
+  let row = await env.DB.prepare('SELECT code FROM tg WHERE id = ?').bind(id).first();
+  if (cmd === '/start' || cmd === '/code' || cmd === '/key') {
+    if (!row) {
+      const max = Number(env.TG_MAX_USERS || 100);
+      const cnt = await env.DB.prepare('SELECT COUNT(*) AS c FROM tg').first();
+      if (cnt && cnt.c >= max) { await tgSend(env, m.chat.id, 'Вибачте, зараз нові користувачі не приймаються.'); return; }
+      const code = genCode();
+      await env.DB.prepare('INSERT OR IGNORE INTO tg (id, code, created) VALUES (?, ?, ?)').bind(id, code, Date.now()).run();
+      row = await env.DB.prepare('SELECT code FROM tg WHERE id = ?').bind(id).first();
+    }
+    await tgSend(env, m.chat.id,
+      'Ваш код синхронізації LMX:\n\n<code>' + pretty(row.code) + '</code>\n\n' +
+      'Lampa → Налаштування → LMX Sync → «Ввести код» (на кожному пристрої один і той самий код). ' +
+      'Якщо забудете — напишіть мені /code, і я надішлю його знову. Нікому цей код не показуйте.');
+  } else {
+    await tgSend(env, m.chat.id, 'Команди: /code — показати ваш код синхронізації.');
+  }
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
+    if (req.method === 'POST' && url.pathname === '/tg') {
+      if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
+      try { await handleTg(await req.json(), env); } catch (e) {}
+      return json({ ok: 1 });
+    }
     if (req.method === 'GET') return json({ ok: 1, service: 'lmx-sync' });
     if (req.method !== 'POST' || url.pathname !== '/api/sync') return json({ ok: 0, error: 'not_found' }, 404);
     const len = Number(req.headers.get('content-length') || 0);

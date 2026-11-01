@@ -10,3 +10,10 @@ CREATE TABLE IF NOT EXISTS kv (
   PRIMARY KEY (u, k)
 );
 CREATE INDEX IF NOT EXISTS kv_st ON kv (u, st);
+
+-- Telegram-бот: код користувача, прив'язаний до його Telegram id (щоб бот міг нагадати код)
+CREATE TABLE IF NOT EXISTS tg (
+  id      TEXT PRIMARY KEY,
+  code    TEXT NOT NULL,
+  created INTEGER NOT NULL
+);

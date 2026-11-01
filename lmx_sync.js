@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.1';
+    var VERSION = '1.2';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -93,9 +93,10 @@
     function server() { return String(sget('lmx_sync_server', '') || DEFAULT_SERVER || '').replace(/\/+$/, ''); }
     function getState() {
         var s = sget('lmx_sync_state', null);
-        if (!s || typeof s !== 'object' || s.u !== uidOf(code())) s = { u: uidOf(code()), snap: {}, since: 0, tpush: 0, last: 0, ss: null, sts: {} };
+        if (!s || typeof s !== 'object' || s.u !== uidOf(code())) s = { u: uidOf(code()), snap: {}, since: 0, tpush: 0, last: 0, ss: null, sts: {}, ft: {} };
         if (!s.snap) s.snap = {};
         if (!s.sts) s.sts = {};
+        if (!s.ft) s.ft = {};
         return s;
     }
     function syncActive() {
@@ -153,9 +154,17 @@
     // Повертає { ops, snapNext (стан закладок на момент збору), tmark }
     function collect(st, now) {
         var d = favData(), cur = favKeys(d), ops = [], k, parts;
+        var first0 = !st.ss;
+        // Записи, що були на пристрої ДО першої синхронізації, мають t=0: вони не «молодші» за те, що вже є в акаунті, і не перебивають порядок.
+        // Нове (додане після) має справжній час — за ним історія й списки впорядковуються між пристроями
         for (k in cur) if (!st.snap[k]) {
             parts = k.split(':');
-            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: now, d: 0 });
+            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: first0 ? 0 : now, d: 0 });
+        }
+        // повторний перегляд: Lampa піднімає картку на початок історії — це свіжа подія, оновлюємо її час, щоб вона піднялась і на інших пристроях
+        var front = d.history.length ? d.history[0] : null;
+        if (!first0 && front !== null && typeof st.hfront !== 'undefined' && front !== st.hfront && st.snap['f:history:' + front]) {
+            ops.push({ k: 'f:history:' + front, v: JSON.stringify(slim(cardOf(d, front))), t: now, d: 0 });
         }
         for (k in st.snap) if (!cur[k]) ops.push({ k: k, v: null, t: now, d: 1 });
         var first = !st.ss, ss = st.ss || {}, curS = {};
@@ -172,12 +181,14 @@
             u = e.updated || 1;
             if (u > st.tpush) ops.push({ k: 't:' + h, v: JSON.stringify(tlSlim(e)), t: u, d: 0 });
         }
-        return { ops: ops, cur: cur, curS: curS, first: first, tmark: now };
+        return { ops: ops, cur: cur, curS: curS, first: first, tmark: now, front: front };
     }
     // Застосовує рядки з сервера. Повертає { favChanged, tlChanged }. snap — об'єкт стану, його теж оновлюємо
     function applyRows(rows, snap, ctx) {
         var fav = favData(), tl = tlData(), favCh = false, tlCh = false, i, r, p, cat, id, v, loc, setCh = [];
         ctx = ctx || { first: false, ss: {}, sts: {} };
+        if (!ctx.ft) ctx.ft = {};
+        var catCh = {};
         for (i = 0; i < rows.length; i++) {
             r = rows[i];
             if (!r || typeof r.k !== 'string') continue;
@@ -189,12 +200,16 @@
                     var ix = fav[cat].indexOf(id);
                     if (ix >= 0) { fav[cat].splice(ix, 1); favCh = true; }
                     delete snap[r.k];
+                    delete ctx.ft[r.k];
                     var still = CATS.some(function (c) { return fav[c].indexOf(id) >= 0; });
                     if (!still) {
                         for (var q = fav.card.length - 1; q >= 0; q--) if (fav.card[q] && fav.card[q].id == id) { fav.card.splice(q, 1); favCh = true; }
                     }
                 } else {
-                    if (fav[cat].indexOf(id) < 0) { fav[cat].unshift(id); favCh = true; }
+                    // нові записи з іншого пристрою додаємо в кінець, а порядок виставляємо за часом нижче
+                    if (fav[cat].indexOf(id) < 0) { fav[cat].push(id); favCh = true; }
+                    if (r.t > (ctx.ft[r.k] || 0)) ctx.ft[r.k] = r.t;
+                    catCh[cat] = 1;
                     snap[r.k] = 1;
                     if (!cardOf(fav, id) && r.v) {
                         try { v = JSON.parse(r.v); if (v && v.id) { fav.card.push(v); favCh = true; } } catch (e) {}
@@ -221,6 +236,13 @@
                 }
             }
         }
+        // порядок у списках: найновіше зверху (за часом додавання на будь-якому пристрої); записи з однаковим часом (зокрема старі, t=0) лишаються в своєму порядку
+        Object.keys(catCh).forEach(function (cat) {
+            var arr = fav[cat].map(function (id, i) { return { id: id, i: i, t: ctx.ft['f:' + cat + ':' + id] || 0 }; });
+            arr.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
+            var ord = arr.map(function (x) { return x.id; });
+            if (ord.join(',') !== fav[cat].join(',')) { fav[cat] = ord; favCh = true; }
+        });
         return { fav: fav, tl: tl, favChanged: favCh, tlChanged: tlCh, settingsChanged: setCh };
     }
 
@@ -289,12 +311,15 @@
                 var snapNext = {}, k;
                 for (k in col.cur) snapNext[k] = 1;
                 applying = true;
-                var ctx = { first: col.first, ss: {}, sts: st.sts || {} }, k2;
+                var ctx = { first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {} }, k2;
                 for (k2 in col.curS) ctx.ss[k2] = col.curS[k2];
                 // що ми щойно надіслали — вважаємо актуальним у цей момент
-                ops.forEach(function (o) { if (o.k.indexOf('s:') === 0) ctx.sts[o.k.slice(2)] = o.t; });
+                ops.forEach(function (o) {
+                    if (o.k.indexOf('s:') === 0) ctx.sts[o.k.slice(2)] = o.t;
+                    else if (o.k.indexOf('f:') === 0) { if (o.d) delete ctx.ft[o.k]; else ctx.ft[o.k] = o.t; }
+                });
                 var res = applyRows(rows, snapNext, ctx);
-                st.ss = ctx.ss; st.sts = ctx.sts;
+                st.ss = ctx.ss; st.sts = ctx.sts; st.ft = ctx.ft; st.hfront = res.fav.history.length ? res.fav.history[0] : null;
                 if (res.favChanged) { sset('favorite', res.fav); try { Lampa.Favorite.read(); } catch (e) {} }
                 if (res.tlChanged) { sset(tlFile(), res.tl); try { Lampa.Timeline.read(); } catch (e) {} }
                 setTimeout(function () { applying = false; }, 1500);
