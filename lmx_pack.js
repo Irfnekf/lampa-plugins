@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.227 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.228 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -55,7 +55,14 @@
         document.body.appendChild(box);
         function mark(n) { LMXP.ev = n; LMXP.evT = performance.now(); }
         document.addEventListener('keydown', function (e) { mark('key ' + e.keyCode); }, true);
-        try { if (window.$) window.$(document.body).on('hover:focus', function (e) { mark('focus ' + String((e.target && e.target.className) || '').split(' ').slice(0, 2).join('.')); }); } catch (e) {}
+        try { if (window.$) window.$(document.body).on('hover:focus', function (e) {
+            mark('focus ' + String((e.target && e.target.className) || '').split(' ').slice(0, 2).join('.'));
+            // скільки браузер витрачає на перерахунок стилів і розкладки після зміни фокуса (JS-частину вже відпрацювало)
+            setTimeout(function () {
+                var q0 = performance.now(); void document.documentElement.offsetHeight; var qd = performance.now() - q0;
+                if (qd > 8) { LMXP.log.unshift('   стилі+розкладка після фокуса: ' + Math.round(qd) + 'мс'); if (LMXP.log.length > 8) LMXP.log.pop(); }
+            }, 0);
+        }); } catch (e) {}
         try { new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { LMXP.lt = Math.round(en.duration); LMXP.ltT = performance.now(); }); }).observe({ entryTypes: ['longtask'] }); } catch (e) {}
         var t00 = performance.now();
         function tick(now) {
@@ -75,7 +82,8 @@
             LMXP.last = now;
             if (!LMXP.draw || now - LMXP.draw > 500) {
                 LMXP.draw = now;
-                box.textContent = 'FPS ' + LMXP.win.length + '  повільних кадрів (>40мс): ' + LMXP.slow + '  найгірший: ' + Math.round(LMXP.worst) + 'мс\n' + LMXP.log.join('\n');
+                if (!LMXP.nT || now - LMXP.nT > 3000) { LMXP.nT = now; LMXP.nodes = document.getElementsByTagName('*').length; }
+                box.textContent = 'вузлів DOM ' + LMXP.nodes + '  FPS ' + LMXP.win.length + '  повільних кадрів (>40мс): ' + LMXP.slow + '  найгірший: ' + Math.round(LMXP.worst) + 'мс\n' + LMXP.log.join('\n');
             }
             requestAnimationFrame(tick);
         }
@@ -4540,7 +4548,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.227';
+    var VERSION = '10.228';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
