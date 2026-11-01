@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.232 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.233 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2067,7 +2067,7 @@
             M + '.card--lmxhero' + X + ' .card__view,' + M + '.card--lmxhero.focus' + X + ' .card__view,' + M + '.card--lmxhero.hover' + X + ' .card__view{transform:none !important;box-shadow:none !important;transition:none !important;animation:none !important}' +
             M + '.card--lmxhero' + X + ' .card__view::after,' + M + '.card--lmxhero.focus' + X + ' .card__view::after,' + M + '.card--lmxhero.hover' + X + ' .card__view::after{display:none !important}' +
             // та сама м'яка анімація перемикання слайдів, що й у темах HBO та Apple
-            M + '.scroll__body{transition:transform .75s cubic-bezier(.3,0,0,1) !important}' +
+            M + '.scroll__body{transition:transform 1.05s cubic-bezier(.3,0,0,1) !important}' +
             M + '.lmx-dots' + X + '{display:none !important}';
     }
     function detailCss(scope) {
@@ -2251,11 +2251,11 @@
             T + '.lmx-hero__about i{display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border:.12em solid #fff;border-radius:50%;font-size:.8em;font-style:normal;font-weight:800}' +
             T + '.lmx-hero__btn{display:inline-block;padding:.7em 1.9em;border-radius:99em;background:#fff;color:#000;font-weight:700;font-size:1.02em}' +
             // прокрутка: афіша плавно «в'їжджає», текст проявляється трохи згодом
-            T + '.lmx-hero-line .scroll__body{transition:transform .75s cubic-bezier(.3,0,0,1) !important;will-change:transform}' +
+            T + '.lmx-hero-line .scroll__body{transition:transform 1.05s cubic-bezier(.3,0,0,1) !important;will-change:transform}' +
             // слайд на весь екран їде майже вдвічі далі, ніж слайд-стрічка в каталогах (100vw проти 58vw), тож час подовжено пропорційно:
             // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
-            T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform .75s cubic-bezier(.3,0,0,1) !important}' +
-            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .45s ease .6s}' +
+            T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.05s cubic-bezier(.3,0,0,1) !important}' +
+            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .45s ease .85s}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
@@ -2416,14 +2416,14 @@
             A + '.lmx-hero__tag.lmx-t-new{background:#f5f5f7;color:#000}' +
             A + '.card--lmxhero .lmx-hero__o{font-size:1.02em;opacity:.8;line-height:1.4;max-height:4.3em;margin-top:.7em}' +
                         // як в оригіналі: афіша плавно «в'їжджає», а текст проявляється трохи згодом
-            A + '.lmx-hero-line .scroll__body{transition:transform .75s cubic-bezier(.3,0,0,1) !important;will-change:transform}' +
+            A + '.lmx-hero-line .scroll__body{transition:transform 1.05s cubic-bezier(.3,0,0,1) !important;will-change:transform}' +
             A + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             A + '.card--lmxhero.lmx-cur .lmx-hero__text,' + A + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // як у каталогах і в темі HBO: слайд трохи вужчий за екран, справа видно край наступного; перехід довший (слайд їде на весь екран), текст проявляється трохи згодом
             '@media (min-width:761px){' + A + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
             '@media (min-width:761px){' + A + '.card--lmxhero[data-lmxi="0"]{width:calc(100vw - 8.2em) !important;margin-left:0 !important}}' +
-            A + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform .75s cubic-bezier(.3,0,0,1) !important}' +
-            A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .45s ease .6s}' +
+            A + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.05s cubic-bezier(.3,0,0,1) !important}' +
+            A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .45s ease .85s}' +
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             // сповіщення Lampa («Додано до…») у стилі теми «Скло»: напівпрозора плашка-таблетка внизу по центру
@@ -4510,7 +4510,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.232';
+    var VERSION = '10.233';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
