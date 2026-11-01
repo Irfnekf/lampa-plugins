@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.2';
+    var VERSION = '1.3';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -183,6 +183,33 @@
         }
         return { ops: ops, cur: cur, curS: curS, first: first, tmark: now, front: front };
     }
+    // Час останнього перегляду картки за таймкодами (file_view): це реальний час, однаковий на всіх пристроях. 0 — невідомо
+    function watchTime(card, tl) {
+        try {
+            if (!card || !Lampa.Utils || !Lampa.Utils.hash) return 0;
+            var name = card.original_title || card.original_name || card.title || card.name || '';
+            if (!name) return 0;
+            var best = 0, v, h, sn, ep, u;
+            function chk(hash) { v = tl[hash]; if (v && typeof v === 'object') { u = v.updated || 0; if (u > best) best = u; } }
+            var isTv = card.media_type === 'tv' || !!card.name || !!card.first_air_date || !!card.number_of_seasons;
+            if (!isTv) { chk(Lampa.Utils.hash(name)); return best; }
+            var seasons = Math.min(25, Number(card.number_of_seasons) || 12), maxEp = card.number_of_episodes && seasons === 1 ? Math.min(80, card.number_of_episodes + 3) : 60;
+            for (sn = 1; sn <= seasons; sn++) for (ep = 1; ep <= maxEp; ep++) chk(Lampa.Utils.hash([sn, sn > 10 ? ':' : '', ep, name].join('')));
+            return best;
+        } catch (e) { return 0; }
+    }
+    // Впорядкування історії: найновіше за переглядом зверху; без даних — лишається як є
+    function sortHistory(fav, tl, ft) {
+        var arr = fav.history.map(function (id, i) {
+            var t = ft['f:history:' + id] || 0, w = watchTime(cardOf(fav, id), tl);
+            return { id: id, i: i, t: Math.max(t, w) };
+        });
+        arr.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
+        var ord = arr.map(function (x) { return x.id; });
+        if (ord.join(',') === fav.history.join(',')) return false;
+        fav.history = ord;
+        return true;
+    }
     // Застосовує рядки з сервера. Повертає { favChanged, tlChanged }. snap — об'єкт стану, його теж оновлюємо
     function applyRows(rows, snap, ctx) {
         var fav = favData(), tl = tlData(), favCh = false, tlCh = false, i, r, p, cat, id, v, loc, setCh = [];
@@ -237,7 +264,9 @@
             }
         }
         // порядок у списках: найновіше зверху (за часом додавання на будь-якому пристрої); записи з однаковим часом (зокрема старі, t=0) лишаються в своєму порядку
+        if (ctx.fixHist) catCh.history = 1;
         Object.keys(catCh).forEach(function (cat) {
+            if (cat === 'history') { if (sortHistory(fav, tl, ctx.ft)) favCh = true; return; }
             var arr = fav[cat].map(function (id, i) { return { id: id, i: i, t: ctx.ft['f:' + cat + ':' + id] || 0 }; });
             arr.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
             var ord = arr.map(function (x) { return x.id; });
@@ -311,7 +340,7 @@
                 var snapNext = {}, k;
                 for (k in col.cur) snapNext[k] = 1;
                 applying = true;
-                var ctx = { first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {} }, k2;
+                var ctx = { first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {}, fixHist: !st.hfix }, k2;
                 for (k2 in col.curS) ctx.ss[k2] = col.curS[k2];
                 // що ми щойно надіслали — вважаємо актуальним у цей момент
                 ops.forEach(function (o) {
@@ -319,7 +348,7 @@
                     else if (o.k.indexOf('f:') === 0) { if (o.d) delete ctx.ft[o.k]; else ctx.ft[o.k] = o.t; }
                 });
                 var res = applyRows(rows, snapNext, ctx);
-                st.ss = ctx.ss; st.sts = ctx.sts; st.ft = ctx.ft; st.hfront = res.fav.history.length ? res.fav.history[0] : null;
+                st.ss = ctx.ss; st.sts = ctx.sts; st.ft = ctx.ft; st.hfront = res.fav.history.length ? res.fav.history[0] : null; st.hfix = 1;
                 if (res.favChanged) { sset('favorite', res.fav); try { Lampa.Favorite.read(); } catch (e) {} }
                 if (res.tlChanged) { sset(tlFile(), res.tl); try { Lampa.Timeline.read(); } catch (e) {} }
                 setTimeout(function () { applying = false; }, 1500);
@@ -400,6 +429,14 @@
         btn('show', 'Показати мій код', 'Щоб ввести його на іншому пристрої', function () {
             if (!code()) { noty('Код не створено'); return; }
             showCode();
+        });
+        btn('fixhist', 'Виправити порядок історії', 'Впорядкувати історію за реальним часом перегляду (за таймкодами)', function () {
+            var fav = favData(), tl = tlData(), ch;
+            applying = true;
+            ch = sortHistory(fav, tl, getState().ft || {});
+            if (ch) { sset('favorite', fav); try { Lampa.Favorite.read(); } catch (e) {} }
+            setTimeout(function () { applying = false; }, 1500);
+            noty(ch ? 'Історію впорядковано за часом перегляду' : 'Порядок історії вже правильний');
         });
         btn('now', 'Синхронізувати зараз', 'Надіслати зміни й отримати чужі', function () { sync(true); });
         btn('reset', 'Вийти (забути код)', 'Цей пристрій перестане синхронізуватись. Дані на сервері та на пристрої лишаються', function () {
