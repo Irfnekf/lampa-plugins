@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.21';
+    var VERSION = '1.22';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -236,10 +236,29 @@
         fav.history = ord;
         return true;
     }
+    // Прибирає дублікати в списках: той самий id як число й рядок ("123" і 123) давав подвійні картки в закладках
+    function dedupeFav(fav) {
+        var ch = false;
+        CATS.forEach(function (c) {
+            var seen = {}, out = [];
+            fav[c].forEach(function (id) {
+                var n = /^\d+$/.test(String(id)) ? parseInt(id, 10) : id;
+                if (n !== id) ch = true;
+                if (seen[n]) { ch = true; return; }
+                seen[n] = 1; out.push(n);
+            });
+            if (out.length !== fav[c].length || ch) fav[c] = out;
+        });
+        var cs = {}, co = [];
+        fav.card.forEach(function (cd) { if (!cd || cs[cd.id]) { ch = true; return; } cs[cd.id] = 1; co.push(cd); });
+        if (co.length !== fav.card.length) fav.card = co;
+        return ch;
+    }
     // Застосовує рядки з сервера. Повертає { favChanged, tlChanged }. snap — об'єкт стану, його теж оновлюємо
     function applyRows(rows, snap, ctx) {
         var fav = favData(), tl = tlData(), favCh = false, tlCh = false, i, r, p, cat, id, v, loc, setCh = [];
         ctx = ctx || { first: false, ss: {}, sts: {} };
+        if (dedupeFav(fav)) favCh = true;
         if (!ctx.ft) ctx.ft = {};
         if (!ctx.tsnap) ctx.tsnap = {};
         var sh;

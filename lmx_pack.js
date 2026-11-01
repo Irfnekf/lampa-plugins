@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.257 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.258 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -2155,6 +2155,8 @@
             B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
+            // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
+            B + '.full-start-new__title.lmx-has-logo{display:block !important;overflow:visible !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;height:auto !important;max-height:none !important}' +
             // фон-постер зсунуто нижче шапки: обличчя у верхній частині кадру не мають ховатися під іконками
             'body.lmx-full .full-start__background{top:-1.2em !important}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .5s ease-out}' +
@@ -4643,7 +4645,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.257';
+    var VERSION = '10.258';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
