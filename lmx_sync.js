@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.7';
+    var VERSION = '1.8';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -197,8 +197,10 @@
         return { ops: ops, cur: cur, curS: curS, curT: curT, stamp: stamp, first: first, tmark: now, front: front, susp: susp };
     }
     // Час останнього перегляду картки за таймкодами (file_view): це реальний час, однаковий на всіх пристроях. 0 — невідомо
+    var wtEnd = 0;
     function watchTime(card, tl) {
         try {
+            if (wtEnd && Date.now() > wtEnd) return 0; // бюджет часу: на слабких ТВ не гальмуємо інтерфейс
             if (!card || !Lampa.Utils || !Lampa.Utils.hash) return 0;
             var name = card.original_title || card.original_name || card.title || card.name || '';
             if (!name) return 0;
@@ -213,8 +215,9 @@
     }
     // Впорядкування історії: найновіше за переглядом зверху; без даних — лишається як є
     function sortHistory(fav, tl, ft) {
+        wtEnd = Date.now() + 500;
         var arr = fav.history.map(function (id, i) {
-            var t = ft['f:history:' + id] || 0, w = watchTime(cardOf(fav, id), tl);
+            var t = ft['f:history:' + id] || 0, w = watchTime(cardOf(fav, id), tl); // w рахується лише в межах бюджету
             return { id: id, i: i, t: Math.max(t, w) };
         });
         arr.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
@@ -273,9 +276,12 @@
                 var locOk = loc && typeof loc === 'object', locU = locOk ? (loc.updated || 0) : -1, doIt;
                 // Правило: нема локального — беремо; чужий новіший — беремо; обидва «без часу» (t≤1) або однаковий час — перемагає той, хто досяг більшого прогресу.
                 // Раніше будь-який чужий запис затирав локальний без поля updated — через це таймкоди «губились»
+                var rp = Number(v.percent || 0), lp = locOk ? Number(loc.percent || 0) : 0;
                 if (!locOk) doIt = true;
+                else if (r.t <= 1) doIt = locU <= 1 && rp > lp;          // «старий» запис без часу ніколи не перебиває те, що вже є
+                else if (locU <= 1) doIt = ctx.first ? rp > lp : true;   // локальний старий: при першій синхронізації вирішує прогрес
                 else if (r.t > locU) doIt = true;
-                else if ((r.t <= 1 && locU <= 1) || r.t === locU) doIt = Number(v.percent || 0) > Number(loc.percent || 0);
+                else if (r.t === locU) doIt = rp > lp;
                 else doIt = false;
                 if (doIt) {
                     var n = {};
@@ -319,7 +325,7 @@
         } catch (e) { done = true; clearTimeout(t); fail('Помилка запиту'); }
     }
 
-    var busy = false, applying = false, timer = 0;
+    var busy = false, applying = false, timer = 0, retryN = 0;
     var status = { text: '', ok: true };
     function setStatus(t, ok) { status.text = t; status.ok = ok !== false; }
 
@@ -417,7 +423,14 @@
     function schedule(ms) {
         if (!code()) return;
         clearTimeout(timer);
-        timer = setTimeout(function () { safe(function () { sync(false); }); }, ms);
+        timer = setTimeout(function () {
+            safe(function () {
+                var pl = false;
+                try { pl = !!(Lampa.Player && Lampa.Player.opened && Lampa.Player.opened()); } catch (e) {}
+                if (pl) return schedule(60000); // під час перегляду не чіпаємо дані
+                sync(false, function (ok) { if (!ok && !busy && status.ok === false) { retryN++; if (retryN <= 3) schedule(120000 * retryN); } else if (ok) retryN = 0; });
+            });
+        }, ms);
     }
 
     // ───────── Налаштування ─────────
@@ -513,6 +526,8 @@
                 if (!document.hidden && code() && Date.now() - (getState().last || 0) > 120000) schedule(2500);
             });
         });
+        // раз на 20 хвилин, поки застосунок відкритий і видимий — щоб зміни з інших пристроїв підтягувались у фоні (1 легкий запит)
+        safe(function () { setInterval(function () { if (!document.hidden && code() && Date.now() - (getState().last || 0) > 15 * 60000) schedule(1000); }, 5 * 60000); });
         // перша синхронізація після запуску: Lampa вже завантажила закладки й таймкоди
         schedule(6000);
     }
