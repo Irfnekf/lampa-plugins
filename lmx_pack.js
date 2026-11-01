@@ -1,10 +1,10 @@
 /*
- * LMX Pack v10.244 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.246 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
- *  4) Теми: Стандартна, Кіно (hbo), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
+ *  4) Теми: Стандартна, Кіно (prem), Скло (apple); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
  *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
  *  6) NoCub (в кінці файлу): ховає елементи CUB, перемикачі в Налаштування → NoCub
  *  Усе налаштовується: Lampa → Налаштування → LMX Pack
@@ -24,7 +24,10 @@
         return v === true || v === 'true';
     }
     function getStr(name, def) {
-        return String(Lampa.Storage.get(name, def));
+        var v = String(Lampa.Storage.get(name, def));
+        // стару тему «Кіно» (hbo) прибрано: її місце посіла колишня «Прем’єра» (prem)
+        if (name === 'lmx_theme' && v === 'hbo') { v = 'prem'; try { Lampa.Storage.set('lmx_theme', 'prem'); } catch (e) {} }
+        return v;
     }
     function readJson(key) {
         var v = Lampa.Storage.get(key, '[]');
@@ -500,8 +503,8 @@
 
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
-        H.select('lmx_theme', { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло', prem: 'Прем’єра' }, 'default', 'Тема',
-            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Прем’єра — як у стрімінгових сервісах: афіша з великою назвою, темні плитки каталогів, біла рамка у фокусі; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+        H.select('lmx_theme', { 'default': 'Стандартна', prem: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
+            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — як у стрімінгових сервісах: афіша з великою назвою, темні плитки каталогів, біла рамка у фокусі; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
 
@@ -1267,7 +1270,7 @@
     // «білборд»-теми (Apple TV та HBO): афіша на весь екран, точки й автопрокрутка
     // розмір картинки афіші скрізь 1280 px: на 4K-телевізорі менші розміри виглядають розмитими
     var HERO_IMG = 'w1280';
-    function themeBase() { return getStr('lmx_theme', 'default'); }
+    function themeBase() { var t = getStr('lmx_theme', 'default'); return t === 'hbo' ? 'prem' : t; }
     // «Прем’єра»: назва афіші як вордмарк — головне слово дуже велике, після двокрапки/тире менший рядок з розрядкою
     function heroTitle(t) {
         t = String(t || '');
@@ -2203,7 +2206,6 @@
     // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
     function themeCss() {
         var b = themeBase();
-        if (b === 'hbo') return boardCss('body.lmx-hbo ', 'body.lmx-hbo.lmx-full ');
         if (b === 'prem') return boardCss('body.lmx-prem ', 'body.lmx-prem.lmx-full ');
         return '';
     }
@@ -2372,15 +2374,15 @@
         var T = 'body.lmx-prem ';
         var F = 'body.lmx-prem.lmx-full ';
         var D = '"Oswald","Inter","Helvetica Neue",Arial,sans-serif';
-        var BG = '#0a0b10';
+        var BG = '#0a0b10', N = 'html body.lmx-prem .items-line', X = ':not(#lmx-x)';
         return '' +
             'html{background:' + BG + ' !important}' +
             T + '{background:' + BG + ' !important}' +
             // афіша: нижче й ближче до верху, щоб під нею було видно каталоги
             T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view,' + T + '.card--lmxhero.hover .card__view{height:66vh !important;background-position:center 18% !important}' +
             T + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(0deg,' + BG + ' 0%,rgba(10,11,16,.7) 14%,rgba(10,11,16,0) 42%),linear-gradient(90deg,' + BG + ' 0%,rgba(10,11,16,.9) 24%,rgba(10,11,16,.45) 46%,rgba(10,11,16,0) 68%)}' +
-            // текст ПРИВ’ЯЗАНИЙ ДО ВЕРХУ і йде в потоці: довга назва штовхає вниз мета й кнопки, а не налізає на них
-            T + '.card--lmxhero .lmx-hero__text{left:5em;right:auto;top:11vh;bottom:auto;max-width:54%;display:block}' +
+            // текст притиснуто до НИЗУ афіші (кнопки завжди на одній висоті) і йде в потоці: довга назва росте вгору, а не налізає на мету й кнопки
+            T + '.card--lmxhero .lmx-hero__text{left:5em;right:auto;top:auto;bottom:5.5em;max-width:54%;display:block}' +
             T + '.lmx-hero__kick{font-size:.95em;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#e9a24a;margin-bottom:.6em}' +
             T + '.lmx-hero__kick .lmx-hero__tag{padding:0;background:none !important;color:#e9a24a;font-size:1em;letter-spacing:.18em;border-radius:0}' +
             T + '.card--lmxhero .lmx-hero__title{display:block;font-family:' + D + ';text-transform:uppercase;font-weight:700;font-size:1em;line-height:1;letter-spacing:.01em;margin:0 0 .9em;padding:0;overflow:visible}' +
@@ -2419,6 +2421,8 @@
             F + '.full-start__background{filter:brightness(.85)}' +
             F + '.full-start-new__right{max-width:50%}' +
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:1;font-size:4.2em;margin-bottom:.25em}' +
+            // є логотип — текстової назви немає (інакше вона дублюється); немає — лишається назва
+            F + '.full-start-new__title.lmx-has-logo{font-size:0 !important;line-height:0 !important;margin-bottom:0}' +
             F + '.lmx-logo{max-width:34vw;max-height:22vh}' +
             F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{font-weight:700}' +
             F + '.full-start-new__details,' + F + '.lmx-info .lmx-ip{color:#d8dcea}' +
@@ -2428,6 +2432,14 @@
             F + '.full-episode.focus .full-episode__img{box-shadow:0 0 0 .22em #fff;transform:none}' +
             F + '.full-episode__name{font-weight:700;font-size:1.1em}' +
             F + '.full-episode__num{font-family:' + D + ';font-weight:600}' +
+            // малі каруселі в каталогах: компактний текст у межах слайда
+            N + '.lmx-mini .lmx-hero__text' + X + '{top:auto !important}' +
+            N + '.lmx-mini .lmx-hero__kick' + X + '{font-size:.7em;margin-bottom:.3em}' +
+            N + '.lmx-mini .lmx-hero__title' + X + '{margin-bottom:.4em !important;font-size:1.3em !important}' +
+            N + '.lmx-mini .lmx-w1,' + N + '.lmx-mini .lmx-w1.lmx-s1,' + N + '.lmx-mini .lmx-w1.lmx-s2,' + N + '.lmx-mini .lmx-w1.lmx-s3,' + N + '.lmx-mini .lmx-w1.lmx-s4' + X + '{font-size:1em;line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+            N + '.lmx-mini .lmx-w2' + X + '{font-size:.5em;margin-top:.25em;letter-spacing:.14em;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}' +
+            N + '.lmx-mini .lmx-hero__meta' + X + '{font-size:.85em !important;gap:.3em .8em}' +
+            N + '.lmx-mini .lmx-hero__o' + X + '{display:none !important}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view{height:56vw !important}' +
                 T + '.card--lmxhero .lmx-hero__text{left:1.2em;top:auto;bottom:1.2em;max-width:88%}' +
@@ -4433,7 +4445,7 @@
     // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
     function initThemeBtn() {
         if (!window.$) return;
-        var NAMES = { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло', prem: 'Прем’єра' };
+        var NAMES = { 'default': 'Стандартна', prem: 'Кіно', apple: 'Скло' };
         function ensure() {
             var box = $('.head__actions').eq(0);
             if (!box.length || box.find('.lmx-themebtn').length) return;
@@ -4619,7 +4631,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.244';
+    var VERSION = '10.246';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
