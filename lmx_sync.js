@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.10';
+    var VERSION = '1.11';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -223,8 +223,9 @@
     function sortHistory(fav, tl, ft) {
         wtEnd = Date.now() + 500;
         var arr = fav.history.map(function (id, i) {
-            var t = ft['f:history:' + id] || 0, w = watchTime(cardOf(fav, id), tl); // w рахується лише в межах бюджету
-            return { id: id, i: i, t: Math.max(t, w) };
+            var t = ft['f:history:' + id] || 0, w = t ? 0 : watchTime(cardOf(fav, id), tl);
+            // Час із сервера (ft) — головний і однаковий на всіх пристроях. Лише для записів без нього порядок задає час за таймкодами, але нижче серверних
+            return { id: id, i: i, t: t || (w ? w / 1000 : 0) };
         });
         arr.sort(function (a, b) { return (b.t - a.t) || (a.i - b.i); });
         var ord = arr.map(function (x) { return x.id; });
