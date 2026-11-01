@@ -1,0 +1,13 @@
+name = "lmx-sync"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Створіть базу командою: npx wrangler d1 create lmx-sync  — і вставте database_id нижче
+[[d1_databases]]
+binding = "DB"
+database_name = "lmx-sync"
+database_id = "ВСТАВТЕ-ID-БАЗИ"
+
+# щоденне прибирання старих даних (необов'язково)
+[triggers]
+crons = ["17 3 * * *"]
