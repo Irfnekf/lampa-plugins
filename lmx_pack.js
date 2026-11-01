@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.238 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.239 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1919,6 +1919,7 @@
             'body.lmx-hbo .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after,body.lmx-apple .lmx-renamed:not(.lmx-m2):not(.lmx-m3):not(.lmx-primary)::after{display:none}' +
             '.lmx-iconed svg:not(.lmx-ico):not(.lmx-ico *),.lmx-iconed img,.lmx-iconed picture,.lmx-iconed [class*="logo"]{display:none !important}' +
             '.lmx-iconed > .lmx-ico{display:inline-block !important;flex:0 0 auto}' +
+            'body.lmx-ph .lmx-iconed::before{content:none !important;display:none !important;background:none !important}' +
             '.lmx-edit{opacity:.75}' +
             '.lmx-virt img{width:1.6em;height:1.6em;object-fit:contain}' +
             '.lmx-be__row{padding:.55em .7em}' +
@@ -4297,7 +4298,7 @@
                     if (i > 4) return;
                     var e = this, lab = labelsOf(e).map(function (x) { return x.tagName.toLowerCase(); }).join(',');
                     rows.push({ title: (i + 1) + '. ' + (e.__lmxId || e.className.split(' ').slice(0, 3).join(' ')),
-                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 80) });
+                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | v' + VERSION + ' | ікона: ' + (e.__lmxSet || '-') + ' | вміст: ' + $(e).children().map(function () { return this.tagName.toLowerCase() + (this.className && this.className.baseVal === undefined ? '.' + String(this.className).split(' ')[0] : (this.classList && this.classList.contains('lmx-ico') ? '.lmx-ico' : '')); }).get().join(',') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 120) });
                 });
             }
             if (!rows.length) rows.push({ title: 'Відкрийте сторінку фільму і спробуйте ще раз' });
@@ -4531,7 +4532,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.238';
+    var VERSION = '10.239';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
