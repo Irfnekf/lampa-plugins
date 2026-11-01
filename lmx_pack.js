@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.225 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.226 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -31,8 +31,55 @@
         if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = []; } }
         return Array.isArray(v) ? v : [];
     }
+    // Діагностика плавності: лише коли адресу плагіна дописано «&perf=1» (наприклад lmx_pack.js?v=226&perf=1). Інакше нічого не робить і нічого не коштує
+    var PERF = null;
+    try {
+        var psrc = (document.currentScript && document.currentScript.src) || '';
+        if (/[?&]perf=1/.test(psrc)) PERF = { log: [], last: 0, ev: '', evT: 0, safeMax: 0, safeName: '', frames: 0, slow: 0, worst: 0, win: [] };
+    } catch (e) {}
     function safe(fn) {
+        if (PERF) {
+            var t0 = performance.now();
+            try { fn(); } catch (e) { console.error('LMX', e); }
+            var dt = performance.now() - t0;
+            if (dt > 6 && dt > PERF.safeMax) { PERF.safeMax = dt; PERF.safeName = String(fn).replace(/\s+/g, ' ').slice(0, 60); }
+            return;
+        }
         try { fn(); } catch (e) { console.error('LMX', e); }
+    }
+    function perfStart() {
+        if (!PERF || PERF.on) return;
+        PERF.on = true;
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed;right:8px;top:8px;z-index:2147483647;background:rgba(0,0,0,.82);color:#7CFC9A;font:14px/1.35 monospace;padding:8px 10px;border-radius:6px;pointer-events:none;max-width:46vw;white-space:pre-wrap';
+        document.body.appendChild(box);
+        function mark(n) { PERF.ev = n; PERF.evT = performance.now(); }
+        document.addEventListener('keydown', function (e) { mark('key ' + e.keyCode); }, true);
+        try { if (window.$) window.$(document.body).on('hover:focus', function (e) { mark('focus ' + String((e.target && e.target.className) || '').split(' ').slice(0, 2).join('.')); }); } catch (e) {}
+        try { new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { PERF.lt = Math.round(en.duration); PERF.ltT = performance.now(); }); }).observe({ entryTypes: ['longtask'] }); } catch (e) {}
+        var t00 = performance.now();
+        function tick(now) {
+            if (PERF.last) {
+                var d = now - PERF.last;
+                PERF.frames++; PERF.win.push(now);
+                while (PERF.win.length && now - PERF.win[0] > 1000) PERF.win.shift();
+                if (d > 40) {
+                    PERF.slow++; if (d > PERF.worst) PERF.worst = d;
+                    var since = Math.max(0, Math.round(now - PERF.evT));
+                    PERF.log.unshift(Math.round((now - t00) / 1000) + 'с ' + Math.round(d) + 'мс | ' + (since < 1500 ? PERF.ev + ' −' + since + 'мс' : 'без події') +
+                        (PERF.ltT && now - PERF.ltT < 400 ? ' | longtask ' + PERF.lt + 'мс' : '') + (PERF.safeMax ? ' | ' + Math.round(PERF.safeMax) + 'мс ' + PERF.safeName : ''));
+                    PERF.safeMax = 0; PERF.safeName = '';
+                    if (PERF.log.length > 8) PERF.log.pop();
+                }
+            }
+            PERF.last = now;
+            if (!PERF.draw || now - PERF.draw > 500) {
+                PERF.draw = now;
+                box.textContent = 'FPS ' + PERF.win.length + '  повільних кадрів (>40мс): ' + PERF.slow + '  найгірший: ' + Math.round(PERF.worst) + 'мс\n' + PERF.log.join('\n');
+            }
+            requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
     }
 
     var RGB = { green: '46,158,91', orange: '224,123,32', blue: '48,112,220', red: '192,57,43', purple: '130,80,200', gray: '110,110,120' };
@@ -4493,7 +4540,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.225';
+    var VERSION = '10.226';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4509,6 +4556,7 @@
     safe(patchContentRows);
 
     function start() {
+        safe(perfStart);
         safe(patchContentRows);
         safe(patchBackground);
         safe(syncCi);
