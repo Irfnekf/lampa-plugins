@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.12';
+    var VERSION = '1.13';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -447,6 +447,51 @@
     function settingsApplied(n, force) {
         if (force) noty('Налаштування оновлено (' + n + '). Подіють при наступному запуску Lampa');
     }
+    // Виставляє історію ТОЧНО за сервером (час → найновіше зверху; однаковий час — за id). Записи, яких на сервері немає, лишаються в кінці
+    function mirrorHistory(cb) {
+        cb = cb || function () {};
+        if (!code()) { noty('Код не створено'); return cb(false); }
+        if (busy) { noty('Зачекайте: триває синхронізація'); return cb(false); }
+        busy = true;
+        var st = getState(), rows = [], maxSt = 0;
+        function fail(e) { busy = false; noty('Помилка: ' + e); cb(false); }
+        function page(since) {
+            post('/api/sync', { u: st.u, since: since, ops: [] }, function (j) {
+                var rs = j.rows || [], i;
+                rows = rows.concat(rs);
+                for (i = 0; i < rs.length; i++) if (rs[i].st > maxSt) maxSt = rs[i].st;
+                if (j.more) page(maxSt); else done();
+            }, fail);
+        }
+        function done() {
+            safe(function () {
+                var fav = favData(), srv = [], gone = {}, inSrv = {}, out = [], i;
+                rows.forEach(function (r) {
+                    var p = r.k.split(':');
+                    if (p[0] !== 'f' || p[1] !== 'history') return;
+                    var id = /^\d+$/.test(p[2]) ? parseInt(p[2], 10) : p[2];
+                    if (r.d) gone[id] = 1; else { delete gone[id]; srv.push({ id: id, t: r.t, v: r.v }); }
+                });
+                srv = srv.filter(function (x) { return !gone[x.id]; });
+                srv.sort(function (a, b) { return (b.t - a.t) || (String(a.id) < String(b.id) ? -1 : 1); });
+                srv.forEach(function (x) {
+                    inSrv[x.id] = 1; out.push(x.id);
+                    if (!cardOf(fav, x.id) && x.v) { try { var c = JSON.parse(x.v); if (c && c.id) fav.card.push(c); } catch (e) {} }
+                    st.ft['f:history:' + x.id] = x.t; st.snap['f:history:' + x.id] = 1;
+                });
+                fav.history.forEach(function (id) { if (!inSrv[id]) out.push(id); });
+                fav.history = out;
+                applying = true;
+                sset('favorite', fav); try { Lampa.Favorite.read(); } catch (e) {}
+                setTimeout(function () { applying = false; }, 1500);
+                sset('lmx_sync_state', st);
+                var names = out.slice(0, 3).map(function (id) { var c = cardOf(fav, id); return c ? (c.title || c.name || id) : id; });
+                noty('Історію виставлено за сервером (' + srv.length + '). Зверху: ' + names.join(' · '));
+            });
+            busy = false; cb(true);
+        }
+        page(0);
+    }
     function schedule(ms) {
         if (!code()) return;
         clearTimeout(timer);
@@ -522,6 +567,7 @@
             noty('Надсилаю порядок з цього пристрою…');
             sync(true);
         });
+        btn('mirror', 'Історія як на сервері', 'Виставити порядок історії точно за сервером (однаково на всіх пристроях)', function () { mirrorHistory(); });
         btn('now', 'Синхронізувати зараз', 'Надіслати зміни й отримати чужі', function () { sync(true); });
         btn('reset', 'Вийти (забути код)', 'Цей пристрій перестане синхронізуватись. Дані на сервері та на пристрої лишаються', function () {
             sset('lmx_sync_code', '');
@@ -568,5 +614,5 @@
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 
     // для тестів
-    window.LMX_SYNC = { sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
+    window.LMX_SYNC = { mirror: mirrorHistory, sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
 })();
