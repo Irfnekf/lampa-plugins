@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.11';
+    var VERSION = '1.12';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -153,19 +153,21 @@
     // ───────── Ядро: збір змін, застосування чужих ─────────
     // Повертає { ops, snapNext (стан закладок на момент збору), tmark }
     // Штучний час «давно» для старих записів: зберігає порядок списку (позиція 0 — найновіше), але завжди старший за будь-який справжній перегляд
-    var SYN_BASE = 1500000000000;
+    var SYN_BASE = 1500000000000, SYN_LEG = 1400000000000;
     function collect(st, now, o) {
         o = o || {};
         var d = favData(), cur = favKeys(d), ops = [], k, parts;
         var pos = {};
-        if (o.synth || o.all) CATS.forEach(function (c) { d[c].forEach(function (id, i) { pos['f:' + c + ':' + id] = i; }); });
+        if (o.synth || o.all || !st.ss) CATS.forEach(function (c) { d[c].forEach(function (id, i) { pos['f:' + c + ':' + id] = i; }); });
         function synT(key) { return SYN_BASE - (pos[key] || 0) * 1000; }
+        // записи цього пристрою, яких на сервері ще не було: ставимо нижче «еталонних», зберігаючи їхній порядок — тоді на всіх пристроях він однаковий
+        function legT(key) { return SYN_LEG - (pos[key] || 0) * 1000; }
         var first0 = !st.ss;
         // Записи, що були на пристрої ДО першої синхронізації, мають t=0: вони не «молодші» за те, що вже є в акаунті, і не перебивають порядок.
         // Нове (додане після) має справжній час — за ним історія й списки впорядковуються між пристроями
         for (k in cur) if (!st.snap[k] || o.all) {
             parts = k.split(':');
-            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: (first0 || o.all) ? ((o.synth || o.all) ? synT(k) : 0) : now, d: 0 });
+            ops.push({ k: k, v: JSON.stringify(slim(cardOf(d, parts[2]))), t: (first0 || o.all) ? ((o.synth || o.all) ? synT(k) : legT(k)) : now, d: 0 });
         }
         // повторний перегляд: Lampa піднімає картку на початок історії — це свіжа подія, оновлюємо її час, щоб вона піднялась і на інших пристроях
         var front = d.history.length ? d.history[0] : null;
@@ -566,5 +568,5 @@
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 
     // для тестів
-    window.LMX_SYNC = { version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
+    window.LMX_SYNC = { sync: sync, version: VERSION, sha256: sha256, genCode: genCode, codeOk: codeOk, uidOf: uidOf, collect: collect, applyRows: applyRows, slim: slim, pretty: pretty, settingNames: settingNames };
 })();
