@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.240 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.241 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -500,8 +500,8 @@
 
         // ---- Вигляд ----
         H.title('lmx_t_look', 'Зовнішній вигляд');
-        H.select('lmx_theme', { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло' }, 'default', 'Тема',
-            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+        H.select('lmx_theme', { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло', prem: 'Прем’єра' }, 'default', 'Тема',
+            'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — чорна, активна картка збільшується й світиться; Прем’єра — як у стрімінгових сервісах: афіша з великою назвою, темні плитки каталогів, біла рамка у фокусі; Скло — напівпрозорі скляні панелі на темному кольоровому тлі. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
         H.select('lmx_size', SIZE_NAMES, 'm', 'Розмір написів на картках', 'Мітки, значок серій і рейтинг на постері', restyle);
 
@@ -1267,7 +1267,8 @@
     // «білборд»-теми (Apple TV та HBO): афіша на весь екран, точки й автопрокрутка
     // розмір картинки афіші скрізь 1280 px: на 4K-телевізорі менші розміри виглядають розмитими
     var HERO_IMG = 'w1280';
-    function board() { var t = getStr('lmx_theme', 'default'); return t === 'apple' || t === 'hbo'; }
+    function themeBase() { var t = getStr('lmx_theme', 'default'); return t === 'prem' ? 'hbo' : t; }
+    function board() { var t = themeBase(); return t === 'apple' || t === 'hbo'; }
     function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
     }
@@ -1334,7 +1335,7 @@
             '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
-                getStr('lmx_theme', 'default') === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
+                themeBase() === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
         // «+» у темі «Скло»: додає/прибирає з «Обраного». Фокусу не отримує (листання каруселі не чіпаємо): довге OK на картці або клік/тап по «+»
         safe(function () {
             var circ = h.find('.lmx-hero__circ');
@@ -2189,7 +2190,7 @@
     // «hbo» — повний вигляд у дусі застосунку HBO Max: постери без підписів, біле кільце у фокусі,
     // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
     function themeCss() {
-        if (getStr('lmx_theme', 'default') !== 'hbo') return '';
+        if (themeBase() !== 'hbo') return '';
         var G = 'linear-gradient(135deg,#2f3dff 0%,#8a3bff 100%)';
         var T = 'body.lmx-hbo ';
         var F = 'body.lmx-hbo.lmx-full ';
@@ -2336,6 +2337,47 @@
                 F + '.lmx-info .lmx-ip + .lmx-ip::before{content:none !important}' +
                 F + '.lmx-info{gap:.4em 1em}' +
                 F + '.full-start-new__buttons{flex-wrap:wrap}' +
+            '}';
+    }
+
+    // ===== ТЕМА «ПРЕМ’ЄРА» =====
+    // Надбудова над «Кіно» (та сама механіка каруселі й сторінки): афіша з великою назвою-вордмарком, прямокутні кнопки,
+    // темні плитки каталогів, фокус — біла рамка із легким підйомом. Працює разом з класами lmx-hbo + lmx-prem
+    function premCss() {
+        if (getStr('lmx_theme', 'default') !== 'prem') return '';
+        var T = 'body.lmx-prem ';
+        var F = 'body.lmx-hbo.lmx-prem.lmx-full ';
+        var D = '"Oswald","Inter","Helvetica Neue",Arial,sans-serif';
+        return '' +
+            T + '{background:#0a0b10 !important}' +
+            'html{background:#0a0b10 !important}' +
+            // афіша: назва як на постері — вузький капс, дуже великий
+            T + '.card--lmxhero .lmx-hero__text{left:4em;bottom:4.6em;max-width:46%}' +
+            T + '.card--lmxhero .lmx-hero__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;font-size:4.8em;line-height:.92;letter-spacing:.01em;margin-bottom:.22em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
+            T + '.lmx-hero__tag{letter-spacing:.16em;border-radius:.2em}' +
+            T + '.card--lmxhero .lmx-hero__shade{background:linear-gradient(to top,#0a0b10 0%,rgba(10,11,16,.5) 8%,rgba(10,11,16,0) 30%),linear-gradient(90deg,rgba(10,11,16,.92) 0%,rgba(10,11,16,.6) 32%,rgba(10,11,16,0) 64%)}' +
+            T + '.lmx-hero__btn{border-radius:.6em;padding:.75em 2.4em;font-weight:700;letter-spacing:.01em}' +
+            T + '.lmx-hero__about{font-weight:600;opacity:.9}' +
+            // ряди
+            T + '.items-line__title{font-size:1.45em;font-weight:600;letter-spacing:0}' +
+            T + '.card__view{border-radius:.8em}' +
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.6)}' +
+            T + '.lmx-cin{border-radius:0 0 .8em .8em}' +
+            T + '.lmx-cin__t{font-family:' + D + ';text-transform:uppercase;font-weight:600;letter-spacing:.02em;line-height:1.05}' +
+            // плитки каталогів: темні, у фокусі біла рамка
+            T + '.card--lmxstudio .card__view{background:#14161f !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:.9em !important;overflow:hidden !important}' +
+            T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.06) !important;background:#1c1f2c !important;border-color:transparent !important;box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.55) !important}' +
+            // історія
+            T + '.card--lmxhist .card__view{border-radius:.8em}' +
+            // сторінка фільму
+            F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:.95}' +
+            F + '.full-start-new__buttons > .full-start__button{border-radius:.7em;background:rgba(255,255,255,.16) !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{border-radius:.7em;padding:.7em 2.1em;background:#fff !important}' +
+            F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.38) !important;box-shadow:0 0 0 .16em #fff}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;box-shadow:0 0 0 .2em rgba(255,255,255,.55)}' +
+            F + '.full-episode__img{border-radius:.7em}' +
+            '@media (max-width:760px){' +
+                T + '.card--lmxhero .lmx-hero__title{font-size:2.1em}' +
             '}';
     }
 
@@ -2515,12 +2557,12 @@
         if (getStr('lmx_theme', 'default') === 'default' || document.getElementById('lmx-font')) return;
         var l = document.createElement('link');
         l.id = 'lmx-font'; l.rel = 'stylesheet';
-        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&subset=cyrillic&display=swap';
+        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Oswald:wght@500;600;700&subset=cyrillic&display=swap';
         document.head.appendChild(l);
     }
     function applyThemeClass() {
         safe(loadThemeFont);
-        if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', getStr('lmx_theme', 'default') === 'hbo'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); }
+        if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', themeBase() === 'hbo'); document.body.classList.toggle('lmx-prem', getStr('lmx_theme', 'default') === 'prem'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); }
     }
     function isMobile() { return (window.innerWidth || 1000) <= 760; }
     function applyFullClass() {
@@ -2541,7 +2583,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss();
+        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -4333,7 +4375,7 @@
     // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
     function initThemeBtn() {
         if (!window.$) return;
-        var NAMES = { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло' };
+        var NAMES = { 'default': 'Стандартна', hbo: 'Кіно', apple: 'Скло', prem: 'Прем’єра' };
         function ensure() {
             var box = $('.head__actions').eq(0);
             if (!box.length || box.find('.lmx-themebtn').length) return;
@@ -4519,7 +4561,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.240';
+    var VERSION = '10.241';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
