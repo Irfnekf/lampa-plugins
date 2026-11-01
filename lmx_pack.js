@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.242 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.243 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1341,6 +1341,7 @@
             (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '')) +
             (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
             '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
+            (getStr('lmx_theme', 'default') === 'prem' && GENRES[(m.genre_ids || [])[0]] ? '<span>' + GENRES[(m.genre_ids || [])[0]] + '</span>' : '') +
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
                 themeBase() === 'hbo' ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&nbsp; Дивитися</span></div>' : '') + '</div>');
@@ -2372,7 +2373,11 @@
             T + '.card--lmxhero .lmx-hero__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;line-height:.9;letter-spacing:.01em;margin-bottom:.3em;font-size:1em}' +
             T + '.lmx-w1{display:block;line-height:.88;letter-spacing:.01em;word-break:break-word}' +
             T + '.lmx-w2{display:block;margin-top:.4em;font-size:1.9em;font-weight:500;letter-spacing:.36em;color:rgba(255,255,255,.88)}' +
-            T + '.lmx-hero__tag{letter-spacing:.16em;border-radius:.2em}' +
+            // мітка над назвою — просто бурштиновий напис із розрядкою, без плашки
+            T + '.lmx-hero__tag,' + T + '.lmx-hero__tag.lmx-t-soon,' + T + '.lmx-hero__tag.lmx-t-new,' + T + '.lmx-hero__tag.lmx-t-trend{background:none !important;padding:0;color:#e9a24a;font-weight:700;letter-spacing:.18em;border-radius:0}' +
+            T + '.card--lmxhero .lmx-hero__meta{gap:1.1em;font-size:1.12em;opacity:1;color:#d8dcea;flex-wrap:wrap;margin-top:.5em}' +
+            T + '.card--lmxhero .lmx-hero__v{background:#fff;color:#0a0b10 !important;-webkit-text-fill-color:#0a0b10;padding:.15em .6em;border-radius:.35em}' +
+            T + '.card--lmxhero .lmx-hero__v i{-webkit-text-fill-color:#0a0b10}' +
             T + '.card--lmxhero .lmx-hero__shade{background:linear-gradient(to top,#0a0b10 0%,rgba(10,11,16,.5) 8%,rgba(10,11,16,0) 30%),linear-gradient(90deg,rgba(10,11,16,.92) 0%,rgba(10,11,16,.6) 32%,rgba(10,11,16,0) 64%)}' +
             // кнопки афіші в ряд: біла «Дивитися» і скляна «Про фільм»
             T + '.lmx-hero__acts{flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:1em;margin-top:1.4em}' +
@@ -2393,7 +2398,14 @@
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.06) !important;background:#1c1f2c !important;border-color:transparent !important;box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.55) !important}' +
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка фільму
-            F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:.95}' +
+            F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:.95;font-size:3.4em}' +
+            F + '.full-start-new__rate-line > *,' + F + '.full-start__rate{font-weight:700}' +
+            F + '.full-start-new__details,' + F + '.lmx-info .lmx-ip{color:#d8dcea}' +
+            F + '.full-episode{width:20em}' +
+            F + '.full-episode__img{border-radius:.7em}' +
+            F + '.full-episode.focus .full-episode__img{box-shadow:0 0 0 .22em #fff}' +
+            F + '.full-episode__name{font-weight:700;font-size:1.1em}' +
+            F + '.full-episode__num{font-family:' + D + ';font-weight:600}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero .lmx-hero__title .lmx-w1{font-size:1.6em !important}' +
                 T + '.lmx-w2{font-size:.9em}' +
@@ -4580,7 +4592,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.242';
+    var VERSION = '10.243';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
