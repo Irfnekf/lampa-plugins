@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.241 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.242 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1268,6 +1268,14 @@
     // розмір картинки афіші скрізь 1280 px: на 4K-телевізорі менші розміри виглядають розмитими
     var HERO_IMG = 'w1280';
     function themeBase() { var t = getStr('lmx_theme', 'default'); return t === 'prem' ? 'hbo' : t; }
+    // «Прем’єра»: назва афіші як вордмарк — головне слово дуже велике, після двокрапки/тире менший рядок з розрядкою
+    function heroTitle(t) {
+        t = String(t || '');
+        if (getStr('lmx_theme', 'default') !== 'prem') return esc(t);
+        var mm = t.match(/^(.{2,}?)\s*[:\u2014\u2013]\s+(.+)$/), a = mm ? mm[1] : t, b = mm ? mm[2] : '';
+        var sz = a.length <= 8 ? 8 : (a.length <= 13 ? 6.2 : (a.length <= 20 ? 4.6 : 3.6));
+        return '<span class="lmx-w1" style="font-size:' + sz + 'em">' + esc(a) + '</span>' + (b ? '<span class="lmx-w2">' + esc(b) + '</span>' : '');
+    }
     function board() { var t = themeBase(); return t === 'apple' || t === 'hbo'; }
     function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
@@ -1329,7 +1337,7 @@
         var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
         if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
         view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text"><div class="lmx-hero__title">' +
-            esc(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
+            heroTitle(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
             (m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '')) +
             (v ? '<span class="lmx-hero__v" style="color:' + ratingColor(v) + '"><i>&#9734;</i> ' + v.toFixed(1) + '</span>' : '') +
             '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
@@ -1516,6 +1524,7 @@
     }
 
     var PROV_COLORS = { 9003: '#0057b7', 8: '#c8102e', 350: '#1d1d1f', 1899: '#5b2bd0', 119: '#0f79af', 337: '#0b2a6b', 531: '#0064ff', 526: '#10202f', 1773: '#6a1b9a', 9000: '#e5304b', 9001: '#d6336c' };
+    var PROV_TEXT = { 9003: '#7fb0ff', 8: '#ff5a60', 119: '#4da3ff', 337: '#6ea8ff', 531: '#4d8dff', 526: '#7fd3ff', 1773: '#c79bff', 9000: '#ff6b81', 9001: '#ff7fb0' };
     function studioCall(row) {
         return function (call) {
             var logos = {};
@@ -1536,8 +1545,8 @@
                                         view.find('img').css('opacity', 0);
                                         h.find('.card__title,.card__age,.card__vote').remove();
                                         var lg = logos[x[2]];
-                                        view.append(lg ? '<img class="lmx-studio__logo" src="' + imgUrl(lg, 'w154') + '">' :
-                                            '<div class="lmx-studio__name">' + esc(x[1]) + '</div>');
+                                        view.append(lg && getStr('lmx_theme', 'default') !== 'prem' ? '<img class="lmx-studio__logo" src="' + imgUrl(lg, 'w154') + '">' :
+                                            '<div class="lmx-studio__name" style="color:' + (PROV_TEXT[x[2]] || '#fff') + '">' + esc(x[1]) + '</div>');
                                     });
                                 },
                                 onlyEnter: function () { openService(x); }
@@ -2324,6 +2333,13 @@
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n) span,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary span{display:inline !important}' +
             F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.34) !important;color:#fff;transform:scale(1.08)}' +
             F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;color:#000;box-shadow:0 0 0 .2em rgba(255,255,255,.4);transform:none !important}' +
+            // фокус і кнопки в стилі «Прем’єри»: щільна біла рамка з легким підйомом, прямокутні кнопки зі скругленням
+            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.6)}' +
+            F + '.full-start-new__buttons > .full-start__button{border-radius:.7em;background:rgba(255,255,255,.16) !important}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{border-radius:.7em;padding:.7em 2.1em;background:#fff !important}' +
+            F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.38) !important;box-shadow:0 0 0 .16em #fff}' +
+            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;box-shadow:0 0 0 .2em rgba(255,255,255,.55)}' +
+            F + '.full-episode__img{border-radius:.7em}' +
             '@media (max-width:760px){' +
                 T + '.card--lmxhero{width:94vw !important;margin-left:0 !important;margin-right:1em !important}' +
                 T + '.card--lmxhero .card__view,' + T + '.card--lmxhero.focus .card__view{height:52vw !important;border-radius:.8em !important}' +
@@ -2351,33 +2367,36 @@
         return '' +
             T + '{background:#0a0b10 !important}' +
             'html{background:#0a0b10 !important}' +
-            // афіша: назва як на постері — вузький капс, дуже великий
-            T + '.card--lmxhero .lmx-hero__text{left:4em;bottom:4.6em;max-width:46%}' +
-            T + '.card--lmxhero .lmx-hero__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;font-size:4.8em;line-height:.92;letter-spacing:.01em;margin-bottom:.22em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
+            // афіша: назва як на постері — вузький капс, головне слово дуже велике, друга частина розрядкою
+            T + '.card--lmxhero .lmx-hero__text{left:4em;bottom:4.2em;max-width:52%}' +
+            T + '.card--lmxhero .lmx-hero__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;line-height:.9;letter-spacing:.01em;margin-bottom:.3em;font-size:1em}' +
+            T + '.lmx-w1{display:block;line-height:.88;letter-spacing:.01em;word-break:break-word}' +
+            T + '.lmx-w2{display:block;margin-top:.4em;font-size:1.9em;font-weight:500;letter-spacing:.36em;color:rgba(255,255,255,.88)}' +
             T + '.lmx-hero__tag{letter-spacing:.16em;border-radius:.2em}' +
             T + '.card--lmxhero .lmx-hero__shade{background:linear-gradient(to top,#0a0b10 0%,rgba(10,11,16,.5) 8%,rgba(10,11,16,0) 30%),linear-gradient(90deg,rgba(10,11,16,.92) 0%,rgba(10,11,16,.6) 32%,rgba(10,11,16,0) 64%)}' +
+            // кнопки афіші в ряд: біла «Дивитися» і скляна «Про фільм»
+            T + '.lmx-hero__acts{flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:1em;margin-top:1.4em}' +
             T + '.lmx-hero__btn{border-radius:.6em;padding:.75em 2.4em;font-weight:700;letter-spacing:.01em}' +
-            T + '.lmx-hero__about{font-weight:600;opacity:.9}' +
+            T + '.lmx-hero__about{margin:0;padding:.75em 1.6em;border-radius:.6em;background:rgba(255,255,255,.16);font-weight:600}' +
+            // точки каруселі: прості смужки, активна довша й біла
+            T + '.lmx-dots i{width:.9em;height:.32em;border-radius:.2em;background:rgba(255,255,255,.35)}' +
+            T + '.lmx-dots i.on{width:2.6em;height:.32em;border-radius:.2em;background:#fff;box-shadow:none}' +
+            T + '.lmx-dots i.on::after{display:none}' +
             // ряди
             T + '.items-line__title{font-size:1.45em;font-weight:600;letter-spacing:0}' +
             T + '.card__view{border-radius:.8em}' +
-            T + '.card.focus:not(.card--lmxhero) .card__view,' + T + '.card.hover:not(.card--lmxhero) .card__view{transform:scale(1.06);box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.6)}' +
             T + '.lmx-cin{border-radius:0 0 .8em .8em}' +
             T + '.lmx-cin__t{font-family:' + D + ';text-transform:uppercase;font-weight:600;letter-spacing:.02em;line-height:1.05}' +
-            // плитки каталогів: темні, у фокусі біла рамка
+            // плитки каталогів: темна плитка з кольоровою назвою-вордмарком
             T + '.card--lmxstudio .card__view{background:#14161f !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:.9em !important;overflow:hidden !important}' +
+            T + '.card--lmxstudio .lmx-studio__name{font-family:' + D + ';text-transform:uppercase;font-weight:700;font-size:2em;letter-spacing:.06em}' +
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.06) !important;background:#1c1f2c !important;border-color:transparent !important;box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.55) !important}' +
-            // історія
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка фільму
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:.95}' +
-            F + '.full-start-new__buttons > .full-start__button{border-radius:.7em;background:rgba(255,255,255,.16) !important}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{border-radius:.7em;padding:.7em 2.1em;background:#fff !important}' +
-            F + '.full-start-new__buttons > .full-start__button.focus{background:rgba(255,255,255,.38) !important;box-shadow:0 0 0 .16em #fff}' +
-            F + '.full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,' + F + '.full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{background:#fff !important;box-shadow:0 0 0 .2em rgba(255,255,255,.55)}' +
-            F + '.full-episode__img{border-radius:.7em}' +
             '@media (max-width:760px){' +
-                T + '.card--lmxhero .lmx-hero__title{font-size:2.1em}' +
+                T + '.card--lmxhero .lmx-hero__title .lmx-w1{font-size:1.6em !important}' +
+                T + '.lmx-w2{font-size:.9em}' +
             '}';
     }
 
@@ -4561,7 +4580,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.241';
+    var VERSION = '10.242';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
