@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.22';
+    var VERSION = '1.23';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -771,6 +771,19 @@
         });
         safe(function () {
             if (Lampa.Player && Lampa.Player.listener) Lampa.Player.listener.follow('destroy', function () { schedule(4000); });
+        });
+        // Lampa зберігає прогрес лише раз на 2 хв і при виході з плеєра. Якщо одразу закрити застосунок (телефон), останні хвилини губились.
+        // Тому зберігаємо позицію щоразу, коли застосунок згортається/закривається, і раз на 15 с, поки грає відео
+        function savePos() {
+            try {
+                var w = Lampa.Player && Lampa.Player.playdata && Lampa.Player.playdata(), t = w && w.timeline;
+                if (t && t.handler && !t.stop_recording && t.duration && t.time > 0) t.handler(t.percent, t.time, t.duration);
+            } catch (e) {}
+        }
+        safe(function () {
+            document.addEventListener('visibilitychange', function () { if (document.hidden) savePos(); });
+            window.addEventListener('pagehide', savePos);
+            setInterval(function () { if (!document.hidden) savePos(); }, 15000);
         });
         safe(function () {
             document.addEventListener('visibilitychange', function () {
