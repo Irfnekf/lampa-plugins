@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.230 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.231 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Сьогодні на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -31,82 +31,8 @@
         if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = []; } }
         return Array.isArray(v) ? v : [];
     }
-    // Діагностика плавності: лише коли адресу плагіна дописано «&perf=1» (наприклад lmx_pack.js?v=226&perf=1). Інакше нічого не робить і нічого не коштує
-    var LMXP = null;
-    try {
-        var psrc = (document.currentScript && document.currentScript.src) || '';
-        if (/[?&]perf=1/.test(psrc)) LMXP = { src: psrc,  log: [], last: 0, ev: '', evT: 0, safeMax: 0, safeName: '', frames: 0, slow: 0, worst: 0, win: [] };
-    } catch (e) {}
     function safe(fn) {
-        if (LMXP) {
-            var t0 = performance.now();
-            try { fn(); } catch (e) { console.error('LMX', e); }
-            var dt = performance.now() - t0;
-            if (dt > 6 && dt > LMXP.safeMax) { LMXP.safeMax = dt; LMXP.safeName = String(fn).replace(/\s+/g, ' ').slice(0, 60); }
-            return;
-        }
         try { fn(); } catch (e) { console.error('LMX', e); }
-    }
-    function perfStart() {
-        if (!LMXP || LMXP.on) return;
-        LMXP.on = true;
-        var box = document.createElement('div');
-        box.style.cssText = 'position:fixed;right:8px;top:8px;z-index:2147483647;background:rgba(0,0,0,.82);color:#7CFC9A;font:14px/1.35 monospace;padding:8px 10px;border-radius:6px;pointer-events:none;max-width:46vw;white-space:pre-wrap';
-        document.body.appendChild(box);
-        function mark(n) { LMXP.ev = n; LMXP.evT = performance.now(); }
-        document.addEventListener('keydown', function (e) { mark('key ' + e.keyCode); }, true);
-        try { if (window.$) window.$(document.body).on('hover:focus', function (e) {
-            mark('focus ' + String((e.target && e.target.className) || '').split(' ').slice(0, 2).join('.'));
-            // скільки браузер витрачає на перерахунок стилів і розкладки після зміни фокуса (JS-частину вже відпрацювало)
-            setTimeout(function () {
-                var q0 = performance.now(); void document.documentElement.offsetHeight; var qd = performance.now() - q0;
-                if (qd > 8) { LMXP.log.unshift('   стилі+розкладка після фокуса: ' + Math.round(qd) + 'мс'); if (LMXP.log.length > 8) LMXP.log.pop(); }
-            }, 0);
-        }); } catch (e) {}
-        try { new PerformanceObserver(function (l) { l.getEntries().forEach(function (en) { LMXP.lt = Math.round(en.duration); LMXP.ltT = performance.now(); }); }).observe({ entryTypes: ['longtask'] }); } catch (e) {}
-        // Експерименти для пошуку причини гальм: адреса плагіна з «&x=1,3» вимикає відповідні шматки оформлення (лише в режимі &perf=1)
-        try {
-            var xm = /[?&]x=([\d,]+)/.exec(document.currentScript ? document.currentScript.src : '') || /[?&]x=([\d,]+)/.exec(LMXP.src || '');
-            if (xm) {
-                var XC = {
-                    '1': '#lmx-tintbg{display:none !important}',
-                    '2': 'body.lmx-apple::before{display:none !important}',
-                    '3': '.card--lmxhero,.card--lmxhero .lmx-hero__text,.lmx-hero-line .scroll__body{will-change:auto !important}',
-                    '4': '.lmx-dots{display:none !important}',
-                    '5': '.lmx-hero__text,.lmx-hero__shade{display:none !important}',
-                    '6': '.card{will-change:auto !important}',
-                    '7': '.card--lmxhero .card__view{background-image:none !important}',
-                    '8': '.card__view,.card__img{border-radius:0 !important}'
-                }, css = '', xl = xm[1].split(',');
-                xl.forEach(function (k) { if (XC[k]) css += XC[k]; });
-                var xs = document.createElement('style'); xs.textContent = css; document.head.appendChild(xs);
-                LMXP.xs = xl.join(',');
-            }
-        } catch (e) {}
-        var t00 = performance.now();
-        function tick(now) {
-            if (LMXP.last) {
-                var d = now - LMXP.last;
-                LMXP.frames++; LMXP.win.push(now);
-                while (LMXP.win.length && now - LMXP.win[0] > 1000) LMXP.win.shift();
-                if (d > 40) {
-                    LMXP.slow++; if (d > LMXP.worst) LMXP.worst = d;
-                    var since = Math.max(0, Math.round(now - LMXP.evT));
-                    LMXP.log.unshift(Math.round((now - t00) / 1000) + 'с ' + Math.round(d) + 'мс | ' + (since < 1500 ? LMXP.ev + ' −' + since + 'мс' : 'без події') +
-                        (LMXP.ltT && now - LMXP.ltT < 400 ? ' | longtask ' + LMXP.lt + 'мс' : '') + (LMXP.safeMax ? ' | ' + Math.round(LMXP.safeMax) + 'мс ' + LMXP.safeName : ''));
-                    LMXP.safeMax = 0; LMXP.safeName = '';
-                    if (LMXP.log.length > 8) LMXP.log.pop();
-                }
-            }
-            LMXP.last = now;
-            if (!LMXP.draw || now - LMXP.draw > 500) {
-                LMXP.draw = now;
-                if (!LMXP.nT || now - LMXP.nT > 3000) { LMXP.nT = now; LMXP.nodes = document.getElementsByTagName('*').length; }
-                box.textContent = (LMXP.xs ? 'ТЕСТ ' + LMXP.xs + '  ' : '') + 'вузлів DOM ' + LMXP.nodes + '  FPS ' + LMXP.win.length + '  повільних кадрів (>40мс): ' + LMXP.slow + '  найгірший: ' + Math.round(LMXP.worst) + 'мс\n' + LMXP.log.join('\n');
-            }
-            requestAnimationFrame(tick);
-        }
-        requestAnimationFrame(tick);
     }
 
     var RGB = { green: '46,158,91', orange: '224,123,32', blue: '48,112,220', red: '192,57,43', purple: '130,80,200', gray: '110,110,120' };
@@ -2329,7 +2255,7 @@
             // слайд на весь екран їде майже вдвічі далі, ніж слайд-стрічка в каталогах (100vw проти 58vw), тож час подовжено пропорційно:
             // на екрані швидкість руху та сама, що й у каталогах, і перехід виглядає так само м'яко
             T + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.1s cubic-bezier(.4,0,.2,1) !important}' +
-            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
+            T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .95s}' +
             T + '.card--lmxhero .lmx-hero__text{opacity:0;transition:opacity .35s ease .2s}' +
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
@@ -2497,7 +2423,7 @@
             '@media (min-width:761px){' + A + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
             '@media (min-width:761px){' + A + '.card--lmxhero[data-lmxi="0"]{width:calc(100vw - 8.2em) !important;margin-left:0 !important}}' +
             A + '.lmx-hero-line:not(.lmx-mini) .scroll__body{transition:transform 1.1s cubic-bezier(.4,0,.2,1) !important}' +
-            A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .45s}' +
+            A + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero .lmx-hero__text{transition:opacity .5s ease .95s}' +
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             // сповіщення Lampa («Додано до…») у стилі теми «Скло»: напівпрозора плашка-таблетка внизу по центру
@@ -4584,7 +4510,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.230';
+    var VERSION = '10.231';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -4600,7 +4526,6 @@
     safe(patchContentRows);
 
     function start() {
-        safe(perfStart);
         safe(patchContentRows);
         safe(patchBackground);
         safe(syncCi);
