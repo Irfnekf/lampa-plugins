@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.252 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.253 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -1006,18 +1006,24 @@
         // AMC+: якщо TMDB не віддає дані провайдера — серіали каналу AMC; для фільмів заміни немає (порожньо, ряд просто не показується)
         526: { movie: 'with_companies=0', tv: 'with_networks=174' }
     };
+    var ALT_SVC = { amazon: 1, disney: 1, paramount: 1, sky: 1, amc: 1 };
     var PROV_RX = /with_watch_providers=([^&]*)&watch_region=[^&]*&with_watch_monetization_types=[^&]*/;
     function empty(j) { return !j || !j.results || !j.results.length; }
+    // ok(j, usedUrl): другий аргумент — адреса, що справді дала результат (для «Ще» потрібна саме вона, а не порожній запит за регіоном UA)
     function tgetFb(url, params, ok, fail) {
-        function alt(j) {
-            var m = url.match(PROV_RX), k = url.match(/discover\/(movie|tv)/);
+        function alt(j, u) {
+            var m = u.match(PROV_RX), k = u.match(/discover\/(movie|tv)/);
             var a = m && k && ALT[m[1].indexOf('119') >= 0 ? 119 : parseInt(m[1], 10)];
-            if (!empty(j) || !a) return ok(j);
-            tget(url.replace(PROV_RX, a[k[1]]), params, ok, function () { ok(j); });
+            if (!empty(j) || !a) return ok(j, u);
+            var u2 = u.replace(PROV_RX, a[k[1]]);
+            tget(u2, params, function (j2) { ok(j2, u2); }, function () { ok(j, u); });
         }
         tget(url, params, function (j) {
-            if (empty(j) && url.indexOf('watch_region=UA') >= 0) return tget(url.replace('watch_region=UA', 'watch_region=US'), params, alt, fail);
-            alt(j);
+            if (empty(j) && url.indexOf('watch_region=UA') >= 0) {
+                var u1 = url.replace('watch_region=UA', 'watch_region=US');
+                return tget(u1, params, function (j1) { alt(j1, u1); }, fail);
+            }
+            alt(j, url);
         }, fail);
     }
     function serviceCall(row, key) {
@@ -1031,10 +1037,12 @@
             var filler = [
                 { url: wide(cats[2].url), page: 1, kind: 'movie' }, { url: cats[3].url, page: 1, kind: 'tv' }
             ];
+            var moreUrl = '';
             function fetchAll(tasks, done) {
                 var left = tasks.length, out = [];
                 tasks.forEach(function (t, i) {
-                    tgetFb(t.url, { page: t.page }, function (j) {
+                    tgetFb(t.url, { page: t.page }, function (j, u) {
+                        if (t.kind === 'tv' && !moreUrl && !empty(j)) moreUrl = u;
                         out[i] = cleanResults(j && j.results, false).filter(function (c) { return c.poster_path; }).map(function (c) { c.media_type = t.kind; return c; });
                         if (--left === 0) done(out);
                     }, function () { out[i] = []; if (--left === 0) done(out); });
@@ -1063,7 +1071,7 @@
             });
             function finish(list) {
                 if (!list.length) return call();
-                call({ title: row.title, results: list, url: cats[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
+                call({ title: row.title, results: list, url: moreUrl || cats[1].url, source: 'tmdb', page: 1, more: true, total_pages: 2 });
             }
         };
     }
@@ -1089,7 +1097,7 @@
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
+                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url2 || cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
@@ -1114,7 +1122,8 @@
                     for (var pg = 1; pg <= pages; pg++) (function (pg) {
                         var tries = 0;
                         (function go() {
-                            tgetFb(cats[i].url, { page: pg }, function (j) {
+                            tgetFb(cats[i].url, { page: pg }, function (j, u) {
+                                if (!empty(j)) cats[i].url2 = u;
                                 got[pg - 1] = cleanResults(j && j.results, !!cats[i].f).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
                                 end();
                             }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[pg - 1] = []; end(); });
@@ -1191,7 +1200,7 @@
                 startFirst();
                 // афіша: для аніме й дорам — своя, для платформ — тренди платформи; якщо довго вантажиться (4 с), сторінка будується без неї
                 function gotHero(l) { if (heroDone) return; heroDone = true; heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); tryBuild(); }
-                var heroT = setTimeout(function () { if (!heroDone) { heroDone = true; tryBuild(); } }, isAn ? 9000 : 4000);
+                var heroT = setTimeout(function () { if (!heroDone) { heroDone = true; tryBuild(); } }, (isAn || ALT_SVC[id]) ? 9000 : 4000);
                 if (id === 'mood') { clearTimeout(heroT); heroDone = true; tryBuild(); return this.render(); }
                 try { (isAn ? animeHeroList(SVC[id].hero, gotHero) : svcHeroList(id, gotHero)); } catch (e) { clearTimeout(heroT); heroDone = true; tryBuild(); }
                 return this.render();
@@ -4639,7 +4648,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.252';
+    var VERSION = '10.253';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
