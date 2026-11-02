@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.306 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.308 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.306';
+    var VERSION = '10.308';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5201,12 +5201,12 @@
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 100% !important;width:100% !important;flex-direction:row !important;align-items:center}' +
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item > *:first-child{width:22% !important;flex:0 0 22%;border-radius:1em 0 0 1em}' +
         // шапка
-        '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:13em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
+        '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:14.5em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
         '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:62% 0%;opacity:.95}' +
         '.lmx-onl-hero__sh{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,16,.92) 0%,rgba(8,10,16,.55) 45%,rgba(8,10,16,0) 80%),linear-gradient(0deg,rgba(8,10,16,.75) 0%,rgba(8,10,16,0) 55%)}' +
         '.lmx-onl-hero > *:not(.lmx-onl-hero__bg):not(.lmx-onl-hero__sh){position:relative;z-index:1}' +
         '.lmx-onl-hero__t{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;max-width:60%}' +
-        '.lmx-onl-hero__logo{display:block;max-width:34%;max-height:5.5em;width:auto;height:auto}' +
+        '.lmx-onl-hero__logo{display:block;flex:0 0 auto;max-width:34%;max-height:4.6em;width:auto;height:auto;object-fit:contain;object-position:left bottom}' +
         '.lmx-onl-hero__m{display:flex;align-items:center;gap:.9em;margin-top:.5em;font-weight:600}' +
         '.lmx-onl-hero__q{padding:.08em .5em;border-radius:.4em;background:rgba(255,255,255,.22);font-size:.8em;font-weight:800}' +
         '.lmx-onl-hero__o{margin-top:.7em;max-width:62%;font-size:.95em;line-height:1.4;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
@@ -5267,7 +5267,7 @@
         var inst = instFor(act), g = inst && readSets(inst).season;
         if (g) {
             var j, rxn = new RegExp('(^|\\D)' + n + '(\\D|$)');
-            for (j = 0; j < g.items.length; j++) if (rxn.test(String(g.items[j].title || ''))) { try { inst.onSelect('filter', { stype: 'season' }, { index: idxOf(g, g.items[j]) }); } catch (e) {} return; }
+            for (j = 0; j < g.items.length; j++) if (rxn.test(String(g.items[j].title || ''))) { try { selIn(inst, 'filter', { stype: 'season' }, { index: idxOf(g, g.items[j]) }); } catch (e) {} return; }
             return;
         }
         var f = act.querySelector('.filter--filter');
@@ -5319,8 +5319,13 @@
             if (!path || !hero.parentNode) return;
             var im = document.createElement('img');
             im.className = 'lmx-onl-hero__logo';
-            im.onload = function () { var t = hero.querySelector('.lmx-onl-hero__t'); if (t && im.parentNode) t.style.display = 'none'; };
-            im.onerror = function () { if (im.parentNode) im.parentNode.removeChild(im); };
+            im.onload = function () {
+                var t = hero.querySelector('.lmx-onl-hero__t'); if (t && im.parentNode) t.style.display = 'none';
+                // високі/квадратні логотипи вужчі, широкі — по ширині: так жоден не обрізається низьким банером
+                var ar = im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 3;
+                im.style.maxWidth = Math.max(14, Math.min(34, Math.round(ar * 8))) + '%';
+            };
+            im.onerror = function () { if (!im.__retry) { im.__retry = 1; im.src = img(path, 'original'); } else if (im.parentNode) im.parentNode.removeChild(im); };
             im.src = img(path, 'w500');
             var t0 = hero.querySelector('.lmx-onl-hero__t');
             if (t0) hero.insertBefore(im, t0);
@@ -5343,8 +5348,8 @@
             if (!box) continue;
             im = box.querySelector('img');
             // Lampa підставляє заглушку (img_load / img_broken), коли в TMDB немає кадру серії — вона «завантажується», але нічого не показує
-            if (im && im.complete && im.naturalWidth > 0 && !/img_(load|broken)|placeholder|broken|blank/i.test(im.currentSrc || im.src || '')) { box.classList.remove('lmx-onl-nothumb'); box.style.backgroundImage = ''; continue; }
-            box.classList.add('lmx-onl-nothumb'); box.style.backgroundImage = 'url("' + url + '")';
+            if (im && im.complete && im.naturalWidth > 0 && !/img_(load|broken)|placeholder|broken|blank/i.test(im.currentSrc || im.src || '')) { box.classList.remove('lmx-onl-nothumb'); box.style.removeProperty('background-image'); continue; }
+            box.classList.add('lmx-onl-nothumb'); box.style.setProperty('background-image', 'url("' + url + '")', 'important');
         }
     }
     function numberItems(list) {
@@ -5804,6 +5809,90 @@
     }
     // Фільтр джерела при виборі сам викликає Select.hide/close; якщо жодне меню не відкрите (а ми вибираємо напряму), Lampa кидає
     // «undefined is not an object (evaluating 'closed.onBack')» і вибір не доходить до перезавантаження. Гасимо цю помилку
+    // ---- Перезавантаження джерела «на місці» (як у Nova): зміна джерела в онлайн-плагіні викликає Activity.replace() і перестворює весь екран.
+    // Перехоплюємо це й просто скидаємо та перезапитуємо поточний компонент — екран лишається, змінюється лише список
+    function selIn(inst, a, b, c) { window.__lmxInplace = Date.now(); return inst.onSelect(a, b, c); }
+    function inplaceOn() { return Date.now() - (window.__lmxInplace || 0) < 2500; }
+    function compNow() { try { var a = Lampa.Activity.active(); return (a && a.activity && a.activity.component) || null; } catch (e) { return null; } }
+    function reloadable(c) { return !!(c && !c.destroyed && typeof c.createSource === 'function' && (typeof c.search === 'function' || typeof c.find === 'function')); }
+    function reloadInPlace(comp) {
+        var act = document.querySelector('.activity--active'), keep = [];
+        if (act) ['.lmx-onl-hero', '.lmx-onl-prog', '.lmx-onl-bar', '.lmx-onl-drop'].forEach(function (sel) {
+            var e = act.querySelector(sel);
+            if (e && e.parentNode) keep.push({ e: e, p: e.parentNode });
+        });
+        keep.forEach(function (k) { try { k.p.removeChild(k.e); } catch (e) {} });
+        try { if (typeof comp.reset === 'function') comp.reset(); } catch (e) {}
+        for (var i = keep.length - 1; i >= 0; i--) { try { keep[i].p.insertBefore(keep[i].e, keep[i].p.firstChild); } catch (e) {} }
+        var chain = null;
+        try { chain = comp.createSource(); } catch (e) { chain = null; }
+        if (!chain || typeof chain.then !== 'function') return false;
+        chain.then(function () { try { if (typeof comp.search === 'function') comp.search(); else comp.find(); } catch (e) {} })['catch'](function () { try { if (typeof comp.empty === 'function') comp.empty(); } catch (e) {} });
+        return true;
+    }
+    var realReplace = null;
+    function hookReplace() {
+        try {
+            if (!Lampa.Activity || Lampa.Activity.__lmxRep || typeof Lampa.Activity.replace !== 'function') return;
+            realReplace = Lampa.Activity.replace;
+            Lampa.Activity.replace = function (params) {
+                if (window.__lmxSwallow) return;
+                var empty = !params || !Object.keys(params).length;
+                if (inplaceOn() && empty && isOn()) {
+                    window.__lmxInplace = 0;
+                    var c = compNow();
+                    if (reloadable(c) && reloadInPlace(c)) return;
+                }
+                return realReplace.apply(Lampa.Activity, arguments);
+            };
+            Lampa.Activity.__lmxRep = 1;
+        } catch (e) {}
+    }
+    function learnUrl(url) {
+        try {
+            var v = String(url == null ? '' : url);
+            if (!/\/lite\/[^\/?&]+/.test(v) || v.indexOf('lite/events') >= 0 || v.indexOf('lite/withsearch') >= 0) return;
+            var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
+            window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
+        } catch (e) {}
+    }
+    // Створення компонента: гасимо стандартний екран ще до першої відмальовки, підслуховуємо адреси запитів і не даємо перестворювати екран
+    function hookComponent() {
+        try {
+            var C = Lampa.Component;
+            if (!C || typeof C.create !== 'function' || C.__lmxHook) return;
+            var realCreate = C.create;
+            C.create = function (object) {
+                var comp = realCreate.apply(C, arguments);
+                try {
+                    if (comp && typeof comp.changeBalanser === 'function' && !comp.__lmxHost) {
+                        comp.__lmxHost = 1;
+                        if (isOn() && !(object && object.component === 'torrents')) { lastEnter.t = Date.now(); lastEnter.on = true; entering(true); }
+                        ['request', 'requestParams'].forEach(function (nm) {
+                            var f = comp[nm];
+                            if (typeof f !== 'function') return;
+                            comp[nm] = function (url) {
+                                var out = f.apply(comp, arguments);
+                                try { learnUrl(nm === 'request' ? url : out); } catch (e) {}
+                                return out;
+                            };
+                        });
+                        var realCB = comp.changeBalanser;
+                        comp.changeBalanser = function () {
+                            if (!inplaceOn() || !reloadable(comp) || !isOn()) return realCB.apply(comp, arguments);
+                            window.__lmxInplace = 0; window.__lmxSwallow = true;
+                            try { realCB.apply(comp, arguments); } catch (e) {}
+                            window.__lmxSwallow = false;
+                            if (reloadInPlace(comp)) return;
+                            if (realReplace) realReplace.call(Lampa.Activity, {});
+                        };
+                    }
+                } catch (e) {}
+                return comp;
+            };
+            C.__lmxHook = 1;
+        } catch (e) {}
+    }
     function hookSelect() {
         try {
             var S0 = Lampa.Select;
@@ -5908,14 +5997,14 @@
                 var st = srcState(srcName(it.title));
                 if (lifeFlags) st = it.ghost ? 'no' : 'ok';
                 if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
-                opts.push({ title: it.title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { inst.onSelect('sort', it); } });
+                opts.push({ title: it.title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { selIn(inst, 'sort', it); } });
             });
             if (anyOk && (hidden || act.__lmxAllSrc)) opts.push({ title: act.__lmxAllSrc ? 'Лише з результатами' : 'Всі джерела (+' + hidden + ')', sticky: true, run: function () { act.__lmxAllSrc = !act.__lmxAllSrc; } });
         }
         else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
-            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { inst.onSelect('filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
         }
         if (!opts.length) return false;
         closeDrop(act);
@@ -5928,6 +6017,7 @@
             c.textContent = o.title;
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
+                window.__lmxManual = Date.now();
                 closeDrop(act, key);
                 if (!o.sel) { try { o.run(); } catch (e) {} recover(act); if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); } }
             }));
@@ -5977,9 +6067,38 @@
         if (window.__lmxUp) return;
         window.__lmxUp = 1;
         document.addEventListener('keydown', function (e) {
-            if (e.keyCode !== 38 && e.key !== 'ArrowUp') return;
+            var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
+            if (!up && !dn) return;
             var a = document.querySelector('.activity--active'), cur = document.querySelector('.focus');
-            if (!a || !cur || !cur.classList.contains('lmx-onl-item') || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+            if (!a || !cur || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+            // Рівні екрана: кнопки шапки → ряд вибору → (ряд варіантів) → картки. Між рівнями ходимо явно, до найближчого по горизонталі
+            // (штатна навігація Lampa пускала на кнопки лише з першої колонки)
+            function near(sel, cx) {
+                var best = null, bd = 1e9;
+                [].slice.call(a.querySelectorAll(sel)).forEach(function (x) {
+                    if (!x.offsetWidth) return;
+                    var r = x.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - cx);
+                    if (d < bd) { bd = d; best = x; }
+                });
+                return best;
+            }
+            var cr0 = cur.getBoundingClientRect(), cx0 = cr0.left + cr0.width / 2, lvl = cur.closest('.lmx-onl-hero') ? 0 : cur.closest('.lmx-onl-bar') ? 1 : cur.closest('.lmx-onl-drop') ? 2 : cur.classList.contains('lmx-onl-item') ? 3 : -1;
+            if (lvl >= 0 && lvl < 3 || (lvl === 3 && up)) {
+                var tg = null;
+                if (up) {
+                    if (lvl === 3) {
+                        var hasAbove = [].slice.call(a.querySelectorAll('.lmx-onl-item')).some(function (x) { return x.offsetWidth && x.getBoundingClientRect().top < cr0.top - 8; });
+                        if (!hasAbove) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
+                    } else if (lvl === 2) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
+                    else if (lvl === 1) tg = near('.lmx-onl-hero .lmx-onl-btn', cx0);
+                } else {
+                    if (lvl === 0) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-item', cx0);
+                    else if (lvl === 1) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-item', cx0);
+                    else if (lvl === 2) tg = near('.lmx-onl-item', cx0);
+                }
+                if (tg && tg !== cur) { e.preventDefault(); e.stopImmediatePropagation(); if (window.Navigator && Navigator.focus) Navigator.focus(tg); return; }
+            }
+            if (!up || !cur.classList.contains('lmx-onl-item')) return;
             var items = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
             var cr = cur.getBoundingClientRect(), cx = cr.left + cr.width / 2, best = null, bd = 1e9, rowTop = -1e9;
             items.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top < cr.top - 8 && r.top > rowTop) rowTop = r.top; });
@@ -6048,7 +6167,7 @@
         var cid = String(card && card.id || ''), mem = memGet(), t = Date.now();
         var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 120000 : (wantHi ? 60000 : 25000);
         var gs = window.__lmxProbe;
-        if (!gs || gs.cid !== cid || t - gs.t00 > 150000) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
+        if (!gs || gs.cid !== cid || t - gs.t00 > 150000 || (lastEnter.on && lastEnter.t > gs.t00 + 800 && gs.done)) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
         if (gs.done) { hideScanLater(); return; }
         act.__lmxProbing = true;
         safe(function () { showScan(card); });
@@ -6072,7 +6191,7 @@
             gs.switches++; gs.cur = keyOf(it); gs.since = Date.now(); lastSig = '';
             if (gs.tried.indexOf(gs.cur) < 0) gs.tried.push(gs.cur);
             heroStatus(act, text + ' (' + gs.tried.length + ' з ' + (gs.total || '?') + '): ' + it.title + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
-            try { inst.onSelect('sort', it); } catch (e) { finish('Помилка підбору: ' + (e && e.message)); }
+            try { selIn(inst, 'sort', it); } catch (e) { finish('Помилка підбору: ' + (e && e.message)); }
         }
         function conclude(inst, sort) {
             if (!gs.results.length) return finish('Жодне джерело не знайшло цей матеріал');
@@ -6238,7 +6357,8 @@
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var empty = (/не дав результат|no results|нічого не знайд|помилка/i.test(txt) && waited > 700) || waited > 12000;
-                if (!empty) { heroStatus(act, 'Шукаємо' + (curIt ? ' на «' + srcName(curIt.title) + '»' : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                var manual = Date.now() - (window.__lmxManual || 0) < 120000;
+                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').trigger('hover:enter'); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
@@ -6247,13 +6367,13 @@
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
                         .sort(function (x, y) { return (titleQ(y.title) - titleQ(x.title)) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
                     if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
-                    cand = c[0]; cd = Date.now() + 4000;
+                    cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
-                if (left > 0) { heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
+                if (left > 0) { if (!manual) return; heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
                 var go = cand; cd = 0; cand = null; since = Date.now(); lastKey = null;
-                heroStatus(act, 'Відкриваємо «' + srcName(go.title) + '»…', false, 0.2);
-                try { inst.onSelect('sort', go); } catch (e) {}
+                if (manual) heroStatus(act, 'Відкриваємо «' + srcName(go.title) + '»…', false, 0.2);
+                try { selIn(inst, 'sort', go); } catch (e) {}
             });
         }, 500);
     }
@@ -6271,7 +6391,7 @@
         hd.insertBefore(h, hd.firstChild);
         var pr = document.createElement('div');
         pr.className = 'lmx-onl-prog';
-        pr.innerHTML = '<div class="lmx-onl-prog__s">Шукаємо джерела…</div><div class="lmx-onl-prog__b"><i></i></div><div class="lmx-onl-prog__g"><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i></div>';
+        pr.innerHTML = '<div class="lmx-onl-prog__s">Шукаємо джерела…</div><div class="lmx-onl-prog__b"><i></i></div>';
         hd.insertBefore(pr, h.nextSibling);
         act.classList.add('lmx-onl-load');
         if (scanning()) safe(function () { heroStatus(act, '', false, 0); });
@@ -6349,7 +6469,9 @@
         }
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
         var nxt = cont >= 0 && cont + 1 < list.length ? cont + 1 : -1;
-        function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1); return (j.season ? 'S' + j.season + ' ' : '') + 'E' + n; }
+        var fSn = 0;
+        try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg); if (si) { var mm = String(si.title || '').match(/\d+/); fSn = mm ? parseInt(mm[0], 10) : 0; } } catch (e) {}
+        function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
 
         var title = card.title || card.name || '', q = qual(list);
         var year = String(card.release_date || card.first_air_date || '').slice(0, 4);
@@ -6453,6 +6575,8 @@
             safe(hookFilter);
             safe(hookSelect);
             safe(hookRequest);
+            safe(hookReplace);
+            safe(hookComponent);
             safe(dropBackHook);
             safe(downRescue);
             safe(upRescue);
@@ -6479,6 +6603,8 @@
     safe(hookFilter);
     safe(hookSelect);
     safe(hookRequest);
+    safe(hookReplace);
+    safe(hookComponent);
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 })();
