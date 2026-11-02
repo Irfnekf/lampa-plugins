@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.304 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.305 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.304';
+    var VERSION = '10.305';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5170,6 +5170,7 @@
         '.lmx-scan__b{height:.4em;border-radius:99em;background:rgba(255,255,255,.14);overflow:hidden}' +
         '.lmx-scan__b i{display:block;height:100%;width:5%;border-radius:99em;background:#fff;transition:width .5s ease}' +
         '.lmx-scan__h{margin-top:1.4em;font-size:.8em;opacity:.45}' +
+        S + '.lmx-onl-nothumb img{visibility:hidden}' +
         S + '.lmx-onl-nothumb{background-size:cover !important;background-position:center !important;background-color:rgba(0,0,0,.45);background-blend-mode:multiply}' +
         S + '.explorer__files-body .scroll--mask,' + S + '.explorer__files-body .scroll{-webkit-mask-image:none !important;mask-image:none !important}' +
         S + '.explorer__files:after,' + S + '.explorer__files:before,' + S + '.explorer__files-body:after,' + S + '.explorer__files-body:before{display:none !important}' +
@@ -5341,7 +5342,8 @@
             box = list[i].querySelector('.videos__item-imgbox, [class*="imgbox"]');
             if (!box) continue;
             im = box.querySelector('img');
-            if (im && im.complete && im.naturalWidth > 0) { box.classList.remove('lmx-onl-nothumb'); box.style.backgroundImage = ''; continue; }
+            // Lampa підставляє заглушку (img_load / img_broken), коли в TMDB немає кадру серії — вона «завантажується», але нічого не показує
+            if (im && im.complete && im.naturalWidth > 0 && !/img_(load|broken)|placeholder|broken|blank/i.test(im.currentSrc || im.src || '')) { box.classList.remove('lmx-onl-nothumb'); box.style.backgroundImage = ''; continue; }
             box.classList.add('lmx-onl-nothumb'); box.style.backgroundImage = 'url("' + url + '")';
         }
     }
@@ -6328,7 +6330,7 @@
         act.classList.remove('lmx-onl-load');
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
-        safe(function () { thumbFallback(list, card); setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, 2500); });
+        safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
         var sst = seriesStats(card), sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt + '|' + (sst ? sst.seen + '/' + sst.total : '');
