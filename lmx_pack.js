@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.271 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.272 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.271';
+    var VERSION = '10.272';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5445,6 +5445,11 @@
     function watchSources(act, card) {
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
+        // Lampa після зміни джерела може перестворити екран — тоді watcher запустився б заново і пішов по колу.
+        // Тому для одного фільму підбір запускаємо один раз на 2 хвилини
+        var gk = String(card && card.id || ''), gw = window.__lmxOnlWatch || (window.__lmxOnlWatch = {});
+        if (gw[gk] && Date.now() - gw[gk] < 120000) return;
+        gw[gk] = Date.now();
         var mem = memGet(), cid = String(card && card.id || ''), tried = [], results = [], t0 = Date.now(), t00 = t0, busy = false, phase = 'start', switches = 0;
         function stopKey() { phase = 'done'; clearInterval(iv); document.removeEventListener('keydown', stopKey, true); }
         document.addEventListener('keydown', stopKey, true);
