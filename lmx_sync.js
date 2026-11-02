@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.24';
+    var VERSION = '1.25';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -797,8 +797,12 @@
         // раз на 20 хвилин, поки застосунок відкритий і видимий — щоб зміни з інших пристроїв підтягувались у фоні (1 легкий запит)
         safe(function () { setInterval(function () { if (!document.hidden && code() && Date.now() - (getState().last || 0) > 15 * 60000) schedule(1000); }, 5 * 60000); });
         // перша синхронізація після запуску: Lampa вже завантажила закладки й таймкоди
-        schedule(3000);
+        // ранній старт нижче вже міг синхронізувати — тоді повторний прохід одразу не потрібен
+        if (Date.now() - (getState().last || 0) > 20000) schedule(3000);
     }
+    // Синхронізація стартує одразу при завантаженні плагіна, не чекаючи готовності застосунку: до того, як Lampa збудує головну,
+    // нові дані вже на місці, і головна не перемальовується (історія раніше з'являлась уже після завантаження)
+    safe(function () { if (code() && !sget('lmx_sync_hold', '')) setTimeout(function () { safe(function () { sync(false); }); }, 0); });
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 
