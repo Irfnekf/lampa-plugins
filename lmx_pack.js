@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.315 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.317 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.315';
+    var VERSION = '10.317';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5622,6 +5622,7 @@
     function artMax() { return opt('lmx_online_art', 'auto') === 'max'; }
     // налаштування-перемикачі: ключ → [заголовок, значення за замовчуванням, {значення: підпис}]
     var OPTS = {
+        ua: ['Перевага українській озвучці', 'off', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_ua'],
         order: ['Порядок серій', 'std', { std: 'Стандартний', rev: 'Зворотний (нові зверху)' }, 'lmx_online_order'],
         art: ['Якість кадру', 'auto', { auto: 'Авто', max: 'Максимальна (важча)' }, 'lmx_online_art'],
         focus: ['Виділення', 'ring', { ring: 'Ободок', fill: 'Біла заливка' }, 'lmx_online_focus'],
@@ -5762,7 +5763,7 @@
             var q = 0, marks = b.match(/(2160|1440|1080|720|576|480|360)\s*p/gi) || [];
             marks.forEach(function (m) { var n = parseInt(m, 10), r = n >= 2160 ? 4 : n >= 1080 ? 3 : n >= 720 ? 2 : 1; if (r > q) q = r; });
             if (/4k|uhd/i.test(b)) q = 4;
-            return { s: 'ok', c: c, q: q, t: tor ? 1 : 0 };
+            return { s: 'ok', c: c, q: q, t: tor ? 1 : 0, u: /укр|ukr|українськ|\bua\b|\\u0443\\u043a\\u0440/i.test(b) ? 1 : 0 };
         }
         if (!/videos__|"method"|online-prestige|"data"/i.test(b)) return { s: 'skip' };
         return { s: 'empty', c: 0 };
@@ -5886,6 +5887,11 @@
     var QPREF = { auto: 'Авто (FHD і вище)', '4k': 'Віддавати перевагу 4K', fhd: 'Віддавати перевагу FHD', hd: 'Достатньо HD' };
     function qPref() { var v = String(Lampa.Storage.get('lmx_online_q', 'auto')); return QPREF[v] ? v : 'auto'; }
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
+    // Перевага українській озвучці: (1) у відповіді джерела є українські озвучки/позначки; (2) назва джерела з відомих українських. Вимикається в ⚙
+    function uaOn() { return opt('lmx_online_ua', 'off') === 'on'; }
+    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|bazon|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|hdvb|zetvideo|kinoukr|uaserial|ukr/i;
+    function uaName(k) { return UA_SRC.test(String(k || '')); }
+    function uaBonus(k, pe) { return uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0; }
     function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
@@ -5962,6 +5968,7 @@
                 if (!has && !msg && n < 160) return;
                 clearInterval(act.__lmxAR);
                 act.classList.remove('lmx-onl-rl');
+                relayout();
                 if (!act.__lmxProbing) {
                     var q = act.querySelector('.lmx-onl-prog');
                     if (q && has) q.parentNode.removeChild(q);
@@ -6215,11 +6222,24 @@
         if (bad && bad.cid === cid && bad.names.indexOf(name) >= 0) return 'no';
         return '';
     }
+    // Як у Nova (relayout): після зміни висоти шапки (відкрили/закрили ряд, перезавантажили список) просимо Lampa перерахувати розміри —
+    // інакше нижня частина екрана «стискається», знизу чорна смуга, а прокрутка не йде далі другого ряду
+    function relayout() {
+        try {
+            if (!Lampa.Layer || typeof Lampa.Layer.update !== 'function') return;
+            var cur = Lampa.Activity.active();
+            if (!cur || !cur.activity) return;
+            var target = cur.activity.render();
+            Lampa.Layer.update(target);
+            setTimeout(function () { try { Lampa.Layer.update(target); } catch (e) {} }, 120);
+        } catch (e) {}
+    }
     function closeDrop(act, key) {
         var d = act.querySelector('.lmx-onl-drop');
         if (d) d.parentNode.removeChild(d);
         act.__lmxOpen = '';
         if (key) { var pill = act.querySelector('.lmx-onl-g--' + key + ' .selector'); if (pill) syncNav(act, pill); }
+        relayout();
     }
     function toggleDrop(act, key) {
         var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
@@ -6288,6 +6308,7 @@
         });
         bar.parentNode.insertBefore(d, bar.nextSibling);
         syncNav(act, focusEl || d.querySelector('.selector'));
+        relayout();
         return true;
     }
     // «Назад» при відкритому ряді закриває ряд, а не весь екран
@@ -6345,18 +6366,26 @@
                 return best;
             }
             var cr0 = cur.getBoundingClientRect(), cx0 = cr0.left + cr0.width / 2, lvl = cur.closest('.lmx-onl-hero') ? 0 : cur.closest('.lmx-onl-bar') ? 1 : cur.closest('.lmx-onl-drop') ? 2 : cur.classList.contains('lmx-onl-item') ? 3 : -1;
+            // всередині відкритого ряду (озвучки/джерела) стрілки спершу рухаються по його рядках, і лише з краю — на інший рівень
+            function dropRow(dir) {
+                var opts = [].slice.call(a.querySelectorAll('.lmx-onl-drop .selector')).filter(function (x) { return x.offsetWidth; }), line = null, best = null, bd = 1e9;
+                opts.forEach(function (x) { var t = x.getBoundingClientRect().top; if (dir < 0 ? (t < cr0.top - 6 && (line === null || t > line)) : (t > cr0.top + 6 && (line === null || t < line))) line = t; });
+                if (line === null) return null;
+                opts.forEach(function (x) { var r = x.getBoundingClientRect(); if (Math.abs(r.top - line) > 6) return; var d = Math.abs(r.left + r.width / 2 - cx0); if (d < bd) { bd = d; best = x; } });
+                return best;
+            }
             if (lvl >= 0 && lvl < 3 || (lvl === 3 && up)) {
                 var tg = null;
                 if (up) {
                     if (lvl === 3) {
                         var hasAbove = [].slice.call(a.querySelectorAll('.lmx-onl-item')).some(function (x) { return x.offsetWidth && x.getBoundingClientRect().top < cr0.top - 8; });
                         if (!hasAbove) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
-                    } else if (lvl === 2) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
+                    } else if (lvl === 2) tg = dropRow(-1) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
                     else if (lvl === 1) tg = near('.lmx-onl-hero .lmx-onl-btn', cx0);
                 } else {
                     if (lvl === 0) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-item', cx0);
                     else if (lvl === 1) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-item', cx0);
-                    else if (lvl === 2) tg = near('.lmx-onl-item', cx0);
+                    else if (lvl === 2) tg = dropRow(1) || near('.lmx-onl-item', cx0);
                 }
                 if (tg && tg !== cur) { e.preventDefault(); e.stopImmediatePropagation(); if (window.Navigator && Navigator.focus) Navigator.focus(tg); return; }
             }
@@ -6519,7 +6548,7 @@
                         items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 9000 : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
-                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
+                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
                     gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 6, timeout: 4500, onEach: function (it, r) {
@@ -6545,14 +6574,14 @@
                 sort.forEach(function (x) {
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
-                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: Math.max(pe.q || 0, titleQ(x.title)), n: pe.c || 0 });
+                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: Math.max(pe.q || 0, titleQ(x.title)), n: pe.c || 0, ua: uaBonus(keyOf(x), pe) });
                     else if (!pe || pe.s === 'skip') skipN++;
                 });
                 if (!okL.length) {
                     if (skipN) { gs.bg = 'off'; return; }
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
-                okL.sort(function (a, b) { return (b.rank - a.rank) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
+                okL.sort(function (a, b) { return ((b.rank + (b.ua || 0)) - (a.rank + (a.ua || 0))) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
                 okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
                 var bestO = okL[0];
                 if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
@@ -6637,7 +6666,7 @@
                     var mem = memGet();
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
-                        .sort(function (x, y) { return (titleQ(y.title) - titleQ(x.title)) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
+                        .sort(function (x, y) { return ((titleQ(y.title) + uaBonus(srcName(y.title), null)) - (titleQ(x.title) + uaBonus(srcName(x.title), null))) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
                     if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
                     cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
