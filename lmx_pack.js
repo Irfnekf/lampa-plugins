@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.283 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.284 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.283';
+    var VERSION = '10.284';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5384,8 +5384,7 @@
                 setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 40);
             } else if (++n > 12) {
                 clearInterval(iv);
-                // нічого не знайшли — закриваємо невидиме меню і повертаємо керування
-                try { if (document.querySelector('.selectbox')) Lampa.Select.close(); if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {}
+                // такого пункту в меню фільтра цього джерела немає — лишаємо рідне меню відкритим, щоб було що вибрати
                 document.body.classList.remove('lmx-onl-pick');
             }
         }, 60);
@@ -5499,7 +5498,15 @@
 
     // Автоперемикання джерел: джерело нічого не знайшло — пробуємо наступне зі списку (до 6 спроб)
     function autoOn() { var v = Lampa.Storage.get('lmx_online_auto', 'true'); return v === true || v === 'true'; }
-    function srcName(t) { return String(t || '').replace(/\s*[-–—]\s*\d{3,4}p?.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
+    // якість, яку джерело вказує в назві пункту меню («Makhno ~ 1080», «UaFlix - 4K»): 4=4K, 3=FHD, 2=HD, 0=невідомо
+    function titleQ(t) {
+        t = String(t || '');
+        if (/\b(4k|2160p?|uhd)\b/i.test(t)) return 4;
+        if (/\b(1080p?|fhd)\b/i.test(t)) return 3;
+        if (/\b(720p?|hd)\b/i.test(t)) return 2;
+        return 0;
+    }
+    function srcName(t) { return String(t || '').replace(/\s*[-–—~]\s*(\d{3,4}p?|4k|uhd|fhd|hd)\b.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
     function heroStatus(act, text, stop, frac) {
         var s = act.querySelector('.lmx-onl-hero__s'), h = act.querySelector('.lmx-onl-hero'), pr = act.querySelector('.lmx-onl-prog'), ps = pr && pr.querySelector('.lmx-onl-prog__s'), pb = pr && pr.querySelector('.lmx-onl-prog__b i');
         if (s) s.textContent = text;
@@ -5549,7 +5556,8 @@
                 clearInterval(iv);
                 for (j = 0; j < its.length; j++) {
                     t = its[j].querySelector('.selectbox-item__title');
-                    items.push({ el: its[j], title: t ? t.textContent.trim() : '', nm: srcName(t ? t.textContent : '') });
+                    items.push({ el: its[j], title: t ? t.textContent.trim() : '', nm: srcName(t ? t.textContent : ''), tq: titleQ(t ? t.textContent : '') });
+                    (act.__lmxTQ || (act.__lmxTQ = {}))[items[items.length - 1].nm] = items[items.length - 1].tq;
                 }
                 pick = choose(items);
                 if (pick) { press(pick.el); setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 300); cb(pick.nm, pick.title); }
@@ -5587,6 +5595,9 @@
         gw[gk] = Date.now();
         act.__lmxProbing = true;
         var mem = memGet(), cid = String(card && card.id || ''), tried = [], results = [], t0 = Date.now(), t00 = t0, busy = false, phase = 'start', switches = 0;
+        var wantHi = qTarget() >= 4, maxTry = wantHi ? 10 : 5, budget = wantHi ? 60000 : 25000;
+        function tqOf(nm) { return (act.__lmxTQ && act.__lmxTQ[nm]) || 0; }
+        function cmpSrc(a, b) { return ((b.tq || 0) - (a.tq || 0)) || (gscore(mem.g[b.nm]) - gscore(mem.g[a.nm])); }
         function stopKey() { phase = 'done'; act.__lmxProbing = false; safe(buildHero); clearInterval(iv); document.removeEventListener('keydown', stopKey, true); }
         document.addEventListener('keydown', stopKey, true);
         var lastSig = '', stableAt = 0, cur = '';
@@ -5606,7 +5617,7 @@
             else safe(buildHero);
         }
         function goTo(name, after) {
-            if (++switches > 4) { busy = false; return finish(); }
+            if (++switches > maxTry) { busy = false; return finish(); }
             busy = true;
             pickSource(act, function (items) {
                 for (var j = 0; j < items.length; j++) if (items[j].nm === name) return items[j];
@@ -5614,18 +5625,18 @@
             }, function (nm, title) { busy = false; t0 = Date.now(); lastSig = ''; if (nm) { cur = nm; if (tried.indexOf(nm) < 0) tried.push(nm); } after(!!nm, title); });
         }
         function next() {
-            if (tried.length >= 4 || switches >= 4 || Date.now() - t00 > 18000) return conclude();
-            if (++switches > 4) return conclude();
+            if (tried.length >= maxTry || switches >= maxTry || Date.now() - t00 > budget - 5000) return conclude();
+            if (++switches > maxTry) return conclude();
             busy = true;
             pickSource(act, function (items) {
                 var c = items.filter(function (x) { return x.nm && tried.indexOf(x.nm) < 0; });
-                c.sort(function (a, b) { return gscore(mem.g[b.nm]) - gscore(mem.g[a.nm]); });
+                c.sort(cmpSrc);
                 return c[0] || null;
             }, function (nm, title) {
                 busy = false; t0 = Date.now(); lastSig = '';
                 if (!nm) return conclude();
                 cur = nm; tried.push(nm);
-                heroStatus(act, 'Перевіряємо джерело ' + (results.length + 1) + ': ' + title + '…', false, (results.length + 0.4) / (probeOn() ? 3 : 1));
+                heroStatus(act, 'Перевіряємо джерело ' + (tried.length) + ': ' + title + '…', false, Math.min(0.95, tried.length / maxTry));
             });
         }
         // підсумок: лишаємо найкраще з побачених; нічого не знайшли — пишемо про це
@@ -5638,7 +5649,7 @@
             else finish();
         }
         var iv = setInterval(function () {
-            if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > 25000) return stopKey();
+            if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > budget) return stopKey();
             if (busy || phase === 'done') return;
             var body = act.querySelector('.explorer__files-body .scroll__body');
             if (!body || !findRef(act)) return;
@@ -5651,6 +5662,19 @@
                     pref = gb || '';
                 }
                 phase = 'wait'; t0 = Date.now();
+                if (qPref() !== 'auto' && probeOn()) {
+                    // бажана якість задана: одразу йдемо до джерела з найкращою якістю в назві меню (4K → FHD → HD)
+                    var rf = findRef(act), curQ = titleQ(rf ? rf.textContent : '');
+                    busy = true;
+                    pickSource(act, function (its) {
+                        var c = its.filter(function (x) { return x.nm && x.nm !== cur; }).sort(cmpSrc), b = c[0];
+                        return b && b.tq > curQ ? b : null;
+                    }, function (nm, title) {
+                        busy = false; t0 = Date.now(); lastSig = '';
+                        if (nm) { cur = nm; if (tried.indexOf(nm) < 0) tried.push(nm); switches++; heroStatus(act, 'Відкриваємо джерело: ' + title + '…', false, 0.2); }
+                    });
+                    return;
+                }
                 if (pref && pref !== cur) goTo(pref, function (ok, title) { if (ok) heroStatus(act, 'Відкриваємо джерело: ' + title + '…', false, 0.3); });
                 return;
             }
@@ -5659,12 +5683,12 @@
                 var list = items, sig = list.length + ':' + qual(list);
                 if (sig !== lastSig) { lastSig = sig; stableAt = Date.now(); return; }
                 if (Date.now() - stableAt < 600) return;
-                var rank = qrank(qual(list));
+                var rank = Math.max(qrank(qual(list)), tqOf(cur));
                 results.push({ name: cur, rank: rank, n: list.length });
-                heroStatus(act, 'Знайдено: ' + list.length + ' серій' + (qual(list) ? ', ' + qual(list) : '') + '…', false, results.length / (probeOn() ? 3 : 1));
+                heroStatus(act, 'Знайдено: ' + list.length + ' серій' + (qual(list) ? ', ' + qual(list) : '') + '…', false, Math.min(0.95, tried.length / maxTry));
                 save(cur, rank, list.length);
                 // добре джерело (FHD і вище), вимкнений підбір або вже 3 порівняння — зупиняємось
-                if (rank >= qTarget() || !probeOn() || results.length >= 3 || Date.now() - t00 > 14000) {
+                if (rank >= qTarget() || !probeOn() || results.length >= maxTry || Date.now() - t00 > budget - 6000) {
                     results.sort(function (a, b) { return (b.rank - a.rank) || (b.n - a.n); });
                     return conclude();
                 }
@@ -5699,7 +5723,7 @@
         putLogo(h, card);
         if (autoOn()) watchSources(act, card);
         // якщо джерел так і не знайшлось, переливання не вічне
-        setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); if (q && !act.querySelector('.lmx-onl-item')) q.classList.add('lmx-onl-prog--end'); else if (q) q.parentNode.removeChild(q); }, 50); }, 15000);
+        setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); if (q && !act.querySelector('.lmx-onl-item')) q.classList.add('lmx-onl-prog--end'); else if (q) q.parentNode.removeChild(q); }, 50); }, (qTarget() >= 4 ? 65000 : 30000));
     }
 
     function buildHero() {
