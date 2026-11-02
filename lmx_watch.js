@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '1.6';
+    var VERSION = '2.0';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -58,7 +58,7 @@
         S + '.lmx-onl-item [class*="__title"]{display:block !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;-webkit-box-orient:initial !important;line-height:1.2;height:auto !important;max-height:none !important;word-break:break-word}' +
         S + '.lmx-onl-item [class*="__info"] *,' + S + '.lmx-onl-item [class*="-footer"] *,' + S + '.lmx-onl-item [class*="__footer"] *{overflow:visible !important;text-overflow:clip !important;white-space:normal !important;min-width:0 !important;overflow-wrap:anywhere}' +
         // уся текстова частина картки (і в джерел зі своєю розміткою): без трикрапки й обрізання, з однаковою мінімальною висотою — картки однакові незалежно від довжини тексту
-        S + '.lmx-onl-item *:not(img):not([class*="img"]):not([class*="poster"]):not([class*="time"]):not([class*="line"]):not(svg):not(path){text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;min-width:0}' +
+        S + '.lmx-onl-item div,' + S + '.lmx-onl-item span{text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important}' +
         S + '.lmx-onl-item [class*="title"],' + S + '.lmx-onl-item [class*="name"]{white-space:normal !important;overflow:visible !important;-webkit-box-orient:initial !important;max-height:none !important;height:auto !important;word-break:break-word;overflow-wrap:anywhere}' +
         B + '.lmx-onl-grid > .lmx-onl-item [class*="__title"]{min-height:2.45em}' +
         B + '.lmx-onl-grid > .lmx-onl-item [class*="__info"],' + B + '.lmx-onl-grid > .lmx-onl-item [class*="-footer"],' + B + '.lmx-onl-grid > .lmx-onl-item [class*="__footer"]{min-height:2.7em;margin-top:auto !important}' +
@@ -73,7 +73,7 @@
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
         B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
-        S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop){display:none !important}' +
+        S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop):not(.lmx-onl-prog){display:none !important}' +
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
         S + '.lmx-onl-item [data-lmx-t]{white-space:nowrap !important;flex:0 0 auto !important;overflow-wrap:normal !important}' +
         S + '.lmx-onl-epi{padding:.1em .7em .2em;font-size:.82em;line-height:1.3;opacity:.85;min-height:2.6em;box-sizing:border-box;white-space:normal;overflow:visible}' +
@@ -178,16 +178,16 @@
             K + '.lmx-onl-pill.focus,' + K + '.lmx-onl-opt.focus{background:#1c1f2c;border-color:transparent;box-shadow:0 0 0 .16em #fff}' +
             K + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .12em ' + GOLD + '}' +
             K + '.explorer__files-body .scroll__body > .lmx-onl-item{background:#14161f !important;border-radius:.8em;border:1px solid rgba(255,255,255,.06)}' +
-            K + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent;box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.5);transform:scale(1.03)}' +
+            K + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent;box-shadow:0 0 0 .2em #fff}' +
             K + '.lmx-onl-item [class*="__title"]{font-family:' + D + ';font-weight:600;letter-spacing:.01em}' +
             K + '.lmx-onl-epi__n{color:#e8eaf2}' + K + '.lmx-onl-epi__d{color:' + GOLD + ';opacity:.9}' +
             // ===== Скло: напівпрозорі панелі з розмиттям, великі заокруглення =====
             G + '.lmx-onl-hero{border-radius:0 0 1.4em 1.4em}' +
-            G + '.lmx-onl-btn,' + G + '.lmx-onl-pill,' + G + '.lmx-onl-opt{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            G + '.lmx-onl-btn,' + G + '.lmx-onl-pill,' + G + '.lmx-onl-opt{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}' +
             G + '.lmx-onl-btn--main{background:rgba(255,255,255,.92);color:#111;border-color:transparent}' +
-            G + '.lmx-onl-btn.focus,' + G + '.lmx-onl-pill.focus,' + G + '.lmx-onl-opt.focus{box-shadow:0 0 0 .16em rgba(255,255,255,.95),0 .5em 1.4em rgba(0,0,0,.35)}' +
-            G + '.explorer__files-body .scroll__body > .lmx-onl-item{background:rgba(255,255,255,.1) !important;border:1px solid rgba(255,255,255,.16);border-radius:1.2em;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
-            G + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:rgba(255,255,255,.2) !important;box-shadow:0 0 0 .18em rgba(255,255,255,.95),0 .8em 2em rgba(0,0,0,.4);transform:scale(1.03)}' +
+            G + '.lmx-onl-btn.focus,' + G + '.lmx-onl-pill.focus,' + G + '.lmx-onl-opt.focus{box-shadow:0 0 0 .16em rgba(255,255,255,.95)}' +
+            G + '.explorer__files-body .scroll__body > .lmx-onl-item{background:rgba(255,255,255,.1) !important;border:1px solid rgba(255,255,255,.16);border-radius:1.2em}' +
+            G + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:rgba(255,255,255,.2) !important;box-shadow:0 0 0 .18em rgba(255,255,255,.95)}' +
             G + '.lmx-onl-g__l{opacity:.6}' +
             // ===== Полегшена: без розмиттів, трохи м'якші картки =====
             'body.lmx-online:not(.lmx-prem):not(.lmx-apple) .explorer.lmx-onl .explorer__files-body .scroll__body > .lmx-onl-item{border-radius:1em}';
@@ -435,7 +435,7 @@
         for (i = 0; i < all.length; i++) { n = all[i]; if (!n.children.length && !n.closest('.time-line') && /^\s*\d{1,2}:\d{2}(:\d{2})?\s*$/.test(n.textContent || '')) return n; }
         return null;
     }
-    function epInfo(list, card) {
+    function epInfo(list, card, act) {
         if (!list.length || !card || !card.id) return;
         var isTv = !!(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date));
         function zero(n) { return n && /^\s*0{1,2}:0{2}(:0{2})?\s*$/.test(n.textContent || ''); }
@@ -446,7 +446,16 @@
         }
         var sn = parseInt(jd(list[0]).season, 10) || 0;
         if (!sn) { var mm = String((list[0].textContent || '')).match(/сезон\s*(\d+)|season\s*(\d+)/i); sn = mm ? parseInt(mm[1] || mm[2], 10) : 0; }
-        if (!sn) return;
+        if (!sn && act) {
+            try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg), m1 = si && String(si.title || '').match(/\d+/); if (m1) sn = parseInt(m1[0], 10); } catch (e) {}
+            if (!sn) { var m2 = filterText(act).match(/(\d+)\s*сезон|сезон\s*:?\s*(\d+)|season\s*:?\s*(\d+)/i); if (m2) sn = parseInt(m2[1] || m2[2] || m2[3], 10) || 0; }
+        }
+        if (!sn) {
+            // сезон невідомий — хоча б виправляємо «00:00» тривалістю серії з картки серіалу
+            var r0 = card.episode_run_time && card.episode_run_time[0] || 0;
+            list.forEach(function (it) { var n = timeNode(it); if (zero(n)) { if (r0) { n.textContent = fmtRun(r0); n.setAttribute('data-lmx-t', '1'); } else n.style.display = 'none'; } });
+            return;
+        }
         var key = card.id + '_' + sn;
         function apply(eps) {
             list.forEach(function (it, idx) {
@@ -1102,7 +1111,7 @@
             var hero = act.querySelector('.lmx-onl-hero'), hd = act.querySelector('.explorer__files-head'), pr = document.createElement('div');
             var nm = ''; try { var ii = instFor(act), Sd = ii && readSets(ii), it0 = Sd && Sd.sort && selItem(Sd.sort); nm = it0 ? String(it0.title || '').replace(/\s*~.*$/, '') : ''; } catch (e) {}
             pr.className = 'lmx-onl-prog';
-            pr.innerHTML = '<div class="lmx-onl-prog__s">Завантажуємо' + (nm ? ': ' + esc(nm) : '') + '…</div><div class="lmx-onl-prog__b"><i></i></div>';
+            pr.innerHTML = '<div class="lmx-onl-prog__s">Завантажуємо' + (nm ? ': ' + esc(nm) : '') + '…</div><div class="lmx-onl-prog__b"><i></i></div><div class="lmx-onl-prog__g"><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i></div>';
             if (hero && hero.parentNode) hero.parentNode.insertBefore(pr, hero.nextSibling);
             else if (hd) hd.insertBefore(pr, hd.firstChild);
             // екран міг бути прокручений вниз — повертаємо нагору, щоб смужку завантаження було видно
@@ -1120,7 +1129,7 @@
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
                 var has = episodeEls(body).length, msg = /не дав результат|no results|помилка/i.test(body.textContent || '');
-                if (!has && !msg && n < 160) return;
+                if (!has && !msg && n < 330) return;
                 clearInterval(act.__lmxAR);
                 act.classList.remove('lmx-onl-rl');
                 try { body.style.minHeight = ''; } catch (e) {}
@@ -1137,9 +1146,9 @@
                         var tg = act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                         if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, tg); }
                     });
-                }, 900);
+                }, 300);
             });
-        }, 250);
+        }, 120);
     }
     // Як у Nova: вбудовуємось у сам контролер «content». Кожен його toggle (після меню, плеєра, перезавантаження) завершуємо перезбиранням колекції фокусу
     // по шапці й списку та поверненням фокуса на живий елемент — тож стрілки не «залипають» на видалених вузлах
@@ -1952,7 +1961,7 @@
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
         safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); tidySeps(list); });
-        safe(function () { epInfo(list, card); });
+        safe(function () { epInfo(list, card, act); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         // перший вхід: Lampa рахує висоту прокрутки до того, як з'явились усі ряди — перераховуємо (раніше це давав лише повторний вибір «Серії 1-10»)
@@ -2009,9 +2018,9 @@
         // Фільм: у списку не серії, а варіанти (релізи/озвучки), тож зверху лишається одна кнопка «Дивитись / Продовжити»
         var isMovie = !(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date));
         var showFirst = !isMovie && firstUn >= 0 && cont >= 0 && firstUn < cont && !resSn && !allSeen;
-        var partial = !isMovie && cont >= 0 && pct(list[cont]) >= 1 && pct(list[cont]) < 90 && !resSn && !allSeen;
+        var partial = false && cont >= 0 && pct(list[cont]) >= 1 && pct(list[cont]) < 90 && !resSn && !allSeen;
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
-        var nxt = !isMovie && cont >= 0 && cont + 1 < list.length && !isSoon(list[cont + 1]) ? cont + 1 : -1;
+        var nxt = false && cont >= 0 && cont + 1 < list.length && !isSoon(list[cont + 1]) ? cont + 1 : -1;
         var fSn = 0;
         try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg); if (si) { var mm = String(si.title || '').match(/\d+/); fSn = mm ? parseInt(mm[0], 10) : 0; } } catch (e) {}
         function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
