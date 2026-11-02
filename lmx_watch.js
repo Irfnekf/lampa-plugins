@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '1.2';
+    var VERSION = '1.3';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -75,6 +75,11 @@
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
         S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop){display:none !important}' +
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
+        S + '.lmx-onl-epi{padding:.1em .7em .2em;font-size:.82em;line-height:1.3;opacity:.85;min-height:2.6em;box-sizing:border-box;white-space:normal;overflow:visible}' +
+        S + '.lmx-onl-epi__n{font-weight:600}' +
+        S + '.lmx-onl-epi__d{opacity:.7;font-size:.92em}' +
+        S + '.lmx-onl-g--cfg .lmx-onl-g__l{display:none}' +
+        S + '.lmx-onl-g--cfg .lmx-onl-pill{min-width:0;padding:.5em .85em;font-size:1.05em;justify-content:center}' +
         S + '.lmx-onl-opt{margin:0;padding:.5em 1.3em;font-size:.95em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
         S + '.lmx-onl-opt--dim{opacity:.45}' +
@@ -361,6 +366,53 @@
                 if (b < 60 && Math.abs(hm - rt) <= 15 && Math.abs(a - rt) > 15) { n.textContent = a + ' г ' + b + ' хв'; n.setAttribute('data-lmx-t', '1'); }
             });
         });
+    }
+    // Інформація про серію (як у Nova): назва, дата виходу, тривалість із TMDB. Джерела часто пишуть «00:00» — підставляємо справжню тривалість
+    var epCache = {};
+    function fmtRun(m) { m = Math.round(m); return m >= 60 ? Math.floor(m / 60) + ' г ' + (m % 60 ? (m % 60) + ' хв' : '') : m + ' хв'; }
+    function fmtDate(d) { var m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '.' + m[2] + '.' + m[1] : ''; }
+    function timeNode(it) {
+        var all = it.querySelectorAll('*'), i, n;
+        for (i = 0; i < all.length; i++) { n = all[i]; if (!n.children.length && !n.closest('.time-line') && /^\s*\d{1,2}:\d{2}(:\d{2})?\s*$/.test(n.textContent || '')) return n; }
+        return null;
+    }
+    function epInfo(list, card) {
+        if (!list.length || !card || !card.id) return;
+        var isTv = !!(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date));
+        function zero(n) { return n && /^\s*0{1,2}:0{2}(:0{2})?\s*$/.test(n.textContent || ''); }
+        if (!isTv) {
+            var rt = parseInt(card.runtime, 10) || 0;
+            list.forEach(function (it) { var n = timeNode(it); if (zero(n)) { if (rt) { n.textContent = fmtRun(rt); n.setAttribute('data-lmx-t', '1'); } else n.style.display = 'none'; } });
+            return;
+        }
+        var sn = parseInt(jd(list[0]).season, 10) || 0;
+        if (!sn) { var mm = String((list[0].textContent || '')).match(/сезон\s*(\d+)|season\s*(\d+)/i); sn = mm ? parseInt(mm[1] || mm[2], 10) : 0; }
+        if (!sn) return;
+        var key = card.id + '_' + sn;
+        function apply(eps) {
+            list.forEach(function (it, idx) {
+                if (!it.parentNode) return;
+                var j = jd(it), num = parseInt(j.episode, 10) || (idx + 1), e = eps && eps[num], n = timeNode(it);
+                var run = (e && e.runtime) || (card.episode_run_time && card.episode_run_time[0]) || 0;
+                if (zero(n)) { if (run) { n.textContent = fmtRun(run); n.setAttribute('data-lmx-t', '1'); } else n.style.display = 'none'; }
+                var x = it.querySelector('.lmx-onl-epi');
+                if (!x) {
+                    x = document.createElement('div'); x.className = 'lmx-onl-epi';
+                    var tt = it.querySelector('[class*="__title"], [class*="title"]');
+                    if (tt && tt.parentNode) tt.parentNode.insertBefore(x, tt.nextSibling); else it.appendChild(x);
+                }
+                var nm = e && e.name && !/^(серія|эпизод|episode)\s*\d+$/i.test(e.name.trim()) ? e.name : '', dt = e && fmtDate(e.air_date);
+                x.innerHTML = (nm ? '<div class="lmx-onl-epi__n">' + esc(nm) + '</div>' : '') + (dt ? '<div class="lmx-onl-epi__d">' + dt + '</div>' : '');
+            });
+        }
+        if (epCache[key]) return apply(epCache[key]);
+        apply(null);
+        try {
+            Lampa.Api.sources.tmdb.get('tv/' + card.id + '/season/' + sn, {}, function (r) {
+                var map = {}; ((r && r.episodes) || []).forEach(function (e) { map[e.episode_number] = e; });
+                epCache[key] = map; apply(map);
+            }, function () {});
+        } catch (e) {}
     }
     // «Залишилось N хв» під смужкою для частково переглянутої серії (як у Nova)
     function leftTimes(list) {
@@ -1841,6 +1893,7 @@
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
         safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); });
+        safe(function () { epInfo(list, card); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         // перший вхід: Lampa рахує висоту прокрутки до того, як з'явились усі ряди — перераховуємо (раніше це давав лише повторний вибір «Серії 1-10»)
