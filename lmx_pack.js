@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.286 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.287 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.286';
+    var VERSION = '10.287';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5337,6 +5337,12 @@
         }
         act.__lmxRS = setTimeout(function () { pass(false); act.__lmxRS2 = setTimeout(function () { pass(true); }, 900); }, 220);
     }
+    // На мишці/тачпаді Lampa віддає і «hover:enter», і браузерний «click» — обробник спрацьовував двічі: друге відкриття меню фільтра
+    // перебивало перше (меню блимало й зникало), а кнопка «Продовжити» могла запустити відтворення двічі
+    function once(fn) {
+        var t = 0;
+        return function () { var n = Date.now(); if (n - t < 700) return; t = n; return fn.apply(this, arguments); };
+    }
     function addNav(el) {
         try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
     }
@@ -5361,7 +5367,7 @@
     }
     function openFilterItem(act, rx) {
         var f = act.querySelector('.filter--filter');
-        if (!f) return;
+        if (!f || document.querySelector('.selectbox')) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         try { $(f).trigger('hover:enter'); } catch (e) {}
@@ -5395,7 +5401,7 @@
             g = document.createElement('div');
             g.className = 'lmx-onl-g lmx-onl-g--' + key;
             g.innerHTML = '<span class="lmx-onl-g__l"></span><div class="simple-button simple-button--filter selector lmx-onl-pill"><span class="lmx-onl-pill__t"></span><i class="lmx-onl-pill__c">&#8964;</i></div>';
-            $(g.querySelector('.selector')).on('hover:enter click', function () { onEnter(); });
+            $(g.querySelector('.selector')).on('hover:enter click', once(function () { onEnter(); }));
             g.__new = true;
         }
         g.firstChild.textContent = label;
@@ -5817,11 +5823,11 @@
         resync(act);
         var btns = h.querySelectorAll('.lmx-onl-btn');
         for (i = 0; i < btns.length; i++) (function (b) {
-            $(b).on('hover:enter click', function () {
+            $(b).on('hover:enter click', once(function () {
                 var sn = b.getAttribute('data-season');
                 if (sn) return gotoSeason(act, parseInt(sn, 10));
                 var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t);
-            });
+            }));
             addNav(b);
         })(btns[i]);
         // Lampa прокручує список до сфокусованої серії, і шапка залишалась нагорі за кадром. Поки пульт не чіпали, ставимо фокус на «Продовжити»
