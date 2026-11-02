@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.285 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.286 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -3865,7 +3865,7 @@
         safe(function () {
             var c0 = cont[0];
             if (!c0.__lmxT0) c0.__lmxT0 = Date.now();
-            if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; document.addEventListener('keydown', function () { window.__lmxKeyT = Date.now(); }, true); }
+            if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; ['keydown', 'mousedown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { window.__lmxKeyT = Date.now(); }, true); }); }
             if (Date.now() - c0.__lmxT0 > 2000 || (window.__lmxKeyT || 0) > c0.__lmxT0) return;
             if (Lampa.Controller.enabled().name !== 'full_start') return;
             var best = null, bo = 1e9, i, e, o;
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.285';
+    var VERSION = '10.286';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5245,7 +5245,7 @@
     // Перемикаємо сезон через рідне меню фільтра джерела: «Сезон» → «N сезон»
     function gotoSeason(act, n) {
         var f = act.querySelector('.filter--filter');
-        if (!f) return;
+        if (!f || document.querySelector('.selectbox')) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         try { $(f).trigger('hover:enter'); } catch (e) {}
@@ -5429,8 +5429,8 @@
         var ref = findRef(act), want = [];
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { press(ref); }));
-        if (season || /сезон|season/i.test(txt)) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 1; openFilterItem(act, RX_SEASON); }));
-        if (act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { openFilterItem(act, RX_VOICE); }));
+        if (season || /сезон|season/i.test(txt)) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 2; openFilterItem(act, RX_SEASON); }));
+        if (act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { act.__lmxSA = 2; openFilterItem(act, RX_VOICE); }));
         want.push(group(act, 'cfg', '', '⚙︎', function () { openCfg(act); }));
         want.forEach(function (g, k) {
             if (bar.children[k] !== g) bar.insertBefore(g, bar.children[k] || null);
@@ -5598,8 +5598,8 @@
         var wantHi = qTarget() >= 4, maxTry = wantHi ? 10 : 5, budget = wantHi ? 60000 : 25000;
         function tqOf(nm) { return (act.__lmxTQ && act.__lmxTQ[nm]) || 0; }
         function cmpSrc(a, b) { return ((b.tq || 0) - (a.tq || 0)) || (gscore(mem.g[b.nm]) - gscore(mem.g[a.nm])); }
-        function stopKey() { phase = 'done'; act.__lmxProbing = false; safe(buildHero); clearInterval(iv); document.removeEventListener('keydown', stopKey, true); }
-        document.addEventListener('keydown', stopKey, true);
+        function stopKey() { phase = 'done'; act.__lmxProbing = false; safe(buildHero); clearInterval(iv); ['keydown', 'mousedown', 'touchstart'].forEach(function (ev) { document.removeEventListener(ev, stopKey, true); }); }
+        ['keydown', 'mousedown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, stopKey, true); });
         var lastSig = '', stableAt = 0, cur = '', busyAt = 0;
         function readCur() { var r = findRef(act); return r ? srcName((r.textContent || '').replace(/^\s*(джерело|source)\s*/i, '')) : ''; }
         function save(name, rank, n) {
@@ -5612,7 +5612,7 @@
             phase = 'done';
             act.__lmxProbing = false;
             clearInterval(iv);
-            document.removeEventListener('keydown', stopKey, true);
+            ['keydown', 'mousedown', 'touchstart'].forEach(function (ev) { document.removeEventListener(ev, stopKey, true); });
             if (msg) heroStatus(act, msg, true);
             else safe(buildHero);
         }
@@ -5701,7 +5701,7 @@
                 return;
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (cur ? ': ' + cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
-            if ((body.querySelector('[class*="empty"]') && waited > 1000) || waited > 6000) {
+            if (((body.querySelector('[class*="empty"]') || /не дав результат|no results/i.test(body.textContent || '')) && waited > 1000) || waited > 6000) {
                 save(cur, -1, 0);
                 next();
             }
@@ -5786,7 +5786,7 @@
         if (ss && curSn && !act.__lmxSA) {
             act.__lmxSA = 1;
             var tgt = targetSeason(ss);
-            if (tgt && tgt !== curSn) setTimeout(function () { safe(function () { gotoSeason(act, tgt); }); }, 250);
+            if (tgt && tgt !== curSn) setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) > Date.now() - 5000 || act.__lmxSA > 1 || document.querySelector('.selectbox')) return; gotoSeason(act, tgt); }); }, 1500);
         }
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
         var nxt = cont >= 0 && cont + 1 < list.length ? cont + 1 : -1;
