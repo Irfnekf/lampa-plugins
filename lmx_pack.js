@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.260 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.261 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.260';
+    var VERSION = '10.261';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5099,43 +5099,66 @@
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 })();
 // ===== LMX Online: оформлення екрана «Онлайн» для будь-яких джерел =====
-// Працює лише через CSS і легкий блок-шапку: нічого в Lampa не підміняє. Стандартна розмітка онлайн-плагінів (.videos__item,
-// .videos__season, .videos__button, .online-prestige) однакова в більшості джерел, тому стилі діють на всі. Вимикається в налаштуваннях.
+// Шапка з фоном і кнопками «Продовжити / Наступна», серії широкими картками з кадром і номером, чіпи озвучок. Стандартна розмітка
+// онлайн-плагінів (.videos__item, .videos__button, .online-prestige) однакова в більшості джерел, тож діє на всі. Нічого в Lampa не підміняємо.
 (function () {
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '1.0';
+    var VERSION = '2.0';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Online', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
+    function img(path, size) {
+        try { if (Lampa.TMDB && Lampa.TMDB.image) return Lampa.TMDB.image('t/p/' + size + path); } catch (e) {}
+        return 'https://image.tmdb.org/t/p/' + size + path;
+    }
 
-    // Екран онлайн-джерела = у .explorer є елементи плагіна. :has() підтримують усі сучасні WebView (Chrome 105+, Safari 15.4+, Tizen 7+);
-    // у старіших стилі просто не застосуються, і екран лишиться рідним
     var S = 'body.lmx-online .explorer:has(.videos__item, .online-prestige, .torrent-item) ';
+    var B = S + '.explorer__files-body .scroll__body';
     var CSS = '' +
         S + '.explorer__files-head{padding-bottom:.3em}' +
-        // кнопки фільтра й джерела — таблетки
         S + '.filter--search,' + S + '.filter--sort,' + S + '.filter--filter,' + S + '.filter--back,' + S + '.simple-button.selector{border-radius:99em;background:rgba(255,255,255,.12)}' +
         S + '.filter--search.focus,' + S + '.filter--sort.focus,' + S + '.filter--filter.focus,' + S + '.filter--back.focus,' + S + '.simple-button.selector.focus{background:#fff;color:#111}' +
-        // озвучки — чіпи
         S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
         S + '.videos__button.focus{background:#fff;color:#111}' +
-        // серії й файли — картки
-        S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.07);margin-bottom:.7em;overflow:hidden;transition:background .15s ease,transform .15s ease}' +
-        S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.16);box-shadow:0 0 0 .16em #fff;transform:scale(1.01)}' +
+        // список: серії у сітці широких карток (кадр зверху, підпис знизу)
+        B + ':has(.videos__item){display:flex;flex-wrap:wrap;align-items:flex-start;gap:.9em}' +
+        B + ' > *{box-sizing:border-box}' +
+        B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex:0 0 calc(25% - .7em);width:calc(25% - .7em);margin:0}' +
+        '@media (max-width:1100px){' + B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
+        '@media (max-width:760px){' + B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
+        S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
+        S + '.online-prestige,' + S + '.torrent-item{margin-bottom:.7em}' +
+        S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.14);box-shadow:0 0 0 .16em #fff;transform:scale(1.02)}' +
         S + '.videos__item.focus::after,' + S + '.videos__season.focus::after,' + S + '.online-prestige.focus::after,' + S + '.torrent-item.focus::after,' +
         S + '.videos__item.focus::before,' + S + '.videos__season.focus::before,' + S + '.online-prestige.focus::before,' + S + '.torrent-item.focus::before{display:none !important}' +
-        S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.18);overflow:hidden}' +
+        S + '.videos__item-imgbox{position:relative;width:100%;aspect-ratio:16/9;border-radius:1em 1em 0 0;overflow:hidden;background:rgba(255,255,255,.05)}' +
+        S + '.videos__item-imgbox img{width:100%;height:100%;object-fit:cover;display:block}' +
+        S + '.videos__item-imgbox[data-n]::before{content:attr(data-n);position:absolute;left:.5em;top:.5em;z-index:2;min-width:1.9em;padding:.12em .45em;border-radius:.5em;background:rgba(0,0,0,.62);font-size:.85em;font-weight:700;text-align:center;line-height:1.35}' +
+        S + '.videos__item-title,' + S + '.videos__item-footer{padding-left:.7em;padding-right:.7em}' +
+        S + '.videos__item-title{padding-top:.5em;font-weight:700;line-height:1.2}' +
+        S + '.videos__item-footer{padding-bottom:.6em;opacity:.8;font-size:.85em}' +
+        S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.2);overflow:hidden}' +
         S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
-        // шапка з назвою і прогресом
-        '.lmx-onl-hero{position:relative;margin:0 0 .9em;padding:1em 1.2em;border-radius:1.1em;overflow:hidden;background:rgba(255,255,255,.07)}' +
-        '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:center 25%;opacity:.35;filter:blur(2px)}' +
-        '.lmx-onl-hero__t,.lmx-onl-hero__m{position:relative;z-index:1}' +
-        '.lmx-onl-hero__t{font-size:1.5em;font-weight:700;line-height:1.15}' +
-        '.lmx-onl-hero__m{margin-top:.3em;opacity:.85;font-size:1em}' +
-        '.lmx-onl-hero__bar{position:relative;z-index:1;height:.3em;margin-top:.7em;border-radius:99em;background:rgba(255,255,255,.2);overflow:hidden}' +
-        '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff;border-radius:99em}' +
-        '@media (max-width:760px){.lmx-onl-hero{padding:.8em 1em}.lmx-onl-hero__t{font-size:1.2em}}';
+        // шапка
+        '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:15em;margin:0 0 .3em;padding:1.5em 2em 1.2em;border-radius:1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
+        '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:center 20%;opacity:.95}' +
+        '.lmx-onl-hero__sh{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,16,.92) 0%,rgba(8,10,16,.55) 45%,rgba(8,10,16,0) 80%),linear-gradient(0deg,rgba(8,10,16,.75) 0%,rgba(8,10,16,0) 55%)}' +
+        '.lmx-onl-hero > *:not(.lmx-onl-hero__bg):not(.lmx-onl-hero__sh){position:relative;z-index:1}' +
+        '.lmx-onl-hero__t{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;max-width:60%}' +
+        '.lmx-onl-hero__logo{display:block;max-width:34%;max-height:5.5em;width:auto;height:auto}' +
+        '.lmx-onl-hero__m{display:flex;align-items:center;gap:.9em;margin-top:.5em;font-weight:600}' +
+        '.lmx-onl-hero__q{padding:.08em .5em;border-radius:.4em;background:rgba(255,255,255,.22);font-size:.8em;font-weight:800}' +
+        '.lmx-onl-hero__o{margin-top:.7em;max-width:62%;font-size:.95em;line-height:1.4;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+        '.lmx-onl-hero__a{display:flex;flex-wrap:wrap;align-items:center;gap:.7em;margin-top:.9em}' +
+        '.lmx-onl-btn{display:inline-flex;align-items:center;padding:.65em 1.6em;border-radius:99em;background:rgba(255,255,255,.2);font-weight:700;font-size:.95em}' +
+        '.lmx-onl-btn--main{background:#fff;color:#111}' +
+        '.lmx-onl-btn.focus{box-shadow:0 0 0 .16em #fff;transform:scale(1.05)}' +
+        '.lmx-onl-btn--main.focus{background:#fff}' +
+        '.lmx-onl-hero__w{margin-top:.8em;font-size:.85em;font-weight:600;opacity:.9}' +
+        '.lmx-onl-hero__bar{position:absolute !important;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.2)}' +
+        '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff}' +
+        '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:11em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}';
     function addCss() {
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
@@ -5146,29 +5169,121 @@
         var b = item.querySelector('.time-line > div'), w = b && b.style && b.style.width ? parseFloat(b.style.width) : 0;
         return isFinite(w) ? w : 0;
     }
-    // Шапка: назва, фон із TMDB і «Переглянуто X з Y» за смужками прогресу, які вже малює сам плагін-джерело
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function jd(el) { try { return JSON.parse(el.getAttribute('data-json') || '{}') || {}; } catch (e) { return {}; } }
+    function qual(items) {
+        var m, i, t;
+        for (i = 0; i < items.length && i < 6; i++) {
+            t = items[i].textContent || '';
+            m = t.match(/\b(4K|2160p?|FHD|1080p?|HD|720p?)\b/i);
+            if (m) return m[1].toUpperCase().replace(/^1080P?$/, 'FHD').replace(/^2160P?$/, '4K');
+        }
+        return '';
+    }
+
+    var logoCache = {};
+    function pickLogo(list) {
+        var best = null, bs = -1;
+        (list || []).forEach(function (l) {
+            if (!l || !l.file_path) return;
+            var sc = l.iso_639_1 === 'uk' ? 3 : (l.iso_639_1 === 'en' ? 2 : (!l.iso_639_1 ? 1 : 0));
+            if (!sc) return;
+            sc = sc * 1000 + (l.vote_average || 0) * 10;
+            if (sc > bs) { bs = sc; best = l; }
+        });
+        return best && best.file_path;
+    }
+    function putLogo(hero, card) {
+        var kind = (card.name || card.first_air_date || card.number_of_seasons) ? 'tv' : 'movie', key = kind + card.id;
+        function show(path) {
+            if (!path || !hero.parentNode) return;
+            var im = document.createElement('img');
+            im.className = 'lmx-onl-hero__logo';
+            im.onload = function () { var t = hero.querySelector('.lmx-onl-hero__t'); if (t && im.parentNode) t.style.display = 'none'; };
+            im.onerror = function () { if (im.parentNode) im.parentNode.removeChild(im); };
+            im.src = img(path, 'w500');
+            var t0 = hero.querySelector('.lmx-onl-hero__t');
+            if (t0) hero.insertBefore(im, t0);
+        }
+        if (key in logoCache) return show(logoCache[key]);
+        if (!(Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb && card.id)) return;
+        Lampa.Api.sources.tmdb.get(kind + '/' + card.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
+            logoCache[key] = pickLogo(j && j.logos);
+            show(logoCache[key]);
+        }, function () {});
+    }
+
+    function numberItems(list) {
+        for (var i = 0; i < list.length; i++) {
+            var box = list[i].querySelector('.videos__item-imgbox');
+            if (box && !box.hasAttribute('data-n')) box.setAttribute('data-n', i < 9 ? '0' + (i + 1) : String(i + 1));
+        }
+    }
+    function press(el) { try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
+    function addNav(el) {
+        try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
+    }
+
     function buildHero() {
         if (!isOn()) return;
         var act = document.querySelector('.activity--active');
-        var files = act && act.querySelector('.explorer__files-body .scroll__body');
-        if (!files || files.querySelector('.lmx-onl-hero')) return;
-        var items = files.querySelectorAll('.videos__item:not(.videos__season)');
-        if (!items.length && !files.querySelector('.online-prestige')) return;
+        var body = act && act.querySelector('.explorer__files-body .scroll__body');
+        if (!body) return;
+        var all = body.querySelectorAll('.videos__item'), list = [], i;
+        for (i = 0; i < all.length; i++) if (!all[i].classList.contains('videos__season')) list.push(all[i]);
+        if (!list.length) return;
+        numberItems(list);
         var card = null;
-        try { var a = Lampa.Activity.active(); card = a && a.movie || a && a.card; } catch (e) {}
+        try { var a = Lampa.Activity.active(); card = a && (a.movie || a.card); } catch (e) {}
         if (!card) return;
-        var title = card.title || card.name || '', n = 0, seen = 0, sum = 0, i, p;
-        var list = items.length ? items : files.querySelectorAll('.online-prestige');
-        for (i = 0; i < list.length; i++) { p = pct(list[i]); n++; sum += p; if (p >= 90) seen++; }
-        var hero = document.createElement('div');
-        hero.className = 'lmx-onl-hero';
-        var bg = card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + (Lampa.TMDB && Lampa.TMDB.image ? Lampa.TMDB.image('t/p/w780' + card.backdrop_path) : 'https://image.tmdb.org/t/p/w780' + card.backdrop_path) + '\')"></div>' : '';
-        var meta = n > 1 ? 'Переглянуто ' + seen + ' з ' + n : (n === 1 && sum > 0 ? 'Прогрес ' + Math.round(sum) + '%' : '');
-        hero.innerHTML = bg + '<div class="lmx-onl-hero__t"></div>' + (meta ? '<div class="lmx-onl-hero__m">' + meta + '</div>' : '') +
-            (n > 1 ? '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / n * 100) + '%"></i></div>' : '');
-        hero.querySelector('.lmx-onl-hero__t').textContent = title;
-        // усередині прокрутки, перший у списку: висоту екрана Lampa не чіпаємо, фокус і навігація лишаються рідними
-        files.insertBefore(hero, files.firstChild);
+        var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',');
+        var old = body.querySelector('.lmx-onl-hero');
+        if (old && old.getAttribute('data-sig') === sig) return;
+        if (old) old.parentNode.removeChild(old);
+
+        var seen = 0, cont = -1, k;
+        for (k = 0; k < list.length; k++) { var pp = pct(list[k]); if (pp >= 90) seen++; else if (pp >= 1 && cont < 0) cont = k; }
+        if (cont < 0) { for (k = 0; k < list.length; k++) if (pct(list[k]) < 90) { cont = k; break; } }
+        var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
+        var nxt = cont >= 0 && cont + 1 < list.length ? cont + 1 : -1;
+        function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1); return (j.season ? 'S' + j.season + ' ' : '') + 'E' + n; }
+
+        var title = card.title || card.name || '', q = qual(list);
+        var year = String(card.release_date || card.first_air_date || '').slice(0, 4);
+        var rt = card.episode_run_time && card.episode_run_time[0] || card.runtime || 0;
+        var vote = Number(card.vote_average) || 0;
+        var h = document.createElement('div');
+        h.className = 'lmx-onl-hero';
+        h.setAttribute('data-sig', sig);
+        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + img(card.backdrop_path, 'w1280') + '\')"></div>' : '') +
+            '<div class="lmx-onl-hero__sh"></div><div class="lmx-onl-hero__t">' + esc(title) + '</div>' +
+            '<div class="lmx-onl-hero__m">' + (q ? '<span class="lmx-onl-hero__q">' + esc(q) + '</span>' : '') + (vote ? '<span>&#9733; ' + vote.toFixed(1) + '</span>' : '') +
+            (year ? '<span>' + year + '</span>' : '') + (rt ? '<span>' + rt + ' хв</span>' : '') + '</div>' +
+            (card.overview ? '<div class="lmx-onl-hero__o">' + esc(card.overview) + '</div>' : '') +
+            '<div class="lmx-onl-hero__a">' +
+            (cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (haveProg ? 'Продовжити' : 'Дивитись') + ' &middot; ' + esc(lab(cont)) + '</div>' : '') +
+            (nxt >= 0 && haveProg ? '<div class="lmx-onl-btn selector" data-go="' + nxt + '">Наступна &middot; ' + esc(lab(nxt)) + '</div>' : '') + '</div>' +
+            (list.length > 1 ? '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
+                '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>' : '');
+        body.insertBefore(h, body.firstChild);
+        putLogo(h, card);
+        var btns = h.querySelectorAll('.lmx-onl-btn');
+        for (i = 0; i < btns.length; i++) (function (b) {
+            $(b).on('hover:enter click', function () { var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t); });
+            addNav(b);
+        })(btns[i]);
+    }
+
+    var obs = null, obsTarget = null, tm = 0;
+    function arm() {
+        var act = document.querySelector('.activity--active');
+        var body = act && act.querySelector('.explorer__files-body .scroll__body');
+        if (!body || body === obsTarget) return;
+        if (obs) obs.disconnect();
+        obsTarget = body;
+        // плагін-джерело перемальовує список (зміна сезону, джерела, озвучки) — оновлюємо шапку з паузою, щоб не заважати
+        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); }, 250); });
+        obs.observe(body, { childList: true });
     }
 
     function start() {
@@ -5178,13 +5293,13 @@
             var S2 = Lampa.SettingsApi;
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx', param: { name: 'lmx_online', type: 'trigger', default: true },
-                field: { name: 'Оформлення екрана «Онлайн»', description: 'Картки серій із прогресом, чіпи озвучок, шапка «Переглянуто X з Y». Для всіх джерел. Якщо екран джерела виглядає зламаним — вимкніть' },
+                field: { name: 'Оформлення екрана «Онлайн»', description: 'Шапка з кнопками «Продовжити» і «Наступна», серії широкими картками, чіпи озвучок. Для всіх джерел. Якщо екран джерела виглядає зламаним — вимкніть' },
                 onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
-                // плагін-джерело наповнює екран із затримкою (мережа): пробуємо кілька разів, шапку вставляємо один раз
-                [500, 1500, 3500].forEach(function (ms) { setTimeout(function () { safe(buildHero); }, ms); });
+                obsTarget = null;
+                [500, 1500, 3500].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
             });
         });
     }
