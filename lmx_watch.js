@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '1.1';
+    var VERSION = '1.2';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -75,7 +75,7 @@
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
         S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop){display:none !important}' +
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
-        S + '.lmx-onl-opt{margin:0;padding:.35em .95em;font-size:.78em}' +
+        S + '.lmx-onl-opt{margin:0;padding:.5em 1.3em;font-size:.95em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
         S + '.lmx-onl-opt--dim{opacity:.45}' +
         '.lmx-onl-off{display:none !important}' + B + ' > .lmx-onl-item.lmx-onl-off,' + B + ' > .lmx-onl-off{display:none !important}' +
@@ -97,6 +97,7 @@
         '.lmx-scan__b i{display:block;height:100%;width:5%;border-radius:99em;background:#fff;transition:width .5s ease}' +
         '.lmx-scan__h{margin-top:1.4em;font-size:.8em;opacity:.45}' +
         S + '.lmx-onl-nothumb img{visibility:hidden}' +
+        S + '.lmx-onl-nothumb [class*="episode-number"]{display:none !important}' +
         S + '.lmx-onl-nothumb{background-size:cover !important;background-position:center !important;background-color:rgba(0,0,0,.45);background-blend-mode:multiply}' +
         S + '.explorer__files-body .scroll--mask,' + S + '.explorer__files-body .scroll{-webkit-mask-image:none !important;mask-image:none !important}' +
         S + '.explorer__files:after,' + S + '.explorer__files:before,' + S + '.explorer__files-body:after,' + S + '.explorer__files-body:before{display:none !important}' +
@@ -117,12 +118,12 @@
         S + '.lmx-onl-prog__c{flex:0 0 calc(20% - .72em);aspect-ratio:16/11;border-radius:1em;background:rgba(255,255,255,.07);animation:lmxShim 1.6s ease-in-out infinite}' +
         S + '.lmx-onl-prog__c:nth-child(2){animation-delay:.15s}' + S + '.lmx-onl-prog__c:nth-child(3){animation-delay:.3s}' + S + '.lmx-onl-prog__c:nth-child(4){animation-delay:.45s}' + S + '.lmx-onl-prog__c:nth-child(5){animation-delay:.6s}' +
         S + '.lmx-onl-prog--end .lmx-onl-prog__g,' + S + '.lmx-onl-prog--end .lmx-onl-prog__b{display:none}' +
-        S + '.lmx-onl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.4em .9em;padding:.1em 0 .7em}' +
+        S + '.lmx-onl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 1.3em;padding:.1em 0 .9em}' +
         S + '.lmx-onl-g{display:inline-flex;align-items:center;gap:.4em}' +
-        S + '.lmx-onl-g__l{font-size:.6em;font-weight:700;letter-spacing:.08em;opacity:.7;text-transform:uppercase}' +
-        S + '.lmx-onl-pill{display:inline-flex;align-items:center;margin:0;padding:.3em .85em;font-size:.74em}' +
+        S + '.lmx-onl-g__l{font-size:.72em;font-weight:700;letter-spacing:.08em;opacity:.7;text-transform:uppercase}' +
+        S + '.lmx-onl-pill{display:inline-flex;align-items:center;justify-content:space-between;margin:0;padding:.5em 1.3em;min-width:8.5em;font-size:.95em}' +
         S + '.lmx-onl-pill__c{font-style:normal;margin-left:.55em;opacity:.8}' +
-        S + '.lmx-onl-pill__t{max-width:12em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+        S + '.lmx-onl-pill__t{max-width:15em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         'body.lmx-onl-big ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 calc(33.333% - .62em) !important;width:calc(33.333% - .62em) !important}' +
         // режим «Список»: кожна серія — рядок на всю ширину
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 100% !important;width:100% !important;flex-direction:row !important;align-items:center}' +
@@ -139,7 +140,7 @@
         '.lmx-onl-hero__q{padding:.08em .5em;border-radius:.4em;background:rgba(255,255,255,.22);font-size:.8em;font-weight:800}' +
         '.lmx-onl-hero__o{margin-top:.7em;max-width:62%;font-size:.95em;line-height:1.4;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
         '.lmx-onl-hero__a{display:flex;flex-wrap:wrap;align-items:center;gap:.7em;margin-top:.9em}' +
-        '.lmx-onl-btn{display:inline-flex;align-items:center;justify-content:center;min-width:11em;padding:.85em 2.3em;border-radius:99em;background:rgba(255,255,255,.2);font-weight:700;font-size:1.1em}' +
+        '.lmx-onl-btn{display:inline-flex;align-items:center;padding:.65em 1.6em;border-radius:99em;background:rgba(255,255,255,.2);font-weight:700;font-size:.95em}' +
         '.lmx-onl-btn--main{background:#fff;color:#111}' +
         '.lmx-onl-btn.focus{box-shadow:0 0 0 .16em #fff;transform:scale(1.05)}' +
         '.lmx-onl-btn--main.focus{background:#fff}' +
@@ -277,7 +278,7 @@
         if (!bg) return;
         var url = img(bg, artMax() ? 'w780' : 'w500'), i, box, im;
         for (i = 0; i < list.length; i++) {
-            box = list[i].querySelector('.videos__item-imgbox, [class*="imgbox"]');
+            box = list[i].querySelector('.videos__item-imgbox, [class*="imgbox"], [class*="prestige__img"]');
             if (!box) {
                 // у картці зовсім немає місця під постер (джерело без картинок) — додаємо власне, з кадром фільму
                 if (list[i].querySelector('img')) continue;
@@ -419,7 +420,20 @@
     // Картка серії: є картинка/смужка прогресу, АБО (джерело без постерів — Люпен, Кульгаві коні) — це власна картка джерела з текстом
     function hasEp(el) {
         if (el.querySelector('img, .time-line, [class*="prestige__img"], [class*="imgbox"]')) return true;
-        return /videos__item|prestige|online-|episode/i.test(String(el.className)) && !/videos__button|simple-button|season|folder/i.test(String(el.className));
+        return /videos__item|prestige|online-|episode/i.test(String(el.className)) && !/videos__button|simple-button|season|folder/i.test(String(el.className)) && !!el.querySelector('[class*="title"], [class*="episode"], [class*="info"]');
+    }
+    // «Родина» картки: якщо в списку є кілька карток одного типу (online-prestige / videos__item), а одна — іншого типу (залишок попереднього
+    // джерела, довга службова кнопка «Джерело · Сезон · Серія»), то це не серія: ховаємо й забираємо з навігації
+    function famOf(el) { var m = String(el.className).match(/videos__item|online-prestige|torrent-item/); return m ? m[0] : 'x'; }
+    function famFilter(els) {
+        var cnt = {}, best = '', bn = 0, out = [], i, f;
+        els.forEach(function (e) { f = famOf(e); cnt[f] = (cnt[f] || 0) + 1; if (cnt[f] > bn) { bn = cnt[f]; best = f; } });
+        if (bn < 2) return els;
+        for (i = 0; i < els.length; i++) {
+            if (famOf(els[i]) === best) out.push(els[i]);
+            else { els[i].classList.remove('selector', 'focus', 'lmx-onl-item'); els[i].classList.add('lmx-onl-wide'); }
+        }
+        return out;
     }
     function hideJunk(act) {
         var body = act.querySelector('.explorer__files-body .scroll__body'), kids = body ? body.children : [], i, el, ch = false;
@@ -1547,7 +1561,7 @@
             if (!el.classList || !(el.classList.contains('selector') || el.classList.contains('lmx-onl-off')) || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
             if (hasEp(el)) out.push(el);
         }
-        return out;
+        return famFilter(out);
     }
 
     // Підбір джерела: стан живе в window.__lmxProbe, бо після зміни джерела плагін може перестворити екран — тоді підбір просто
@@ -1806,8 +1820,10 @@
             var el = kids[i];
             if (!el.classList || !(el.classList.contains('selector') || el.classList.contains('lmx-onl-off')) || el.classList.contains('lmx-onl-btn')) continue;
             if (el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
-            if (hasEp(el)) { el.classList.add('lmx-onl-item'); list.push(el); }
+            if (hasEp(el)) list.push(el);
         }
+        list = famFilter(list);
+        list.forEach(function (e) { e.classList.add('lmx-onl-item'); });
         var ex = act.querySelector('.explorer');
         if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
         if (body.querySelector('.videos__item-imgbox') || (list.length && list[0].querySelector('img'))) body.classList.add('lmx-onl-grid');
