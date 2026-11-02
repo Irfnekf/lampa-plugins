@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.317 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.319 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.317';
+    var VERSION = '10.319';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5145,8 +5145,8 @@
         S + '.videos__item-title{padding-top:.5em;font-weight:700;line-height:1.2}' +
         S + '.videos__item-footer{padding-bottom:.6em;opacity:.8;font-size:.85em}' +
         // інформація в картці (якість, озвучка, розмір…): джерела обрізають її трикрапкою, а нам потрібно все читабельно — переносимо на рядки
-        S + '.lmx-onl-item [class*="__info"],' + S + '.lmx-onl-item [class*="-footer"],' + S + '.lmx-onl-item [class*="__footer"]{display:flex !important;flex-wrap:wrap;gap:.15em .7em;white-space:normal !important;overflow:visible !important;opacity:.95 !important;font-size:.92em !important;line-height:1.3;height:auto !important;max-height:none !important}' +
-        S + '.lmx-onl-item [class*="__info"] > *,' + S + '.lmx-onl-item [class*="-footer"] > *,' + S + '.lmx-onl-item [class*="__footer"] > *{flex:0 0 auto !important;width:auto !important;max-width:100% !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important}' +
+        S + '.lmx-onl-item [class*="__info"],' + S + '.lmx-onl-item [class*="-footer"],' + S + '.lmx-onl-item [class*="__footer"]{display:flex !important;flex-wrap:wrap;gap:.15em .7em;white-space:normal !important;overflow:visible !important;opacity:.95 !important;font-size:.92em !important;line-height:1.3;height:auto !important;max-height:none !important;padding:.2em .7em .6em !important;box-sizing:border-box;margin:0 !important}' +
+        S + '.lmx-onl-item [class*="__info"] > *,' + S + '.lmx-onl-item [class*="-footer"] > *,' + S + '.lmx-onl-item [class*="__footer"] > *{flex:0 0 auto !important;width:auto !important;max-width:100% !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important;margin-left:0 !important;margin-right:0 !important;padding-left:0 !important;padding-right:0 !important}' +
         S + '.lmx-onl-item [class*="__title"]{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.2}' +
         S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.2);overflow:hidden}' +
         S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
@@ -5392,6 +5392,20 @@
     function pageLabel(pgs, k) { var a = k * pgs.size + 1, b = Math.min(pgs.total, (k + 1) * pgs.size); return a + '\u2013' + b; }
     // Тривалість у картці фільму: джерела пишуть «02:32» (години:хвилини), що читається як 2 хвилини. Якщо значення збігається з тривалістю фільму
     // як Г:ХХ — показуємо «2 г 32 хв»
+    // Слоган фільму («Ласкаво просимо у світ без правил.») джерело дописує в рядок інформації — ховаємо його
+    function hideTagline(list, card) {
+        if (!card || card.number_of_seasons || (card.first_air_date && !card.release_date)) return;
+        var norm = function (t) { return String(t || '').toLowerCase().replace(/[^\wа-яіїєґ]+/gi, ' ').trim(); }, tg = norm(card.tagline);
+        list.forEach(function (it) {
+            [].forEach.call(it.querySelectorAll('[class*="__info"] *, [class*="-footer"] *, [class*="__footer"] *'), function (n) {
+                if (n.children.length || n.getAttribute('data-lmx-tg')) return;
+                var t = String(n.textContent || '').trim(), nt = norm(t);
+                if (!nt) return;
+                var hit = tg ? (nt === tg || (tg.length > 8 && (nt.indexOf(tg) >= 0 || tg.indexOf(nt) >= 0))) : (t.length >= 24 && nt.split(' ').length >= 4 && !/\d{4}/.test(t));
+                if (hit) { n.setAttribute('data-lmx-tg', '1'); n.style.setProperty('display', 'none', 'important'); }
+            });
+        });
+    }
     function fixTimes(list, card) {
         var rt = card && parseInt(card.runtime, 10) || 0;
         if (rt < 60 || (card && (card.number_of_seasons || card.first_air_date && !card.release_date))) return;
@@ -6732,7 +6746,7 @@
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
-        safe(function () { fixTimes(list, card); });
+        safe(function () { fixTimes(list, card); hideTagline(list, card); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
