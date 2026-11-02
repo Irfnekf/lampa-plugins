@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.23';
+    var VERSION = '1.24';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -592,8 +592,7 @@
         var st = getState(), now = Date.now() + (st0skew());
         // Повне зчитування з сервера (since=0) — безпечне й нічого не затирає (діють ті самі правила «новіше/більше виграє»). Робимо його:
         // вручну («Синхронізувати зараз»), один раз після оновлення плагіна і коли локальних таймкодів стало вдвічі менше, ніж пам'ятає стан (дані пристрою очищали)
-        var tlNow = Object.keys(tlData()).length, tsn = 0, tk;
-        for (tk in (st.tsnap || {})) tsn++;
+        var tlNow = Object.keys(tlData()).length, tsn = Object.keys(st.tsnap || {}).length;
         if (manual || st.pullv !== 2 || (tsn >= 20 && tlNow < tsn * 0.5)) { st.since = 0; if (tsn >= 20 && tlNow < tsn * 0.5) st.tsnap = {}; }
         var col = collect(st, now, { synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
         for (i = 0; i < ops.length; i += CHUNK) chunks.push(ops.slice(i, i + CHUNK));
@@ -774,10 +773,15 @@
         });
         // Lampa зберігає прогрес лише раз на 2 хв і при виході з плеєра. Якщо одразу закрити застосунок (телефон), останні хвилини губились.
         // Тому зберігаємо позицію щоразу, коли застосунок згортається/закривається, і раз на 15 с, поки грає відео
+        var posBase = null;
         function savePos() {
             try {
                 var w = Lampa.Player && Lampa.Player.playdata && Lampa.Player.playdata(), t = w && w.timeline;
-                if (t && t.handler && !t.stop_recording && t.duration && t.time > 0) t.handler(t.percent, t.time, t.duration);
+                if (!t) { posBase = null; return; }
+                if (!t.handler || t.stop_recording || !t.duration || !(t.time > 0)) return;
+                // пишемо лише коли позиція справді зсунулась від старту відео: інакше «свіжий» штамп на старій позиції перебив би новіший прогрес з іншого пристрою
+                if (!posBase || posBase.hash !== t.hash) { posBase = { hash: t.hash, time: t.time }; return; }
+                if (t.time !== posBase.time) t.handler(t.percent, t.time, t.duration);
             } catch (e) {}
         }
         safe(function () {
