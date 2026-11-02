@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.282 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.283 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.282';
+    var VERSION = '10.283';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5317,21 +5317,25 @@
     // стрілки й виділення перестають працювати. Перезбираємо її рідним способом і, якщо фокус загублено, ставимо його на першу серію/кнопку
     function resync(act) {
         clearTimeout(act.__lmxRS);
-        act.__lmxRS = setTimeout(function () {
+        function pass(final) {
             safe(function () {
-                var c = Lampa.Controller.enabled();
-                if (!c || c.name !== 'content' || document.querySelector('.selectbox')) return;
+                if (!document.body.contains(act) || document.querySelector('.selectbox')) return;
                 if ((window.__lmxKeyT || 0) > Date.now() - 400) return;
-                Lampa.Controller.toggle('content');
+                var c = Lampa.Controller.enabled(), nm = c && c.name;
+                // 'select' без відкритого меню — застарілий стан після вкладених меню фільтра: керування «залипло» на закритому меню
+                if (nm === 'content' || nm === 'select' || !nm) Lampa.Controller.toggle('content');
+                else if (!final) return;
                 setTimeout(function () {
                     safe(function () {
                         if (act.querySelector('.focus') || !window.Navigator || !Navigator.focus) return;
+                        var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
                         var t = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                         if (t) Navigator.focus(t);
                     });
                 }, 80);
             });
-        }, 220);
+        }
+        act.__lmxRS = setTimeout(function () { pass(false); act.__lmxRS2 = setTimeout(function () { pass(true); }, 900); }, 220);
     }
     function addNav(el) {
         try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
