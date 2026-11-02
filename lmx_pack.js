@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.312 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.314 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.312';
+    var VERSION = '10.314';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5920,13 +5920,16 @@
     // заново збираємо колекцію фокусу (comp.reset() лишає її на старих/службових вузлах) і ставимо фокус на кнопку «Джерело»
     function afterReload(act) {
         act.classList.add('lmx-onl-rl');
+        // відкрита панель вибору (джерело/сезон/озвучка) після вибору зайва — закриваємо, щоб було видно завантаження
+        safe(function () { var dr = act.querySelector('.lmx-onl-drop'); if (dr && dr.parentNode) dr.parentNode.removeChild(dr); });
         safe(function () {
-            if (act.querySelector('.lmx-onl-prog')) return;
-            var hero = act.querySelector('.lmx-onl-hero'), pr = document.createElement('div');
-            if (!hero || !hero.parentNode) return;
+            var old = act.querySelector('.lmx-onl-prog'); if (old && old.parentNode) old.parentNode.removeChild(old);
+            var hero = act.querySelector('.lmx-onl-hero'), hd = act.querySelector('.explorer__files-head'), pr = document.createElement('div');
+            var nm = ''; try { var ii = instFor(act), Sd = ii && readSets(ii), it0 = Sd && Sd.sort && selItem(Sd.sort); nm = it0 ? String(it0.title || '').replace(/\s*~.*$/, '') : ''; } catch (e) {}
             pr.className = 'lmx-onl-prog';
-            pr.innerHTML = '<div class="lmx-onl-prog__s">Завантажуємо…</div><div class="lmx-onl-prog__b"><i></i></div>';
-            hero.parentNode.insertBefore(pr, hero.nextSibling);
+            pr.innerHTML = '<div class="lmx-onl-prog__s">Завантажуємо' + (nm ? ': ' + esc(nm) : '') + '…</div><div class="lmx-onl-prog__b"><i></i></div>';
+            if (hero && hero.parentNode) hero.parentNode.insertBefore(pr, hero.nextSibling);
+            else if (hd) hd.insertBefore(pr, hd.firstChild);
         });
         clearInterval(act.__lmxAR);
         var n = 0;
@@ -5937,10 +5940,14 @@
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
                 var has = episodeEls(body).length, msg = /не дав результат|no results|помилка/i.test(body.textContent || '');
-                if (!has && !msg && n < 80) return;
+                if (!has && !msg && n < 160) return;
                 clearInterval(act.__lmxAR);
                 act.classList.remove('lmx-onl-rl');
-                if (!act.__lmxProbing) { var q = act.querySelector('.lmx-onl-prog'); if (q && has) q.parentNode.removeChild(q); }
+                if (!act.__lmxProbing) {
+                    var q = act.querySelector('.lmx-onl-prog');
+                    if (q && has) q.parentNode.removeChild(q);
+                    else if (q) { var qs = q.querySelector('.lmx-onl-prog__s'); if (qs) qs.textContent = 'Це джерело нічого не дало'; q.classList.add('lmx-onl-prog--end'); deadActions(act); }
+                }
                 setTimeout(function () {
                     safe(function () {
                         if (!document.body.contains(act) || act.__lmxProbing || document.querySelector('.selectbox')) return;
@@ -5976,6 +5983,19 @@
     function bringIn(node) {
         var sc = scrollFor(node);
         if (sc) { try { sc.update($(node), true); return true; } catch (e) {} }
+        // як у Nova: якщо рідний Scroll не знайдено, зсуваємо тіло прокрутки самі
+        try {
+            var box = $(node).closest('.scroll'), body = box.find('.scroll__body').first();
+            if (!box.length || !body.length) return false;
+            var top = node.getBoundingClientRect().top - box[0].getBoundingClientRect().top, seat = box[0].offsetHeight || 0;
+            var lift = Math.round(Math.max(20, seat / 2 - (node.offsetHeight || 0) / 2));
+            var st = body[0].style.transform || body[0].style['-webkit-transform'] || '';
+            if (st.indexOf('translate') !== -1) {
+                var pr = st.match(/-?[\d.]+px,\s*(-?[\d.]+)px/), now = pr ? parseFloat(pr[1]) || 0 : 0, nx = Math.min(0, Math.round(now - top + lift));
+                body[0].style['-webkit-transform'] = body[0].style.transform = 'translate3d(0px,' + nx + 'px,0px)';
+            } else box[0].scrollTop = Math.max(0, box[0].scrollTop + top - lift);
+            return true;
+        } catch (e) {}
         return false;
     }
     function keepFocus() {
@@ -6320,6 +6340,16 @@
                     else if (lvl === 2) tg = near('.lmx-onl-item', cx0);
                 }
                 if (tg && tg !== cur) { e.preventDefault(); e.stopImmediatePropagation(); if (window.Navigator && Navigator.focus) Navigator.focus(tg); return; }
+            }
+            if (dn && cur.classList.contains('lmx-onl-item')) {
+                // «Вниз» по серіях: штатна навігація Lampa зупинялась на третьому ряду (нижні ряди — за межею видимого). Самі беремо картку ряду нижче
+                var its = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
+                var cb = cur.getBoundingClientRect(), cxx = cb.left + cb.width / 2, rowT = 1e9, nb = null, nd = 1e9;
+                its.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top > cb.top + 8 && r.top < rowT) rowT = r.top; });
+                if (rowT === 1e9) return;
+                its.forEach(function (x) { var r = x.getBoundingClientRect(); if (Math.abs(r.top - rowT) > 8) return; var d = Math.abs(r.left + r.width / 2 - cxx); if (d < nd) { nd = d; nb = x; } });
+                if (nb) { e.preventDefault(); e.stopImmediatePropagation(); bringIn(nb); try { var hb = $(nb).closest('.scroll__body')[0]; if (hb && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(nb, hb); else if (window.Navigator && Navigator.focus) Navigator.focus(nb); } catch (e2) { if (window.Navigator && Navigator.focus) Navigator.focus(nb); } }
+                return;
             }
             if (!up || !cur.classList.contains('lmx-onl-item')) return;
             var items = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
