@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.303 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.304 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.303';
+    var VERSION = '10.304';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5161,7 +5161,7 @@
         S + '.lmx-onl-opt--dim{opacity:.45}' +
         S + '.lmx-onl-opt--ok{background:linear-gradient(135deg,rgba(255,255,255,.26),rgba(255,255,255,.12));box-shadow:0 0 0 .12em rgba(255,255,255,.4),0 .2em .9em rgba(0,0,0,.35);font-weight:700}' +
         S + '.lmx-onl-opt--ok::before{content:"";display:inline-block;width:.5em;height:.5em;border-radius:50%;background:#5fe39a;box-shadow:0 0 .6em #5fe39a;margin-right:.55em;vertical-align:.05em}' +
-        '.lmx-scan{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;justify-content:center;background:#0b0d12;transition:opacity .35s}' +
+        '.lmx-scan{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:#0b0d12;transition:opacity .35s}' +
         '.lmx-scan--out{opacity:0}' +
         '.lmx-scan__bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;filter:blur(.3em)}' +
         '.lmx-scan__c{position:relative;width:min(34em,80%);text-align:center}' +
@@ -5745,6 +5745,18 @@
         el.querySelector('.lmx-scan__s').textContent = scanText();
         el.querySelector('.lmx-scan__b i').style.width = Math.round(scanFrac() * 100) + '%';
     }
+    // Після вибору джерела плагін перестворює екран: тримаємо панель, доки новий екран не покаже серії, щоб не було проміжних кадрів
+    function hideScanLater() {
+        var el = document.getElementById('lmx-scan'); if (!el) return;
+        if (el.__later) return;
+        el.__later = 1;
+        var n = 0, iv = setInterval(function () {
+            n++;
+            var a = document.querySelector('.activity--active');
+            var ready = a && a.querySelector('.lmx-onl-hero') && a.querySelector('.lmx-onl-item') && !a.__lmxProbing;
+            if (ready || n > 40) { clearInterval(iv); setTimeout(hideScan, ready ? 250 : 0); }
+        }, 150);
+    }
     function hideScan() {
         var el = document.getElementById('lmx-scan'); if (!el) return;
         clearInterval(el.__iv); el.id = ''; el.classList.add('lmx-scan--out');
@@ -6002,6 +6014,38 @@
             if (window.Navigator && Navigator.focus) Navigator.focus(best);
         }, true);
     }
+    // Запобіжник: після будь-якого перемальовування серії можуть опинитись за межами екрана або фокус — на зниклому елементі
+    function viewGuard() {
+        if (window.__lmxVG) return;
+        window.__lmxVG = 1;
+        var bad = 0;
+        setInterval(function () {
+            safe(function () {
+                var act = document.querySelector('.activity--active');
+                if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || document.getElementById('lmx-scan') || document.querySelector('.selectbox')) { bad = 0; return; }
+                if ((window.__lmxKeyT || 0) > Date.now() - 900) { bad = 0; return; }
+                var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                if (!tg) { bad = 0; return; }
+                var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
+                if (listOff(act)) {
+                    resetScroll(act);
+                    try { Lampa.Controller.toggle('content'); } catch (e) {}
+                    var it0 = act.querySelector('.lmx-onl-item') || tg;
+                    if (window.Navigator && Navigator.focus) Navigator.focus(it0);
+                    return;
+                }
+                if (nm && nm !== 'content') { bad = 0; return; }
+                if (okFocus(act)) { bad = 0; return; }
+                if (++bad < 2) return;
+                bad = 0;
+                hideJunk(act);
+                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
+                try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
+                if (window.Navigator && Navigator.focus) Navigator.focus(tg);
+            });
+        }, 700);
+    }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
     // Серії у списку джерела: прямі нащадки з .selector і картинкою/смужкою прогресу (назви класів у джерел різні)
     function episodeEls(body) {
@@ -6024,15 +6068,15 @@
         var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 120000 : (wantHi ? 60000 : 25000);
         var gs = window.__lmxProbe;
         if (!gs || gs.cid !== cid || t - gs.t00 > 150000) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
-        if (gs.done) { hideScan(); return; }
+        if (gs.done) { hideScanLater(); return; }
         act.__lmxProbing = true;
         safe(function () { showScan(card); });
         var t0 = Date.now(), lastSig = '', stableAt = 0, EV = ['keydown', 'mousedown', 'touchstart'];
         function keyOf(it) { return srcName(it && it.title); }
         function cmp(a, b) { return ((titleQ(b.title)) - (titleQ(a.title))) || (gscore(mem.g[keyOf(b)]) - gscore(mem.g[keyOf(a)])); }
-        function stop() { clearInterval(iv); EV.forEach(function (ev) { document.removeEventListener(ev, userStop, true); }); if (gs.done) hideScan(); }
+        function stop() { clearInterval(iv); EV.forEach(function (ev) { document.removeEventListener(ev, userStop, true); }); if (gs.done) hideScanLater(); }
         function finish(msg) {
-            gs.done = true; act.__lmxProbing = false; stop(); hideScan();
+            gs.done = true; act.__lmxProbing = false; stop(); hideScanLater();
             if (msg) heroStatus(act, msg, true); else safe(buildHero);
         }
         function userStop() { finish(); }
@@ -6437,6 +6481,7 @@
             safe(dropBackHook);
             safe(downRescue);
             safe(upRescue);
+            safe(viewGuard);
             safe(watchInsert);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
