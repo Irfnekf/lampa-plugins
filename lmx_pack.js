@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.272 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.273 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.272';
+    var VERSION = '10.273';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5435,8 +5435,14 @@
                 pick = choose(items);
                 if (pick) { press(pick.el); setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 300); cb(pick.nm, pick.title); }
                 else { try { Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); cb(null); }
-            } else if (++k > 15) { clearInterval(iv); document.body.classList.remove('lmx-onl-pick'); cb(null); }
+            } else if (++k > 40) {
+                clearInterval(iv); cb(null);
+                // меню могло відкритись пізніше за очікуване (повільний телефон) — невидиме, воно блокувало б керування
+                setTimeout(function () { try { if (document.querySelector('.selectbox')) Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); }, 1500);
+            }
         }, 80);
+        // страховка: клас не може лишитись назавжди
+        setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 6000);
     }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
 
@@ -5556,7 +5562,7 @@
         putLogo(h, card);
         if (autoOn()) watchSources(act, card);
         // якщо джерел так і не знайшлось, переливання не вічне
-        setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); }, 25000);
+        setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); }, 8000);
     }
 
     function buildHero() {
