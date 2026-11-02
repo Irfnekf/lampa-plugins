@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '1.3';
+    var VERSION = '1.6';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -56,7 +56,7 @@
         S + '.lmx-onl-item [class*="__info"],' + S + '.lmx-onl-item [class*="-footer"],' + S + '.lmx-onl-item [class*="__footer"]{display:flex !important;flex-wrap:wrap;gap:.15em .7em;white-space:normal !important;overflow:visible !important;opacity:.95 !important;font-size:.92em !important;line-height:1.3;height:auto !important;max-height:none !important;padding:.2em .7em .6em !important;box-sizing:border-box;margin:0 !important}' +
         S + '.lmx-onl-item [class*="__info"] > *,' + S + '.lmx-onl-item [class*="-footer"] > *,' + S + '.lmx-onl-item [class*="__footer"] > *{flex:0 0 auto !important;width:auto !important;max-width:100% !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important;margin-left:0 !important;margin-right:0 !important;padding-left:0 !important;padding-right:0 !important}' +
         S + '.lmx-onl-item [class*="__title"]{display:block !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;-webkit-box-orient:initial !important;line-height:1.2;height:auto !important;max-height:none !important;word-break:break-word}' +
-        S + '.lmx-onl-item [class*="__info"] *,' + S + '.lmx-onl-item [class*="-footer"] *,' + S + '.lmx-onl-item [class*="__footer"] *{overflow:visible !important;text-overflow:clip !important;max-width:none !important}' +
+        S + '.lmx-onl-item [class*="__info"] *,' + S + '.lmx-onl-item [class*="-footer"] *,' + S + '.lmx-onl-item [class*="__footer"] *{overflow:visible !important;text-overflow:clip !important;white-space:normal !important;min-width:0 !important;overflow-wrap:anywhere}' +
         // уся текстова частина картки (і в джерел зі своєю розміткою): без трикрапки й обрізання, з однаковою мінімальною висотою — картки однакові незалежно від довжини тексту
         S + '.lmx-onl-item *:not(img):not([class*="img"]):not([class*="poster"]):not([class*="time"]):not([class*="line"]):not(svg):not(path){text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;min-width:0}' +
         S + '.lmx-onl-item [class*="title"],' + S + '.lmx-onl-item [class*="name"]{white-space:normal !important;overflow:visible !important;-webkit-box-orient:initial !important;max-height:none !important;height:auto !important;word-break:break-word;overflow-wrap:anywhere}' +
@@ -75,10 +75,12 @@
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
         S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop){display:none !important}' +
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
+        S + '.lmx-onl-item [data-lmx-t]{white-space:nowrap !important;flex:0 0 auto !important;overflow-wrap:normal !important}' +
         S + '.lmx-onl-epi{padding:.1em .7em .2em;font-size:.82em;line-height:1.3;opacity:.85;min-height:2.6em;box-sizing:border-box;white-space:normal;overflow:visible}' +
         S + '.lmx-onl-epi__n{font-weight:600}' +
         S + '.lmx-onl-epi__d{opacity:.7;font-size:.92em}' +
         S + '.lmx-onl-g--cfg .lmx-onl-g__l{display:none}' +
+        S + '.lmx-onl-g--sort .lmx-onl-g__l{display:none}' +
         S + '.lmx-onl-g--cfg .lmx-onl-pill{min-width:0;padding:.5em .85em;font-size:1.05em;justify-content:center}' +
         S + '.lmx-onl-opt{margin:0;padding:.5em 1.3em;font-size:.95em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
@@ -154,10 +156,46 @@
         '.lmx-onl-hero__bar{position:absolute !important;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.2)}' +
         '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff}' +
         '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:11em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}';
+    // Оформлення під тему, яку вибрано в LMX Pack (клас на body ставить LMX Pack: lmx-prem «Кіно», lmx-apple «Скло»; без нього — «Полегшена»)
+    var THEME_CSS = (function () {
+        var H = 'body.lmx-online ', P = H + '.explorer.lmx-onl ', K = 'body.lmx-prem ' + '.explorer.lmx-onl ', G = 'body.lmx-apple ' + '.explorer.lmx-onl ';
+        var D = '"Oswald","Inter","Helvetica Neue",Arial,sans-serif', BG = '#0a0b10', GOLD = '#e9a24a', I = ' .lmx-onl-item';
+        return '' +
+            // ===== Кіно: темна плівка, Oswald, золотий акцент, прямокутні кнопки, біла рамка у фокусі =====
+            'body.lmx-prem.lmx-online .explorer.lmx-onl{background:' + BG + '}' +
+            K + '.lmx-onl-hero{background:' + BG + ';border-radius:0 0 .9em .9em}' +
+            K + '.lmx-onl-hero__sh{background:linear-gradient(90deg,' + BG + ' 0%,rgba(10,11,16,.82) 34%,rgba(10,11,16,.2) 70%,rgba(10,11,16,0) 100%),linear-gradient(0deg,' + BG + ' 0%,rgba(10,11,16,.55) 32%,rgba(10,11,16,0) 62%)}' +
+            K + '.lmx-onl-hero__t{font-family:' + D + ';font-weight:700;letter-spacing:.01em}' +
+            K + '.lmx-onl-hero__q{background:none;padding:0;color:' + GOLD + ';letter-spacing:.14em;font-size:.85em}' +
+            K + '.lmx-onl-hero__m span{color:#d8dcea}' +
+            K + '.lmx-onl-btn{border-radius:.7em;background:rgba(255,255,255,.16);font-weight:600;padding:.7em 2em}' +
+            K + '.lmx-onl-btn--main{background:#fff;color:' + BG + ';font-weight:700}' +
+            K + '.lmx-onl-btn.focus{box-shadow:0 0 0 .18em #fff;transform:scale(1.04)}' +
+            K + '.lmx-onl-hero__bar i,' + K + '.lmx-onl-prog__b i{background:' + GOLD + '}' +
+            K + '.lmx-onl-hero__src{color:' + GOLD + ';opacity:1}' +
+            K + '.lmx-onl-g__l{color:#aeb4c8;letter-spacing:.14em}' +
+            K + '.lmx-onl-pill,' + K + '.lmx-onl-opt{border-radius:.7em;background:#14161f;border:1px solid rgba(255,255,255,.1)}' +
+            K + '.lmx-onl-pill.focus,' + K + '.lmx-onl-opt.focus{background:#1c1f2c;border-color:transparent;box-shadow:0 0 0 .16em #fff}' +
+            K + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .12em ' + GOLD + '}' +
+            K + '.explorer__files-body .scroll__body > .lmx-onl-item{background:#14161f !important;border-radius:.8em;border:1px solid rgba(255,255,255,.06)}' +
+            K + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent;box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.5);transform:scale(1.03)}' +
+            K + '.lmx-onl-item [class*="__title"]{font-family:' + D + ';font-weight:600;letter-spacing:.01em}' +
+            K + '.lmx-onl-epi__n{color:#e8eaf2}' + K + '.lmx-onl-epi__d{color:' + GOLD + ';opacity:.9}' +
+            // ===== Скло: напівпрозорі панелі з розмиттям, великі заокруглення =====
+            G + '.lmx-onl-hero{border-radius:0 0 1.4em 1.4em}' +
+            G + '.lmx-onl-btn,' + G + '.lmx-onl-pill,' + G + '.lmx-onl-opt{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            G + '.lmx-onl-btn--main{background:rgba(255,255,255,.92);color:#111;border-color:transparent}' +
+            G + '.lmx-onl-btn.focus,' + G + '.lmx-onl-pill.focus,' + G + '.lmx-onl-opt.focus{box-shadow:0 0 0 .16em rgba(255,255,255,.95),0 .5em 1.4em rgba(0,0,0,.35)}' +
+            G + '.explorer__files-body .scroll__body > .lmx-onl-item{background:rgba(255,255,255,.1) !important;border:1px solid rgba(255,255,255,.16);border-radius:1.2em;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            G + '.explorer__files-body .scroll__body > .lmx-onl-item.focus{background:rgba(255,255,255,.2) !important;box-shadow:0 0 0 .18em rgba(255,255,255,.95),0 .8em 2em rgba(0,0,0,.4);transform:scale(1.03)}' +
+            G + '.lmx-onl-g__l{opacity:.6}' +
+            // ===== Полегшена: без розмиттів, трохи м'якші картки =====
+            'body.lmx-online:not(.lmx-prem):not(.lmx-apple) .explorer.lmx-onl .explorer__files-body .scroll__body > .lmx-onl-item{border-radius:1em}';
+    })();
     function addCss() {
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
-        st.textContent = CSS;
+        st.textContent = CSS + THEME_CSS;
     }
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
@@ -351,6 +389,27 @@
                 if (!nt) return;
                 var hit = tg ? (nt === tg || (tg.length > 8 && (nt.indexOf(tg) >= 0 || tg.indexOf(nt) >= 0))) : (t.length >= 24 && nt.split(' ').length >= 4 && !/\d{4}/.test(t));
                 if (hit) { n.setAttribute('data-lmx-tg', '1'); n.style.setProperty('display', 'none', 'important'); }
+            });
+        });
+    }
+    // Після приховування озвучки/слогану в рядку інформації лишаються сусідні роздільники («●  ●»): прибираємо зайві, початкові й кінцеві
+    function isSep(k) {
+        if (/split|separ|divider|\bdot\b|-dot|__dot/i.test(String(k.className))) return true;
+        var t = String(k.textContent || '').trim();
+        return !k.children.length && (t === '' || /^[\u25CF\u2022\u00B7|\/\-\u2013\u2014]+$/.test(t));
+    }
+    function tidySeps(list) {
+        list.forEach(function (it) {
+            [].forEach.call(it.querySelectorAll('[class*="__info"], [class*="-footer"], [class*="__footer"]'), function (box) {
+                var kids = [].slice.call(box.children), out = [], i, k;
+                kids.forEach(function (k) { if (k.getAttribute('data-lmx-sep')) { k.style.removeProperty('display'); k.removeAttribute('data-lmx-sep'); } });
+                for (i = 0; i < kids.length; i++) {
+                    k = kids[i];
+                    if (k.style.display === 'none' || (window.getComputedStyle && getComputedStyle(k).display === 'none')) continue;
+                    if (isSep(k)) { if (out.length && !isSep(out[out.length - 1])) out.push(k); else { k.setAttribute('data-lmx-sep', '1'); k.style.setProperty('display', 'none', 'important'); } }
+                    else out.push(k);
+                }
+                while (out.length && isSep(out[out.length - 1])) { k = out.pop(); k.setAttribute('data-lmx-sep', '1'); k.style.setProperty('display', 'none', 'important'); }
             });
         });
     }
@@ -1892,7 +1951,7 @@
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
-        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); });
+        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); tidySeps(list); });
         safe(function () { epInfo(list, card); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
@@ -1947,10 +2006,12 @@
             setTimeout(function () { safe(function () { press(pt); }); }, 500);
         }
         var firstUn = -1; for (k = 0; k < list.length; k++) if (!isSoon(list[k]) && pct(list[k]) < 90) { firstUn = k; break; }
-        var showFirst = firstUn >= 0 && cont >= 0 && firstUn < cont && !resSn && !allSeen;
-        var partial = cont >= 0 && pct(list[cont]) >= 1 && pct(list[cont]) < 90 && !resSn && !allSeen;
+        // Фільм: у списку не серії, а варіанти (релізи/озвучки), тож зверху лишається одна кнопка «Дивитись / Продовжити»
+        var isMovie = !(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date));
+        var showFirst = !isMovie && firstUn >= 0 && cont >= 0 && firstUn < cont && !resSn && !allSeen;
+        var partial = !isMovie && cont >= 0 && pct(list[cont]) >= 1 && pct(list[cont]) < 90 && !resSn && !allSeen;
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
-        var nxt = cont >= 0 && cont + 1 < list.length && !isSoon(list[cont + 1]) ? cont + 1 : -1;
+        var nxt = !isMovie && cont >= 0 && cont + 1 < list.length && !isSoon(list[cont + 1]) ? cont + 1 : -1;
         var fSn = 0;
         try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg); if (si) { var mm = String(si.title || '').match(/\d+/); fSn = mm ? parseInt(mm[0], 10) : 0; } } catch (e) {}
         function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
@@ -1968,9 +2029,9 @@
             (year ? '<span>' + year + '</span>' : '') + (rt ? '<span>' + rt + ' хв</span>' : '') + '</div>' +
                         '<div class="lmx-onl-hero__a">' +
             (nextSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-season="' + nextSn + '">&#9654;&#xFE0E;&nbsp; ' + (nextSn > curSn ? 'Наступний сезон' : 'Непереглянутий сезон') + ' &middot; S' + nextSn + '</div>' : '') +
-            (resSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-resume="' + resSn + '">&#9654;&#xFE0E;&nbsp; Продовжити &middot; S' + resSn + '</div>' : cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (allSeen ? 'Дивитись знову' : haveProg ? 'Продовжити' : 'Дивитись') + ' &middot; ' + esc(lab(cont)) + '</div>' : '') +
+            (resSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-resume="' + resSn + '">&#9654;&#xFE0E;&nbsp; Продовжити &middot; S' + resSn + '</div>' : cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (allSeen ? 'Дивитись знову' : haveProg ? 'Продовжити' : 'Дивитись') + (isMovie ? '' : ' &middot; ' + esc(lab(cont))) + '</div>' : '') +
             (showFirst ? '<div class="lmx-onl-btn selector" data-go="' + firstUn + '">Перша непереглянута &middot; ' + esc(lab(firstUn)) + '</div>' : '') + (partial ? '<div class="lmx-onl-btn selector" data-start="' + cont + '">Спочатку &middot; ' + esc(lab(cont)) + '</div>' : '') + (nxt >= 0 && haveProg && !allSeen && !resSn ? '<div class="lmx-onl-btn selector" data-go="' + nxt + '">Наступна &middot; ' + esc(lab(nxt)) + '</div>' : '') + (srcTxt ? '<span class="lmx-onl-hero__src">' + esc(srcTxt) + '</span>' : '') + '</div>' +
-            (list.length > 1 ? (ss ? '<div class="lmx-onl-hero__w">Переглянуто ' + ss.seen + ' з ' + ss.total + (curSn && ss.per[curSn] ? ' &middot; цей сезон ' + ss.per[curSn].seen + ' з ' + ss.per[curSn].total : '') + '</div>' +
+            (list.length > 1 && !isMovie ? (ss ? '<div class="lmx-onl-hero__w">Переглянуто ' + ss.seen + ' з ' + ss.total + (curSn && ss.per[curSn] ? ' &middot; цей сезон ' + ss.per[curSn].seen + ' з ' + ss.per[curSn].total : '') + '</div>' +
                 '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(ss.seen / ss.total * 100) + '%"></i></div>' :
                 '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
                 '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>') : '');
