@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.259 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.260 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.259';
+    var VERSION = '10.260';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5095,6 +5095,99 @@
         });
     }
 
+    if (window.appready) start();
+    else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
+})();
+// ===== LMX Online: оформлення екрана «Онлайн» для будь-яких джерел =====
+// Працює лише через CSS і легкий блок-шапку: нічого в Lampa не підміняє. Стандартна розмітка онлайн-плагінів (.videos__item,
+// .videos__season, .videos__button, .online-prestige) однакова в більшості джерел, тому стилі діють на всі. Вимикається в налаштуваннях.
+(function () {
+    'use strict';
+    if (window.__lmxOnline) return;
+    window.__lmxOnline = true;
+    var VERSION = '1.0';
+    function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Online', e); } catch (x) {} } }
+    function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
+
+    // Екран онлайн-джерела = у .explorer є елементи плагіна. :has() підтримують усі сучасні WebView (Chrome 105+, Safari 15.4+, Tizen 7+);
+    // у старіших стилі просто не застосуються, і екран лишиться рідним
+    var S = 'body.lmx-online .explorer:has(.videos__item, .online-prestige, .torrent-item) ';
+    var CSS = '' +
+        S + '.explorer__files-head{padding-bottom:.3em}' +
+        // кнопки фільтра й джерела — таблетки
+        S + '.filter--search,' + S + '.filter--sort,' + S + '.filter--filter,' + S + '.filter--back,' + S + '.simple-button.selector{border-radius:99em;background:rgba(255,255,255,.12)}' +
+        S + '.filter--search.focus,' + S + '.filter--sort.focus,' + S + '.filter--filter.focus,' + S + '.filter--back.focus,' + S + '.simple-button.selector.focus{background:#fff;color:#111}' +
+        // озвучки — чіпи
+        S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
+        S + '.videos__button.focus{background:#fff;color:#111}' +
+        // серії й файли — картки
+        S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.07);margin-bottom:.7em;overflow:hidden;transition:background .15s ease,transform .15s ease}' +
+        S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.16);box-shadow:0 0 0 .16em #fff;transform:scale(1.01)}' +
+        S + '.videos__item.focus::after,' + S + '.videos__season.focus::after,' + S + '.online-prestige.focus::after,' + S + '.torrent-item.focus::after,' +
+        S + '.videos__item.focus::before,' + S + '.videos__season.focus::before,' + S + '.online-prestige.focus::before,' + S + '.torrent-item.focus::before{display:none !important}' +
+        S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.18);overflow:hidden}' +
+        S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
+        // шапка з назвою і прогресом
+        '.lmx-onl-hero{position:relative;margin:0 0 .9em;padding:1em 1.2em;border-radius:1.1em;overflow:hidden;background:rgba(255,255,255,.07)}' +
+        '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:center 25%;opacity:.35;filter:blur(2px)}' +
+        '.lmx-onl-hero__t,.lmx-onl-hero__m{position:relative;z-index:1}' +
+        '.lmx-onl-hero__t{font-size:1.5em;font-weight:700;line-height:1.15}' +
+        '.lmx-onl-hero__m{margin-top:.3em;opacity:.85;font-size:1em}' +
+        '.lmx-onl-hero__bar{position:relative;z-index:1;height:.3em;margin-top:.7em;border-radius:99em;background:rgba(255,255,255,.2);overflow:hidden}' +
+        '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff;border-radius:99em}' +
+        '@media (max-width:760px){.lmx-onl-hero{padding:.8em 1em}.lmx-onl-hero__t{font-size:1.2em}}';
+    function addCss() {
+        var st = document.getElementById('lmx-online-css');
+        if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
+        st.textContent = CSS;
+    }
+
+    function pct(item) {
+        var b = item.querySelector('.time-line > div'), w = b && b.style && b.style.width ? parseFloat(b.style.width) : 0;
+        return isFinite(w) ? w : 0;
+    }
+    // Шапка: назва, фон із TMDB і «Переглянуто X з Y» за смужками прогресу, які вже малює сам плагін-джерело
+    function buildHero() {
+        if (!isOn()) return;
+        var act = document.querySelector('.activity--active');
+        var files = act && act.querySelector('.explorer__files-body .scroll__body');
+        if (!files || files.querySelector('.lmx-onl-hero')) return;
+        var items = files.querySelectorAll('.videos__item:not(.videos__season)');
+        if (!items.length && !files.querySelector('.online-prestige')) return;
+        var card = null;
+        try { var a = Lampa.Activity.active(); card = a && a.movie || a && a.card; } catch (e) {}
+        if (!card) return;
+        var title = card.title || card.name || '', n = 0, seen = 0, sum = 0, i, p;
+        var list = items.length ? items : files.querySelectorAll('.online-prestige');
+        for (i = 0; i < list.length; i++) { p = pct(list[i]); n++; sum += p; if (p >= 90) seen++; }
+        var hero = document.createElement('div');
+        hero.className = 'lmx-onl-hero';
+        var bg = card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + (Lampa.TMDB && Lampa.TMDB.image ? Lampa.TMDB.image('t/p/w780' + card.backdrop_path) : 'https://image.tmdb.org/t/p/w780' + card.backdrop_path) + '\')"></div>' : '';
+        var meta = n > 1 ? 'Переглянуто ' + seen + ' з ' + n : (n === 1 && sum > 0 ? 'Прогрес ' + Math.round(sum) + '%' : '');
+        hero.innerHTML = bg + '<div class="lmx-onl-hero__t"></div>' + (meta ? '<div class="lmx-onl-hero__m">' + meta + '</div>' : '') +
+            (n > 1 ? '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / n * 100) + '%"></i></div>' : '');
+        hero.querySelector('.lmx-onl-hero__t').textContent = title;
+        // усередині прокрутки, перший у списку: висоту екрана Lampa не чіпаємо, фокус і навігація лишаються рідними
+        files.insertBefore(hero, files.firstChild);
+    }
+
+    function start() {
+        safe(function () {
+            addCss();
+            document.body.classList.toggle('lmx-online', isOn());
+            var S2 = Lampa.SettingsApi;
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx', param: { name: 'lmx_online', type: 'trigger', default: true },
+                field: { name: 'Оформлення екрана «Онлайн»', description: 'Картки серій із прогресом, чіпи озвучок, шапка «Переглянуто X з Y». Для всіх джерел. Якщо екран джерела виглядає зламаним — вимкніть' },
+                onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
+            });
+            Lampa.Listener.follow('activity', function (e) {
+                if (!e || e.type !== 'start') return;
+                // плагін-джерело наповнює екран із затримкою (мережа): пробуємо кілька разів, шапку вставляємо один раз
+                [500, 1500, 3500].forEach(function (ms) { setTimeout(function () { safe(buildHero); }, ms); });
+            });
+        });
+    }
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 })();
