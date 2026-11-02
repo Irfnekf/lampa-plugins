@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.294 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.296 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.294';
+    var VERSION = '10.296';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5158,7 +5158,10 @@
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
         S + '.lmx-onl-opt{margin:0;padding:.35em .95em;font-size:.78em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
-        S + '.lmx-onl-opt--dim{opacity:.5}' +
+        S + '.lmx-onl-opt--dim{opacity:.45}' +
+        S + '.lmx-onl-opt--ok{background:rgba(110,220,150,.28)}' +
+        S + '.explorer__files-body .scroll--mask,' + S + '.explorer__files-body .scroll{-webkit-mask-image:none !important;mask-image:none !important}' +
+        S + '.explorer__files:after,' + S + '.explorer__files:before,' + S + '.explorer__files-body:after,' + S + '.explorer__files-body:before{display:none !important}' +
         S + '.explorer__files-head.hide{display:block !important}' +
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
@@ -5369,6 +5372,20 @@
         }
         return ch;
     }
+    // Після зміни джерела/озвучки список перемальовується, а Lampa лишає прокрутку зі старим зсувом — серії опиняються за межами екрана.
+    // Скидаємо зсув; далі фокус на елементі сам підтягне прокрутку
+    function listOff(act) {
+        var it = act.querySelector('.lmx-onl-item');
+        if (!it) return false;
+        var r = it.getBoundingClientRect();
+        return r.height > 0 && (r.top > window.innerHeight - 20 || r.bottom < 40);
+    }
+    function resetScroll(act) {
+        var b = act.querySelector('.explorer__files-body .scroll__body'), sc = b && b.parentNode;
+        if (b) b.style.transform = 'translate3d(0px,0px,0px)';
+        if (sc) { sc.scrollTop = 0; sc.scrollLeft = 0; }
+        try { var o = act.querySelector('.explorer__files-body .scroll'); if (o) o.scrollTop = 0; } catch (e) {}
+    }
     function recover(act) {
         clearInterval(act.__lmxRC);
         var n = 0, okTicks = 0;
@@ -5380,13 +5397,14 @@
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
-                if (okFocus(act) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
+                if (listOff(act)) { resetScroll(act); okTicks = 0; }
+                else if (okFocus(act) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
                 hideJunk(act);
                 okTicks = 0;
                 try { Lampa.Controller.toggle('content'); } catch (e) {}
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
                 try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
-                if (window.Navigator && Navigator.focus) Navigator.focus(tg);
+                if (window.Navigator && Navigator.focus) Navigator.focus(listOff(act) ? act.querySelector('.lmx-onl-item') || tg : tg);
             });
         }, 400);
     }
@@ -5678,6 +5696,18 @@
             if (el && window.Navigator && Navigator.focus) Navigator.focus(el);
         });
     }
+    // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
+    function srcState(name) {
+        var gs = window.__lmxProbe, bad = window.__lmxBad, cid = '', i;
+        try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = String(c && c.id || ''); } catch (e) {}
+        if (gs && gs.cid === cid) {
+            for (i = 0; i < gs.results.length; i++) if (gs.results[i].name === name) return 'ok';
+            if (gs.tried.indexOf(name) >= 0 && gs.cur !== name) return 'no';
+            if (gs.tried.indexOf(name) >= 0 && gs.done) return 'no';
+        }
+        if (bad && bad.cid === cid && bad.names.indexOf(name) >= 0) return 'no';
+        return '';
+    }
     function closeDrop(act, key) {
         var d = act.querySelector('.lmx-onl-drop');
         if (d) d.parentNode.removeChild(d);
@@ -5688,7 +5718,17 @@
         var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
         if (!S || !bar) return false;
         if (act.__lmxOpen === key) { closeDrop(act, key); return true; }
-        if (key === 'src') S.sort.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, dim: !!it.ghost, run: function () { inst.onSelect('sort', it); } }); });
+        if (key === 'src') {
+            var hidden = 0, anyOk = false;
+            S.sort.forEach(function (it) { if (it && srcState(srcName(it.title)) === 'ok') anyOk = true; });
+            S.sort.forEach(function (it) {
+                if (!it) return;
+                var st = srcState(srcName(it.title));
+                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { if (st === 'no') { hidden++; return; } }
+                opts.push({ title: (st === 'ok' ? '\u2713 ' : '') + it.title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { inst.onSelect('sort', it); } });
+            });
+            if (anyOk && (hidden || act.__lmxAllSrc)) opts.push({ title: act.__lmxAllSrc ? 'Лише з результатами' : 'Всі джерела (+' + hidden + ')', sticky: true, run: function () { act.__lmxAllSrc = !act.__lmxAllSrc; } });
+        }
         else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
@@ -5701,9 +5741,10 @@
         d.className = 'lmx-onl-drop';
         opts.forEach(function (o) {
             var c = document.createElement('div');
-            c.className = 'simple-button selector lmx-onl-opt' + (o.sel ? ' lmx-onl-opt--on' : '') + (o.dim ? ' lmx-onl-opt--dim' : '');
+            c.className = 'simple-button selector lmx-onl-opt' + (o.sel ? ' lmx-onl-opt--on' : '') + (o.dim ? ' lmx-onl-opt--dim' : '') + (o.ok ? ' lmx-onl-opt--ok' : '');
             c.textContent = o.title;
             $(c).on('hover:enter click', once(function () {
+                if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 closeDrop(act, key);
                 if (!o.sel) { try { o.run(); } catch (e) {} recover(act); if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); } }
             }));
@@ -5727,6 +5768,27 @@
             }
         }, true);
     }
+    // Деякі кнопки (шапка, герой, ряд вибору) не пускають стрілку «вниз» до серій: якщо після натискання фокус не зрушив — переводимо самі
+    function downRescue() {
+        if (window.__lmxDown) return;
+        window.__lmxDown = 1;
+        document.addEventListener('keydown', function (e) {
+            if (e.keyCode !== 40 && e.key !== 'ArrowDown') return;
+            var a = document.querySelector('.activity--active'), prev = document.querySelector('.focus');
+            if (!a || !prev || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+            setTimeout(function () {
+                safe(function () {
+                    var cur = document.querySelector('.focus');
+                    if (cur !== prev || !document.body.contains(prev)) return;
+                    var nx = null;
+                    if (prev.closest('.lmx-onl-hero')) nx = a.querySelector('.lmx-onl-bar .selector') || a.querySelector('.lmx-onl-item');
+                    else if (prev.closest('.lmx-onl-bar')) nx = a.querySelector('.lmx-onl-drop .selector') || a.querySelector('.lmx-onl-item');
+                    else if (prev.closest('.lmx-onl-drop')) nx = a.querySelector('.lmx-onl-item');
+                    if (nx && window.Navigator && Navigator.focus) Navigator.focus(nx);
+                });
+            }, 90);
+        }, true);
+    }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
     // Серії у списку джерела: прямі нащадки з .selector і картинкою/смужкою прогресу (назви класів у джерел різні)
     function episodeEls(body) {
@@ -5746,7 +5808,7 @@
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
         var cid = String(card && card.id || ''), mem = memGet(), t = Date.now();
-        var wantHi = qTarget() >= 4, maxTry = wantHi ? 10 : 5, budget = wantHi ? 60000 : 25000;
+        var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 120000 : (wantHi ? 60000 : 25000);
         var gs = window.__lmxProbe;
         if (!gs || gs.cid !== cid || t - gs.t00 > 150000) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
         if (gs.done) return;
@@ -5770,7 +5832,7 @@
         function switchTo(inst, it, text) {
             gs.switches++; gs.cur = keyOf(it); gs.since = Date.now(); lastSig = '';
             if (gs.tried.indexOf(gs.cur) < 0) gs.tried.push(gs.cur);
-            heroStatus(act, text + ': ' + it.title + '…', false, Math.min(0.95, gs.tried.length / maxTry));
+            heroStatus(act, text + ' (' + gs.tried.length + ' з ' + (gs.total || '?') + '): ' + it.title + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
             try { inst.onSelect('sort', it); } catch (e) { finish('Помилка підбору: ' + (e && e.message)); }
         }
         function conclude(inst, sort) {
@@ -5797,6 +5859,7 @@
             for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
             var curKey = curIt ? keyOf(curIt) : '';
             sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); });
+            gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
             if (!gs.started) {
                 gs.started = true; gs.cur = curKey; gs.since = Date.now();
                 if (curKey) gs.tried.push(curKey);
@@ -5817,8 +5880,8 @@
                 var rank = Math.max(qrank(qual(items)), gs.tq[gs.cur] || 0);
                 gs.results.push({ name: gs.cur, rank: rank, n: items.length });
                 save(gs.cur, rank);
-                heroStatus(act, 'Знайдено: ' + items.length + ' серій' + (qual(items) ? ', ' + qual(items) : '') + '…', false, Math.min(0.95, gs.tried.length / maxTry));
-                if (rank >= qTarget() || !probeOn() || gs.results.length >= maxTry) return conclude(inst, sort);
+                heroStatus(act, 'Знайдено: ' + items.length + ' серій' + (qual(items) ? ', ' + qual(items) : '') + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
+                if (!probeOn() || gs.results.length >= maxTry) return conclude(inst, sort);
                 return next(inst, sort);
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (gs.cur ? ': ' + gs.cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
@@ -5904,7 +5967,7 @@
         putLogo(h, card);
         if (autoOn()) watchSources(act, card);
         // якщо джерел так і не знайшлось, переливання не вічне
-        setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); if (q && !act.querySelector('.lmx-onl-item')) q.classList.add('lmx-onl-prog--end'); else if (q) q.parentNode.removeChild(q); }, 50); }, (qTarget() >= 4 ? 65000 : 30000));
+        setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); if (q && !act.querySelector('.lmx-onl-item')) q.classList.add('lmx-onl-prog--end'); else if (q) q.parentNode.removeChild(q); }, 50); }, (probeOn() ? 130000 : (qTarget() >= 4 ? 65000 : 30000)));
     }
 
     function buildHero() {
@@ -6068,6 +6131,7 @@
             safe(hookFilter);
             safe(hookSelect);
             safe(dropBackHook);
+            safe(downRescue);
             safe(watchInsert);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
