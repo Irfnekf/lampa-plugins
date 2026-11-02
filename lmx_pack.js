@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.276 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.278 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.276';
+    var VERSION = '10.278';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5293,8 +5293,18 @@
             for (k = 0; k < its.length; k++) { t = its[k].querySelector('.selectbox-item__title'); if (t && rx.test(t.textContent || '')) { hit = its[k]; break; } }
             if (hit) {
                 clearInterval(iv);
+                // заодно запам'ятовуємо обране з підписів меню (текст кнопки «Фільтр» Lampa скорочує посередині)
+                try {
+                    var F = act.__lmxF || (act.__lmxF = {}), q, tt, ss;
+                    for (q = 0; q < its.length; q++) {
+                        tt = its[q].querySelector('.selectbox-item__title'); ss = its[q].querySelector('.selectbox-item__subtitle');
+                        tt = tt ? tt.textContent : ''; ss = ss ? ss.textContent.replace(/\s+/g, ' ').trim() : '';
+                        if (!ss) continue;
+                        if (RX_SEASON.test(tt)) F.season = ss; else if (RX_VOICE.test(tt)) F.voice = ss;
+                    }
+                } catch (e) {}
                 try { $(hit).trigger('hover:enter'); } catch (e) {}
-                setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 250);
+                setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 40);
             } else if (++n > 12) {
                 clearInterval(iv);
                 // нічого не знайшли — показуємо рідне меню фільтра як є
@@ -5326,35 +5336,10 @@
         for (i = 0; i < all.length; i++) if (/^\s*(джерел|source)/i.test(all[i].textContent || '') && !all[i].closest('.lmx-onl-bar')) return all[i];
         return null;
     }
-    // Текст кнопки «Фільтр» Lampa скорочує посередині («Сез… Postmodern»), тож надійні значення беремо з рідного меню фільтра:
-    // відкриваємо його невидимо, читаємо підписи (назва → обране) й одразу закриваємо
-    function readFilter(act, done) {
-        var f = act.querySelector('.filter--filter');
-        if (!f || act.__lmxFR || Date.now() - (act.__lmxFT || 0) < 4000 || (window.__lmxKeyT || 0) > Date.now() - 1500) return;
-        act.__lmxFR = 1; act.__lmxFT = Date.now();
-        document.body.classList.add('lmx-onl-pick');
-        try { $(f).trigger('hover:enter'); } catch (e) {}
-        var n = 0, iv = setInterval(function () {
-            var its = document.querySelectorAll('.selectbox-item'), k, t, st, o = {};
-            if (its.length) {
-                clearInterval(iv);
-                for (k = 0; k < its.length; k++) {
-                    t = its[k].querySelector('.selectbox-item__title'); st = its[k].querySelector('.selectbox-item__subtitle');
-                    t = t ? t.textContent : ''; st = st ? st.textContent.replace(/\s+/g, ' ').trim() : '';
-                    if (!st) continue;
-                    if (RX_SEASON.test(t)) o.season = st; else if (RX_VOICE.test(t)) o.voice = st;
-                }
-                act.__lmxF = o;
-                try { Lampa.Select.close(); } catch (e) {}
-                setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); act.__lmxFR = 0; safe(done); }, 200);
-            } else if (++n > 30) {
-                clearInterval(iv);
-                setTimeout(function () { try { if (document.querySelector('.selectbox')) Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); act.__lmxFR = 0; }, 1200);
-            }
-        }, 60);
-    }
     function buildBar(act, hd, list) {
         var txt = filterText(act), F = act.__lmxF || {}, season = F.season || chosen(txt, RX_SEASON), voice = F.voice || chosen(txt, RX_VOICE);
+        if (!season) { var ms = txt.match(/(\d+)\s*(?:сезон|season)/i); if (ms) season = ms[0]; }
+        if (!voice) { var ie = Math.max(txt.lastIndexOf('\u2026'), txt.lastIndexOf('...')); if (ie > 0) voice = txt.slice(ie).replace(/^[.\u2026\s]+/, '').trim(); }
         act.__lmxList = list;
         var ex = act.querySelector('.explorer');
         var bar = hd.querySelector('.lmx-onl-bar');
@@ -5395,10 +5380,20 @@
             items: [
                 { title: 'Вигляд серій', subtitle: VIEWS[curView()], k: 'view' },
                 { title: 'Автоперемикання джерел', subtitle: autoOn() ? 'Увімкнено' : 'Вимкнено', k: 'auto' },
-                { title: 'Підбирати найкраще джерело', subtitle: probeOn() ? 'Увімкнено' : 'Вимкнено', k: 'probe' }
+                { title: 'Підбирати найкраще джерело', subtitle: probeOn() ? 'Увімкнено' : 'Вимкнено', k: 'probe' },
+                { title: 'Бажана якість', subtitle: QPREF[qPref()], k: 'q' }
             ],
             onBack: back,
             onSelect: function (a) {
+                if (a.k === 'q') {
+                    Lampa.Select.show({
+                        title: 'Бажана якість',
+                        items: Object.keys(QPREF).map(function (key) { return { title: QPREF[key], subtitle: key === qPref() ? 'Зараз' : '', k: key }; }),
+                        onBack: back,
+                        onSelect: function (b) { try { Lampa.Storage.set('lmx_online_q', b.k); } catch (e) {} back(); }
+                    });
+                    return;
+                }
                 if (a.k === 'probe') {
                     try { Lampa.Storage.set('lmx_online_probe', probeOn() ? 'false' : 'true'); } catch (e) {}
                     back();
@@ -5456,6 +5451,10 @@
     }
     function qrank(q) { return q === '4K' ? 4 : q === 'FHD' ? 3 : q === 'HD' ? 2 : q ? 1 : 0; }
     function gscore(g) { return g ? (g.ok || 0) - (g.fail || 0) * 2 + (g.q || 0) * 2 : 0; }
+    var QPREF = { auto: 'Авто (FHD і вище)', '4k': 'Віддавати перевагу 4K', fhd: 'Віддавати перевагу FHD', hd: 'Достатньо HD' };
+    function qPref() { var v = String(Lampa.Storage.get('lmx_online_q', 'auto')); return QPREF[v] ? v : 'auto'; }
+    // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
+    function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
     // Відкриває меню джерел, обирає елемент за правилом choose(items) -> item|null й підтверджує його. cb(назва|null)
@@ -5535,7 +5534,7 @@
             }, function (nm, title) { busy = false; t0 = Date.now(); lastSig = ''; if (nm) { cur = nm; if (tried.indexOf(nm) < 0) tried.push(nm); } after(!!nm, title); });
         }
         function next() {
-            if (tried.length >= 4 || switches >= 4 || Date.now() - t00 > 30000) return conclude();
+            if (tried.length >= 4 || switches >= 4 || Date.now() - t00 > 18000) return conclude();
             if (++switches > 4) return conclude();
             busy = true;
             pickSource(act, function (items) {
@@ -5559,7 +5558,7 @@
             else finish();
         }
         var iv = setInterval(function () {
-            if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > 45000) return stopKey();
+            if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > 25000) return stopKey();
             if (busy || phase === 'done') return;
             var body = act.querySelector('.explorer__files-body .scroll__body');
             if (!body || !findRef(act)) return;
@@ -5579,13 +5578,13 @@
             if (items.length) {
                 var list = items, sig = list.length + ':' + qual(list);
                 if (sig !== lastSig) { lastSig = sig; stableAt = Date.now(); return; }
-                if (Date.now() - stableAt < 1200) return;
+                if (Date.now() - stableAt < 600) return;
                 var rank = qrank(qual(list));
                 results.push({ name: cur, rank: rank, n: list.length });
                 heroStatus(act, 'Знайдено: ' + list.length + ' серій' + (qual(list) ? ', ' + qual(list) : '') + '…', false, results.length / (probeOn() ? 3 : 1));
                 save(cur, rank, list.length);
                 // добре джерело (FHD і вище), вимкнений підбір або вже 3 порівняння — зупиняємось
-                if (rank >= 3 || !probeOn() || results.length >= 3 || Date.now() - t00 > 20000) {
+                if (rank >= qTarget() || !probeOn() || results.length >= 3 || Date.now() - t00 > 14000) {
                     results.sort(function (a, b) { return (b.rank - a.rank) || (b.n - a.n); });
                     return conclude();
                 }
@@ -5593,11 +5592,11 @@
                 return;
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (cur ? ': ' + cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
-            if ((body.querySelector('[class*="empty"]') && waited > 1500) || waited > 12000) {
+            if ((body.querySelector('[class*="empty"]') && waited > 1000) || waited > 6000) {
                 save(cur, -1, 0);
                 next();
             }
-        }, 600);
+        }, 300);
     }
 
     function buildSkeleton(act, hd, card) {
@@ -5652,8 +5651,6 @@
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
         safe(function () { buildBar(act, hd, list); });
-        var fkey = list.length + '|' + ((findRef(act) || {}).textContent || '') + '|' + filterText(act);
-        if (act.__lmxFK !== fkey) { act.__lmxFK = fkey; safe(function () { readFilter(act, function () { var h2 = act.querySelector('.explorer__files-head'); if (h2 && act.__lmxList) buildBar(act, h2, act.__lmxList); }); }); }
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
         var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt;
         if (old && old.getAttribute('data-sig') === sig) return;
@@ -5753,6 +5750,10 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx', param: { name: 'lmx_online_auto', type: 'trigger', default: true },
                 field: { name: 'Автоперемикання джерел', description: 'Відкриває джерело, що спрацювало раніше; якщо воно порожнє — пробує наступне (до 6 спроб) і запам\'ятовує результат' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
+                field: { name: 'Бажана якість джерела', description: 'Підбір шукатиме джерело з такою якістю або кращою; якщо такого немає — візьме найкраще з наявних' }
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
