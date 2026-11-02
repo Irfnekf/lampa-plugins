@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.274 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.276 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.274';
+    var VERSION = '10.276';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5158,12 +5158,14 @@
         S + '.explorer__files-head.hide{display:block !important}' +
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
+        'body.lmx-online .activity.lmx-onl-load .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-prog){display:none !important}' +
         'body.lmx-onl-pick .selectbox{opacity:0 !important}' +
         // панель пошуку джерел: на місці карток — прогрес і заготовки, які переливаються
         S + '.lmx-onl-prog{padding:.2em 0 1em}' +
         S + '.lmx-onl-prog__s{font-size:.95em;font-weight:600;opacity:.9;margin:.2em 0 .6em}' +
         S + '.lmx-onl-prog__b{height:.28em;border-radius:99em;background:rgba(255,255,255,.14);overflow:hidden;margin-bottom:1em}' +
-        S + '.lmx-onl-prog__b i{display:block;height:100%;width:8%;border-radius:99em;background:#fff;transition:width .5s ease}' +
+        S + '.lmx-onl-prog__b i{display:block;height:100%;width:8%;border-radius:99em;background:#fff;transition:width .5s ease;animation:lmxBar 1.4s ease-in-out infinite alternate}' +
+        '@keyframes lmxBar{0%{opacity:.55}100%{opacity:1}}' +
         S + '.lmx-onl-prog__g{display:flex;gap:.9em}' +
         S + '.lmx-onl-prog__c{flex:0 0 calc(20% - .72em);aspect-ratio:16/11;border-radius:1em;background:rgba(255,255,255,.07);animation:lmxShim 1.6s ease-in-out infinite}' +
         S + '.lmx-onl-prog__c:nth-child(2){animation-delay:.15s}' + S + '.lmx-onl-prog__c:nth-child(3){animation-delay:.3s}' + S + '.lmx-onl-prog__c:nth-child(4){animation-delay:.45s}' + S + '.lmx-onl-prog__c:nth-child(5){animation-delay:.6s}' +
@@ -5484,6 +5486,16 @@
     }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
 
+    // Серії у списку джерела: прямі нащадки з .selector і картинкою/смужкою прогресу (назви класів у джерел різні)
+    function episodeEls(body) {
+        var kids = body.children, out = [], i, el;
+        for (i = 0; i < kids.length; i++) {
+            el = kids[i];
+            if (!el.classList || !el.classList.contains('selector') || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
+            if (el.querySelector('img, .time-line, [class*="prestige__img"], [class*="imgbox"]')) out.push(el);
+        }
+        return out;
+    }
     // Підбір джерела: починаємо з того, що спрацювало раніше; порожнє джерело міняємо на наступне (за рейтингом пам'яті);
     // якщо якість низька — порівнюємо до 3 джерел і лишаємо найкраще. Результат запам'ятовуємо
     function watchSources(act, card) {
@@ -5551,7 +5563,7 @@
             if (busy || phase === 'done') return;
             var body = act.querySelector('.explorer__files-body .scroll__body');
             if (!body || !findRef(act)) return;
-            var items = body.querySelectorAll('.lmx-onl-item, .videos__item.selector, [class*="online-prestige"].selector');
+            var items = episodeEls(body);
             if (phase === 'start') {
                 cur = readCur(); tried.push(cur);
                 var prefT = mem.t[cid], pref = prefT && Date.now() - (prefT.at || 0) < 30 * 86400000 ? prefT.s : '';
@@ -5565,7 +5577,7 @@
             }
             var waited = Date.now() - t0;
             if (items.length) {
-                var list = [].slice.call(items), sig = list.length + ':' + qual(list);
+                var list = items, sig = list.length + ':' + qual(list);
                 if (sig !== lastSig) { lastSig = sig; stableAt = Date.now(); return; }
                 if (Date.now() - stableAt < 1200) return;
                 var rank = qrank(qual(list));
@@ -5580,7 +5592,8 @@
                 next();
                 return;
             }
-            if ((body.querySelector('[class*="empty"]') && waited > 1500) || waited > 20000) {
+            heroStatus(act, 'Чекаємо відповіді джерела' + (cur ? ': ' + cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
+            if ((body.querySelector('[class*="empty"]') && waited > 1500) || waited > 12000) {
                 save(cur, -1, 0);
                 next();
             }
