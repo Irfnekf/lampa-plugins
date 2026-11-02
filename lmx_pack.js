@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.291 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.293 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.291';
+    var VERSION = '10.293';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5348,6 +5348,29 @@
         }
         act.__lmxRS = setTimeout(function () { pass(false); act.__lmxRS2 = setTimeout(function () { pass(true); }, 900); }, 220);
     }
+    // Після вибору сезону/озвучки/джерела список перемальовується не одразу (чекає відповіді джерела), і Lampa лишає керування на видалених
+    // вузлах. Не покладаємось на назву контролера: поки йде завантаження чекаємо, а як з'явились кнопки/серії — примусово повертаємо
+    // 'content', перебираємо колекцію й ставимо фокус на видимий елемент
+    function recover(act) {
+        clearInterval(act.__lmxRC);
+        var n = 0, okTicks = 0;
+        act.__lmxRC = setInterval(function () {
+            safe(function () {
+                n++;
+                if (!document.body.contains(act) || n > 40) { clearInterval(act.__lmxRC); return; }
+                if (document.querySelector('.selectbox') || act.__lmxOpen) return;
+                var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
+                var f = act.querySelector('.focus'), cn = Lampa.Controller.enabled(), nm = cn && cn.name;
+                if (f && document.body.contains(f) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
+                okTicks = 0;
+                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
+                try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
+                if (window.Navigator && Navigator.focus) Navigator.focus(tg);
+            });
+        }, 400);
+    }
     // На мишці/тачпаді Lampa віддає і «hover:enter», і браузерний «click» — обробник спрацьовував двічі: друге відкриття меню фільтра
     // перебивало перше (меню блимало й зникало), а кнопка «Продовжити» могла запустити відтворення двічі
     function once(fn) {
@@ -5663,7 +5686,7 @@
             c.textContent = o.title;
             $(c).on('hover:enter click', once(function () {
                 closeDrop(act, key);
-                if (!o.sel) { try { o.run(); } catch (e) {} }
+                if (!o.sel) { try { o.run(); } catch (e) {} recover(act); if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); } }
             }));
             d.appendChild(c);
             if (o.sel && !focusEl) focusEl = c;
@@ -5792,6 +5815,56 @@
         }, 300);
     }
 
+    // Страж порожнього результату: після ручного вибору (або будь-коли, коли серій немає) джерело може відповісти «не дав результатів» або
+    // зависнути. Показуємо, що нічого не знайдено, і за кілька секунд самі переходимо на найкраще з ще не пробованих джерел
+    function emptyGuard(act) {
+        if (act.__lmxEG) return;
+        act.__lmxEG = 1;
+        var card = null; try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); } catch (e) {}
+        var cid = String(card && card.id || ''), bad = window.__lmxBad;
+        if (!bad || bad.cid !== cid) bad = window.__lmxBad = { cid: cid, names: [] };
+        var since = Date.now(), lastKey = null, cd = 0, cand = null, t0 = Date.now(), EV = ['keydown', 'mousedown', 'touchstart'], iv = 0;
+        function stop() { clearInterval(iv); act.__lmxEG = 0; EV.forEach(function (ev) { document.removeEventListener(ev, cancel, true); }); }
+        function cancel() {
+            if (Date.now() - t0 < 600) return;
+            if (cd) { heroStatus(act, 'Автоперемикання скасовано. Оберіть джерело кнопкою «Джерело»', true); }
+            stop();
+        }
+        EV.forEach(function (ev) { document.addEventListener(ev, cancel, true); });
+        iv = setInterval(function () {
+            safe(function () {
+                if (!document.body.contains(act) || Date.now() - t0 > 180000) return stop();
+                var body = act.querySelector('.explorer__files-body .scroll__body');
+                if (!body) return;
+                if (episodeEls(body).length) return stop();
+                if (act.__lmxProbing || !isOn()) { since = Date.now(); return; }
+                var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], i, curIt = null;
+                if (!inst || !sort.length) return;
+                for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
+                var curKey = curIt ? srcName(curIt.title) : '';
+                if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
+                var waited = Date.now() - since, txt = body.textContent || '';
+                var empty = (/не дав результат|no results|нічого не знайд|помилка/i.test(txt) && waited > 700) || waited > 12000;
+                if (!empty) { heroStatus(act, 'Шукаємо' + (curIt ? ' на «' + srcName(curIt.title) + '»' : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                if (!cd) {
+                    try { $(body).find('[class*="empty__button"].cancel').trigger('hover:enter'); } catch (e) {}
+                    if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
+                    var mem = memGet();
+                    if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); memSet(mem); }
+                    var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
+                        .sort(function (x, y) { return (titleQ(y.title) - titleQ(x.title)) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
+                    if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
+                    cand = c[0]; cd = Date.now() + 4000;
+                }
+                var left = Math.ceil((cd - Date.now()) / 1000);
+                if (left > 0) { heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
+                var go = cand; cd = 0; cand = null; since = Date.now(); lastKey = null;
+                heroStatus(act, 'Відкриваємо «' + srcName(go.title) + '»…', false, 0.2);
+                try { inst.onSelect('sort', go); } catch (e) {}
+            });
+        }, 500);
+    }
+
     function buildSkeleton(act, hd, card) {
         var q = (card.title || card.name || ''), year = String(card.release_date || card.first_air_date || '').slice(0, 4), vote = Number(card.vote_average) || 0;
         var h = document.createElement('div');
@@ -5839,7 +5912,7 @@
         if (!card) return;
         var hd = act.querySelector('.explorer__files-head') || body, old = hd.querySelector('.lmx-onl-hero');
         if (act.__lmxProbing) return;
-        if (!list.length) { if (!old && hd !== body) buildSkeleton(act, hd, card); return; }
+        if (!list.length) { if (!old && hd !== body) buildSkeleton(act, hd, card); safe(function () { emptyGuard(act); }); return; }
         act.classList.remove('lmx-onl-load');
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
@@ -5958,7 +6031,7 @@
         if (obs) obs.disconnect();
         obsTarget = body;
         // плагін-джерело перемальовує список (зміна сезону, джерела, озвучки) — оновлюємо шапку з паузою, щоб не заважати
-        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) resync(a2); }, 250); });
+        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) { resync(a2); if (a2.__lmxSA === 2) recover(a2); } }, 250); });
         obs.observe(body, { childList: true });
     }
 
