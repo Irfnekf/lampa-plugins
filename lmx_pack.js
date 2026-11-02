@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.266 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.267 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.266';
+    var VERSION = '10.267';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5153,6 +5153,11 @@
         '.lmx-onl-hero--load .lmx-onl-hero__logo,.lmx-onl-hero--load .lmx-onl-hero__t{animation:lmxShim 1.6s ease-in-out infinite}' +
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
         B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
+        S + '.filter--filter,' + S + '.filter--search{display:none !important}' +
+        'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
+        'body.lmx-onl-pick .selectbox{opacity:0 !important}' +
+        S + '.lmx-onl-pill{display:inline-flex;align-items:center}' +
+        S + '.lmx-onl-pill__v{margin-left:.6em;padding:.1em .6em;border-radius:.5em;background:rgba(255,255,255,.22);font-size:.8em;max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}' +
         // шапка
         '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:13em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
         '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:62% 0%;opacity:.95}' +
@@ -5237,6 +5242,89 @@
         try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
     }
 
+    // Три кнопки замість «Фільтр» і пошуку: озвучка, сезон, серія. Озвучку й сезон відкриваємо через рідне меню фільтра джерела
+    // (воно лишається в DOM, ховається стилями), тож працює з будь-яким джерелом
+    var RX_VOICE = /переклад|озвуч|перевод|voice|translat|studio|студ/i, RX_SEASON = /сезон|season/i;
+    function filterText(act) {
+        var f = act.querySelector('.filter--filter');
+        return f ? (f.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    }
+    function chosen(txt, rx) {
+        var parts = txt.split(/\s*[,;·|]\s*/), j, mm;
+        for (j = 0; j < parts.length; j++) {
+            mm = parts[j].match(/^([^:]+):\s*(.+)$/);
+            if (mm && rx.test(mm[1])) return mm[2].trim();
+        }
+        return '';
+    }
+    function openFilterItem(act, rx) {
+        var f = act.querySelector('.filter--filter');
+        if (!f) return;
+        document.body.classList.add('lmx-onl-pick');
+        try { $(f).trigger('hover:enter'); } catch (e) {}
+        var n = 0, iv = setInterval(function () {
+            var its = document.querySelectorAll('.selectbox-item'), k, t, hit = null;
+            for (k = 0; k < its.length; k++) { t = its[k].querySelector('.selectbox-item__title'); if (t && rx.test(t.textContent || '')) { hit = its[k]; break; } }
+            if (hit) {
+                clearInterval(iv);
+                try { $(hit).trigger('hover:enter'); } catch (e) {}
+                setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 250);
+            } else if (++n > 12) {
+                clearInterval(iv);
+                // нічого не знайшли — показуємо рідне меню фільтра як є
+                document.body.classList.remove('lmx-onl-pick');
+            }
+        }, 60);
+    }
+    function pill(act, cls, label, val, onEnter) {
+        var el = act.querySelector('.' + cls);
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'simple-button simple-button--filter selector lmx-onl-pill ' + cls;
+            el.innerHTML = '<span></span><i class="lmx-onl-pill__v" style="font-style:normal"></i>';
+            $(el).on('hover:enter click', function () { onEnter(); });
+            el.__new = true;
+        }
+        el.firstChild.textContent = label;
+        var v = el.lastChild;
+        v.textContent = val || '';
+        v.style.display = val ? '' : 'none';
+        return el;
+    }
+    function buildBar(act, hd, list) {
+        var txt = filterText(act), season = chosen(txt, RX_SEASON), voice = chosen(txt, RX_VOICE), i, ref = null;
+        var all = hd.querySelectorAll('.selector');
+        for (i = 0; i < all.length; i++) if (/джерел|source/i.test((all[i].textContent || '').slice(0, 14)) && !all[i].classList.contains('lmx-onl-pill')) { ref = all[i]; break; }
+        var made = [];
+        if (voice || /переклад|озвуч|voice/i.test(txt)) made.push(pill(act, 'lmx-onl-voice', 'Озвучка', voice, function () { openFilterItem(act, RX_VOICE); }));
+        if (season || /сезон|season/i.test(txt)) made.push(pill(act, 'lmx-onl-season', 'Сезон', season, function () { openFilterItem(act, RX_SEASON); }));
+        if (list.length > 1) made.push(pill(act, 'lmx-onl-ep', 'Серія', '', function () {
+            var items = list.map(function (el, k) {
+                var t = el.querySelector('[class*="title"]');
+                return { title: (t && t.textContent.trim()) || ('Серія ' + (k + 1)), index: k };
+            }), enabled = '';
+            try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
+            Lampa.Select.show({
+                title: 'Серія', items: items,
+                onSelect: function (a) {
+                    try { Lampa.Controller.toggle(enabled); } catch (e) {}
+                    setTimeout(function () { try { if (window.Navigator && Navigator.focus && list[a.index]) Navigator.focus(list[a.index]); } catch (e) {} }, 50);
+                },
+                onBack: function () { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
+            });
+        }));
+        var anchor = ref || hd.querySelector('.filter--sort') || null, prev = anchor;
+        made.forEach(function (el) {
+            if (el.__new) {
+                el.__new = false;
+                if (prev && prev.parentNode) prev.parentNode.insertBefore(el, prev.nextSibling);
+                else hd.appendChild(el);
+                addNav(el);
+            }
+            prev = el;
+        });
+    }
+
     // Шапка-заглушка на час пошуку джерел: логотип переливається замість стандартного кружка Lampa
     function buildSkeleton(act, hd, card) {
         var q = (card.title || card.name || ''), year = String(card.release_date || card.first_air_date || '').slice(0, 4), vote = Number(card.vote_average) || 0;
@@ -5250,6 +5338,7 @@
         h.querySelector('.lmx-onl-hero__t').textContent = q;
         hd.insertBefore(h, hd.firstChild);
         act.classList.add('lmx-onl-load');
+        var ex2 = act.querySelector('.explorer'); if (ex2) ex2.classList.add('lmx-onl');
         putLogo(h, card);
         // якщо джерел так і не знайшлось, переливання не вічне
         setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); }, 25000);
@@ -5281,6 +5370,7 @@
         if (!list.length) { if (!old && hd !== body) buildSkeleton(act, hd, card); return; }
         act.classList.remove('lmx-onl-load');
         numberItems(list);
+        safe(function () { buildBar(act, hd, list); });
         var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',');
         if (old && old.getAttribute('data-sig') === sig) return;
         if (old) old.parentNode.removeChild(old);
