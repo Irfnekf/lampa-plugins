@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.324 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.325 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.324';
+    var VERSION = '10.325';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -6397,102 +6397,56 @@
             }
         }, true);
     }
-    // Деякі кнопки (шапка, герой, ряд вибору) не пускають стрілку «вниз» до серій: якщо після натискання фокус не зрушив — переводимо самі
+    // ---- Єдина навігація «вгору/вниз» по екрану (замість кількох окремих «рятувальників») ----
+    // Рівні: кнопки героя → ряд вибору → відкритий ряд варіантів (по рядках) → кнопки «Повторити» → картки серій (по рядках).
+    // Стрілка завжди переходить рівно на сусідній рядок і тримає ту саму колонку; штатну навігацію Lampa не питаємо,
+    // бо вона стрибала через ряди та у шапку Lampa. З кнопок героя «вгору» віддаємо Lampa (шапка), далі не лізе нічого.
+    var navCx = null, navT = 0;
+    function navRows(a) {
+        function vis(x) { return x.offsetWidth && x.offsetHeight && !x.classList.contains('lmx-onl-off'); }
+        function group(sel) {
+            var els = [].slice.call(a.querySelectorAll(sel)).filter(vis).map(function (x) { return { e: x, r: x.getBoundingClientRect() }; });
+            els.sort(function (p, q) { return (p.r.top - q.r.top) || (p.r.left - q.r.left); });
+            var rows = [], last = null;
+            els.forEach(function (o) {
+                if (!last || Math.abs(o.r.top - last.top) > Math.max(8, o.r.height / 3)) { last = { top: o.r.top, els: [] }; rows.push(last); }
+                last.els.push(o.e);
+            });
+            return rows.map(function (r) { return r.els; });
+        }
+        var rows = [];
+        [group('.lmx-onl-hero .selector'), group('.lmx-onl-bar .selector'), group('.lmx-onl-drop .selector'), group('.lmx-onl-dead .selector'), group('.lmx-onl-item.selector')].forEach(function (g) { g.forEach(function (r) { rows.push(r); }); });
+        return rows;
+    }
+    function navKeys(e) {
+        var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
+        if (!up && !dn) { navCx = null; return; }
+        var a = document.querySelector('.activity--active'), cur = document.querySelector('.focus');
+        if (!a || !cur || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+        var rows = navRows(a), ri = -1, k;
+        for (k = 0; k < rows.length; k++) if (rows[k].indexOf(cur) >= 0) { ri = k; break; }
+        if (ri < 0) return;                                  // фокус не на наших елементах (шапка Lampa тощо) — штатна поведінка
+        var ti = ri + (up ? -1 : 1);
+        if (ti < 0) return;                                  // вище героя — шапка Lampa
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (ti >= rows.length) return;                       // нижче немає нічого
+        var row = rows[ti], cr = cur.getBoundingClientRect(), now = Date.now();
+        if (navCx === null || now - navT > 1500) navCx = cr.left + cr.width / 2;
+        navT = now;
+        var best = null, bd = 1e9;
+        if (up && rows[ti] === rows[0] && a.querySelector('.lmx-onl-hero .selector') && rows[0].indexOf(a.querySelector('.lmx-onl-hero .selector')) >= 0) best = rows[0][0];   // до героя — завжди на головну кнопку
+        if (!best) row.forEach(function (x) { var r = x.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - navCx); if (d < bd) { bd = d; best = x; } });
+        if (!best) return;
+        window.__lmxKeyT = now;
+        syncNav(a, best);
+        if (best.classList.contains('lmx-onl-item')) bringIn(best);
+    }
     function downRescue() {
         if (window.__lmxDown) return;
         window.__lmxDown = 1;
-        document.addEventListener('keydown', function (e) {
-            if (e.keyCode !== 40 && e.key !== 'ArrowDown') return;
-            var a = document.querySelector('.activity--active'), prev = document.querySelector('.focus');
-            if (!a || !prev || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
-            setTimeout(function () {
-                safe(function () {
-                    var cur = document.querySelector('.focus');
-                    if (cur !== prev || !document.body.contains(prev)) return;
-                    var nx = null;
-                    if (prev.closest('.lmx-onl-hero')) nx = a.querySelector('.lmx-onl-bar .selector') || a.querySelector('.lmx-onl-item');
-                    else if (prev.closest('.lmx-onl-bar')) nx = a.querySelector('.lmx-onl-drop .selector') || a.querySelector('.lmx-onl-item');
-                    else if (prev.closest('.lmx-onl-drop')) nx = a.querySelector('.lmx-onl-item');
-                    if (nx && window.Navigator && Navigator.focus) Navigator.focus(nx);
-                });
-            }, 90);
-        }, true);
+        document.addEventListener('keydown', navKeys, true);
     }
-    // «Вгору» з другого ряду карток Lampa вистрибувала на кнопки над списком (перший ряд виявлявся «за кадром»): самі переходимо на картку ряду вище
-    function upRescue() {
-        if (window.__lmxUp) return;
-        window.__lmxUp = 1;
-        document.addEventListener('keydown', function (e) {
-            var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
-            if (!up && !dn) return;
-            var a = document.querySelector('.activity--active'), cur = document.querySelector('.focus');
-            if (!a || !cur || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
-            // Рівні екрана: кнопки шапки → ряд вибору → (ряд варіантів) → картки. Між рівнями ходимо явно, до найближчого по горизонталі
-            // (штатна навігація Lampa пускала на кнопки лише з першої колонки)
-            function near(sel, cx) {
-                var best = null, bd = 1e9;
-                [].slice.call(a.querySelectorAll(sel)).forEach(function (x) {
-                    if (!x.offsetWidth) return;
-                    var r = x.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - cx);
-                    if (d < bd) { bd = d; best = x; }
-                });
-                return best;
-            }
-            var cr0 = cur.getBoundingClientRect(), cx0 = cr0.left + cr0.width / 2, lvl = cur.closest('.lmx-onl-hero') ? 0 : cur.closest('.lmx-onl-bar') ? 1 : cur.closest('.lmx-onl-drop') ? 2 : cur.classList.contains('lmx-onl-item') ? 3 : -1;
-            // всередині відкритого ряду (озвучки/джерела) стрілки спершу рухаються по його рядках, і лише з краю — на інший рівень
-            function dropRow(dir) {
-                var opts = [].slice.call(a.querySelectorAll('.lmx-onl-drop .selector')).filter(function (x) { return x.offsetWidth; }), line = null, best = null, bd = 1e9;
-                opts.forEach(function (x) { var t = x.getBoundingClientRect().top; if (dir < 0 ? (t < cr0.top - 6 && (line === null || t > line)) : (t > cr0.top + 6 && (line === null || t < line))) line = t; });
-                if (line === null) return null;
-                opts.forEach(function (x) { var r = x.getBoundingClientRect(); if (Math.abs(r.top - line) > 6) return; var d = Math.abs(r.left + r.width / 2 - cx0); if (d < bd) { bd = d; best = x; } });
-                return best;
-            }
-            if (lvl >= 0 && lvl < 3 || (lvl === 3 && up)) {
-                var tg = null;
-                if (up) {
-                    if (lvl === 3) {
-                        var hasAbove = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).some(function (x) { return x.offsetWidth && x.getBoundingClientRect().top < cr0.top - 8; });
-                        if (!hasAbove) {
-                            tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0) || a.querySelector('.lmx-onl-bar .selector') || a.querySelector('.lmx-onl-hero .lmx-onl-btn');
-                            // з першого ряду не віддаємо «вгору» штатній навігації: вона стрибала з правих карток у шапку Lampa
-                            if (!tg || tg === cur) { e.preventDefault(); e.stopImmediatePropagation(); return; }
-                        }
-                    } else if (lvl === 2) tg = dropRow(-1) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
-                    else if (lvl === 1) { tg = a.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') || near('.lmx-onl-hero .lmx-onl-btn', cx0); if (!tg) return; }
-                } else {
-                    if (lvl === 0) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-item', cx0);
-                    else if (lvl === 1) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-item', cx0);
-                    else if (lvl === 2) tg = dropRow(1) || near('.lmx-onl-item', cx0);
-                }
-                if (tg && tg !== cur) { e.preventDefault(); e.stopImmediatePropagation(); if (window.Navigator && Navigator.focus) Navigator.focus(tg); return; }
-            }
-            if (dn && cur.classList.contains('lmx-onl-item')) {
-                // «Вниз» по серіях: штатна навігація Lampa зупинялась на третьому ряду (нижні ряди — за межею видимого). Самі беремо картку ряду нижче
-                var its = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).filter(function (x) { return x.offsetWidth; });
-                var cb = cur.getBoundingClientRect(), cxx = cb.left + cb.width / 2, rowT = 1e9, nb = null, nd = 1e9;
-                its.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top > cb.top + 8 && r.top < rowT) rowT = r.top; });
-                if (rowT === 1e9) return;
-                its.forEach(function (x) { var r = x.getBoundingClientRect(); if (Math.abs(r.top - rowT) > 8) return; var d = Math.abs(r.left + r.width / 2 - cxx); if (d < nd) { nd = d; nb = x; } });
-                if (nb) { e.preventDefault(); e.stopImmediatePropagation(); bringIn(nb); try { var hb = $(nb).closest('.scroll__body')[0]; if (hb && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(nb, hb); else if (window.Navigator && Navigator.focus) Navigator.focus(nb); } catch (e2) { if (window.Navigator && Navigator.focus) Navigator.focus(nb); } }
-                return;
-            }
-            if (!up || !cur.classList.contains('lmx-onl-item')) return;
-            var items = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).filter(function (x) { return x.offsetWidth; });
-            var cr = cur.getBoundingClientRect(), cx = cr.left + cr.width / 2, best = null, bd = 1e9, rowTop = -1e9;
-            items.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top < cr.top - 8 && r.top > rowTop) rowTop = r.top; });
-            if (rowTop === -1e9) return;                       // рядом вище немає — штатна поведінка (на кнопки)
-            items.forEach(function (x) {
-                var r = x.getBoundingClientRect();
-                if (Math.abs(r.top - rowTop) > 8) return;
-                var d = Math.abs(r.left + r.width / 2 - cx);
-                if (d < bd) { bd = d; best = x; }
-            });
-            e.preventDefault(); e.stopImmediatePropagation();
-            if (!best) return;
-            if (window.Navigator && Navigator.focus) Navigator.focus(best);
-            bringIn(best);
-        }, true);
-    }
+    function upRescue() { window.__lmxUp = 1; }
     // Запобіжник: після будь-якого перемальовування серії можуть опинитись за межами екрана або фокус — на зниклому елементі
     function viewGuard() {
         if (window.__lmxVG) return;
