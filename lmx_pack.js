@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.320 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.323 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.320';
+    var VERSION = '10.323';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5122,7 +5122,7 @@
         S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
         S + '.videos__button.focus{background:#fff;color:#111}' +
         // список: серії у сітці широких карток (кадр зверху, підпис знизу)
-        B + '.lmx-onl-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.9em}' +
+        B + '.lmx-onl-grid{display:flex;flex-wrap:wrap;align-items:stretch;gap:.9em}' +
         B + ' > *{box-sizing:border-box}' +
         B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(20% - .72em);width:calc(20% - .72em);margin:0}' +
         '@media (max-width:1100px){' + B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
@@ -5164,7 +5164,7 @@
         S + '.lmx-onl-opt{margin:0;padding:.35em .95em;font-size:.78em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
         S + '.lmx-onl-opt--dim{opacity:.45}' +
-        '.lmx-onl-off{display:none !important}' +
+        '.lmx-onl-off{display:none !important}' + B + ' > .lmx-onl-item.lmx-onl-off,' + B + ' > .lmx-onl-off{display:none !important}' +
         S + '.lmx-onl-sep{flex:0 0 100%;font-size:.72em;font-weight:700;opacity:.55;text-transform:uppercase;letter-spacing:.06em;margin:.4em 0 -.1em}' +
         S + '.lmx-onl-dead{display:flex;flex-wrap:wrap;gap:.8em;margin-top:.9em}' +
         'body.lmx-onl-fill.lmx-online .lmx-onl-item.focus{background:#fff !important;color:#111;box-shadow:none !important}' +
@@ -5365,14 +5365,14 @@
         }
     }
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
-    function pageSizeOf(total) { return total > 200 ? 50 : total > 80 ? 20 : 10; }
+    function pageSizeOf(total) { return total > 200 ? 50 : 20; }
     function applyOrderPages(act, list) {
         var total = list.length, rev = orderRev(), i, el;
         for (i = 0; i < total; i++) list[i].style.order = rev ? String(total - i) : '';
         var size = pageSizeOf(total);
-        if (total <= 20) {
+        if (total <= 30) {
             act.__lmxPages = null;
-            for (i = 0; i < total; i++) { el = list[i]; if (el.classList.contains('lmx-onl-off')) { el.classList.remove('lmx-onl-off'); el.classList.add('selector'); } }
+            for (i = 0; i < total; i++) { el = list[i]; if (el.classList.contains('lmx-onl-off')) { el.classList.remove('lmx-onl-off'); el.classList.add('selector'); el.style.removeProperty('display'); } }
             return;
         }
         var n = Math.ceil(total / size), j0 = jd(list[0]), key = total + '|' + (j0.season || '') + '|' + (j0.voice || '');
@@ -5385,8 +5385,8 @@
         act.__lmxPage = pg;
         for (i = 0; i < total; i++) {
             el = list[i];
-            if (Math.floor(i / size) === pg) { el.classList.remove('lmx-onl-off'); if (!el.classList.contains('selector')) el.classList.add('selector'); }
-            else { el.classList.add('lmx-onl-off'); el.classList.remove('selector', 'focus'); }
+            if (Math.floor(i / size) === pg) { el.classList.remove('lmx-onl-off'); el.style.removeProperty('display'); if (!el.classList.contains('selector')) el.classList.add('selector'); }
+            else { el.classList.add('lmx-onl-off'); el.style.setProperty('display', 'none', 'important'); el.classList.remove('selector', 'focus'); }
         }
         act.__lmxPages = { size: size, n: n, total: total, pg: pg };
     }
@@ -6017,6 +6017,60 @@
     // по шапці й списку та поверненням фокуса на живий елемент — тож стрілки не «залипають» на видалених вузлах
     var lastFocusEl = null, scrollList = [];
     // Як у Nova: запам'ятовуємо екземпляри Lampa.Scroll, щоб прокручувати рідним scroll.update(), а не лише скидати зсув стилем
+    // Як у Nova (refreshMarks/hookPlayer): після закриття плеєра або зміни позначки часу оновлюємо смужки перегляду, кнопки «Продовжити/Наступна»
+    // і лічильник — джерело саме смужки не перемальовує
+    var markT = [];
+    function refreshMarks() {
+        var a = document.querySelector('.activity--active');
+        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+        try { if (Lampa.Player && typeof Lampa.Player.opened === 'function' && Lampa.Player.opened()) return; } catch (e) {}
+        var body = a.querySelector('.explorer__files-body .scroll__body');
+        if (!body) return;
+        var keep = document.querySelector('.focus'), keepIdx = -1, els = [].slice.call(body.querySelectorAll('.lmx-onl-item'));
+        keepIdx = keep ? els.indexOf(keep) : -1;
+        els.forEach(function (el) {
+            var tl = jd(el).timeline, h = tl && tl.hash;
+            if (h === undefined || h === null || !Lampa.Timeline || !Lampa.Timeline.view) return;
+            var p = 0; try { p = Lampa.Timeline.view(h).percent || 0; } catch (e) {}
+            var bar = el.querySelector('.time-line > div');
+            if (bar) { bar.style.width = Math.min(100, p) + '%'; if (p > 0) { var tlEl = bar.parentNode; if (tlEl && tlEl.style) tlEl.style.display = ''; } }
+        });
+        safe(buildHero);
+        // героя могло бути перебудовано: повертаємо фокус на ту саму серію або на кнопку «Продовжити»
+        setTimeout(function () {
+            safe(function () {
+                var cur = document.querySelector('.focus');
+                if (cur && document.body.contains(cur) && cur.offsetWidth) return;
+                var tg = keepIdx >= 0 && els[keepIdx] && document.body.contains(els[keepIdx]) && els[keepIdx].offsetWidth ? els[keepIdx] : (a.querySelector('.lmx-onl-btn.selector') || a.querySelector('.lmx-onl-item'));
+                if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(a, tg); }
+            });
+        }, 120);
+        relayout();
+    }
+    function refreshBurst() {
+        markT.forEach(clearTimeout); markT = [];
+        safe(refreshMarks);
+        [200, 700, 1600].forEach(function (d) { markT.push(setTimeout(function () { safe(refreshMarks); }, d)); });
+    }
+    var outsidePl = false;
+    function hookPlayerMarks() {
+        if (window.__lmxPlMarks) return;
+        window.__lmxPlMarks = 1;
+        try {
+            if (Lampa.Player && Lampa.Player.listener) {
+                Lampa.Player.listener.follow('destroy', function () { outsidePl = false; refreshBurst(); });
+                Lampa.Player.listener.follow('external', function () { outsidePl = true; });
+            }
+        } catch (e) {}
+        try { if (Lampa.Timeline && Lampa.Timeline.listener && Lampa.Timeline.listener.follow) Lampa.Timeline.listener.follow('update', function () { clearTimeout(refreshBurst.__t); refreshBurst.__t = setTimeout(refreshBurst, 300); }); } catch (e) {}
+        var back = function () {
+            try { if (document.visibilityState && document.visibilityState !== 'visible') return; } catch (e) {}
+            if (!outsidePl) return;
+            outsidePl = false;
+            refreshBurst();
+        };
+        try { document.addEventListener('visibilitychange', back, false); window.addEventListener('focus', back, false); } catch (e) {}
+    }
     function hookScroll() {
         try {
             var R = Lampa.Scroll;
@@ -6303,17 +6357,7 @@
         } else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
-            if (key === 'voice') {
-                var vk = g.items.filter(Boolean).map(function (it, ix) { return { it: it, kind: voiceKind(it.title), ix: ix }; });
-                vk.sort(function (a, b) { return (VK_ORDER.indexOf(a.kind) - VK_ORDER.indexOf(b.kind)) || (a.ix - b.ix); });
-                var cnt = {}; vk.forEach(function (x) { cnt[x.kind] = (cnt[x.kind] || 0) + 1; });
-                var prevK = '';
-                vk.forEach(function (x) {
-                    if (x.kind !== prevK && vk.length > 3) { prevK = x.kind; opts.push({ title: VK_LABEL[x.kind] + ' \u00b7 ' + cnt[x.kind], sep: true }); }
-                    var it = x.it;
-                    opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } });
-                });
-            } else g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
         }
         if (!opts.length) return false;
         closeDrop(act);
@@ -6406,14 +6450,14 @@
                 var tg = null;
                 if (up) {
                     if (lvl === 3) {
-                        var hasAbove = [].slice.call(a.querySelectorAll('.lmx-onl-item')).some(function (x) { return x.offsetWidth && x.getBoundingClientRect().top < cr0.top - 8; });
+                        var hasAbove = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).some(function (x) { return x.offsetWidth && x.getBoundingClientRect().top < cr0.top - 8; });
                         if (!hasAbove) {
                             tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0) || a.querySelector('.lmx-onl-bar .selector') || a.querySelector('.lmx-onl-hero .lmx-onl-btn');
                             // з першого ряду не віддаємо «вгору» штатній навігації: вона стрибала з правих карток у шапку Lampa
                             if (!tg || tg === cur) { e.preventDefault(); e.stopImmediatePropagation(); return; }
                         }
                     } else if (lvl === 2) tg = dropRow(-1) || near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-hero .lmx-onl-btn', cx0);
-                    else if (lvl === 1) tg = near('.lmx-onl-hero .lmx-onl-btn', cx0);
+                    else if (lvl === 1) { tg = a.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') || near('.lmx-onl-hero .lmx-onl-btn', cx0); if (!tg) return; }
                 } else {
                     if (lvl === 0) tg = near('.lmx-onl-bar .selector', cx0) || near('.lmx-onl-item', cx0);
                     else if (lvl === 1) tg = near('.lmx-onl-drop .selector', cx0) || near('.lmx-onl-item', cx0);
@@ -6423,7 +6467,7 @@
             }
             if (dn && cur.classList.contains('lmx-onl-item')) {
                 // «Вниз» по серіях: штатна навігація Lampa зупинялась на третьому ряду (нижні ряди — за межею видимого). Самі беремо картку ряду нижче
-                var its = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
+                var its = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).filter(function (x) { return x.offsetWidth; });
                 var cb = cur.getBoundingClientRect(), cxx = cb.left + cb.width / 2, rowT = 1e9, nb = null, nd = 1e9;
                 its.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top > cb.top + 8 && r.top < rowT) rowT = r.top; });
                 if (rowT === 1e9) return;
@@ -6432,7 +6476,7 @@
                 return;
             }
             if (!up || !cur.classList.contains('lmx-onl-item')) return;
-            var items = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
+            var items = [].slice.call(a.querySelectorAll('.lmx-onl-item.selector')).filter(function (x) { return x.offsetWidth; });
             var cr = cur.getBoundingClientRect(), cx = cr.left + cr.width / 2, best = null, bd = 1e9, rowTop = -1e9;
             items.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top < cr.top - 8 && r.top > rowTop) rowTop = r.top; });
             if (rowTop === -1e9) return;                       // рядом вище немає — штатна поведінка (на кнопки)
@@ -6928,6 +6972,7 @@
             safe(hookComponent);
             safe(hookController);
             safe(hookScroll);
+            safe(hookPlayerMarks);
             safe(dropBackHook);
             safe(downRescue);
             safe(upRescue);
