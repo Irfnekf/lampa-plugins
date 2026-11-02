@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.298 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.303 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.298';
+    var VERSION = '10.303';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5273,6 +5273,7 @@
         if (!f || document.querySelector('.selectbox')) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
+        window.__lmxAllowSel = Date.now();
         try { $(f).trigger('hover:enter'); } catch (e) {}
         var step = 1, k = 0, rx = new RegExp('(^|\\D)' + n + '\\D*(сезон|season)|^\\s*' + n + '\\s*$', 'i'), iv = setInterval(function () {
             var its = document.querySelectorAll('.selectbox-item'), j, t, hit = null;
@@ -5350,7 +5351,7 @@
             if (box && !box.hasAttribute('data-n')) box.setAttribute('data-n', i < 9 ? '0' + (i + 1) : String(i + 1));
         }
     }
-    function press(el) { try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
+    function press(el) { window.__lmxAllowSel = Date.now(); try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
     // Після перемальовування списку/шапки колекція фокусованих елементів Lampa застаріває (старі вузли видалено, нові в ній відсутні) —
     // стрілки й виділення перестають працювати. Перезбираємо її рідним способом і, якщо фокус загублено, ставимо його на першу серію/кнопку
     function resync(act, force) {
@@ -5373,6 +5374,7 @@
                 }, 80);
             });
         }
+        [250, 900, 1800].forEach(function (d) { setTimeout(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, d); });
         act.__lmxRS = setTimeout(function () { pass(false); act.__lmxRS2 = setTimeout(function () { pass(true); }, 900); }, 220);
     }
     // Після вибору сезону/озвучки/джерела список перемальовується не одразу (чекає відповіді джерела), і Lampa лишає керування на видалених
@@ -5465,6 +5467,7 @@
         if (!f || document.querySelector('.selectbox')) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
+        window.__lmxAllowSel = Date.now();
         try { $(f).trigger('hover:enter'); } catch (e) {}
         var n = 0, iv = setInterval(function () {
             var its = document.querySelectorAll('.selectbox-item'), k, t, hit = null;
@@ -5669,11 +5672,13 @@
         if (!b) return { s: 'skip' };
         if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
         var c = (b.match(/videos__item/g) || []).length || (b.match(/"method"\s*:\s*"(play|call|link)"/g) || []).length;
+        var tor = /torrent-item|"magnet"|magnet:|"seeders?"|"seeds?"/i.test(b);
+        if (!c && tor) c = (b.match(/torrent-item|magnet:/gi) || []).length || 1;
         if (c) {
             var q = 0, marks = b.match(/(2160|1440|1080|720|576|480|360)\s*p/gi) || [];
             marks.forEach(function (m) { var n = parseInt(m, 10), r = n >= 2160 ? 4 : n >= 1080 ? 3 : n >= 720 ? 2 : 1; if (r > q) q = r; });
             if (/4k|uhd/i.test(b)) q = 4;
-            return { s: 'ok', c: c, q: q };
+            return { s: 'ok', c: c, q: q, t: tor ? 1 : 0 };
         }
         if (!/videos__|"method"|online-prestige|"data"/i.test(b)) return { s: 'skip' };
         return { s: 'empty', c: 0 };
@@ -5698,7 +5703,7 @@
             }
             if (!net) return end('');
             net.__lmxProbe = true; nets.push(net);
-            try { net.timeout(job.timeout); } catch (e) {}
+            try { net.timeout(it.to || job.timeout); } catch (e) {}
             try { net['native'](urlFor(it.source), end, function () { end(''); }, false, { dataType: 'text' }); } catch (e) { end(''); }
         }
         if (!job.items.length) return job.onEnd();
@@ -5707,7 +5712,8 @@
     // Загальний екран перевірки: живе на рівні body, тому не блимає, коли плагін перестворює екран при зміні джерела
     function scanText() {
         var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
-        return 'Перевіряємо джерела' + (gs && gs.total ? ': ' + n + ' з ' + gs.total : '…');
+        if (!gs || gs.done || !gs.total) return 'Шукаємо джерела…';
+        return 'Перевіряємо джерела: ' + n + ' з ' + gs.total;
     }
     function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
     function showScan(card) {
@@ -5719,9 +5725,14 @@
             el.innerHTML = '<div class="lmx-scan__bg"></div><div class="lmx-scan__c"><div class="lmx-scan__t"></div><div class="lmx-scan__s"></div><div class="lmx-scan__b"><i></i></div><div class="lmx-scan__h">Будь-яка клавіша — пропустити перевірку</div></div>';
             document.body.appendChild(el);
             // вийшли з екрана «Онлайн», а перевірка не завершилась — прибираємо оверлей
+            el.__t0 = Date.now();
             el.__iv = setInterval(function () {
-                var ac = document.querySelector('.activity--active');
-                if (!ac || !ac.querySelector('.explorer')) { var g = window.__lmxProbe; if (g) g.done = true; hideScan(); }
+                var age = Date.now() - el.__t0;
+                if (age < 3000) return;
+                var ac = document.querySelector('.activity--active'), g = window.__lmxProbe, cc = '';
+                try { var a1 = Lampa.Activity.active(), c1 = a1 && (a1.movie || a1.card); cc = String(c1 && c1.id || ''); } catch (e) {}
+                if (!ac || !ac.querySelector('.explorer')) { if (g) g.done = true; return hideScan(); }
+                if (age > 7000 && (!g || g.done || g.cid !== cc)) hideScan();   // проба так і не стартувала (вимкнена або не наш екран)
             }, 1000);
         }
         var bgE = el.querySelector('.lmx-scan__bg');
@@ -5802,6 +5813,24 @@
     // «undefined is not an object (evaluating 'closed.onBack')» і вибір не доходить до перезавантаження. Гасимо цю помилку
     function hookSelect() {
         try {
+            var S0 = Lampa.Select;
+            if (S0 && typeof S0.show === 'function' && !S0.__lmxShow) {
+                var realShow = S0.show;
+                // «Вправо» на екрані «Онлайн» відкривало стандартне меню «Фільтр» — у нас свої кнопки, тож глушимо його (крім наших власних викликів)
+                S0.show = function (p) {
+                    try {
+                        if (isOn() && document.querySelector('.activity--active .explorer.lmx-onl') && p && Array.isArray(p.items) && p.items.some(function (i) { return i && i.reset; }) &&
+                            Date.now() - (window.__lmxAllowSel || 0) > 4000 && !document.body.classList.contains('lmx-onl-pick')) {
+                            setTimeout(function () { try { Lampa.Controller.toggle('content'); } catch (e) {} }, 0);
+                            return;
+                        }
+                    } catch (e) {}
+                    return realShow.apply(S0, arguments);
+                };
+                S0.__lmxShow = 1;
+            }
+        } catch (e) {}
+        try {
             var S = Lampa.Select;
             if (!S || S.__lmxHook) return;
             ['hide', 'close'].forEach(function (name) {
@@ -5852,6 +5881,7 @@
         });
     }
     // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
+    function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     function srcState(name) {
         var gs = window.__lmxProbe, bad = window.__lmxBad, cid = '', i;
         try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = String(c && c.id || ''); } catch (e) {}
@@ -5878,10 +5908,12 @@
         if (act.__lmxOpen === key) { closeDrop(act, key); return true; }
         if (key === 'src') {
             var hidden = 0, anyOk = false;
-            S.sort.forEach(function (it) { if (it && srcState(srcName(it.title)) === 'ok') anyOk = true; });
+            var lifeFlags = S.sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            S.sort.forEach(function (it) { if (it && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
             S.sort.forEach(function (it) {
                 if (!it) return;
                 var st = srcState(srcName(it.title));
+                if (lifeFlags) st = it.ghost ? 'no' : 'ok';
                 if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
                 opts.push({ title: it.title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { inst.onSelect('sort', it); } });
             });
@@ -5945,6 +5977,29 @@
                     if (nx && window.Navigator && Navigator.focus) Navigator.focus(nx);
                 });
             }, 90);
+        }, true);
+    }
+    // «Вгору» з другого ряду карток Lampa вистрибувала на кнопки над списком (перший ряд виявлявся «за кадром»): самі переходимо на картку ряду вище
+    function upRescue() {
+        if (window.__lmxUp) return;
+        window.__lmxUp = 1;
+        document.addEventListener('keydown', function (e) {
+            if (e.keyCode !== 38 && e.key !== 'ArrowUp') return;
+            var a = document.querySelector('.activity--active'), cur = document.querySelector('.focus');
+            if (!a || !cur || !cur.classList.contains('lmx-onl-item') || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+            var items = [].slice.call(a.querySelectorAll('.lmx-onl-item')).filter(function (x) { return x.offsetWidth; });
+            var cr = cur.getBoundingClientRect(), cx = cr.left + cr.width / 2, best = null, bd = 1e9, rowTop = -1e9;
+            items.forEach(function (x) { var r = x.getBoundingClientRect(); if (r.top < cr.top - 8 && r.top > rowTop) rowTop = r.top; });
+            if (rowTop === -1e9) return;                       // рядом вище немає — штатна поведінка (на кнопки)
+            items.forEach(function (x) {
+                var r = x.getBoundingClientRect();
+                if (Math.abs(r.top - rowTop) > 8) return;
+                var d = Math.abs(r.left + r.width / 2 - cx);
+                if (d < bd) { bd = d; best = x; }
+            });
+            if (!best) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (window.Navigator && Navigator.focus) Navigator.focus(best);
         }, true);
     }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
@@ -6019,6 +6074,23 @@
             var curKey = curIt ? keyOf(curIt) : '';
             sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); });
             gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
+            // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
+            // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
+            var life = sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            if (life && allSrc && !gs.bg && !gs.lifeOff) {
+                var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean)
+                    .sort(function (a, b) { return (b.q - a.q) || (b.g - a.g) || (a.ix - b.ix); });
+                var top = live[0], waitedL = Date.now() - t0;
+                if (top && (top.q >= qTarget() || waitedL > 5000)) {
+                    live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.q, n: 0 }); });
+                    if (cid) { mem.t[cid] = { s: keyOf(top.it), q: top.q, at: Date.now(), oks: live.map(function (r) { return keyOf(r.it); }) }; memSet(mem); }
+                    if (!top.it.selected) switchTo(inst, top.it, 'Відкриваємо найкраще джерело');
+                    return finish();
+                }
+                if (top || waitedL < 9000) { heroStatus(act, '', false, 0.1); return; }
+                gs.lifeOff = true;
+            }
+            if (allSrc && !gs.bg && !life && Date.now() - t0 < 1200) return;
             if (allSrc && !gs.bg) {
                 var pu = window.__lmxProbeUrl;
                 if (pu && pu.cid === cid && sort.length > 1) {
@@ -6027,21 +6099,28 @@
                     sort.forEach(function (x) {
                         if (!x || x.ghost || !x.source || !keyOf(x)) return;
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
-                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title) });
+                        var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
+                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 9000 : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 4, timeout: 6000, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 6, timeout: 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
-                    gs.bgDeadline = Date.now() + 25000;
+                    gs.bgDeadline = Date.now() + 14000;
                     bgProbe(gs.job);
                 } else if (Date.now() - t0 > 3500) gs.bg = 'off';
                 else return;
+            }
+            if (gs.bg === 'run' && Date.now() - gs.bgT > 5000) {
+                // довго чекаємо повільні джерела — вже щось знайшли, тож відкриваємо найкраще з наявного, решта догрузиться у фоні
+                var anyOk = false;
+                sort.forEach(function (x) { var pe = x && keyOf(x) && pcEntry(cid, keyOf(x)); if (pe && pe.s === 'ok') anyOk = true; });
+                if (anyOk) gs.bg = 'done';
             }
             if (gs.bg === 'run') { if (Date.now() > gs.bgDeadline) { try { gs.job.stop(); } catch (e) {} gs.bg = 'done'; } return; }
             if (gs.bg === 'done') {
@@ -6305,6 +6384,11 @@
             // стандартний екран джерела не повинен мигнути: до того, як побудуємо свій, ховаємо його (страховка 1.8 с)
             if (lastEnter.on && isOn()) {
                 document.body.classList.add('lmx-onl-entering');
+                // закриваємо екран нашою панеллю негайно, ще до появи екрана джерела — інакше на мить видно стандартне меню
+                safe(function () {
+                    var a0 = Lampa.Activity.active(), c0 = a0 && (a0.movie || a0.card);
+                    if (c0 && c0.id && a0.component !== 'torrents' && autoOn() && probeOn()) showScan(c0);
+                });
                 clearTimeout(lastEnter.tm);
                 lastEnter.tm = setTimeout(function () { document.body.classList.remove('lmx-onl-entering'); }, 1800);
             }
@@ -6352,6 +6436,7 @@
             safe(hookRequest);
             safe(dropBackHook);
             safe(downRescue);
+            safe(upRescue);
             safe(watchInsert);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
