@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.297 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.298 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.297';
+    var VERSION = '10.298';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5610,12 +5610,106 @@
         return 0;
     }
     function srcName(t) { return String(t || '').replace(/\s*[-–—~]\s*(\d{3,4}p?|4k|uhd|fhd|hd)\b.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
+    // ---- Фонова перевірка джерел (як у Nova): не перемикаємо екран, а самі запитуємо ті ж адреси «/lite/<джерело>» і читаємо відповідь ----
+    // Адресу вчимося у власних запитів онлайн-плагіна (підміняємо в ній назву джерела); 'rch'/'accsdb'/'blocked' і незрозумілі відповіді пропускаємо
+    function hookRequest() {
+        try {
+            var R = Lampa.Reguest;
+            if (!R || R.__lmxHook) return;
+            function Wrapped() {
+                var inst = new R();
+                ['native', 'silent'].forEach(function (name) {
+                    var origin = inst[name];
+                    if (typeof origin !== 'function') return;
+                    inst[name] = function (url) {
+                        try {
+                            if (!inst.__lmxProbe) {
+                                var v = String(url == null ? '' : url);
+                                if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) {
+                                    var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
+                                    window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
+                                }
+                            }
+                        } catch (e) {}
+                        return origin.apply(inst, arguments);
+                    };
+                });
+                return inst;
+            }
+            for (var k in R) { try { Wrapped[k] = R[k]; } catch (e) {} }
+            Wrapped.prototype = R.prototype;
+            Wrapped.__lmxHook = 1;
+            Lampa.Reguest = Wrapped;
+        } catch (e) {}
+    }
+    function pcGet() {
+        try { var v = Lampa.Storage.get('lmx_online_pc', ''); if (typeof v === 'string' && v) v = JSON.parse(v); if (v && typeof v === 'object') return v; } catch (e) {}
+        return {};
+    }
+    function pcSet(o) {
+        try {
+            var ks = Object.keys(o);
+            if (ks.length > 120) { ks.sort(function (a, b) { return (o[a].t || 0) - (o[b].t || 0); }); ks.slice(0, ks.length - 120).forEach(function (k) { delete o[k]; }); }
+            Lampa.Storage.set('lmx_online_pc', JSON.stringify(o));
+        } catch (e) {}
+    }
+    function pcEntry(cid, key) {
+        var m = pcGet()[cid], e = m && m.l && m.l[key];
+        if (!e) return null;
+        var ttl = e.s === 'ok' ? 6 * 3600000 : e.s === 'empty' ? 1800000 : 600000;
+        return Date.now() - (e.t || 0) > ttl ? null : e;
+    }
+    function pcPut(cid, key, e) {
+        var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
+        m.t = e.t = Date.now(); m.l[key] = e; pcSet(o);
+    }
+    function bgParse(ans) {
+        var b = typeof ans === 'string' ? ans : '';
+        if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
+        if (!b) return { s: 'skip' };
+        if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
+        var c = (b.match(/videos__item/g) || []).length || (b.match(/"method"\s*:\s*"(play|call|link)"/g) || []).length;
+        if (c) {
+            var q = 0, marks = b.match(/(2160|1440|1080|720|576|480|360)\s*p/gi) || [];
+            marks.forEach(function (m) { var n = parseInt(m, 10), r = n >= 2160 ? 4 : n >= 1080 ? 3 : n >= 720 ? 2 : 1; if (r > q) q = r; });
+            if (/4k|uhd/i.test(b)) q = 4;
+            return { s: 'ok', c: c, q: q };
+        }
+        if (!/videos__|"method"|online-prestige|"data"/i.test(b)) return { s: 'skip' };
+        return { s: 'empty', c: 0 };
+    }
+    // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
+    function bgProbe(job) {
+        var idx = 0, finished = 0, nets = [];
+        job.stopped = false;
+        job.stop = function () { job.stopped = true; nets.forEach(function (n) { try { n.clear(); } catch (e) {} }); };
+        function urlFor(src) { return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
+        function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
+        function step() {
+            if (job.stopped || idx >= job.items.length) return;
+            var it = job.items[idx++], net = null, ended = false;
+            try { net = new Lampa.Reguest(); } catch (e) { net = null; }
+            function end(ans) {
+                if (ended || job.stopped) return;
+                ended = true;
+                var r = bgParse(ans); pcPut(job.cid, it.key, r);
+                try { job.onEach(it, r); } catch (e) {}
+                fin(); step();
+            }
+            if (!net) return end('');
+            net.__lmxProbe = true; nets.push(net);
+            try { net.timeout(job.timeout); } catch (e) {}
+            try { net['native'](urlFor(it.source), end, function () { end(''); }, false, { dataType: 'text' }); } catch (e) { end(''); }
+        }
+        if (!job.items.length) return job.onEnd();
+        for (var w = 0; w < job.par; w++) step();
+    }
     // Загальний екран перевірки: живе на рівні body, тому не блимає, коли плагін перестворює екран при зміні джерела
     function scanText() {
-        var gs = window.__lmxProbe, n = gs ? Math.min(gs.tried.length, gs.total || gs.tried.length) : 0;
+        var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
         return 'Перевіряємо джерела' + (gs && gs.total ? ': ' + n + ' з ' + gs.total : '…');
     }
-    function scanFrac() { var gs = window.__lmxProbe; return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
+    function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
     function showScan(card) {
         var el = document.getElementById('lmx-scan');
         if (!el) {
@@ -5761,6 +5855,9 @@
     function srcState(name) {
         var gs = window.__lmxProbe, bad = window.__lmxBad, cid = '', i;
         try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = String(c && c.id || ''); } catch (e) {}
+        var pe = pcEntry(cid, name);
+        if (pe && pe.s === 'ok') return 'ok';
+        if (pe && pe.s === 'empty') return 'no';
         if (gs && gs.cid === cid) {
             for (i = 0; i < gs.results.length; i++) if (gs.results[i].name === name) return 'ok';
             if (gs.tried.indexOf(name) >= 0 && gs.cur !== name) return 'no';
@@ -5922,6 +6019,54 @@
             var curKey = curIt ? keyOf(curIt) : '';
             sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); });
             gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
+            if (allSrc && !gs.bg) {
+                var pu = window.__lmxProbeUrl;
+                if (pu && pu.cid === cid && sort.length > 1) {
+                    gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
+                    var items = [], cached = 0;
+                    sort.forEach(function (x) {
+                        if (!x || x.ghost || !x.source || !keyOf(x)) return;
+                        if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
+                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title) });
+                    });
+                    // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
+                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
+                    items.sort(function (a, b) { return pri(b) - pri(a); });
+                    gs.total = items.length + cached; gs.bgDone = cached;
+                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 4, timeout: 6000, onEach: function (it, r) {
+                        gs.bgDone++; updScan();
+                        // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
+                        if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
+                    }, onEnd: function () { gs.bg = 'done'; } };
+                    gs.bgDeadline = Date.now() + 25000;
+                    bgProbe(gs.job);
+                } else if (Date.now() - t0 > 3500) gs.bg = 'off';
+                else return;
+            }
+            if (gs.bg === 'run') { if (Date.now() > gs.bgDeadline) { try { gs.job.stop(); } catch (e) {} gs.bg = 'done'; } return; }
+            if (gs.bg === 'done') {
+                gs.bg = 'fin';
+                var okL = [], skipN = 0;
+                sort.forEach(function (x) {
+                    if (!x || x.ghost || !keyOf(x)) return;
+                    var pe = pcEntry(cid, keyOf(x));
+                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: Math.max(pe.q || 0, titleQ(x.title)), n: pe.c || 0 });
+                    else if (!pe || pe.s === 'skip') skipN++;
+                });
+                if (!okL.length) {
+                    if (skipN) { gs.bg = 'off'; return; }
+                    return finish('Жодне джерело не знайшло цей матеріал');
+                }
+                okL.sort(function (a, b) { return (b.rank - a.rank) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
+                okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
+                var bestO = okL[0];
+                if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
+                var curK = '';
+                sort.forEach(function (x) { if (x && x.selected) curK = keyOf(x); });
+                if (bestO.name !== curK) { switchTo(inst, bestO.it, 'Відкриваємо найкраще джерело'); }
+                return finish();
+            }
+            if (gs.bg === 'fin') return;
             if (!gs.started) {
                 gs.started = true; gs.cur = curKey; gs.since = Date.now();
                 if (curKey) gs.tried.push(curKey);
@@ -5938,7 +6083,7 @@
             if (items.length) {
                 var sig = items.length + ':' + qual(items);
                 if (sig !== lastSig) { lastSig = sig; stableAt = Date.now(); return; }
-                if (Date.now() - stableAt < 600) return;
+                if (Date.now() - stableAt < 350) return;
                 var rank = Math.max(qrank(qual(items)), gs.tq[gs.cur] || 0);
                 gs.results.push({ name: gs.cur, rank: rank, n: items.length });
                 save(gs.cur, rank);
@@ -5947,16 +6092,16 @@
                 return next(inst, sort);
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (gs.cur ? ': ' + gs.cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
-            if (/не дав результат|no results/i.test(body.textContent || '') && waited > 800) {
+            if (/не дав результат|no results/i.test(body.textContent || '') && waited > 250) {
                 // власний таймер плагіна «переключиться через 10 секунд» не чекаємо — скасовуємо його й переходимо самі
                 try { $(body).find('[class*="empty__button"].cancel').trigger('hover:enter'); } catch (e) {}
                 save(gs.cur, -1); return next(inst, sort);
             }
-            if (waited > 6000) { save(gs.cur, -1); next(inst, sort); }
+            if (waited > 3500) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
             try { tick(); } catch (e) { try { console.error('LMX Online', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
-        }, 300);
+        }, 150);
     }
 
     // Страж порожнього результату: після ручного вибору (або будь-коли, коли серій немає) джерело може відповісти «не дав результатів» або
@@ -6204,6 +6349,7 @@
             });
             safe(hookFilter);
             safe(hookSelect);
+            safe(hookRequest);
             safe(dropBackHook);
             safe(downRescue);
             safe(watchInsert);
@@ -6227,6 +6373,7 @@
     }
     safe(hookFilter);
     safe(hookSelect);
+    safe(hookRequest);
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 })();
