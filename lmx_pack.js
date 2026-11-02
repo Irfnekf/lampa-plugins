@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.325 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.326 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.325';
+    var VERSION = '10.326';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -6274,6 +6274,8 @@
             var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
             try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
             if (el && window.Navigator && Navigator.focus) Navigator.focus(el);
+            // шапка Lampa (пошук, налаштування…) інколи лишає свій клас focus — тоді виділення «двоїться», а стрілки читають не той елемент
+            if (el) [].forEach.call(document.querySelectorAll('.focus'), function (x) { if (x !== el && !act.contains(x)) x.classList.remove('focus'); });
         });
     }
     // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
@@ -6421,9 +6423,14 @@
     function navKeys(e) {
         var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
         if (!up && !dn) { navCx = null; return; }
-        var a = document.querySelector('.activity--active'), cur = document.querySelector('.focus');
-        if (!a || !cur || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+        var a = document.querySelector('.activity--active'), cur = a && a.querySelector('.focus');
+        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
         var rows = navRows(a), ri = -1, k;
+        if (!cur) {
+            // фокус у шапці Lampa: «вниз» повертає на головну кнопку героя
+            if (dn && rows.length && document.querySelector('.focus')) { e.preventDefault(); e.stopImmediatePropagation(); window.__lmxKeyT = Date.now(); syncNav(a, rows[0][0]); }
+            return;
+        }
         for (k = 0; k < rows.length; k++) if (rows[k].indexOf(cur) >= 0) { ri = k; break; }
         if (ri < 0) return;                                  // фокус не на наших елементах (шапка Lampa тощо) — штатна поведінка
         var ti = ri + (up ? -1 : 1);
