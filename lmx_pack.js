@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.265 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.266 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.265';
+    var VERSION = '10.266';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5124,7 +5124,7 @@
         // список: серії у сітці широких карток (кадр зверху, підпис знизу)
         B + '.lmx-onl-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.9em}' +
         B + ' > *{box-sizing:border-box}' +
-        B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(25% - .7em);width:calc(25% - .7em);margin:0}' +
+        B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(20% - .72em);width:calc(20% - .72em);margin:0}' +
         '@media (max-width:1100px){' + B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
         '@media (max-width:760px){' + B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
         S + '.lmx-onl-item,' + S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
@@ -5146,9 +5146,16 @@
         S + '.videos__item-footer{padding-bottom:.6em;opacity:.8;font-size:.85em}' +
         S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.2);overflow:hidden}' +
         S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
+        // поки джерела шукаються: рідний лоадер Lampa ховаємо, замість нього — шапка з логотипом, що переливається
+        'body.lmx-online .activity.lmx-onl-load .activity__body{opacity:1 !important}' +
+        'body.lmx-online .activity.lmx-onl-load .activity__loader{display:none !important}' +
+        '@keyframes lmxShim{0%{opacity:.45;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.7) drop-shadow(0 0 .5em rgba(255,255,255,.55))}100%{opacity:.45;filter:brightness(.8)}}' +
+        '.lmx-onl-hero--load .lmx-onl-hero__logo,.lmx-onl-hero--load .lmx-onl-hero__t{animation:lmxShim 1.6s ease-in-out infinite}' +
+        '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
+        B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
         // шапка
         '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:13em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
-        '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:center 20%;opacity:.95}' +
+        '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:62% 0%;opacity:.95}' +
         '.lmx-onl-hero__sh{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,16,.92) 0%,rgba(8,10,16,.55) 45%,rgba(8,10,16,0) 80%),linear-gradient(0deg,rgba(8,10,16,.75) 0%,rgba(8,10,16,0) 55%)}' +
         '.lmx-onl-hero > *:not(.lmx-onl-hero__bg):not(.lmx-onl-hero__sh){position:relative;z-index:1}' +
         '.lmx-onl-hero__t{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;max-width:60%}' +
@@ -5230,6 +5237,24 @@
         try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
     }
 
+    // Шапка-заглушка на час пошуку джерел: логотип переливається замість стандартного кружка Lampa
+    function buildSkeleton(act, hd, card) {
+        var q = (card.title || card.name || ''), year = String(card.release_date || card.first_air_date || '').slice(0, 4), vote = Number(card.vote_average) || 0;
+        var h = document.createElement('div');
+        h.className = 'lmx-onl-hero lmx-onl-hero--load';
+        h.setAttribute('data-sig', 'load');
+        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + img(card.backdrop_path, 'w1280') + '\')"></div>' : '') +
+            '<div class="lmx-onl-hero__sh"></div><div class="lmx-onl-hero__t"></div>' +
+            '<div class="lmx-onl-hero__m">' + (vote ? '<span>&#9733; ' + vote.toFixed(1) + '</span>' : '') + (year ? '<span>' + year + '</span>' : '') + '</div>' +
+            '<div class="lmx-onl-hero__s">Шукаємо джерела…</div>';
+        h.querySelector('.lmx-onl-hero__t').textContent = q;
+        hd.insertBefore(h, hd.firstChild);
+        act.classList.add('lmx-onl-load');
+        putLogo(h, card);
+        // якщо джерел так і не знайшлось, переливання не вічне
+        setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); }, 25000);
+    }
+
     function buildHero() {
         if (!isOn()) return;
         var act = document.querySelector('.activity--active');
@@ -5247,13 +5272,16 @@
         var ex = act.querySelector('.explorer');
         if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
         if (body.querySelector('.videos__item-imgbox') || (list.length && list[0].querySelector('img'))) body.classList.add('lmx-onl-grid');
-        if (!list.length) return;
-        numberItems(list);
+        // рядки-довідки (без картинки), як «Netflix · Сезон 3 · Серія 5»: на всю ширину сітки
+        for (i = 0; i < kids.length; i++) if (kids[i].classList && kids[i].classList.contains('selector') && !kids[i].classList.contains('lmx-onl-item') && !kids[i].classList.contains('videos__button') && !kids[i].classList.contains('lmx-onl-btn')) kids[i].classList.add('lmx-onl-wide');
         var card = null;
-        try { var a = Lampa.Activity.active(); card = a && (a.movie || a.card); } catch (e) {}
+        try { var a = Lampa.Activity.active(); card = a && (a.movie || a.card); if (a && a.component === 'torrents') return; } catch (e) {}
         if (!card) return;
-        var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',');
         var hd = act.querySelector('.explorer__files-head') || body, old = hd.querySelector('.lmx-onl-hero');
+        if (!list.length) { if (!old && hd !== body) buildSkeleton(act, hd, card); return; }
+        act.classList.remove('lmx-onl-load');
+        numberItems(list);
+        var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',');
         if (old && old.getAttribute('data-sig') === sig) return;
         if (old) old.parentNode.removeChild(old);
 
@@ -5321,7 +5349,7 @@
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
                 obsTarget = null; actT0 = Date.now();
-                [500, 1500, 3500].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
+                [30, 150, 400, 800, 1500, 3000, 5000].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
             });
         });
     }
