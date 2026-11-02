@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.326 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.328 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.326';
+    var VERSION = '10.328';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5663,7 +5663,7 @@
         try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
         function back() { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
         Lampa.Select.show({
-            title: 'Налаштування вікна',
+            title: 'Налаштування вікна · v10.328',
             items: [
                 { title: 'Вигляд серій', subtitle: VIEWS[curView()], k: 'view' },
                 { title: 'Автоперемикання джерел', subtitle: autoOn() ? 'Увімкнено' : 'Вимкнено', k: 'auto' },
@@ -6125,6 +6125,18 @@
             if (!window.__lmxFocusTrack) { window.__lmxFocusTrack = 1; $(document).on('hover:focus', function (e) { if (e && e.target && e.target.nodeType === 1) lastFocusEl = e.target; }); }
             K.add = function (name, object) {
                 try {
+                    // як у Nova: перехоплюємо up/down самого контролера «content» (їх викликають і стрілки, і колесо миші, і геймпад — не лише keydown)
+                    if (name === 'content' && object && !object.__lmxUD) {
+                        object.__lmxUD = 1;
+                        ['up', 'down'].forEach(function (dir) {
+                            if (typeof object[dir] !== 'function') return;
+                            var orig = object[dir];
+                            object[dir] = function () {
+                                try { if (isOn() && navStep(dir === 'up')) return; } catch (e) {}
+                                return orig.apply(this, arguments);
+                            };
+                        });
+                    }
                     if (name === 'content' && object && typeof object.toggle === 'function' && !object.__lmxT) {
                         object.__lmxT = 1;
                         var tg0 = object.toggle;
@@ -6275,7 +6287,7 @@
             try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
             if (el && window.Navigator && Navigator.focus) Navigator.focus(el);
             // шапка Lampa (пошук, налаштування…) інколи лишає свій клас focus — тоді виділення «двоїться», а стрілки читають не той елемент
-            if (el) [].forEach.call(document.querySelectorAll('.focus'), function (x) { if (x !== el && !act.contains(x)) x.classList.remove('focus'); });
+            if (el) [].forEach.call(document.querySelectorAll('.focus'), function (x) { if (x !== el) x.classList.remove('focus'); });
         });
     }
     // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
@@ -6420,33 +6432,40 @@
         [group('.lmx-onl-hero .selector'), group('.lmx-onl-bar .selector'), group('.lmx-onl-drop .selector'), group('.lmx-onl-dead .selector'), group('.lmx-onl-item.selector')].forEach(function (g) { g.forEach(function (r) { rows.push(r); }); });
         return rows;
     }
-    function navKeys(e) {
-        var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
-        if (!up && !dn) { navCx = null; return; }
-        var a = document.querySelector('.activity--active'), cur = a && a.querySelector('.focus');
-        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+    // Повертає true, якщо ми обробили крок (в т.ч. «проковтнули» його на краю), false — віддати штатній навігації Lampa
+    function navStep(up) {
+        var a = document.querySelector('.activity--active'), cur = null;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return false;
+        // «справжній» фокус — той, що знає навігатор Lampa (клас focus лише косметика і може лишатись на кількох елементах)
+        try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
+        if (!(cur && cur.nodeType === 1 && a.contains(cur) && document.body.contains(cur))) cur = a.querySelector('.focus');
         var rows = navRows(a), ri = -1, k;
         if (!cur) {
             // фокус у шапці Lampa: «вниз» повертає на головну кнопку героя
-            if (dn && rows.length && document.querySelector('.focus')) { e.preventDefault(); e.stopImmediatePropagation(); window.__lmxKeyT = Date.now(); syncNav(a, rows[0][0]); }
-            return;
+            if (!up && rows.length && document.querySelector('.focus')) { window.__lmxKeyT = Date.now(); syncNav(a, rows[0][0]); return true; }
+            return false;
         }
         for (k = 0; k < rows.length; k++) if (rows[k].indexOf(cur) >= 0) { ri = k; break; }
-        if (ri < 0) return;                                  // фокус не на наших елементах (шапка Lampa тощо) — штатна поведінка
+        if (ri < 0) return false;                            // фокус не на наших елементах — штатна поведінка
         var ti = ri + (up ? -1 : 1);
-        if (ti < 0) return;                                  // вище героя — шапка Lampa
-        e.preventDefault(); e.stopImmediatePropagation();
-        if (ti >= rows.length) return;                       // нижче немає нічого
+        if (ti < 0) return false;                            // вище героя — шапка Lampa
+        if (ti >= rows.length) return true;                  // нижче немає нічого
         var row = rows[ti], cr = cur.getBoundingClientRect(), now = Date.now();
         if (navCx === null || now - navT > 1500) navCx = cr.left + cr.width / 2;
         navT = now;
         var best = null, bd = 1e9;
-        if (up && rows[ti] === rows[0] && a.querySelector('.lmx-onl-hero .selector') && rows[0].indexOf(a.querySelector('.lmx-onl-hero .selector')) >= 0) best = rows[0][0];   // до героя — завжди на головну кнопку
+        if (up && ti === 0) best = rows[0][0];               // до героя — завжди на головну кнопку
         if (!best) row.forEach(function (x) { var r = x.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - navCx); if (d < bd) { bd = d; best = x; } });
-        if (!best) return;
+        if (!best) return true;
         window.__lmxKeyT = now;
         syncNav(a, best);
         if (best.classList.contains('lmx-onl-item')) bringIn(best);
+        return true;
+    }
+    function navKeys(e) {
+        var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
+        if (!up && !dn) { navCx = null; return; }
+        if (navStep(up)) { e.preventDefault(); e.stopImmediatePropagation(); }
     }
     function downRescue() {
         if (window.__lmxDown) return;
