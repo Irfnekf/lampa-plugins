@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.284 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.285 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.284';
+    var VERSION = '10.285';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5559,7 +5559,7 @@
                     items.push({ el: its[j], title: t ? t.textContent.trim() : '', nm: srcName(t ? t.textContent : ''), tq: titleQ(t ? t.textContent : '') });
                     (act.__lmxTQ || (act.__lmxTQ = {}))[items[items.length - 1].nm] = items[items.length - 1].tq;
                 }
-                pick = choose(items);
+                try { pick = choose(items); } catch (e) { pick = null; }
                 if (pick) { press(pick.el); setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 300); cb(pick.nm, pick.title); }
                 else { try { Lampa.Select.close(); } catch (e) {} restore(); document.body.classList.remove('lmx-onl-pick'); cb(null); }
             } else if (++k > 40) {
@@ -5600,7 +5600,7 @@
         function cmpSrc(a, b) { return ((b.tq || 0) - (a.tq || 0)) || (gscore(mem.g[b.nm]) - gscore(mem.g[a.nm])); }
         function stopKey() { phase = 'done'; act.__lmxProbing = false; safe(buildHero); clearInterval(iv); document.removeEventListener('keydown', stopKey, true); }
         document.addEventListener('keydown', stopKey, true);
-        var lastSig = '', stableAt = 0, cur = '';
+        var lastSig = '', stableAt = 0, cur = '', busyAt = 0;
         function readCur() { var r = findRef(act); return r ? srcName((r.textContent || '').replace(/^\s*(джерело|source)\s*/i, '')) : ''; }
         function save(name, rank, n) {
             var g = mem.g[name] || (mem.g[name] = { ok: 0, fail: 0, q: 0 });
@@ -5648,10 +5648,15 @@
             if (best.name !== cur) goTo(best.name, function () { finish(); });
             else finish();
         }
-        var iv = setInterval(function () {
+        function tick() {
             if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > budget) return stopKey();
-            if (busy || phase === 'done') return;
+            if (phase === 'done') return;
+            // перемикання джерела не може висіти вічно (меню не відкрилось / збій у виборі)
+            if (busy) { if (!busyAt) busyAt = Date.now(); else if (Date.now() - busyAt > 10000) { busy = false; busyAt = 0; try { Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); } return; }
+            busyAt = 0;
             var body = act.querySelector('.explorer__files-body .scroll__body');
+            // джерело так і не показало список/кнопки — не тримаємо екран завантаження вічно
+            if (phase === 'start' && Date.now() - t00 > 8000) return finish();
             if (!body || !findRef(act)) return;
             var items = episodeEls(body);
             if (phase === 'start') {
@@ -5700,6 +5705,9 @@
                 save(cur, -1, 0);
                 next();
             }
+        }
+        var iv = setInterval(function () {
+            try { tick(); } catch (e) { try { console.error('LMX Online', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
         }, 300);
     }
 
