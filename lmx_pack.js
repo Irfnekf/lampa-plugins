@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.268 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.269 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.268';
+    var VERSION = '10.269';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5165,6 +5165,7 @@
         S + '.lmx-onl-pill{display:inline-flex;align-items:center;margin:0;padding:.5em 1.1em}' +
         S + '.lmx-onl-pill__c{font-style:normal;margin-left:.55em;opacity:.8}' +
         S + '.lmx-onl-pill__t{max-width:12em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+        'body.lmx-onl-big ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 calc(33.333% - .62em) !important;width:calc(33.333% - .62em) !important}' +
         // режим «Список»: кожна серія — рядок на всю ширину
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 100% !important;width:100% !important;flex-direction:row !important;align-items:center}' +
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item > *:first-child{width:22% !important;flex:0 0 22%;border-radius:1em 0 0 1em}' +
@@ -5260,11 +5261,14 @@
         var f = act.querySelector('.filter--filter');
         return f ? (f.textContent || '').replace(/\s+/g, ' ').trim() : '';
     }
+    // «Сезон: 3 сезон Переклад: Netflix» (роздільники бувають різні, а то й нема): позначки — слова з великої літери перед двокрапкою
     function chosen(txt, rx) {
-        var parts = txt.split(/\s*[,;·|]\s*/), j, mm;
-        for (j = 0; j < parts.length; j++) {
-            mm = parts[j].match(/^([^:]+):\s*(.+)$/);
-            if (mm && rx.test(mm[1])) return mm[2].trim();
+        var re = /(?:^|[\s,;·|])([A-ZА-ЯІЇЄҐ][A-Za-zА-Яа-яІіЇїЄєҐґ']{2,}):\s*/g, mm, marks = [], k, v;
+        while ((mm = re.exec(txt))) marks.push({ k: mm[1], s: mm.index + mm[0].length, e: mm.index });
+        for (k = 0; k < marks.length; k++) {
+            if (!rx.test(marks[k].k)) continue;
+            v = txt.slice(marks[k].s, k + 1 < marks.length ? marks[k + 1].e : txt.length).replace(/[\s,;·|]+$/, '').trim();
+            return v;
         }
         return '';
     }
@@ -5298,8 +5302,13 @@
         }
         g.firstChild.textContent = label;
         g.querySelector('.lmx-onl-pill__t').textContent = val;
-        g.querySelector('.lmx-onl-pill__c').style.display = key === 'view' ? 'none' : '';
+        g.querySelector('.lmx-onl-pill__c').style.display = key === 'cfg' ? 'none' : '';
         return g;
+    }
+    function findSort(act) {
+        var all = act.querySelectorAll('.explorer__files-head .selector'), i;
+        for (i = 0; i < all.length; i++) if (/^\s*(сортувати|сортировать|sort)/i.test(all[i].textContent || '') && !all[i].closest('.lmx-onl-bar')) return all[i];
+        return act.querySelector('.filter--sort');
     }
     function findRef(act) {
         var all = act.querySelectorAll('.explorer__files-head .selector'), i;
@@ -5318,32 +5327,11 @@
             if (hero && hero.nextSibling) hd.insertBefore(bar, hero.nextSibling); else hd.appendChild(bar);
         }
         var ref = findRef(act), want = [];
-        want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = act.querySelector('.filter--sort'); if (f) press(f); }));
+        want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { press(ref); }));
-        want.push(group(act, 'view', '', document.body.classList.contains('lmx-onl-list') ? 'Список' : 'Плитка', function () {
-            var on = !document.body.classList.contains('lmx-onl-list');
-            document.body.classList.toggle('lmx-onl-list', on);
-            try { Lampa.Storage.set('lmx_online_view', on ? 'list' : 'tile'); } catch (e) {}
-            var gv = act.querySelector('.lmx-onl-g--view .lmx-onl-pill__t'); if (gv) gv.textContent = on ? 'Список' : 'Плитка';
-        }));
         if (season || /сезон|season/i.test(txt)) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { openFilterItem(act, RX_SEASON); }));
-        if (voice || /переклад|озвуч|voice/i.test(txt)) want.push(group(act, 'voice', 'Переклад', voice || 'Озвучка', function () { openFilterItem(act, RX_VOICE); }));
-        if (list.length > 1) want.push(group(act, 'ep', 'Серія', 'Обрати', function () {
-            var cur = act.__lmxList || [];
-            var items = cur.map(function (el, k) {
-                var t = el.querySelector('[class*="title"]');
-                return { title: (t && t.textContent.trim()) || ('Серія ' + (k + 1)), index: k };
-            }), enabled = '';
-            try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
-            Lampa.Select.show({
-                title: 'Серія', items: items,
-                onSelect: function (a) {
-                    try { Lampa.Controller.toggle(enabled); } catch (e) {}
-                    setTimeout(function () { try { if (window.Navigator && Navigator.focus && cur[a.index]) Navigator.focus(cur[a.index]); } catch (e) {} }, 50);
-                },
-                onBack: function () { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
-            });
-        }));
+        if (act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { openFilterItem(act, RX_VOICE); }));
+        want.push(group(act, 'cfg', '', '⚙︎', function () { openCfg(act); }));
         want.forEach(function (g, k) {
             if (bar.children[k] !== g) bar.insertBefore(g, bar.children[k] || null);
             if (g.__new) { g.__new = false; addNav(g.querySelector('.selector')); }
@@ -5351,6 +5339,45 @@
         // решту (зайві групи, якщо джерело перестало їх віддавати) прибираємо
         for (var q = bar.children.length - 1; q >= want.length; q--) bar.removeChild(bar.children[q]);
         if (ex) ex.classList.add('lmx-onl-barred');
+    }
+
+    // Налаштування вікна: вигляд серій (плитка / крупна / список) та автоперемикання джерел
+    var VIEWS = { tile: 'Плитка (5 в ряд)', big: 'Крупна плитка (3 в ряд)', list: 'Список' };
+    function applyView(v) {
+        document.body.classList.toggle('lmx-onl-list', v === 'list');
+        document.body.classList.toggle('lmx-onl-big', v === 'big');
+    }
+    function curView() { var v = Lampa.Storage.get('lmx_online_view', 'tile'); return VIEWS[v] ? v : 'tile'; }
+    function openCfg(act) {
+        var enabled = '';
+        try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
+        function back() { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
+        Lampa.Select.show({
+            title: 'Налаштування вікна',
+            items: [
+                { title: 'Вигляд серій', subtitle: VIEWS[curView()], k: 'view' },
+                { title: 'Автоперемикання джерел', subtitle: autoOn() ? 'Увімкнено' : 'Вимкнено', k: 'auto' }
+            ],
+            onBack: back,
+            onSelect: function (a) {
+                if (a.k === 'auto') {
+                    try { Lampa.Storage.set('lmx_online_auto', autoOn() ? 'false' : 'true'); } catch (e) {}
+                    back();
+                    return;
+                }
+                var cur = curView();
+                Lampa.Select.show({
+                    title: 'Вигляд серій',
+                    items: Object.keys(VIEWS).map(function (key) { return { title: VIEWS[key], subtitle: key === cur ? 'Зараз' : '', k: key }; }),
+                    onBack: back,
+                    onSelect: function (b) {
+                        try { Lampa.Storage.set('lmx_online_view', b.k); } catch (e) {}
+                        applyView(b.k);
+                        back();
+                    }
+                });
+            }
+        });
     }
 
     // Автоперемикання джерел: джерело нічого не знайшло — пробуємо наступне зі списку (до 6 спроб)
@@ -5544,7 +5571,7 @@
                 onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
             });
             safe(watchInsert);
-            if (Lampa.Storage.get('lmx_online_view', 'tile') === 'list') document.body.classList.add('lmx-onl-list');
+            applyView(curView());
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx', param: { name: 'lmx_online_auto', type: 'trigger', default: true },
                 field: { name: 'Автоперемикання джерел', description: 'Якщо джерело не знайшло серій або фільм — само пробує наступне (до 6 спроб)' }
