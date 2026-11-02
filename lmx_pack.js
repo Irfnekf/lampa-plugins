@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.270 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.271 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.270';
+    var VERSION = '10.271';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5388,7 +5388,7 @@
 
     // Автоперемикання джерел: джерело нічого не знайшло — пробуємо наступне зі списку (до 6 спроб)
     function autoOn() { var v = Lampa.Storage.get('lmx_online_auto', 'true'); return v === true || v === 'true'; }
-    function srcName(t) { return String(t || '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase().split(' ')[0]; }
+    function srcName(t) { return String(t || '').replace(/\s*[-–—]\s*\d{3,4}p?.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
     function heroStatus(act, text, stop) {
         var s = act.querySelector('.lmx-onl-hero__s'), h = act.querySelector('.lmx-onl-hero');
         if (s) s.textContent = text;
@@ -5445,7 +5445,9 @@
     function watchSources(act, card) {
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
-        var mem = memGet(), cid = String(card && card.id || ''), tried = [], results = [], t0 = Date.now(), t00 = t0, busy = false, phase = 'start';
+        var mem = memGet(), cid = String(card && card.id || ''), tried = [], results = [], t0 = Date.now(), t00 = t0, busy = false, phase = 'start', switches = 0;
+        function stopKey() { phase = 'done'; clearInterval(iv); document.removeEventListener('keydown', stopKey, true); }
+        document.addEventListener('keydown', stopKey, true);
         var lastSig = '', stableAt = 0, cur = '';
         function readCur() { var r = findRef(act); return r ? srcName((r.textContent || '').replace(/^\s*(джерело|source)\s*/i, '')) : ''; }
         function save(name, rank, n) {
@@ -5457,9 +5459,11 @@
         function finish(msg) {
             phase = 'done';
             clearInterval(iv);
+            document.removeEventListener('keydown', stopKey, true);
             if (msg) heroStatus(act, msg, true);
         }
         function goTo(name, after) {
+            if (++switches > 4) { busy = false; return finish(); }
             busy = true;
             pickSource(act, function (items) {
                 for (var j = 0; j < items.length; j++) if (items[j].nm === name) return items[j];
@@ -5467,7 +5471,8 @@
             }, function (nm, title) { busy = false; t0 = Date.now(); lastSig = ''; if (nm) { cur = nm; if (tried.indexOf(nm) < 0) tried.push(nm); } after(!!nm, title); });
         }
         function next() {
-            if (tried.length >= 6) return conclude();
+            if (tried.length >= 4 || switches >= 4 || Date.now() - t00 > 30000) return conclude();
+            if (++switches > 4) return conclude();
             busy = true;
             pickSource(act, function (items) {
                 var c = items.filter(function (x) { return x.nm && tried.indexOf(x.nm) < 0; });
@@ -5491,7 +5496,7 @@
             else finish();
         }
         var iv = setInterval(function () {
-            if (!document.body.contains(act) || !isOn() || !autoOn()) return clearInterval(iv);
+            if (!document.body.contains(act) || !isOn() || !autoOn() || Date.now() - t00 > 45000) return stopKey();
             if (busy || phase === 'done') return;
             var body = act.querySelector('.explorer__files-body .scroll__body');
             if (!body || !findRef(act)) return;
