@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.262 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.263 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.262';
+    var VERSION = '10.263';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5127,9 +5127,9 @@
         B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(25% - .7em);width:calc(25% - .7em);margin:0}' +
         '@media (max-width:1100px){' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
         '@media (max-width:760px){' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
-        S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
+        S + '.lmx-onl-item,' + S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
         S + '.online-prestige,' + S + '.torrent-item{margin-bottom:.7em}' +
-        S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.14);box-shadow:0 0 0 .16em #fff;transform:scale(1.02)}' +
+        S + '.lmx-onl-item.focus,' + S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.14);box-shadow:0 0 0 .16em #fff;transform:scale(1.02)}' +
         S + '.videos__item.focus::after,' + S + '.videos__season.focus::after,' + S + '.online-prestige.focus::after,' + S + '.torrent-item.focus::after,' +
         S + '.videos__item.focus::before,' + S + '.videos__season.focus::before,' + S + '.online-prestige.focus::before,' + S + '.torrent-item.focus::before{display:none !important}' +
         S + '.videos__item-imgbox{position:relative;width:100%;aspect-ratio:16/9;border-radius:1em 1em 0 0;overflow:hidden;background:rgba(255,255,255,.05)}' +
@@ -5229,12 +5229,18 @@
         var act = document.querySelector('.activity--active');
         var body = act && act.querySelector('.explorer__files-body .scroll__body');
         if (!body) return;
-        // позначаємо екран класом (замість :has(), якого немає в старих WebView телевізорів)
+        // Джерела розмічають серії по-різному (.videos__item, .online-prestige, з префіксами на кшталт .onl-online-prestige…), тому не
+        // покладаємось на назви класів: серією вважаємо кожен фокусований елемент списку, у якому є картинка або смужка прогресу
+        var kids = body.children, list = [], i;
+        for (i = 0; i < kids.length; i++) {
+            var el = kids[i];
+            if (!el.classList || !el.classList.contains('selector') || el.classList.contains('lmx-onl-btn')) continue;
+            if (el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
+            if (el.querySelector('img, .time-line, [class*="prestige__img"], [class*="imgbox"]')) { el.classList.add('lmx-onl-item'); list.push(el); }
+        }
         var ex = act.querySelector('.explorer');
-        if (ex && ex.querySelector('.videos__item, .online-prestige, .torrent-item')) ex.classList.add('lmx-onl');
-        if (body.querySelector('.videos__item')) body.classList.add('lmx-onl-grid');
-        var all = body.querySelectorAll('.videos__item, .online-prestige'), list = [], i;
-        for (i = 0; i < all.length; i++) if (!all[i].classList.contains('videos__season') && !/folder/.test(all[i].className)) list.push(all[i]);
+        if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
+        if (body.querySelector('.videos__item-imgbox')) body.classList.add('lmx-onl-grid');
         if (!list.length) return;
         numberItems(list);
         var card = null;
@@ -5276,9 +5282,14 @@
             $(b).on('hover:enter click', function () { var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t); });
             addNav(b);
         })(btns[i]);
+        // Lampa прокручує список до сфокусованої серії, і шапка залишалась нагорі за кадром. Поки пульт не чіпали, ставимо фокус на «Продовжити»
+        if (btns.length && !body.__lmxFocus && (window.__lmxKeyT || 0) <= actT0) {
+            body.__lmxFocus = 1;
+            setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) <= actT0 && window.Navigator && Navigator.focus) Navigator.focus(btns[0]); }); }, 60);
+        }
     }
 
-    var obs = null, obsTarget = null, tm = 0;
+    var obs = null, obsTarget = null, tm = 0, actT0 = 0;
     function arm() {
         var act = document.querySelector('.activity--active');
         var body = act && act.querySelector('.explorer__files-body .scroll__body');
@@ -5294,6 +5305,7 @@
         safe(function () {
             addCss();
             document.body.classList.toggle('lmx-online', isOn());
+            if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; document.addEventListener('keydown', function () { window.__lmxKeyT = Date.now(); }, true); }
             var S2 = Lampa.SettingsApi;
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx', param: { name: 'lmx_online', type: 'trigger', default: true },
@@ -5302,7 +5314,7 @@
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
-                obsTarget = null;
+                obsTarget = null; actT0 = Date.now();
                 [500, 1500, 3500].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
             });
         });
