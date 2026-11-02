@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.290 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.291 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.290';
+    var VERSION = '10.291';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5583,6 +5583,20 @@
             Lampa.Filter = Wrapped;
         } catch (e) {}
     }
+    // Фільтр джерела при виборі сам викликає Select.hide/close; якщо жодне меню не відкрите (а ми вибираємо напряму), Lampa кидає
+    // «undefined is not an object (evaluating 'closed.onBack')» і вибір не доходить до перезавантаження. Гасимо цю помилку
+    function hookSelect() {
+        try {
+            var S = Lampa.Select;
+            if (!S || S.__lmxHook) return;
+            ['hide', 'close'].forEach(function (name) {
+                var real = S[name];
+                if (typeof real !== 'function') return;
+                S[name] = function () { try { return real.apply(S, arguments); } catch (e) {} };
+            });
+            S.__lmxHook = 1;
+        } catch (e) {}
+    }
     // Екземпляр фільтра, що належить цьому екрану; якщо привʼязати до DOM не вдалось — найновіший, який уже отримав списки
     function instFor(act) {
         var i, el, inst;
@@ -5960,6 +5974,7 @@
                 onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
             });
             safe(hookFilter);
+            safe(hookSelect);
             safe(dropBackHook);
             safe(watchInsert);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
@@ -5981,6 +5996,7 @@
         });
     }
     safe(hookFilter);
+    safe(hookSelect);
     if (window.appready) start();
     else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') start(); });
 })();
