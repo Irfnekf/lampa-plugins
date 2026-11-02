@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.323 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.324 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.323';
+    var VERSION = '10.324';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5365,12 +5365,13 @@
         }
     }
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
+    var PAGING = false;   // сторінки «1–20…» вимкнено: показуємо весь сезон, а до потрібної серії прокручуємо автоматично
     function pageSizeOf(total) { return total > 200 ? 50 : 20; }
     function applyOrderPages(act, list) {
         var total = list.length, rev = orderRev(), i, el;
         for (i = 0; i < total; i++) list[i].style.order = rev ? String(total - i) : '';
         var size = pageSizeOf(total);
-        if (total <= 30) {
+        if (!PAGING || total <= 30) {
             act.__lmxPages = null;
             for (i = 0; i < total; i++) { el = list[i]; if (el.classList.contains('lmx-onl-off')) { el.classList.remove('lmx-onl-off'); el.classList.add('selector'); el.style.removeProperty('display'); } }
             return;
@@ -6814,6 +6815,19 @@
         safe(function () { buildBar(act, hd, list); });
         // перший вхід: Lampa рахує висоту прокрутки до того, як з'явились усі ряди — перераховуємо (раніше це давав лише повторний вибір «Серії 1-10»)
         if (act.__lmxRLn !== list.length) { act.__lmxRLn = list.length; relayout(); [400, 1500, 3500].forEach(function (d) { setTimeout(function () { safe(relayout); }, d); }); }
+        // при завантаженні списку опускаємось до останньої переглянутої серії сезону (фокус не чіпаємо)
+        safe(function () {
+            var key = list.length + '|' + (jd(list[0]).season || '') + '|' + (act.__lmxASk || ''), li = -1, q;
+            for (q = 0; q < list.length; q++) if (pct(list[q]) >= 1) li = q;
+            if (li < 5 || act.__lmxAS === list.length + '|' + (jd(list[0]).season || '') + '|' + li) return;
+            act.__lmxAS = list.length + '|' + (jd(list[0]).season || '') + '|' + li;
+            var tgt = list[li];
+            [500, 1500, 3000].forEach(function (d) { setTimeout(function () { safe(function () {
+                var cur = document.querySelector('.focus');
+                if (!document.body.contains(tgt) || (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt) || document.querySelector('.selectbox')) return;
+                bringIn(tgt);
+            }); }, d); });
+        });
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
         var sst = seriesStats(card), sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt + '|' + (sst ? sst.seen + '/' + sst.total : '');
         if (old && old.getAttribute('data-sig') === sig) return;
