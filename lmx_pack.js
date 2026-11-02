@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.261 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.262 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.261';
+    var VERSION = '10.262';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5113,7 +5113,7 @@
         return 'https://image.tmdb.org/t/p/' + size + path;
     }
 
-    var S = 'body.lmx-online .explorer:has(.videos__item, .online-prestige, .torrent-item) ';
+    var S = 'body.lmx-online .explorer.lmx-onl ';
     var B = S + '.explorer__files-body .scroll__body';
     var CSS = '' +
         S + '.explorer__files-head{padding-bottom:.3em}' +
@@ -5122,11 +5122,11 @@
         S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
         S + '.videos__button.focus{background:#fff;color:#111}' +
         // список: серії у сітці широких карток (кадр зверху, підпис знизу)
-        B + ':has(.videos__item){display:flex;flex-wrap:wrap;align-items:flex-start;gap:.9em}' +
+        B + '.lmx-onl-grid{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.9em}' +
         B + ' > *{box-sizing:border-box}' +
-        B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex:0 0 calc(25% - .7em);width:calc(25% - .7em);margin:0}' +
-        '@media (max-width:1100px){' + B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
-        '@media (max-width:760px){' + B + ':has(.videos__item) > .videos__item,' + B + ':has(.videos__item) > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
+        B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(25% - .7em);width:calc(25% - .7em);margin:0}' +
+        '@media (max-width:1100px){' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
+        '@media (max-width:760px){' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
         S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
         S + '.online-prestige,' + S + '.torrent-item{margin-bottom:.7em}' +
         S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.14);box-shadow:0 0 0 .16em #fff;transform:scale(1.02)}' +
@@ -5229,8 +5229,12 @@
         var act = document.querySelector('.activity--active');
         var body = act && act.querySelector('.explorer__files-body .scroll__body');
         if (!body) return;
-        var all = body.querySelectorAll('.videos__item'), list = [], i;
-        for (i = 0; i < all.length; i++) if (!all[i].classList.contains('videos__season')) list.push(all[i]);
+        // позначаємо екран класом (замість :has(), якого немає в старих WebView телевізорів)
+        var ex = act.querySelector('.explorer');
+        if (ex && ex.querySelector('.videos__item, .online-prestige, .torrent-item')) ex.classList.add('lmx-onl');
+        if (body.querySelector('.videos__item')) body.classList.add('lmx-onl-grid');
+        var all = body.querySelectorAll('.videos__item, .online-prestige'), list = [], i;
+        for (i = 0; i < all.length; i++) if (!all[i].classList.contains('videos__season') && !/folder/.test(all[i].className)) list.push(all[i]);
         if (!list.length) return;
         numberItems(list);
         var card = null;
