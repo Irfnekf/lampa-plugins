@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.293 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.294 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.293';
+    var VERSION = '10.294';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5338,7 +5338,7 @@
                 else if (!final) return;
                 setTimeout(function () {
                     safe(function () {
-                        if (act.querySelector('.focus') || !window.Navigator || !Navigator.focus) return;
+                        if (okFocus(act) || !window.Navigator || !Navigator.focus) return;
                         var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
                         var t = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                         if (t) Navigator.focus(t);
@@ -5351,6 +5351,24 @@
     // Після вибору сезону/озвучки/джерела список перемальовується не одразу (чекає відповіді джерела), і Lampa лишає керування на видалених
     // вузлах. Не покладаємось на назву контролера: поки йде завантаження чекаємо, а як з'явились кнопки/серії — примусово повертаємо
     // 'content', перебираємо колекцію й ставимо фокус на видимий елемент
+    // Фокус «живий», лише якщо стоїть на видимому нашому елементі; старі кнопки джерела (озвучка серії тощо), що блимають на мить, не підходять
+    function okFocus(act) {
+        var f = act.querySelector('.focus');
+        if (!f || !document.body.contains(f)) return false;
+        if (!(f.offsetWidth || f.offsetHeight)) return false;
+        return !!f.closest('.lmx-onl-item, .lmx-onl-btn, .lmx-onl-opt, .lmx-onl-bar, .lmx-onl-hero, .lmx-onl-drop, .videos__season, .selectbox');
+    }
+    // Службові рядки джерела без картинки (кнопка «озвучка серії», довідки) ховаємо й одразу забираємо з навігації — інакше фокус на них «зникає»
+    function hideJunk(act) {
+        var body = act.querySelector('.explorer__files-body .scroll__body'), kids = body ? body.children : [], i, el, ch = false;
+        for (i = 0; i < kids.length; i++) {
+            el = kids[i];
+            if (!el.classList || !el.classList.contains('selector') || el.classList.contains('lmx-onl-item') || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
+            if (el.querySelector('img, .time-line, [class*="prestige__img"], [class*="imgbox"]')) continue;
+            el.classList.add('lmx-onl-wide'); el.classList.remove('selector', 'focus'); ch = true;
+        }
+        return ch;
+    }
     function recover(act) {
         clearInterval(act.__lmxRC);
         var n = 0, okTicks = 0;
@@ -5361,8 +5379,9 @@
                 if (document.querySelector('.selectbox') || act.__lmxOpen) return;
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
-                var f = act.querySelector('.focus'), cn = Lampa.Controller.enabled(), nm = cn && cn.name;
-                if (f && document.body.contains(f) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
+                var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
+                if (okFocus(act) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
+                hideJunk(act);
                 okTicks = 0;
                 try { Lampa.Controller.toggle('content'); } catch (e) {}
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
@@ -6031,7 +6050,7 @@
         if (obs) obs.disconnect();
         obsTarget = body;
         // плагін-джерело перемальовує список (зміна сезону, джерела, озвучки) — оновлюємо шапку з паузою, щоб не заважати
-        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) { resync(a2); if (a2.__lmxSA === 2) recover(a2); } }, 250); });
+        obs = new MutationObserver(function () { var a1 = document.querySelector('.activity--active'); if (a1 && a1.querySelector('.explorer.lmx-onl')) safe(function () { hideJunk(a1); }); clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) { resync(a2); recover(a2); } }, 250); });
         obs.observe(body, { childList: true });
     }
 
