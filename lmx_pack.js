@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.289 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.290 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.289';
+    var VERSION = '10.290';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5154,7 +5154,11 @@
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
         B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
-        S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar){display:none !important}' +
+        S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop){display:none !important}' +
+        S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
+        S + '.lmx-onl-opt{margin:0;padding:.35em .95em;font-size:.78em}' +
+        S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
+        S + '.lmx-onl-opt--dim{opacity:.5}' +
         S + '.explorer__files-head.hide{display:block !important}' +
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
@@ -5442,10 +5446,10 @@
         var ref = findRef(act), want = [], inst = instFor(act), SG = inst ? readSets(inst) : null;
         if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = si.title; if (vi && vi.title) voice = vi.title; }
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
-        if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { var i3 = instFor(act); if (!(i3 && openSources(act, i3))) press(ref); }));
+        if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
         // є дані фільтра — працюємо напряму з ними (кнопки лише там, де такий вибір справді є); немає — старий запасний шлях
-        if (SG ? SG.season : (season || /сезон|season/i.test(txt))) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 2; var i2 = instFor(act); if (i2 && readSets(i2).season) openGroup(act, i2, 'season', 'Сезон'); else openFilterItem(act, RX_SEASON); }));
-        if (SG ? SG.voice : act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { act.__lmxSA = 2; var i2 = instFor(act); if (i2 && readSets(i2).voice) openGroup(act, i2, 'voice', 'Озвучка'); else openFilterItem(act, RX_VOICE); }));
+        if (SG ? SG.season : (season || /сезон|season/i.test(txt))) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'season')) openFilterItem(act, RX_SEASON); }));
+        if (SG ? SG.voice : act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'voice')) openFilterItem(act, RX_VOICE); }));
         want.push(group(act, 'cfg', '', '⚙︎', function () { openCfg(act); }));
         want.forEach(function (g, k) {
             if (bar.children[k] !== g) bar.insertBefore(g, bar.children[k] || null);
@@ -5609,35 +5613,65 @@
         return g.items[0] || null;
     }
     function idxOf(g, it) { return typeof it.index === 'number' ? it.index : g.items.indexOf(it); }
-    // Власне меню джерел зі списку фільтра (з якістю в назві); вибір — прямим викликом фільтра
-    function openSources(act, inst) {
-        var sort = readSets(inst).sort;
-        if (!sort.length || document.querySelector('.selectbox')) return false;
-        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
-        act.__lmxSA = 2;
-        Lampa.Select.show({
-            title: 'Джерело',
-            items: sort.map(function (it) { return { title: it.title, subtitle: it.ghost ? 'порожньо' : '', selected: !!it.selected, it: it }; }),
-            onBack: function () { try { Lampa.Controller.toggle(ctl || 'content'); } catch (e) {} },
-            onSelect: function (a) { try { inst.onSelect('sort', a.it); } catch (e) {} }
+    // ---- Власний випадний ряд вибору (джерело / сезон / озвучка): рядок кнопок під панеллю, без рідних меню Lampa ----
+    // Колекцію фокусованих елементів перебираємо самі (Controller.collectionSet) і явно ставимо фокус — так керування не губиться
+    function syncNav(act, el) {
+        safe(function () {
+            var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
+            try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
+            if (el && window.Navigator && Navigator.focus) Navigator.focus(el);
         });
+    }
+    function closeDrop(act, key) {
+        var d = act.querySelector('.lmx-onl-drop');
+        if (d) d.parentNode.removeChild(d);
+        act.__lmxOpen = '';
+        if (key) { var pill = act.querySelector('.lmx-onl-g--' + key + ' .selector'); if (pill) syncNav(act, pill); }
+    }
+    function toggleDrop(act, key) {
+        var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
+        if (!S || !bar) return false;
+        if (act.__lmxOpen === key) { closeDrop(act, key); return true; }
+        if (key === 'src') S.sort.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, dim: !!it.ghost, run: function () { inst.onSelect('sort', it); } }); });
+        else {
+            var g = key === 'season' ? S.season : S.voice;
+            if (!g) return false;
+            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { inst.onSelect('filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+        }
+        if (!opts.length) return false;
+        closeDrop(act);
+        act.__lmxOpen = key; act.__lmxSA = 2;
+        var d = document.createElement('div'), focusEl = null;
+        d.className = 'lmx-onl-drop';
+        opts.forEach(function (o) {
+            var c = document.createElement('div');
+            c.className = 'simple-button selector lmx-onl-opt' + (o.sel ? ' lmx-onl-opt--on' : '') + (o.dim ? ' lmx-onl-opt--dim' : '');
+            c.textContent = o.title;
+            $(c).on('hover:enter click', once(function () {
+                closeDrop(act, key);
+                if (!o.sel) { try { o.run(); } catch (e) {} }
+            }));
+            d.appendChild(c);
+            if (o.sel && !focusEl) focusEl = c;
+        });
+        bar.parentNode.insertBefore(d, bar.nextSibling);
+        syncNav(act, focusEl || d.firstChild);
         return true;
     }
-    // Власне меню вибору сезону/озвучки зі списку фільтра джерела
-    function openGroup(act, inst, stype, label) {
-        var g = readSets(inst)[stype];
-        if (!g || document.querySelector('.selectbox')) return;
-        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
-        act.__lmxSA = 2;
-        Lampa.Select.show({
-            title: label,
-            items: g.items.map(function (it) { return { title: it.title, subtitle: it.subtitle || '', selected: !!it.selected, it: it }; }),
-            onBack: function () { try { Lampa.Controller.toggle(ctl || 'content'); } catch (e) {} },
-            onSelect: function (a) { try { inst.onSelect('filter', { stype: stype }, { index: idxOf(g, a.it) }); } catch (e) {} }
-        });
+    // «Назад» при відкритому ряді закриває ряд, а не весь екран
+    function dropBackHook() {
+        if (window.__lmxDropBack) return;
+        window.__lmxDropBack = 1;
+        document.addEventListener('keydown', function (e) {
+            var a = document.querySelector('.activity--active'), k = e.keyCode;
+            if (!a || !a.__lmxOpen) return;
+            if (k === 27 || k === 8 || k === 10009 || k === 461 || e.key === 'Escape' || e.key === 'GoBack') {
+                e.preventDefault(); e.stopImmediatePropagation();
+                closeDrop(a, a.__lmxOpen);
+            }
+        }, true);
     }
     function noty(t) { try { if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t); } catch (e) {} }
-
     // Серії у списку джерела: прямі нащадки з .selector і картинкою/смужкою прогресу (назви класів у джерел різні)
     function episodeEls(body) {
         var kids = body.children, out = [], i, el;
@@ -5648,6 +5682,7 @@
         }
         return out;
     }
+
     // Підбір джерела: стан живе в window.__lmxProbe, бо після зміни джерела плагін може перестворити екран — тоді підбір просто
     // продовжується на новому екрані. Спершу відкриваємо те, що спрацювало раніше / має найкращу якість у назві, порожнє міняємо на наступне,
     // нічого не знайшли — «Жодне джерело…». Усе — прямими викликами фільтра, без натискань на меню
@@ -5925,6 +5960,7 @@
                 onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
             });
             safe(hookFilter);
+            safe(dropBackHook);
             safe(watchInsert);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
