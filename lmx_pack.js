@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.305 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.306 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.305';
+    var VERSION = '10.306';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5718,55 +5718,34 @@
         return 'Перевіряємо джерела: ' + n + ' з ' + gs.total;
     }
     function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
-    function showScan(card) {
-        var el = document.getElementById('lmx-scan');
-        if (!el) {
-            el = document.createElement('div'); el.id = 'lmx-scan'; el.className = 'lmx-scan';
-            var hdEl = document.querySelector('.head'), top = hdEl ? Math.max(0, Math.round(hdEl.getBoundingClientRect().bottom)) : 70;
-            el.style.top = top + 'px';
-            el.innerHTML = '<div class="lmx-scan__bg"></div><div class="lmx-scan__c"><div class="lmx-scan__t"></div><div class="lmx-scan__s"></div><div class="lmx-scan__b"><i></i></div><div class="lmx-scan__h">Будь-яка клавіша — пропустити перевірку</div></div>';
-            document.body.appendChild(el);
-            // вийшли з екрана «Онлайн», а перевірка не завершилась — прибираємо оверлей
-            el.__t0 = Date.now();
-            el.__iv = setInterval(function () {
-                var age = Date.now() - el.__t0;
-                if (age < 3000) return;
-                var ac = document.querySelector('.activity--active'), g = window.__lmxProbe, cc = '';
-                try { var a1 = Lampa.Activity.active(), c1 = a1 && (a1.movie || a1.card); cc = String(c1 && c1.id || ''); } catch (e) {}
-                if (!ac || !ac.querySelector('.explorer')) { if (g) g.done = true; return hideScan(); }
-                if (age > 7000 && (!g || g.done || g.cid !== cc)) hideScan();   // проба так і не стартувала (вимкнена або не наш екран)
-            }, 1000);
-        }
-        var bgE = el.querySelector('.lmx-scan__bg');
-        if (card && card.backdrop_path && !bgE.style.backgroundImage) bgE.style.backgroundImage = 'url("' + img(card.backdrop_path, 'w1280') + '")';
-        if (card) el.querySelector('.lmx-scan__t').textContent = card.title || card.name || '';
-        updScan();
+    // Один екран замість трьох: поки йде перевірка, стандартний екран джерела ховаємо (клас на body), а наш скелет — шапка з логотипом, що переливається,
+    // і шкала прогресу — будується в самій активності ще до першої відмальовки, навіть коли плагін перестворює її при зміні джерела
+    function scanning() { var g = window.__lmxProbe; return !!(g && !g.done && Date.now() - g.t00 < 130000); }
+    function entering(on) {
+        clearTimeout(lastEnter.tm);
+        if (!on) { document.body.classList.remove('lmx-onl-entering'); return; }
+        document.body.classList.add('lmx-onl-entering');
+        lastEnter.tm = setTimeout(function chk() {
+            if (scanning()) { lastEnter.tm = setTimeout(chk, 500); return; }
+            document.body.classList.remove('lmx-onl-entering');
+        }, 1800);
     }
-    function updScan() {
-        var el = document.getElementById('lmx-scan'); if (!el) return;
-        el.querySelector('.lmx-scan__s').textContent = scanText();
-        el.querySelector('.lmx-scan__b i').style.width = Math.round(scanFrac() * 100) + '%';
-    }
-    // Після вибору джерела плагін перестворює екран: тримаємо панель, доки новий екран не покаже серії, щоб не було проміжних кадрів
+    function showScan() { entering(true); }
+    function updScan() {}
     function hideScanLater() {
-        var el = document.getElementById('lmx-scan'); if (!el) return;
-        if (el.__later) return;
-        el.__later = 1;
+        if (window.__lmxHL) return;
+        window.__lmxHL = 1;
         var n = 0, iv = setInterval(function () {
             n++;
             var a = document.querySelector('.activity--active');
             var ready = a && a.querySelector('.lmx-onl-hero') && a.querySelector('.lmx-onl-item') && !a.__lmxProbing;
-            if (ready || n > 40) { clearInterval(iv); setTimeout(hideScan, ready ? 250 : 0); }
+            if (ready || n > 40) { clearInterval(iv); window.__lmxHL = 0; entering(false); }
         }, 150);
     }
-    function hideScan() {
-        var el = document.getElementById('lmx-scan'); if (!el) return;
-        clearInterval(el.__iv); el.id = ''; el.classList.add('lmx-scan--out');
-        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 350);
-    }
+    function hideScan() { entering(false); }
     function heroStatus(act, text, stop, frac) {
         var gs0 = window.__lmxProbe;
-        if (!stop && gs0 && !gs0.done && document.getElementById('lmx-scan')) { text = scanText(); frac = scanFrac(); updScan(); }
+        if (!stop && gs0 && !gs0.done) { text = scanText(); frac = scanFrac(); }
         var s = act.querySelector('.lmx-onl-hero__s'), h = act.querySelector('.lmx-onl-hero'), pr = act.querySelector('.lmx-onl-prog'), ps = pr && pr.querySelector('.lmx-onl-prog__s'), pb = pr && pr.querySelector('.lmx-onl-prog__b i');
         if (s) s.textContent = text;
         if (ps) ps.textContent = text;
@@ -6295,6 +6274,7 @@
         pr.innerHTML = '<div class="lmx-onl-prog__s">Шукаємо джерела…</div><div class="lmx-onl-prog__b"><i></i></div><div class="lmx-onl-prog__g"><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i></div>';
         hd.insertBefore(pr, h.nextSibling);
         act.classList.add('lmx-onl-load');
+        if (scanning()) safe(function () { heroStatus(act, '', false, 0); });
         var ex2 = act.querySelector('.explorer'); if (ex2) ex2.classList.add('lmx-onl');
         putLogo(h, card);
         if (autoOn()) watchSources(act, card);
@@ -6429,19 +6409,12 @@
             lastEnter.on = /online|онлайн/i.test(lastEnter.cls + ' ' + String((e.target && e.target.textContent) || '').slice(0, 60));
             // стандартний екран джерела не повинен мигнути: до того, як побудуємо свій, ховаємо його (страховка 1.8 с)
             if (lastEnter.on && isOn()) {
-                document.body.classList.add('lmx-onl-entering');
-                // закриваємо екран нашою панеллю негайно, ще до появи екрана джерела — інакше на мить видно стандартне меню
-                safe(function () {
-                    var a0 = Lampa.Activity.active(), c0 = a0 && (a0.movie || a0.card);
-                    if (c0 && c0.id && a0.component !== 'torrents' && autoOn() && probeOn()) showScan(c0);
-                });
-                clearTimeout(lastEnter.tm);
-                lastEnter.tm = setTimeout(function () { document.body.classList.remove('lmx-onl-entering'); }, 1800);
+                entering(true);
             }
         });
         var host = document.querySelector('.activitys__slides') || document.body;
         new MutationObserver(function (muts) {
-            if (!isOn() || Date.now() - lastEnter.t > 2500 || !lastEnter.on) return;
+            if (!isOn() || !((Date.now() - lastEnter.t <= 2500 && lastEnter.on) || scanning())) return;
             var i, j, n, cl, ex;
             for (i = 0; i < muts.length; i++) for (j = 0; j < muts[i].addedNodes.length; j++) {
                 n = muts[i].addedNodes[j];
