@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.280 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.282 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.280';
+    var VERSION = '10.282';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5233,6 +5233,15 @@
             return total ? { seen: seen, total: total, per: per, order: order } : null;
         } catch (e) { return null; }
     }
+    // Сезон, з якого продовжити: останній, де вже щось дивились і не доглянули; якщо той закінчено — наступний. Нічого не дивились — null
+    function targetSeason(ss) {
+        var o = ss.order, i, last = -1;
+        for (i = 0; i < o.length; i++) if (ss.per[o[i]].seen > 0) last = i;
+        if (last < 0) return null;
+        if (ss.per[o[last]].seen < ss.per[o[last]].total) return o[last];
+        for (i = last + 1; i < o.length; i++) if (ss.per[o[i]].seen < ss.per[o[i]].total) return o[i];
+        return null;
+    }
     // Перемикаємо сезон через рідне меню фільтра джерела: «Сезон» → «N сезон»
     function gotoSeason(act, n) {
         var f = act.querySelector('.filter--filter');
@@ -5304,6 +5313,26 @@
         }
     }
     function press(el) { try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
+    // Після перемальовування списку/шапки колекція фокусованих елементів Lampa застаріває (старі вузли видалено, нові в ній відсутні) —
+    // стрілки й виділення перестають працювати. Перезбираємо її рідним способом і, якщо фокус загублено, ставимо його на першу серію/кнопку
+    function resync(act) {
+        clearTimeout(act.__lmxRS);
+        act.__lmxRS = setTimeout(function () {
+            safe(function () {
+                var c = Lampa.Controller.enabled();
+                if (!c || c.name !== 'content' || document.querySelector('.selectbox')) return;
+                if ((window.__lmxKeyT || 0) > Date.now() - 400) return;
+                Lampa.Controller.toggle('content');
+                setTimeout(function () {
+                    safe(function () {
+                        if (act.querySelector('.focus') || !window.Navigator || !Navigator.focus) return;
+                        var t = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                        if (t) Navigator.focus(t);
+                    });
+                }, 80);
+            });
+        }, 220);
+    }
     function addNav(el) {
         try { if (Lampa.Controller && Lampa.Controller.collectionAppend) Lampa.Controller.collectionAppend($(el)); } catch (e) {}
     }
@@ -5397,7 +5426,7 @@
         var ref = findRef(act), want = [];
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { press(ref); }));
-        if (season || /сезон|season/i.test(txt)) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { openFilterItem(act, RX_SEASON); }));
+        if (season || /сезон|season/i.test(txt)) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 1; openFilterItem(act, RX_SEASON); }));
         if (act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { openFilterItem(act, RX_VOICE); }));
         want.push(group(act, 'cfg', '', '⚙︎', function () { openCfg(act); }));
         want.forEach(function (g, k) {
@@ -5717,6 +5746,12 @@
             }
             if (!nextSn) { allSeen = true; cont = 0; }
         }
+        // відкрили серіал на сезоні, який уже не відповідає прогресу — один раз переходимо на потрібний (ручний вибір сезону це скасовує)
+        if (ss && curSn && !act.__lmxSA) {
+            act.__lmxSA = 1;
+            var tgt = targetSeason(ss);
+            if (tgt && tgt !== curSn) setTimeout(function () { safe(function () { gotoSeason(act, tgt); }); }, 250);
+        }
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
         var nxt = cont >= 0 && cont + 1 < list.length ? cont + 1 : -1;
         function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1); return (j.season ? 'S' + j.season + ' ' : '') + 'E' + n; }
@@ -5743,6 +5778,7 @@
                 '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>') : '');
         hd.insertBefore(h, hd.firstChild);
         putLogo(h, card);
+        resync(act);
         var btns = h.querySelectorAll('.lmx-onl-btn');
         for (i = 0; i < btns.length; i++) (function (b) {
             $(b).on('hover:enter click', function () {
@@ -5795,7 +5831,7 @@
         if (obs) obs.disconnect();
         obsTarget = body;
         // плагін-джерело перемальовує список (зміна сезону, джерела, озвучки) — оновлюємо шапку з паузою, щоб не заважати
-        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); }, 250); });
+        obs = new MutationObserver(function () { clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) resync(a2); }, 250); });
         obs.observe(body, { childList: true });
     }
 
