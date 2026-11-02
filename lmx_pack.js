@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.278 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.280 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.278';
+    var VERSION = '10.280';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5212,6 +5212,49 @@
     }
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function jd(el) { try { return JSON.parse(el.getAttribute('data-json') || '{}') || {}; } catch (e) { return {}; } }
+    // Перегляд усього серіалу (усі сезони): по кожній серії дивимось позначку часу Lampa (хеш такий самий, як у онлайн-плагінів)
+    function seriesStats(card) {
+        try {
+            if (!card || !card.seasons || !card.seasons.length || !Lampa.Timeline || !Lampa.Timeline.view || !Lampa.Utils || !Lampa.Utils.hash) return null;
+            var ot = card.original_title || card.original_name || card.title || card.name || '', last = card.last_episode_to_air || null, per = {}, seen = 0, total = 0, order = [];
+            card.seasons.forEach(function (se) {
+                var sn = se.season_number, n = se.episode_count || 0, e, w = 0;
+                if (!sn || sn < 1 || !n) return;
+                if (last && sn > last.season_number) return;
+                if (last && sn === last.season_number && last.episode_number) n = Math.min(n, last.episode_number);
+                for (e = 1; e <= n; e++) {
+                    var v = Lampa.Timeline.view(Lampa.Utils.hash([sn, sn > 10 ? ':' : '', e, ot].join('')));
+                    if (v && v.percent >= 90) w++;
+                }
+                per[sn] = { seen: w, total: n };
+                order.push(sn);
+                seen += w; total += n;
+            });
+            return total ? { seen: seen, total: total, per: per, order: order } : null;
+        } catch (e) { return null; }
+    }
+    // Перемикаємо сезон через рідне меню фільтра джерела: «Сезон» → «N сезон»
+    function gotoSeason(act, n) {
+        var f = act.querySelector('.filter--filter');
+        if (!f) return;
+        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
+        document.body.classList.add('lmx-onl-pick');
+        try { $(f).trigger('hover:enter'); } catch (e) {}
+        var step = 1, k = 0, rx = new RegExp('(^|\\D)' + n + '\\D*(сезон|season)|^\\s*' + n + '\\s*$', 'i'), iv = setInterval(function () {
+            var its = document.querySelectorAll('.selectbox-item'), j, t, hit = null;
+            for (j = 0; j < its.length; j++) { t = its[j].querySelector('.selectbox-item__title'); t = t ? t.textContent : ''; if (step === 1 ? RX_SEASON.test(t) && !/\d/.test(t) : rx.test(t)) { hit = its[j]; break; } }
+            if (hit) {
+                try { $(hit).trigger('hover:enter'); } catch (e) {}
+                if (step === 1) { step = 2; k = 0; document.body.classList.add('lmx-onl-pick'); return; }
+                clearInterval(iv);
+                setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 60);
+            } else if (++k > 40) {
+                clearInterval(iv);
+                try { if (document.querySelector('.selectbox')) Lampa.Select.close(); if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {}
+                document.body.classList.remove('lmx-onl-pick');
+            }
+        }, 80);
+    }
     function qual(items) {
         var m, i, t;
         for (i = 0; i < items.length && i < 6; i++) {
@@ -5286,6 +5329,7 @@
     function openFilterItem(act, rx) {
         var f = act.querySelector('.filter--filter');
         if (!f) return;
+        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         try { $(f).trigger('hover:enter'); } catch (e) {}
         var n = 0, iv = setInterval(function () {
@@ -5307,7 +5351,8 @@
                 setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 40);
             } else if (++n > 12) {
                 clearInterval(iv);
-                // нічого не знайшли — показуємо рідне меню фільтра як є
+                // нічого не знайшли — закриваємо невидиме меню і повертаємо керування
+                try { if (document.querySelector('.selectbox')) Lampa.Select.close(); if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {}
                 document.body.classList.remove('lmx-onl-pick');
             }
         }, 60);
@@ -5461,6 +5506,8 @@
     function pickSource(act, choose, cb) {
         var ref = findRef(act);
         if (!ref) return cb(null);
+        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
+        function restore() { try { if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {} }
         document.body.classList.add('lmx-onl-pick');
         press(ref);
         var k = 0, iv = setInterval(function () {
@@ -5473,11 +5520,11 @@
                 }
                 pick = choose(items);
                 if (pick) { press(pick.el); setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 300); cb(pick.nm, pick.title); }
-                else { try { Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); cb(null); }
+                else { try { Lampa.Select.close(); } catch (e) {} restore(); document.body.classList.remove('lmx-onl-pick'); cb(null); }
             } else if (++k > 40) {
                 clearInterval(iv); cb(null);
                 // меню могло відкритись пізніше за очікуване (повільний телефон) — невидиме, воно блокувало б керування
-                setTimeout(function () { try { if (document.querySelector('.selectbox')) Lampa.Select.close(); } catch (e) {} document.body.classList.remove('lmx-onl-pick'); }, 1500);
+                setTimeout(function () { try { if (document.querySelector('.selectbox')) { Lampa.Select.close(); restore(); } } catch (e) {} document.body.classList.remove('lmx-onl-pick'); }, 1500);
             }
         }, 80);
         // страховка: клас не може лишитись назавжди
@@ -5652,13 +5699,24 @@
         numberItems(list);
         safe(function () { buildBar(act, hd, list); });
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
-        var sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt;
+        var sst = seriesStats(card), sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt + '|' + (sst ? sst.seen + '/' + sst.total : '');
         if (old && old.getAttribute('data-sig') === sig) return;
         if (old) old.parentNode.removeChild(old);
 
         var seen = 0, cont = -1, k;
         for (k = 0; k < list.length; k++) { var pp = pct(list[k]); if (pp >= 90) seen++; else if (pp >= 1 && cont < 0) cont = k; }
         if (cont < 0) { for (k = 0; k < list.length; k++) if (pct(list[k]) < 90) { cont = k; break; } }
+        var ss = seriesStats(card), curSn = 0, jj = list.length ? jd(list[0]) : {}, nextSn = 0, allSeen = false;
+        curSn = parseInt(jj.season, 10) || 0;
+        // сезон закінчено (cont < 0): шукаємо сезон, де ще є непереглянуте; якщо такого немає — серіал переглянуто повністю
+        if (cont < 0 && seen > 0) {
+            if (ss && curSn) {
+                var ord = ss.order, q2;
+                for (q2 = 0; q2 < ord.length; q2++) if (ord[q2] > curSn && ss.per[ord[q2]].seen < ss.per[ord[q2]].total) { nextSn = ord[q2]; break; }
+                if (!nextSn) for (q2 = 0; q2 < ord.length; q2++) if (ord[q2] < curSn && ss.per[ord[q2]].seen < ss.per[ord[q2]].total) { nextSn = ord[q2]; break; }
+            }
+            if (!nextSn) { allSeen = true; cont = 0; }
+        }
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
         var nxt = cont >= 0 && cont + 1 < list.length ? cont + 1 : -1;
         function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1); return (j.season ? 'S' + j.season + ' ' : '') + 'E' + n; }
@@ -5676,15 +5734,22 @@
             (year ? '<span>' + year + '</span>' : '') + (rt ? '<span>' + rt + ' хв</span>' : '') + '</div>' +
             (card.overview ? '<div class="lmx-onl-hero__o">' + esc(card.overview) + '</div>' : '') +
             '<div class="lmx-onl-hero__a">' +
-            (cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (haveProg ? 'Продовжити' : 'Дивитись') + ' &middot; ' + esc(lab(cont)) + '</div>' : '') +
-            (nxt >= 0 && haveProg ? '<div class="lmx-onl-btn selector" data-go="' + nxt + '">Наступна &middot; ' + esc(lab(nxt)) + '</div>' : '') + (srcTxt ? '<span class="lmx-onl-hero__src">' + esc(srcTxt) + '</span>' : '') + '</div>' +
-            (list.length > 1 ? '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
-                '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>' : '');
+            (nextSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-season="' + nextSn + '">&#9654;&#xFE0E;&nbsp; ' + (nextSn > curSn ? 'Наступний сезон' : 'Непереглянутий сезон') + ' &middot; S' + nextSn + '</div>' : '') +
+            (cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (allSeen ? 'Дивитись знову' : haveProg ? 'Продовжити' : 'Дивитись') + ' &middot; ' + esc(lab(cont)) + '</div>' : '') +
+            (nxt >= 0 && haveProg && !allSeen ? '<div class="lmx-onl-btn selector" data-go="' + nxt + '">Наступна &middot; ' + esc(lab(nxt)) + '</div>' : '') + (srcTxt ? '<span class="lmx-onl-hero__src">' + esc(srcTxt) + '</span>' : '') + '</div>' +
+            (list.length > 1 ? (ss ? '<div class="lmx-onl-hero__w">Переглянуто ' + ss.seen + ' з ' + ss.total + (curSn && ss.per[curSn] ? ' &middot; цей сезон ' + ss.per[curSn].seen + ' з ' + ss.per[curSn].total : '') + '</div>' +
+                '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(ss.seen / ss.total * 100) + '%"></i></div>' :
+                '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
+                '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>') : '');
         hd.insertBefore(h, hd.firstChild);
         putLogo(h, card);
         var btns = h.querySelectorAll('.lmx-onl-btn');
         for (i = 0; i < btns.length; i++) (function (b) {
-            $(b).on('hover:enter click', function () { var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t); });
+            $(b).on('hover:enter click', function () {
+                var sn = b.getAttribute('data-season');
+                if (sn) return gotoSeason(act, parseInt(sn, 10));
+                var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t);
+            });
             addNav(b);
         })(btns[i]);
         // Lampa прокручує список до сфокусованої серії, і шапка залишалась нагорі за кадром. Поки пульт не чіпали, ставимо фокус на «Продовжити»
