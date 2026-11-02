@@ -1,5 +1,5 @@
 /*
- * LMX Pack v10.314 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
+ * LMX Pack v10.315 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
  *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
@@ -4649,7 +4649,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.314';
+    var VERSION = '10.315';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
@@ -5144,6 +5144,10 @@
         S + '.videos__item-title,' + S + '.videos__item-footer{padding-left:.7em;padding-right:.7em}' +
         S + '.videos__item-title{padding-top:.5em;font-weight:700;line-height:1.2}' +
         S + '.videos__item-footer{padding-bottom:.6em;opacity:.8;font-size:.85em}' +
+        // інформація в картці (якість, озвучка, розмір…): джерела обрізають її трикрапкою, а нам потрібно все читабельно — переносимо на рядки
+        S + '.lmx-onl-item [class*="__info"],' + S + '.lmx-onl-item [class*="-footer"],' + S + '.lmx-onl-item [class*="__footer"]{display:flex !important;flex-wrap:wrap;gap:.15em .7em;white-space:normal !important;overflow:visible !important;opacity:.95 !important;font-size:.92em !important;line-height:1.3;height:auto !important;max-height:none !important}' +
+        S + '.lmx-onl-item [class*="__info"] > *,' + S + '.lmx-onl-item [class*="-footer"] > *,' + S + '.lmx-onl-item [class*="__footer"] > *{flex:0 0 auto !important;width:auto !important;max-width:100% !important;overflow:visible !important;text-overflow:clip !important;white-space:normal !important}' +
+        S + '.lmx-onl-item [class*="__title"]{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.2}' +
         S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.2);overflow:hidden}' +
         S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
         // поки джерела шукаються: рідний лоадер Lampa ховаємо, замість нього — шапка з логотипом, що переливається
@@ -5386,6 +5390,21 @@
         act.__lmxPages = { size: size, n: n, total: total, pg: pg };
     }
     function pageLabel(pgs, k) { var a = k * pgs.size + 1, b = Math.min(pgs.total, (k + 1) * pgs.size); return a + '\u2013' + b; }
+    // Тривалість у картці фільму: джерела пишуть «02:32» (години:хвилини), що читається як 2 хвилини. Якщо значення збігається з тривалістю фільму
+    // як Г:ХХ — показуємо «2 г 32 хв»
+    function fixTimes(list, card) {
+        var rt = card && parseInt(card.runtime, 10) || 0;
+        if (rt < 60 || (card && (card.number_of_seasons || card.first_air_date && !card.release_date))) return;
+        list.forEach(function (it) {
+            [].forEach.call(it.querySelectorAll('*'), function (n) {
+                if (n.children.length || n.getAttribute('data-lmx-t') || n.closest('.time-line')) return;
+                var m = String(n.textContent || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+                if (!m) return;
+                var a = parseInt(m[1], 10), b = parseInt(m[2], 10), hm = a * 60 + b;
+                if (b < 60 && Math.abs(hm - rt) <= 15 && Math.abs(a - rt) > 15) { n.textContent = a + ' г ' + b + ' хв'; n.setAttribute('data-lmx-t', '1'); }
+            });
+        });
+    }
     function numberItems(list) {
         for (var i = 0; i < list.length; i++) {
             var box = list[i].querySelector('.videos__item-imgbox');
@@ -6684,6 +6703,7 @@
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
+        safe(function () { fixTimes(list, card); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
