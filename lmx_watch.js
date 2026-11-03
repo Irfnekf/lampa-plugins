@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.12';
+    var VERSION = '2.13';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1743,7 +1743,27 @@
         if (best.classList.contains('lmx-onl-item')) bringIn(best);
         return true;
     }
+    // Поки відкритий випадаючий список — він єдиний, що приймає пульт: стрілки ходять тільки по ньому, «ОК» вибирає, фокус не йде на картки
+    function popItem(pop) {
+        return pop.querySelector('.lmx-onl-opt.focus') || pop.querySelector('.lmx-onl-opt--on') || pop.querySelector('.lmx-onl-opt');
+    }
+    function popKeys(e) {
+        var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
+        if (!pop || document.querySelector('.selectbox')) return false;
+        var k = e.keyCode, nm = e.key, up = k === 38 || nm === 'ArrowUp', dn = k === 40 || nm === 'ArrowDown',
+            lr = k === 37 || k === 39 || nm === 'ArrowLeft' || nm === 'ArrowRight', ok = k === 13 || nm === 'Enter';
+        if (!up && !dn && !lr && !ok) return false;
+        var its = [].slice.call(pop.querySelectorAll('.lmx-onl-opt')), cur = popItem(pop), ix = its.indexOf(cur);
+        window.__lmxKeyT = Date.now();
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (ok) { if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {} return true; }
+        if (lr || !its.length) return true;
+        var nx = its[Math.max(0, Math.min(its.length - 1, (ix < 0 ? 0 : ix) + (up ? -1 : 1)))];
+        if (nx && nx !== cur || !document.querySelector('.lmx-onl-drop--pop .focus')) { syncNav(a, nx || cur); popReveal(nx || cur); }
+        return true;
+    }
     function navKeys(e) {
+        if (popKeys(e)) return;
         var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
         if (!up && !dn) {
             navCx = null;
@@ -1774,6 +1794,16 @@
         window.__lmxDown = 1;
         document.addEventListener('keydown', navKeys, true);
         document.addEventListener('keydown', backKeys, true);
+        // страховка: якщо щось (перемальовування, службові таймери) забрало фокус зі списку — повертаємо
+        setInterval(function () {
+            safe(function () {
+                var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
+                if (!pop || document.querySelector('.selectbox')) return;
+                var f = document.querySelector('.focus');
+                if (f && pop.contains(f)) return;
+                var it = popItem(pop); if (it) { syncNav(a, it); popReveal(it); }
+            });
+        }, 250);
     }
     function upRescue() { window.__lmxUp = 1; }
     // Запобіжник: після будь-якого перемальовування серії можуть опинитись за межами екрана або фокус — на зниклому елементі
