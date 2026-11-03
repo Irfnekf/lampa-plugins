@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.4';
+    var VERSION = '2.8';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -58,6 +58,7 @@
         S + '.lmx-onl-item [class*="__title"]{display:block !important;white-space:normal !important;overflow:visible !important;text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;-webkit-box-orient:initial !important;line-height:1.2;height:auto !important;max-height:none !important;word-break:normal;overflow-wrap:break-word}' +
         S + '.lmx-onl-item [class*="__info"] *,' + S + '.lmx-onl-item [class*="-footer"] *,' + S + '.lmx-onl-item [class*="__footer"] *{overflow:visible !important;text-overflow:clip !important;white-space:normal !important;min-width:0 !important;overflow-wrap:break-word}' +
         // уся текстова частина картки (і в джерел зі своєю розміткою): без трикрапки й обрізання, з однаковою мінімальною висотою — картки однакові незалежно від довжини тексту
+        S + '.lmx-onl-item{height:auto !important;max-height:none !important;min-height:0}' +
         S + '.lmx-onl-item div,' + S + '.lmx-onl-item span{text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important}' +
         S + '.lmx-onl-item [class*="title"],' + S + '.lmx-onl-item [class*="name"]{white-space:normal !important;overflow:visible !important;-webkit-box-orient:initial !important;max-height:none !important;height:auto !important;overflow-wrap:break-word}' +
         B + '.lmx-onl-grid > .lmx-onl-item [class*="__title"]{min-height:2.45em}' +
@@ -71,7 +72,7 @@
         '@keyframes lmxShim{0%{opacity:.45;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.7) drop-shadow(0 0 .5em rgba(255,255,255,.55))}100%{opacity:.45;filter:brightness(.8)}}' +
         '.lmx-onl-hero--load .lmx-onl-hero__logo,.lmx-onl-hero--load .lmx-onl-hero__t{animation:lmxShim 1.6s ease-in-out infinite}' +
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
-        '.lmx-onl-hero--load .lmx-onl-hero__s{position:absolute !important;left:3.2em;bottom:1em;margin:0}' +
+        '.lmx-onl-hero--load .lmx-onl-hero__s{display:none}' +
         B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
         S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop):not(.lmx-onl-prog){display:none !important}' +
@@ -140,13 +141,13 @@
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 100% !important;width:100% !important;flex-direction:row !important;align-items:center}' +
         'body.lmx-onl-list ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item > *:first-child{width:22% !important;flex:0 0 22%;border-radius:1em 0 0 1em}' +
         // шапка
-        '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:19em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
+        '.lmx-onl-hero{position:relative;flex:0 0 100%;width:100%;min-height:16em;margin:-1.5em -1.5em .8em;width:calc(100% + 3em);flex-basis:auto;padding:1.5em 3.2em 1.2em;border-radius:0 0 1.2em 1.2em;overflow:hidden;background:#161922;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end}' +
         '.lmx-onl-hero__bg{position:absolute;inset:0;background-size:cover;background-position:62% 0%;opacity:.95}' +
         '.lmx-onl-hero__sh{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,10,16,.92) 0%,rgba(8,10,16,.55) 45%,rgba(8,10,16,0) 80%),linear-gradient(0deg,rgba(8,10,16,.75) 0%,rgba(8,10,16,0) 55%)}' +
         '.lmx-onl-hero > *:not(.lmx-onl-hero__bg):not(.lmx-onl-hero__sh){position:relative;z-index:1}' +
         '.lmx-onl-hero__t{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;max-width:60%;visibility:hidden}' +
         '.lmx-onl-hero--tt .lmx-onl-hero__t{visibility:visible}' +
-        '.lmx-onl-hero__logo{display:block;flex:0 0 auto;max-width:48%;max-height:7.2em;width:auto;height:auto;object-fit:contain;object-position:left bottom}' +
+        '.lmx-onl-hero__logo{display:block;flex:0 0 auto;max-width:48%;max-height:6em;width:auto;height:auto;object-fit:contain;object-position:left bottom}' +
         '.lmx-onl-hero__m{display:flex;align-items:center;gap:.9em;margin-top:.5em;font-weight:600}' +
         '.lmx-onl-hero__q{padding:.08em .5em;border-radius:.4em;background:rgba(255,255,255,.22);font-size:.8em;font-weight:800}' +
         '.lmx-onl-hero__o{margin-top:.7em;max-width:62%;font-size:.95em;line-height:1.4;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
@@ -159,7 +160,7 @@
         '.lmx-onl-hero__w{margin-top:.8em;font-size:.85em;font-weight:600;opacity:.9}' +
         '.lmx-onl-hero__bar{position:absolute !important;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.2)}' +
         '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff}' +
-        '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:15em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}';
+        '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:13em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}';
     // Оформлення під тему, яку вибрано в LMX Pack (клас на body ставить LMX Pack: lmx-prem «Кіно», lmx-apple «Скло»; без нього — «Полегшена»)
     var THEME_CSS = (function () {
         var H = 'body.lmx-online ', P = H + '.explorer.lmx-onl ', K = 'body.lmx-prem ' + '.explorer.lmx-onl ', G = 'body.lmx-apple ' + '.explorer.lmx-onl ';
@@ -279,6 +280,18 @@
         return '';
     }
 
+    // Фон банера з'являється плавно, коли картинка завантажена (раніше банер миттєво «вистрибував» поверх порожнього місця)
+    function fadeBg(h) {
+        var bg = h.querySelector('.lmx-onl-hero__bg'), m;
+        if (!bg) return;
+        m = String(bg.style.backgroundImage || '').match(/url\(["']?([^"')]+)/);
+        if (!m) { bg.style.opacity = ''; return; }
+        var im = new Image();
+        im.onload = function () { bg.style.transition = 'opacity .45s ease'; bg.style.opacity = ''; };
+        im.onerror = function () { bg.style.opacity = ''; };
+        im.src = m[1];
+        if (im.complete && im.naturalWidth) { bg.style.transition = 'none'; bg.style.opacity = ''; }
+    }
     var logoCache = {};
     function pickLogo(list) {
         var best = null, bs = -1;
@@ -403,6 +416,14 @@
         var t = String(k.textContent || '').trim();
         return !k.children.length && (t === '' || /^[\u25CF\u2022\u00B7|\/\-\u2013\u2014]+$/.test(t));
     }
+    function dropDupDates(list) {
+        list.forEach(function (it) {
+            var nodes = [].slice.call(it.querySelectorAll('[class*="__info"] *, [class*="-footer"] *, [class*="__footer"] *')).filter(function (n) { return !n.children.length; });
+            var words = nodes.some(function (n) { return /\d{1,2}\s+[А-Яа-яІіЇїЄє]{3,}/.test(n.textContent || ''); });
+            if (!words) return;
+            nodes.forEach(function (n) { if (/^\s*\d{1,2}\.\d{1,2}\.\d{4}\s*$/.test(n.textContent || '')) { n.setAttribute('data-lmx-sep', '1'); n.style.setProperty('display', 'none', 'important'); } });
+        });
+    }
     function tidySeps(list) {
         list.forEach(function (it) {
             [].forEach.call(it.querySelectorAll('[class*="__info"], [class*="-footer"], [class*="__footer"]'), function (box) {
@@ -474,7 +495,7 @@
                 var has = x ? String(x.textContent || '').toLowerCase().replace(/\s+/g, ' ') : '';
                 if (has) full = full.replace(has, ' ');
                 if (nm && full.indexOf(nm.toLowerCase().replace(/\s+/g, ' ')) >= 0) nm = '';
-                if (dt && (full.indexOf(dt) >= 0 || /\d{1,2}\s+(січня|лютого|березня|квітня|травня|червня|липня|серпня|вересня|жовтня|листопада|грудня)\s+\d{4}/.test(full))) dt = '';
+                if (dt && (full.indexOf(dt) >= 0 || /\d{1,2}\s+(січня|лютого|березня|квітня|травня|червня|липня|серпня|вересня|жовтня|листопада|грудня)(\s+\d{4})?/.test(full))) dt = '';
                 if (!nm && !dt) { if (x && x.parentNode) x.parentNode.removeChild(x); return; }
                 if (!x) {
                     x = document.createElement('div'); x.className = 'lmx-onl-epi';
@@ -944,6 +965,8 @@
             }
             if (!net) return end('');
             net.__lmxProbe = true; nets.push(net);
+            // страховка: якщо мережа не віддала ні відповіді, ні помилки (рідний timeout не спрацював) — завершуємо самі, щоб підбір не стояв
+            setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} end(''); } }, (it.to || job.timeout) + 1500);
             try { net.timeout(it.to || job.timeout); } catch (e) {}
             try { net['native'](urlFor(it.source), end, function () { end(''); }, false, { dataType: 'text' }); } catch (e) { end(''); }
         }
@@ -954,7 +977,7 @@
     function scanText() {
         var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
         if (!gs || gs.done || !gs.total) return 'Шукаємо джерела…';
-        return 'Перевіряємо джерела: ' + n + ' з ' + gs.total;
+        return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
     }
     function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
     // Один екран замість трьох: поки йде перевірка, стандартний екран джерела ховаємо (клас на body), а наш скелет — шапка з логотипом, що переливається,
@@ -1671,10 +1694,24 @@
         if (!up && !dn) { navCx = null; return; }
         if (navStep(up)) { e.preventDefault(); e.stopImmediatePropagation(); }
     }
+    // «Назад» під час пошуку джерел: екран у цей час майже порожній, і штатний контролер його ігнорував (доводилось перезаходити).
+    // Перехоплюємо клавішу самі: зупиняємо пошук і виходимо з екрана
+    function backKeys(e) {
+        var k = e.keyCode, back = k === 8 || k === 27 || k === 461 || k === 10009 || k === 166 || k === 4 || e.key === 'Escape' || e.key === 'Backspace' || e.key === 'BrowserBack' || e.key === 'GoBack';
+        if (!back) return;
+        var a = document.querySelector('.activity--active');
+        if (!a || !a.querySelector('.explorer.lmx-onl') || !a.classList.contains('lmx-onl-load') || document.querySelector('.selectbox')) return;
+        var tag = e.target && e.target.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        try { var gs = window.__lmxProbe; if (gs) { gs.bg = 'off'; gs.done = true; try { gs.job && gs.job.stop && gs.job.stop(); } catch (x) {} } window.__lmxProbe = null; a.__lmxProbing = false; } catch (x) {}
+        entering(false);
+        try { Lampa.Activity.backward(); } catch (x) { try { window.history.back(); } catch (y) {} }
+    }
     function downRescue() {
         if (window.__lmxDown) return;
         window.__lmxDown = 1;
         document.addEventListener('keydown', navKeys, true);
+        document.addEventListener('keydown', backKeys, true);
     }
     function upRescue() { window.__lmxUp = 1; }
     // Запобіжник: після будь-якого перемальовування серії можуть опинитись за межами екрана або фокус — на зниклому елементі
@@ -1949,7 +1986,7 @@
         var h = document.createElement('div');
         h.className = 'lmx-onl-hero lmx-onl-hero--load';
         h.setAttribute('data-sig', 'load');
-        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + img(card.backdrop_path, artMax() ? 'original' : 'w1280') + '\')"></div>' : '') +
+        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="opacity:0;background-image:url(\'' + img(card.backdrop_path, artMax() ? 'original' : 'w1280') + '\')"></div>' : '') +
             '<div class="lmx-onl-hero__sh"></div><div class="lmx-onl-hero__t"></div>' +
             '<div class="lmx-onl-hero__m">' + (vote ? '<span>&#9733; ' + vote.toFixed(1) + '</span>' : '') + (year ? '<span>' + year + '</span>' : '') + '</div>' +
             '<div class="lmx-onl-hero__a" style="visibility:hidden"><div class="lmx-onl-btn lmx-onl-btn--main">&nbsp;</div></div>' +
@@ -1957,6 +1994,7 @@
             '<div class="lmx-onl-hero__s">Шукаємо джерела…</div>';
         h.querySelector('.lmx-onl-hero__t').textContent = q;
         hd.insertBefore(h, hd.firstChild);
+        fadeBg(h);
         var pr = document.createElement('div');
         pr.className = 'lmx-onl-prog';
         pr.innerHTML = PROG_PILLS + '<div class="lmx-onl-prog__s">Шукаємо джерела…</div><div class="lmx-onl-prog__b"><i></i></div>' + PROG_CARDS;
@@ -2002,7 +2040,7 @@
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
-        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); tidySeps(list); });
+        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); tidySeps(list); });
         safe(function () { epInfo(list, card, act); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
@@ -2074,7 +2112,7 @@
         var h = document.createElement('div');
         h.className = 'lmx-onl-hero';
         h.setAttribute('data-sig', sig);
-        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="background-image:url(\'' + img(card.backdrop_path, artMax() ? 'original' : 'w1280') + '\')"></div>' : '') +
+        h.innerHTML = (card.backdrop_path ? '<div class="lmx-onl-hero__bg" style="opacity:0;background-image:url(\'' + img(card.backdrop_path, artMax() ? 'original' : 'w1280') + '\')"></div>' : '') +
             '<div class="lmx-onl-hero__sh"></div><div class="lmx-onl-hero__t">' + esc(title) + '</div>' +
             '<div class="lmx-onl-hero__m">' + (q ? '<span class="lmx-onl-hero__q">' + esc(q) + '</span>' : '') + (vote ? '<span>&#9733; ' + vote.toFixed(1) + '</span>' : '') +
             (year ? '<span>' + year + '</span>' : '') + (rt ? '<span>' + rt + ' хв</span>' : '') + '</div>' +
@@ -2087,6 +2125,7 @@
                 '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
                 '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(seen / list.length * 100) + '%"></i></div>') : '');
         hd.insertBefore(h, hd.firstChild);
+        fadeBg(h);
         dedupeUi(act);
         putLogo(h, card);
         resync(act);
