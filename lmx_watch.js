@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.33';
+    var VERSION = '2.34';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -714,7 +714,7 @@
         act.__lmxHI = setInterval(function () {
             safe(function () {
                 var h = act.__lmxHold;
-                if (!h || !document.body.contains(act) || Date.now() > h.until || (window.__lmxKeyT || 0) > t0) { clearInterval(act.__lmxHI); act.__lmxHold = null; return; }
+                if (!h || !document.body.contains(act) || Date.now() > h.until || (window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0) { clearInterval(act.__lmxHI); act.__lmxHold = null; return; }
                 if (selOpen() || act.__lmxOpen) return;
                 var tg = h.key === 'hero' ? act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') : act.querySelector('.lmx-onl-g--' + h.key + ' .selector');
                 if (!tg || !(tg.offsetWidth || tg.offsetHeight)) return;
@@ -732,7 +732,7 @@
         function pass(final) {
             safe(function () {
                 if (!document.body.contains(act) || selOpen() || act.__lmxHold) return;
-                if (!force && (window.__lmxKeyT || 0) > Date.now() - 400) return;
+                if (!force && ((window.__lmxKeyT || 0) > Date.now() - 400 || (window.__lmxTouchT || 0) > Date.now() - 5000)) return;
                 var c = Lampa.Controller.enabled(), nm = c && c.name;
                 // 'select' без відкритого меню — застарілий стан після вкладених меню фільтра: керування «залипло» на закритому меню
                 if (nm === 'content' || nm === 'select' || !nm) Lampa.Controller.toggle('content');
@@ -829,10 +829,11 @@
     }
     function recover(act) {
         clearInterval(act.__lmxRC);
-        var n = 0, okTicks = 0;
+        var n = 0, okTicks = 0, rt0 = Date.now();
         act.__lmxRC = setInterval(function () {
             safe(function () {
                 n++;
+                if ((window.__lmxTouchT || 0) > rt0) { clearInterval(act.__lmxRC); return; }
                 if (!document.body.contains(act) || n > 40) { clearInterval(act.__lmxRC); return; }
                 if (selOpen() || act.__lmxOpen || act.__lmxHold) return;
                 var tg = (act.__lmxRlKey && act.querySelector('.lmx-onl-g--' + act.__lmxRlKey + ' .selector')) || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
@@ -2092,7 +2093,7 @@
             safe(function () {
                 var act = document.querySelector('.activity--active');
                 if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || act.__lmxHold || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
-                if ((window.__lmxKeyT || 0) > Date.now() - 900) { bad = 0; return; }
+                if ((window.__lmxKeyT || 0) > Date.now() - 900 || (window.__lmxTouchT || 0) > Date.now() - 60000) { bad = 0; return; }
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg) { bad = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
@@ -2665,6 +2666,9 @@
             addCss();
             document.body.classList.toggle('lmx-online', isOn());
             if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; document.addEventListener('keydown', function () { window.__lmxKeyT = Date.now(); }, true); }
+            // Дотик/колесо: на телефоні фокусу немає, і наші «рятувальні» цикли (viewGuard, recover, resync) щоразу ставили фокус на кнопку шапки —
+            // список прокручувався нагору просто під пальцем. Тепер вони стають осторонь, поки користувач сам гортає
+            if (!window.__lmxTouchHook) { window.__lmxTouchHook = 1; window.__lmxTouchT = 0; ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { window.__lmxTouchT = Date.now(); }, { capture: true, passive: true }); }); }
             var S2 = Lampa.SettingsApi;
             if (S2 && S2.addComponent) S2.addComponent({ component: 'lmx_watch', name: 'LMX Watch', icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5l5 2.5-5 2.5z" fill="currentColor"/><path d="M8 21h8"/></svg>' });
             if (S2 && S2.addParam) S2.addParam({
