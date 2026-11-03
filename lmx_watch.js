@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.48';
+    var VERSION = '2.49';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -481,13 +481,13 @@
         }
     }
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
-    var PAGING = false;   // сторінки «1–20…» вимкнено: показуємо весь сезон, а до потрібної серії прокручуємо автоматично
-    function pageSizeOf(total) { return total > 200 ? 50 : 20; }
+    var PAGING = true;   // довгі сезони (понад 60 серій) ділимо на сторінки — сотні карток разом гальмують ТВ
+    function pageSizeOf(total) { return total > 600 ? 100 : total > 200 ? 50 : 30; }
     function applyOrderPages(act, list) {
         var total = list.length, rev = orderRev(), i, el;
         for (i = 0; i < total; i++) list[i].style.order = rev ? String(total - i) : '';
         var size = pageSizeOf(total);
-        if (!PAGING || total <= 30) {
+        if (!PAGING || total <= 60) {
             act.__lmxPages = null;
             for (i = 0; i < total; i++) { el = list[i]; if (el.classList.contains('lmx-onl-off')) { el.classList.remove('lmx-onl-off'); el.classList.add('selector'); el.style.removeProperty('display'); } }
             return;
@@ -495,7 +495,7 @@
         var n = Math.ceil(total / size), j0 = jd(list[0]), key = total + '|' + (j0.season || '') + '|' + (j0.voice || '');
         if (act.__lmxPK !== key) {
             act.__lmxPK = key;
-            var fu = 0; for (i = 0; i < total; i++) if (pct(list[i]) < 90) { fu = i; break; }
+            var fu = 0, lw = -1; for (i = 0; i < total; i++) if (pct(list[i]) >= 1) lw = i; if (lw >= 0) fu = Math.min(total - 1, pct(list[lw]) >= 90 ? lw + 1 : lw);
             act.__lmxPage = Math.floor(fu / size);
         }
         var pg = Math.min(n - 1, Math.max(0, act.__lmxPage | 0));
