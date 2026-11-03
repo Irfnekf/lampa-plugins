@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.17';
+    var VERSION = '2.18';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -23,8 +23,13 @@
 
     // Елемент .selectbox у Lampa є в DOM завжди (його додають при старті), тож «меню відкрите» визначаємо за класом на body
     function selOpen() {
-        try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function') return !!Lampa.Select.opened(); } catch (e) {}
-        return document.body.classList.contains('selectbox--open');
+        try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return true; } catch (e) {}
+        // у різних збірках Lampa «відкрито» позначається по-різному — дивимось на всі ознаки
+        return document.body.classList.contains('selectbox--open') || !!document.querySelector('.selectbox.animate, .selectbox.selectbox--open');
+    }
+    // активний контролер рідного меню: наші стрілки в цей час не втручаються взагалі
+    function selCtl() {
+        try { var c = Lampa.Controller.enabled(); return !!(c && c.name === 'select'); } catch (e) { return false; }
     }
     var S = 'body.lmx-online .explorer.lmx-onl ';
     var B = S + '.explorer__files-body .scroll__body';
@@ -1737,7 +1742,7 @@
     // Повертає true, якщо ми обробили крок (в т.ч. «проковтнули» його на краю), false — віддати штатній навігації Lampa
     function navStep(up) {
         var a = document.querySelector('.activity--active'), cur = null;
-        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen()) return false;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen() || selCtl()) return false;
         // «справжній» фокус — той, що знає навігатор Lampa (клас focus лише косметика і може лишатись на кількох елементах)
         try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
         if (!(cur && cur.nodeType === 1 && a.contains(cur) && document.body.contains(cur))) cur = a.querySelector('.focus');
@@ -1777,7 +1782,7 @@
     }
     function popKeys(e) {
         var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
-        if (!pop || selOpen()) return false;
+        if (!pop || selOpen() || selCtl()) return false;
         var k = e.keyCode, nm = e.key, up = k === 38 || nm === 'ArrowUp', dn = k === 40 || nm === 'ArrowDown',
             lr = k === 37 || k === 39 || nm === 'ArrowLeft' || nm === 'ArrowRight', ok = k === 13 || nm === 'Enter';
         if (!up && !dn && !lr && !ok) return false;
