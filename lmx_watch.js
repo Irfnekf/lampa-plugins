@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.8';
+    var VERSION = '2.9';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -441,7 +441,24 @@
     }
     function fixTimes(list, card) {
         var rt = card && parseInt(card.runtime, 10) || 0;
-        if (rt < 60 || (card && (card.number_of_seasons || card.first_air_date && !card.release_date))) return;
+        // Серіал: джерела пишуть тривалість як «00:44» (години:хвилини), і воно читається як 44 секунди. Показуємо «44 хв» / «1 г 5 хв»
+        if (card && (card.number_of_seasons || (card.first_air_date && !card.release_date))) {
+            list.forEach(function (it) {
+                [].forEach.call(it.querySelectorAll('*'), function (n) {
+                    if (n.children.length || n.getAttribute('data-lmx-t') || n.closest('.time-line')) return;
+                    var m = String(n.textContent || '').trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+                    if (!m) return;
+                    var a = parseInt(m[1], 10), b = parseInt(m[2], 10), mins;
+                    if (m[3] !== undefined) mins = a * 60 + b;             // Г:ХХ:СС
+                    else if (a <= 3) mins = a * 60 + b;                    // Г:ХХ
+                    else mins = a;                                         // ХХ:СС — хвилини
+                    if (!mins) return;                                    // 00:00 — лишаємо для підстановки з TMDB
+                    n.textContent = fmtRun(mins); n.setAttribute('data-lmx-t', '1');
+                });
+            });
+            return;
+        }
+        if (rt < 60) return;
         list.forEach(function (it) {
             [].forEach.call(it.querySelectorAll('*'), function (n) {
                 if (n.children.length || n.getAttribute('data-lmx-t') || n.closest('.time-line')) return;
