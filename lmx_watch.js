@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.32';
+    var VERSION = '2.33';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -704,11 +704,34 @@
     function press(el) { window.__lmxAllowSel = Date.now(); try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
     // Після перемальовування списку/шапки колекція фокусованих елементів Lampa застаріває (старі вузли видалено, нові в ній відсутні) —
     // стрілки й виділення перестають працювати. Перезбираємо її рідним способом і, якщо фокус загублено, ставимо його на першу серію/кнопку
+    // Утримання фокуса: після вибору сезону/озвучки/джерела кілька механізмів (resync, recover, viewGuard, рідний фокус Lampa) по черзі
+    // ставили фокус то на кнопку «Дивитись», то на першу картку, то на «Сортувати» — рамка стрибала туди-сюди. Поки йде перезавантаження і ще
+    // 2 с після нього, лише цей цикл тримає фокус на пілюлі, яку щойно обрав користувач (або на кнопці шапки при першому показі); натискання клавіші його вимикає
+    function holdFocus(act, key, ms) {
+        var t0 = Date.now();
+        act.__lmxHold = { key: key, until: t0 + ms };
+        clearInterval(act.__lmxHI);
+        act.__lmxHI = setInterval(function () {
+            safe(function () {
+                var h = act.__lmxHold;
+                if (!h || !document.body.contains(act) || Date.now() > h.until || (window.__lmxKeyT || 0) > t0) { clearInterval(act.__lmxHI); act.__lmxHold = null; return; }
+                if (selOpen() || act.__lmxOpen) return;
+                var tg = h.key === 'hero' ? act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') : act.querySelector('.lmx-onl-g--' + h.key + ' .selector');
+                if (!tg || !(tg.offsetWidth || tg.offsetHeight)) return;
+                var f = act.querySelector('.focus');
+                if (f === tg) return;
+                var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
+                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                if (window.Navigator && Navigator.focus) Navigator.focus(tg);
+            });
+        }, 90);
+    }
+    function holdMore(act, ms) { if (act.__lmxHold) act.__lmxHold.until = Math.max(act.__lmxHold.until, Date.now() + ms); }
     function resync(act, force) {
         clearTimeout(act.__lmxRS);
         function pass(final) {
             safe(function () {
-                if (!document.body.contains(act) || selOpen()) return;
+                if (!document.body.contains(act) || selOpen() || act.__lmxHold) return;
                 if (!force && (window.__lmxKeyT || 0) > Date.now() - 400) return;
                 var c = Lampa.Controller.enabled(), nm = c && c.name;
                 // 'select' без відкритого меню — застарілий стан після вкладених меню фільтра: керування «залипло» на закритому меню
@@ -811,7 +834,7 @@
             safe(function () {
                 n++;
                 if (!document.body.contains(act) || n > 40) { clearInterval(act.__lmxRC); return; }
-                if (selOpen() || act.__lmxOpen) return;
+                if (selOpen() || act.__lmxOpen || act.__lmxHold) return;
                 var tg = (act.__lmxRlKey && act.querySelector('.lmx-onl-g--' + act.__lmxRlKey + ' .selector')) || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
@@ -1413,6 +1436,7 @@
                 clearInterval(act.__lmxAR);
                 // спершу оформлюємо нові картки (клас сітки, нумерація, час), і лише потім показуємо — інакше вони на мить з'являються «сирими» й вишиковуються в плитки на очах
                 dropStale(act);
+                holdMore(act, 2200);
                 if (has) safe(buildHero);
                 act.classList.remove('lmx-onl-rl');
                 try { body.style.minHeight = ''; } catch (e) {}
@@ -1902,6 +1926,7 @@
                 if (!o.sel) {
                     try { o.run(); } catch (e) {}
                     // сезон/озвучка: як і при зміні джерела, ховаємо рідні «сирі» картки й показуємо свою заглушку, поки з'являться наші
+                    if (key === 'season' || key === 'voice' || key === 'src') holdFocus(act, key, 15000);
                     if (key === 'season' || key === 'voice') { act.__lmxRlKey = key; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; safe(function () { afterReload(act); }); }
                     recover(act);
                     if (key === 'src') { act.__lmxRlKey = 'src'; act.__lmxEG = 0; emptyGuard(act); }
@@ -2066,7 +2091,7 @@
         setInterval(function () {
             safe(function () {
                 var act = document.querySelector('.activity--active');
-                if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
+                if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || act.__lmxHold || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
                 if ((window.__lmxKeyT || 0) > Date.now() - 900) { bad = 0; return; }
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg) { bad = 0; return; }
@@ -2510,6 +2535,7 @@
         // і список «сповзає» назад — це видно як стрибок картки. Переносимо фокус одразу й підстраховуємось кількома короткими повторами
         if (!act.__lmxFF) {
             act.__lmxFF = Date.now();
+            if (!window.__lmxKeyT || window.__lmxKeyT < Date.now() - 1500) holdFocus(act, 'hero', 1800);
             var tk0 = window.__lmxKeyT || 0;
             [0, 60, 150, 300, 500].forEach(function (d) {
                 setTimeout(function () {
