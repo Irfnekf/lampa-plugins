@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.23';
+    var VERSION = '2.26';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -230,10 +230,65 @@
             // ===== Полегшена: без розмиттів, трохи м'якші картки =====
             'body.lmx-online:not(.lmx-prem):not(.lmx-apple) .explorer.lmx-onl .explorer__files-body .scroll__body > .lmx-onl-item{border-radius:1em}';
     })();
+    // Оформлення екрана плагіна UAKino (компонент uakino_online) під ту саму тему: лише CSS, його навігацію й логіку не чіпаємо
+    var UAK_CSS = (function () {
+        var U = 'body.lmx-online .uakino-online ', BG = '#0a0b10', GOLD = '#e9a24a', D = '"Oswald","Inter","Helvetica Neue",Arial,sans-serif';
+        var K = 'body.lmx-prem.lmx-online .uakino-online ', G = 'body.lmx-apple.lmx-online .uakino-online ';
+        return '' +
+            U + '.uakino-online__body{padding:0 2.4em 2.4em}' +
+            // шапка як наш hero: велика назва, м'які градієнти, без окремого постера
+            U + '.uakino-online__head{margin:0 -2.4em 1.2em;padding:1.8em 2.4em 1.4em;min-height:11em;align-items:flex-end;border-radius:0 0 1.2em 1.2em}' +
+            U + '.uakino-online__hero-bg{opacity:.95;background-position:62% 0}' +
+            U + '.uakino-online__hero-shade{background:linear-gradient(90deg,rgba(8,10,16,.92) 0%,rgba(8,10,16,.55) 45%,rgba(8,10,16,0) 80%),linear-gradient(0deg,#0b0d11 0%,rgba(8,10,16,.55) 40%,rgba(8,10,16,0) 70%)}' +
+            U + '.uakino-online__poster{display:none}' +
+            U + '.uakino-online__head-text{max-width:66%}' +
+            U + '.uakino-online__head-title{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}' +
+            U + '.lmx-uak-hero .lmx-onl-hero__t{max-width:100%;font-size:2.6em}' +
+            U + '.lmx-uak-hero .lmx-onl-hero__lg{margin-bottom:.2em}' +
+            U + '.uakino-online__head-sub{margin-top:.9em;font-weight:600;color:rgba(255,255,255,.88)}' +
+            U + '.uakino-online__badge{border:0;background:rgba(255,255,255,.22);border-radius:.4em;padding:.08em .5em;font-weight:800}' +
+            U + '.uakino-online__badge--bad{background:rgba(255,159,67,.25)}' +
+            U + '.uakino-online__head-descr{margin-top:.8em;max-width:62%;font-size:.95em;color:#fff;opacity:.9}' +
+            // рядки джерела/сезонів — наші «пігулки»
+            U + '.uakino-online__filters{margin:.2em 0 .5em;align-items:center}' +
+            U + '.uakino-online__filter{padding:.55em 1.4em;border-radius:99em;background:rgba(255,255,255,.14);font-weight:700;font-size:.95em;border:1px solid transparent}' +
+            U + '.uakino-online__tabs .uakino-online__filter{background:rgba(255,255,255,.08)}' +
+            U + '.uakino-online__filter--active{background:rgba(255,255,255,.3) !important}' +
+            U + '.uakino-online__filter.focus{background:rgba(255,255,255,.24) !important;color:#fff;box-shadow:0 0 0 .16em #fff;transform:scale(1.05)}' +
+            U + '.uakino-online__filter--active.focus{background:rgba(255,255,255,.34) !important}' +
+            U + '.uakino-online__filter.uakino-online__filter--help.focus{background:#2f86ff !important;box-shadow:0 0 0 .16em #fff}' +
+            U + '.uakino-online__filter.uakino-online__filter--donate.focus{background:#ffd257 !important;box-shadow:0 0 0 .16em #fff}' +
+            // картки серій
+            U + '.uakino-online__list{margin:1.2em -.7em 0}' +
+            U + '.uakino-online__thumb{border-radius:1em}' +
+            U + '.uakino-online__num{font-weight:800;left:.6em;bottom:.4em}' +
+            U + '.uakino-online__title{margin-top:.8em;font-weight:700}' +
+            U + '.uakino-online__info{margin-top:.3em;font-weight:500}' +
+            U + '.uakino-online__item.focus{transform:scale(1.05)}' +
+            U + '.uakino-online__item.focus .uakino-online__thumb{box-shadow:0 0 0 .22em #fff,0 1.2em 2.4em rgba(0,0,0,.6)}' +
+            U + '.uakino-online__empty{margin:1em 0;padding:3em 1em;border-radius:1.2em;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:1.1em;font-weight:600}' +
+            // ===== Кіно =====
+            'body.lmx-prem.lmx-online .uakino-online{background:' + BG + '}' +
+            K + '.uakino-online__hero-shade{background:linear-gradient(90deg,' + BG + ' 0%,rgba(10,11,16,.82) 34%,rgba(10,11,16,.2) 70%,rgba(10,11,16,0) 100%),linear-gradient(0deg,' + BG + ' 0%,rgba(10,11,16,.55) 32%,rgba(10,11,16,0) 62%)}' +
+            K + '.uakino-online__head-title{font-family:' + D + ';font-weight:700;letter-spacing:.01em}' +
+            K + '.uakino-online__badge{background:none;padding:0;color:' + GOLD + ';letter-spacing:.14em}' +
+            K + '.uakino-online__filter{border-radius:.7em;background:#14161f;border-color:rgba(255,255,255,.1);font-weight:600}' +
+            K + '.uakino-online__tabs .uakino-online__filter{background:#14161f}' +
+            K + '.uakino-online__filter--active{background:#1c1f2c !important;box-shadow:inset 0 0 0 .12em ' + GOLD + '}' +
+            K + '.uakino-online__filter.focus{background:#1c1f2c !important;border-color:transparent}' +
+            K + '.uakino-online__thumb{border-radius:.8em}' +
+            K + '.uakino-online__title{font-family:' + D + ';font-weight:600;letter-spacing:.01em}' +
+            K + '.uakino-online__num{color:' + GOLD + '}' +
+            // ===== Скло =====
+            G + '.uakino-online__head{border-radius:0 0 1.4em 1.4em}' +
+            G + '.uakino-online__filter{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22)}' +
+            G + '.uakino-online__filter.focus{background:rgba(255,255,255,.26) !important;box-shadow:0 0 0 .16em rgba(255,255,255,.95)}' +
+            G + '.uakino-online__thumb{border-radius:1.2em;border:1px solid rgba(255,255,255,.16)}';
+    })();
     function addCss() {
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
-        st.textContent = CSS + THEME_CSS;
+        st.textContent = CSS + THEME_CSS + UAK_CSS;
     }
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
@@ -869,7 +924,7 @@
     function artMax() { return opt('lmx_online_art', 'auto') === 'max'; }
     // налаштування-перемикачі: ключ → [заголовок, значення за замовчуванням, {значення: підпис}]
     var OPTS = {
-        ua: ['Перевага українській озвучці', 'off', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_ua'],
+        ua: ['Перевага українській озвучці', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_ua'],
         order: ['Порядок серій', 'std', { std: 'Стандартний', rev: 'Зворотний (нові зверху)' }, 'lmx_online_order'],
         art: ['Якість кадру', 'auto', { auto: 'Авто', max: 'Максимальна (важча)' }, 'lmx_online_art'],
         focus: ['Виділення', 'ring', { ring: 'Ободок', fill: 'Біла заливка' }, 'lmx_online_focus'],
@@ -1013,6 +1068,30 @@
         var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
         m.t = e.t = Date.now(); m.l[key] = e; pcSet(o);
     }
+    // швидкість відповіді джерела (ковзне середнє, мс): при однаковій якості швидші — вище
+    function msNote(key, ms) {
+        try { var mem = memGet(), g = mem.g[key] || (mem.g[key] = { ok: 0, fail: 0, q: 0 }); g.ms = g.ms ? Math.round((g.ms * 2 + ms) / 3) : ms; memSet(mem); } catch (e) {}
+    }
+    // історія ручного вибору: джерело для тайтла (30 днів) і скільки разів ви обирали його взагалі
+    var hCache = { t: 0, h: {} };
+    function hBonus(k) {
+        try { if (Date.now() - hCache.t > 2000) hCache = { t: Date.now(), h: memGet().h || {} }; return (hCache.h[k] || 0) >= 3 ? 1 : 0; } catch (e) { return 0; }
+    }
+    function manualPick(cid, key) {
+        if (!key) return;
+        try {
+            var mem = memGet(), ks;
+            mem.h = mem.h || {}; mem.m = mem.m || {};
+            mem.h[key] = Math.min(50, (mem.h[key] || 0) + 1);
+            if (cid) {
+                mem.m[cid] = { s: key, at: Date.now() };
+                ks = Object.keys(mem.m);
+                if (ks.length > 150) { ks.sort(function (a, b) { return mem.m[a].at - mem.m[b].at; }); ks.slice(0, ks.length - 150).forEach(function (k) { delete mem.m[k]; }); }
+            }
+            memSet(mem); hCache.t = 0;
+        } catch (e) {}
+    }
+    function msCmp(a, b) { var x = a && a.ms, y = b && b.ms; return x && y && Math.abs(x - y) > 1500 ? (x < y ? 1 : -1) : 0; }
     function bgParse(ans) {
         var b = typeof ans === 'string' ? ans : '';
         if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
@@ -1039,12 +1118,12 @@
         function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
         function step() {
             if (job.stopped || idx >= job.items.length) return;
-            var it = job.items[idx++], net = null, ended = false;
+            var it = job.items[idx++], net = null, ended = false, t1 = Date.now();
             try { net = new Lampa.Reguest(); } catch (e) { net = null; }
             function end(ans) {
                 if (ended || job.stopped) return;
                 ended = true;
-                var r = bgParse(ans); pcPut(job.cid, it.key, r);
+                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') msNote(it.key, r.ms);
                 try { job.onEach(it, r); } catch (e) {}
                 fin(); step();
             }
@@ -1180,7 +1259,7 @@
     function qPref() { var v = String(Lampa.Storage.get('lmx_online_q', 'auto')); return QPREF[v] ? v : 'auto'; }
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
     // Перевага українській озвучці: (1) у відповіді джерела є українські озвучки/позначки; (2) назва джерела з відомих українських. Вимикається в ⚙
-    function uaOn() { return opt('lmx_online_ua', 'off') === 'on'; }
+    function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
     var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|bazon|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|hdvb|zetvideo|kinoukr|uaserial|ukr/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
     function uaBonus(k, pe) { return uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0; }
@@ -1613,9 +1692,16 @@
         return 'other';
     }
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
+    // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
+    function curSeason() {
+        try { var act = document.querySelector('.activity--active'), inst = act && instFor(act), S = inst && readSets(inst), it = S && selItem(S.season); return it ? String(it.title || '') : ''; } catch (e) { return ''; }
+    }
+    function seGet(cid, key) { var m = window.__lmxSE; return m && m[cid + '|' + key + '|' + curSeason()] || ''; }
+    function seSet(cid, key, v) { if (!cid || !key) return; var m = window.__lmxSE || (window.__lmxSE = {}); m[cid + '|' + key + '|' + curSeason()] = v; }
     function srcState(name) {
         var gs = window.__lmxProbe, bad = window.__lmxBad, cid = '', i;
         try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = String(c && c.id || ''); } catch (e) {}
+        var se = seGet(cid, name); if (se) return se;
         var pe = pcEntry(cid, name);
         if (pe && pe.s === 'ok') return 'ok';
         if (pe && pe.s === 'empty') return 'no';
@@ -1695,14 +1781,14 @@
                 if (!it) return;
                 var key0 = srcName(it.title), st = srcState(key0);
                 if (lifeFlags) st = it.ghost ? 'no' : 'ok';
-                if (st === 'ok' && !it.selected && window.__lmxBad && window.__lmxBad.cid === cid0 && window.__lmxBad.names.indexOf(key0) >= 0) st = 'no';
+                var se0 = seGet(cid0, key0); if (se0) st = se0;
                 // дублі (однакова назва й якість) об'єднуємо; бейдж якості береться з назви або з пам'яті попередніх перевірок
                 var badge = titleQ(it.title) ? '' : qmBadge(cid0, key0), look = key0 + '|' + (titleQ(it.title) || badge);
                 var title = badge ? it.title + ' \u00b7 ' + badge : it.title;
                 var prev = seenLook[look];
                 if (prev) { if ((it.selected && !prev.sel) || (!it.selected && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = !!it.selected; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
                 if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
-                var o = { title: title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { selIn(inst, 'sort', it); } };
+                var o = { title: title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
                 seenLook[look] = o;
                 opts.push(o);
             });
@@ -1980,7 +2066,7 @@
         EV.forEach(function (ev) { document.addEventListener(ev, userStop, true); });
         function save(name, rank) {
             var g = mem.g[name] || (mem.g[name] = { ok: 0, fail: 0, q: 0 });
-            if (rank < 0) g.fail = Math.min(20, (g.fail || 0) + 1);
+            if (rank < 0) { g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); }
             else { g.ok = Math.min(50, (g.ok || 0) + 1); g.q = Math.max(0, Math.round(((g.q || 0) * 2 + rank) / 3)); }
             memSet(mem);
         }
@@ -2020,7 +2106,11 @@
             var life = sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             if (life && allSrc && !gs.bg && !gs.lifeOff) {
                 var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean)
-                    .sort(function (a, b) { return (b.q - a.q) || (b.g - a.g) || (a.ix - b.ix); });
+                    .sort(function (a, b) { return ((b.q + uaBonus(keyOf(b.it), null) + hBonus(keyOf(b.it))) - (a.q + uaBonus(keyOf(a.it), null) + hBonus(keyOf(a.it)))) || msCmp(mem.g[keyOf(b.it)], mem.g[keyOf(a.it)]) || (b.g - a.g) || (a.ix - b.ix); });
+                // 3: джерело, яке ви вручну обирали для цього тайтла, відкриваємо першим (30 днів)
+                var mp = mem.m && mem.m[cid], mpIt = null;
+                if (mp && Date.now() - (mp.at || 0) < 30 * 86400000) live.forEach(function (r) { if (!mpIt && keyOf(r.it) === mp.s) mpIt = r; });
+                if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); mpIt.q = Math.max(mpIt.q, qTarget()); }
                 var top = live[0], waitedL = Date.now() - t0;
                 if (top && (top.q >= qTarget() || waitedL > 5000)) {
                     live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.q, n: 0 }); });
@@ -2040,6 +2130,9 @@
                     sort.forEach(function (x) {
                         if (!x || x.ghost || !x.source || !keyOf(x)) return;
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
+                        // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
+                        var gq = mem.g[keyOf(x)];
+                        if (gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
                         items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 9000 : 0 });
                     });
@@ -2077,7 +2170,7 @@
                     if (skipN) { gs.bg = 'off'; return; }
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
-                okL.sort(function (a, b) { return ((b.rank + (b.ua || 0)) - (a.rank + (a.ua || 0))) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
+                okL.sort(function (a, b) { return ((b.rank + (b.ua || 0) + hBonus(b.name)) - (a.rank + (a.ua || 0) + hBonus(a.name))) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
                 okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
                 var bestO = okL[0];
                 if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
@@ -2149,7 +2242,7 @@
                     // серії з'явились: якщо це джерело раніше позначили «порожнім» — знімаємо позначку
                     try {
                         var i0 = instFor(act), S0 = i0 && readSets(i0), sel0 = S0 && S0.sort.filter(function (x) { return x && x.selected; })[0], k0 = sel0 ? srcName(sel0.title) : '', p0 = bad.names.indexOf(k0);
-                        if (k0 && p0 >= 0) { bad.names.splice(p0, 1); var pe0 = pcEntry(cid, k0); if (pe0 && pe0.s === 'empty') pcPut(cid, k0, { s: 'ok' }); }
+                        if (k0 && p0 >= 0) bad.names.splice(p0, 1);
                     } catch (e) {}
                     return stop();
                 }
@@ -2166,9 +2259,9 @@
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').trigger('hover:enter'); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
-                    if (curKey && cid) pcPut(cid, curKey, { s: 'empty' });
+                    if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
-                    if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); memSet(mem); }
+                    if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
                         .sort(function (x, y) { return ((titleQ(y.title) + uaBonus(srcName(y.title), null)) - (titleQ(x.title) + uaBonus(srcName(x.title), null))) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
                     if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
@@ -2213,6 +2306,22 @@
         setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); if (q && !act.querySelector('.lmx-onl-item')) q.classList.add('lmx-onl-prog--end'); else if (q) q.parentNode.removeChild(q); }, 50); }, (probeOn() ? 130000 : (qTarget() >= 4 ? 65000 : 30000)));
     }
 
+    // Як у Nova: коли джерело відкрите, читаємо якість з реальних серій (1080p, 4K…) і запам'ятовуємо найвищу — бейдж у списку джерел стає точним
+    function learnQuality(act, list, card) {
+        var cid = String(card && card.id || ''), inst = instFor(act), S = inst && readSets(inst), sel = null, best = 0, i, m, n, t;
+        if (!cid || !S) return;
+        S.sort.forEach(function (x) { if (x && x.selected) sel = x; });
+        var key = sel ? srcName(sel.title) : '';
+        if (!key) return;
+        for (i = 0; i < list.length && i < 60; i++) {
+            t = String(list[i].textContent || '');
+            m = t.match(/(2160|1440|1080|720|576|480|360)\s*p/i);
+            n = /\b(4k|uhd)\b/i.test(t) ? 4 : m ? (parseInt(m[1], 10) >= 2160 ? 4 : parseInt(m[1], 10) >= 1080 ? 3 : parseInt(m[1], 10) >= 720 ? 2 : 1) : 0;
+            if (n > best) best = n;
+        }
+        seSet(cid, key, 'ok');
+        if (best && act.__lmxLQ !== key + best) { act.__lmxLQ = key + best; qmPut(cid, key, best); }
+    }
     function buildHero() {
         if (!isOn()) return;
         var act = document.querySelector('.activity--active');
@@ -2247,6 +2356,7 @@
         safe(function () { leftTimes(list); });
         safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); tidySeps(list); });
         safe(function () { epInfo(list, card, act); });
+        safe(function () { learnQuality(act, list, card); });
         safe(function () { clearTimeout(act.__lmxFD); act.__lmxFD = setTimeout(function () { safe(function () { fitDates(list); }); setTimeout(function () { safe(function () { fitDates(list); }); }, 1300); }, 350); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
@@ -2408,6 +2518,20 @@
         obs.observe(body, { childList: true });
     }
 
+    // Екран плагіна UAKino: свій компонент, без Lampa.Filter, тож нашу логіку він не бачить. Додаємо лише безпечне, без нових фокусних елементів:
+    // логотип замість тексту назви (як у нашій шапці), мітку для стилів. Його навігацію й кнопки не чіпаємо
+    function uakAdapt() {
+        if (!isOn()) return;
+        var act = document.querySelector('.activity--active'), hd = act && act.querySelector('.uakino-online__head-text');
+        if (!hd || hd.getAttribute('data-lmx-uak')) return;
+        hd.setAttribute('data-lmx-uak', '1');
+        var t = hd.querySelector('.uakino-online__head-title'), card = null;
+        try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); } catch (e) {}
+        if (!t || !card || !card.id) return;
+        t.classList.add('lmx-onl-hero__t');
+        hd.classList.add('lmx-uak-hero');
+        putLogo(hd, card);
+    }
     function start() {
         safe(function () {
             addCss();
@@ -2433,6 +2557,7 @@
             safe(upRescue);
             safe(viewGuard);
             safe(watchInsert);
+            setInterval(function () { safe(uakAdapt); }, 600);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
             applyView(curView());
