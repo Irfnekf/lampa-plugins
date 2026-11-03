@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.16';
+    var VERSION = '2.17';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1230,6 +1230,8 @@
                 if (Date.now() < (act.__lmxRlMin || 0)) return;
                 if (!has && !msg && n < 330) return;
                 clearInterval(act.__lmxAR);
+                // спершу оформлюємо нові картки (клас сітки, нумерація, час), і лише потім показуємо — інакше вони на мить з'являються «сирими» й вишиковуються в плитки на очах
+                if (has) safe(buildHero);
                 act.classList.remove('lmx-onl-rl');
                 try { body.style.minHeight = ''; } catch (e) {}
                 relayout();
