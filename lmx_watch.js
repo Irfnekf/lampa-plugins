@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.40';
+    var VERSION = '2.42';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1287,6 +1287,9 @@
         if (ps) ps.textContent = text;
         if (pb && typeof frac === 'number') pb.style.width = Math.max(6, Math.min(100, Math.round(frac * 100))) + '%';
         if (stop && h) h.classList.remove('lmx-onl-hero--load');
+        // Пошук закінчено: спершу оформлюємо картки нового джерела (клас сітки, нумерація) і лише тоді знімаємо режим завантаження — інакше на частку секунди
+        // видно «сирі» стандартні картки, поки не спрацює перебудова (було помітно на повторному пошуку через кнопку «Онлайн»)
+        if (stop) { try { act.__lmxProbing = false; buildHero(); } catch (e) {} }
         if (stop) { act.classList.remove('lmx-onl-load'); if (pr) pr.classList.add('lmx-onl-prog--end'); if (/жодне|нічого не знайдено: жодне/i.test(String(text || ''))) deadActions(act); }
     }
     // ---- Пам'ять джерел: що спрацювало раніше (для цього фільму і взагалі) і якої якості ----
@@ -2472,10 +2475,17 @@
             for (q = 0; q < list.length; q++) if (pct(list[q]) >= 1) li = q;
             if (li < 5 || act.__lmxAS === list.length + '|' + (jd(list[0]).season || '') + '|' + li) return;
             act.__lmxAS = list.length + '|' + (jd(list[0]).season || '') + '|' + li;
-            var tgt = list[li];
-            [500, 1500, 3000].forEach(function (d) { setTimeout(function () { safe(function () {
+            var tgt = list[li], t0 = Date.now();
+            // Список опускається до останньої переглянутої серії — фокус теж має бути там, інакше він лишається на кнопці шапки/першій картці,
+            // і перше ж натискання повертає екран нагору. Утримання фокуса на кнопці шапки для цього знімаємо
+            act.__lmxHold = null; clearInterval(act.__lmxHI); act.__lmxAutoT = Date.now();
+            [700, 1700, 3200].forEach(function (d) { setTimeout(function () { safe(function () {
                 var cur = document.querySelector('.focus');
-                if (!document.body.contains(tgt) || (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt) || selOpen()) return;
+                if (!document.body.contains(tgt) || selOpen() || act.__lmxOpen) return;
+                if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0) return;
+                if (cur && cur !== tgt && cur.closest && cur.closest('.lmx-onl-bar, .lmx-onl-drop')) return;
+                if (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt && cur !== list[0]) return;
+                if (cur !== tgt) { try { Lampa.Controller.toggle('content'); } catch (e) {} if (window.Navigator && Navigator.focus) Navigator.focus(tgt); }
                 bringIn(tgt);
             }); }, d); });
         });
@@ -2553,7 +2563,7 @@
         // і список «сповзає» назад — це видно як стрибок картки. Переносимо фокус одразу й підстраховуємось кількома короткими повторами
         if (!act.__lmxFF) {
             act.__lmxFF = Date.now();
-            if (!window.__lmxKeyT || window.__lmxKeyT < Date.now() - 1500) holdFocus(act, 'hero', 1800);
+            if ((!window.__lmxKeyT || window.__lmxKeyT < Date.now() - 1500) && !(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000)) holdFocus(act, 'hero', 1800);
             var tk0 = window.__lmxKeyT || 0;
             [0, 60, 150, 300, 500].forEach(function (d) {
                 setTimeout(function () {
