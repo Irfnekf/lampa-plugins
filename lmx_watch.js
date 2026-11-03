@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.20';
+    var VERSION = '2.21';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -27,9 +27,10 @@
         // у різних збірках Lampa «відкрито» позначається по-різному — дивимось на всі ознаки
         return document.body.classList.contains('selectbox--open') || !!document.querySelector('.selectbox.animate, .selectbox.selectbox--open');
     }
-    // активний контролер рідного меню: наші стрілки в цей час не втручаються взагалі
+    // Активний контролер — не наш екран (рідне меню «select», вікно «Редагувати джерела» «modal», налаштування тощо): наші стрілки,
+    // «ОК» і службові таймери в цей час взагалі не втручаються, інакше вони рухали б фокус на екрані ПІД вікном
     function selCtl() {
-        try { var c = Lampa.Controller.enabled(); return !!(c && c.name === 'select'); } catch (e) { return false; }
+        try { var c = Lampa.Controller.enabled(); return !!(c && c.name && c.name !== 'content'); } catch (e) { return false; }
     }
     var S = 'body.lmx-online .explorer.lmx-onl ';
     var B = S + '.explorer__files-body .scroll__body';
