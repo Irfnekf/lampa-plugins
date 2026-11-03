@@ -583,7 +583,10 @@
                 var vm = get(Lampa.Utils.hash(name)), pm = pctOf(vm);
                 return pm > 0 ? { pct: pm, left: pm < 98 ? leftOf(vm) : 0 } : null;
             }
-            var seasons = Math.min(20, Number(c.number_of_seasons) || (c.seasons && c.seasons.length) || 12), best = null;
+            // Онлайн-джерела нумерують сезони по-своєму (у TMDB «Люпен» має 3 сезони, а джерело віддає й «Сезон 4»), і таймкод пишеться за номером джерела.
+            // Тому поза відомими TMDB сезонами перевіряємо ще 3 додаткових — інакше свіжий перегляд у «4 сезоні» не потрапляв у картку історії
+            var known = Number(c.number_of_seasons) || (c.seasons && c.seasons.length) || 0;
+            var seasons = Math.min(20, known ? known + 3 : 12), best = null;
             // кількість серій з даних сезонів (якщо є) — замість 40 перевірок на кожен сезон
             var epc = {};
             (c.seasons || []).forEach(function (s) { if (s && s.season_number > 0 && s.episode_count > 0) epc[s.season_number] = s.episode_count; });
@@ -4649,7 +4652,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.331';
+    var VERSION = '10.332';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
