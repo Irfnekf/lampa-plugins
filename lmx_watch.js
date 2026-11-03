@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.26';
+    var VERSION = '2.27';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -285,10 +285,33 @@
             G + '.uakino-online__filter.focus{background:rgba(255,255,255,.26) !important;box-shadow:0 0 0 .16em rgba(255,255,255,.95)}' +
             G + '.uakino-online__thumb{border-radius:1.2em;border:1px solid rgba(255,255,255,.16)}';
     })();
+    // Картки серій: «скляна» рамка з відступом, кадр із заокругленням, номер-бейдж, рейтинг пігулкою; рамка фокуса має те ж заокруглення, що й картка
+    var CARD_CSS = (function () {
+        var C = 'body.lmx-online .explorer.lmx-onl .explorer__files-body .scroll__body.lmx-onl-grid > .lmx-onl-item', GOLD = '#e9a24a';
+        return '' +
+            C + '{padding:.5em !important;border-radius:1.3em !important;background:rgba(255,255,255,.1) !important;border:1px solid rgba(255,255,255,.15);transition:background .15s ease,transform .15s ease,box-shadow .15s ease}' +
+            C + '.focus{background:rgba(255,255,255,.2) !important;border-color:transparent;box-shadow:0 0 0 .2em #fff !important;transform:scale(1.03);z-index:2}' +
+            C + ' > *:first-child{border-radius:.85em !important}' +
+            C + ' > *:not(:first-child){padding-left:.45em !important;padding-right:.45em !important}' +
+            // дуже довгу назву обрізаємо трикрапкою після трьох рядків (майже завжди назва вміщується повністю)
+            C + ' [class*="__title"]{font-weight:700;font-size:1.05em;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:3 !important;line-clamp:3 !important;overflow:hidden !important;text-overflow:ellipsis !important;min-height:0 !important}' +
+            C + ' [class*="episode-number"],' + C + ' [class*="__num"]:not([class*="__number-"]){position:absolute !important;left:.55em !important;top:.55em !important;right:auto !important;bottom:auto !important;transform:none !important;margin:0 !important;min-width:1.9em;padding:.12em .55em !important;border-radius:.6em;background:rgba(255,255,255,.92) !important;color:#111 !important;font-size:.9em !important;font-weight:800 !important;line-height:1.3 !important;text-align:center;text-shadow:none !important;z-index:3}' +
+            C + ' .videos__item-imgbox[data-n]::before,' + C + ' [class*="imgbox"][data-n]::before{background:rgba(255,255,255,.92);color:#111;border-radius:.6em;font-weight:800}' +
+            C + ' .online-prestige-split{display:none !important}' +
+            C + ' [class*="__footer"],' + C + ' [class*="-footer"]{align-items:center !important;min-height:0 !important}' +
+            C + ' [class*="__info"]{align-items:center !important;min-height:0 !important;gap:.3em .6em !important}' +
+            C + ' [class*="-rate"]{display:inline-flex !important;align-items:center;gap:.35em;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-size:.92em}' +
+            C + ' [class*="__quality"]:not(:empty){margin-left:auto;align-self:center;min-height:0 !important;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-weight:700}' +
+            // Скло — справжнє розмиття; Кіно — темна панель із золотом; Полегшена — без розмиття
+            'body.lmx-apple.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item{background:#14161f !important;border-color:rgba(255,255,255,.08);border-radius:1em !important}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item [class*="episode-number"]{background:rgba(0,0,0,.7) !important;color:' + GOLD + ' !important}';
+    })();
     function addCss() {
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
-        st.textContent = CSS + THEME_CSS + UAK_CSS;
+        st.textContent = CSS + THEME_CSS + CARD_CSS + UAK_CSS;
     }
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
