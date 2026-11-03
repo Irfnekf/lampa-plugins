@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.29';
+    var VERSION = '2.30';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -2480,6 +2480,25 @@
         dedupeUi(act);
         putLogo(h, card);
         resync(act);
+        // Перший показ списку: рідний фокус Lampa спершу стає на першу картку (рамка + легке прокручування), а за мить наш код переносить його на кнопку шапки,
+        // і список «сповзає» назад — це видно як стрибок картки. Переносимо фокус одразу й підстраховуємось кількома короткими повторами
+        if (!act.__lmxFF) {
+            act.__lmxFF = Date.now();
+            var tk0 = window.__lmxKeyT || 0;
+            [0, 60, 150, 300, 500].forEach(function (d) {
+                setTimeout(function () {
+                    safe(function () {
+                        if (!document.body.contains(act) || selOpen() || act.__lmxOpen || (window.__lmxKeyT || 0) > tk0) return;
+                        var f = act.querySelector('.focus'), tg = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
+                        if (!tg || (f && !f.classList.contains('lmx-onl-item'))) return;
+                        var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
+                        try { Lampa.Controller.toggle('content'); } catch (e) {}
+                        if (window.Navigator && Navigator.focus) Navigator.focus(tg);
+                        resetScroll(act);
+                    });
+                }, d);
+            });
+        }
         var btns = h.querySelectorAll('.lmx-onl-btn');
         for (i = 0; i < btns.length; i++) (function (b) {
             $(b).on('hover:enter click', once(function () {
