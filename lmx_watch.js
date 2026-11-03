@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.13';
+    var VERSION = '2.14';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -2329,6 +2329,10 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
                 field: { name: 'Бажана якість джерела', description: 'Підбір шукатиме джерело з такою якістю або кращою; якщо такого немає — візьме найкраще з наявних' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_watch_ver', type: 'title', default: '' },
+                field: { name: 'LMX Watch · версія ' + VERSION }
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
