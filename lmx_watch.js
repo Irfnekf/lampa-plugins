@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.22';
+    var VERSION = '2.23';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1695,6 +1695,7 @@
                 if (!it) return;
                 var key0 = srcName(it.title), st = srcState(key0);
                 if (lifeFlags) st = it.ghost ? 'no' : 'ok';
+                if (st === 'ok' && !it.selected && window.__lmxBad && window.__lmxBad.cid === cid0 && window.__lmxBad.names.indexOf(key0) >= 0) st = 'no';
                 // дублі (однакова назва й якість) об'єднуємо; бейдж якості береться з назви або з пам'яті попередніх перевірок
                 var badge = titleQ(it.title) ? '' : qmBadge(cid0, key0), look = key0 + '|' + (titleQ(it.title) || badge);
                 var title = badge ? it.title + ' \u00b7 ' + badge : it.title;
@@ -2144,7 +2145,14 @@
                 if (!document.body.contains(act) || Date.now() - t0 > 180000) return stop();
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
-                if (episodeEls(body).length) return stop();
+                if (episodeEls(body).length) {
+                    // серії з'явились: якщо це джерело раніше позначили «порожнім» — знімаємо позначку
+                    try {
+                        var i0 = instFor(act), S0 = i0 && readSets(i0), sel0 = S0 && S0.sort.filter(function (x) { return x && x.selected; })[0], k0 = sel0 ? srcName(sel0.title) : '', p0 = bad.names.indexOf(k0);
+                        if (k0 && p0 >= 0) { bad.names.splice(p0, 1); var pe0 = pcEntry(cid, k0); if (pe0 && pe0.s === 'empty') pcPut(cid, k0, { s: 'ok' }); }
+                    } catch (e) {}
+                    return stop();
+                }
                 if (act.__lmxProbing || !isOn()) { since = Date.now(); return; }
                 var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], i, curIt = null;
                 if (!inst || !sort.length) return;
@@ -2158,6 +2166,7 @@
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').trigger('hover:enter'); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
+                    if (curKey && cid) pcPut(cid, curKey, { s: 'empty' });
                     var mem = memGet();
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
