@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.49';
+    var VERSION = '2.50';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1994,7 +1994,7 @@
             if (o.sel && !focusEl) focusEl = c;
         });
         bar.parentNode.insertBefore(d, bar.nextSibling);
-        if (key === 'season' || key === 'voice' || key === 'src') safe(function () { popPlace(act, d, key, bar); });
+        if (key === 'season' || key === 'voice' || key === 'src' || key === 'page') safe(function () { popPlace(act, d, key, bar); });
         syncNav(act, focusEl || d.querySelector('.selector'));
         if (d.classList.contains('lmx-onl-drop--pop')) popReveal(focusEl || d.querySelector('.selector'));
         relayout();
