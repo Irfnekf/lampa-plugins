@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.43';
+    var VERSION = '2.44';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1320,7 +1320,19 @@
     function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
     var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|ukr/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
-    function uaBonus(k, pe) { return uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0; }
+    // Аніме (жанр «Анімація» + японське походження) — перевага джерелам, що спеціалізуються на аніме; додається до бонусу за українську озвучку, а не замість нього
+    var ANIME_SRC = /anime|аніме|anitube|anilib|anidub|hikka|yummy|animevost|jutsu|ukranime|aniua/i;
+    function isAnimeCard() {
+        try {
+            var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
+            if (!c) return false;
+            var gen = (c.genres || []).some(function (g) { return g && (g.id === 16 || /анімац|animation|аніме/i.test(String(g.name || ''))); });
+            var ja = c.original_language === 'ja' || (c.origin_country || []).indexOf('JP') >= 0;
+            return gen && ja;
+        } catch (e) { return false; }
+    }
+    function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && ANIME_SRC.test(String(k || '')) && isAnimeCard() ? 2 : 0; }
+    function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0) + animeBonus(k); }
     function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
