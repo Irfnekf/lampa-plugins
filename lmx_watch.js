@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.35';
+    var VERSION = '2.38';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1763,7 +1763,13 @@
     // Типи озвучок (дубляж / багатоголосий / …) — для групування у списку озвучок
     var VK_ORDER = ['dub', 'mvo', 'dvo', 'avo', 'orig', 'sub', 'other'];
     var VK_LABEL = { dub: 'Дубляж', mvo: 'Багатоголосий', dvo: 'Двоголосий', avo: 'Авторський', orig: 'Оригінал', sub: 'Субтитри', other: 'Інше' };
-    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua/i;
+    // Озвучки, які користувач сам обирав двічі й більше, плагін теж вважає «своїми» й піднімає вгору — так список «вчиться» на ваших вподобаннях
+    function vcGet() { try { var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = JSON.parse(v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+    function vcNote(t) {
+        try { var m = vcGet(), k = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
+    }
+    function isUaVoice(t) { return UA_VOICE.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
+    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|aurora production|ukr ?dub|укрдуб|гуртом/i;
     function voiceKind(t) {
         t = String(t || '');
         if (/дубл|\bdub/i.test(t)) return 'dub';
@@ -1899,10 +1905,10 @@
         } else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
-            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { if (key === 'voice') vcNote(it.title); selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
             // українські озвучки — вгору (порядок усередині груп зберігається); вимикається в налаштуваннях «Перевага українській озвучці»
             if (key === 'voice' && uaOn()) {
-                var uaV = opts.filter(function (x) { return UA_VOICE.test(x.title); }), otV = opts.filter(function (x) { return !UA_VOICE.test(x.title); });
+                var uaV = opts.filter(function (x) { return isUaVoice(x.title); }), otV = opts.filter(function (x) { return !isUaVoice(x.title); });
                 if (uaV.length && otV.length) opts = uaV.concat([{ sep: true, title: 'Інші озвучки' }], otV);
             }
         }
