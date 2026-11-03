@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.38';
+    var VERSION = '2.40';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1315,7 +1315,7 @@
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
     // Перевага українській озвучці: (1) у відповіді джерела є українські озвучки/позначки; (2) назва джерела з відомих українських. Вимикається в ⚙
     function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
-    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|bazon|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|hdvb|zetvideo|kinoukr|uaserial|ukr/i;
+    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|ukr/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
     function uaBonus(k, pe) { return uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0; }
     function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
@@ -2036,7 +2036,16 @@
         window.__lmxKeyT = Date.now();
         e.preventDefault(); e.stopImmediatePropagation();
         if (ok) { window.__lmxPopSel = Date.now(); if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {} return true; }
-        if (lr || !its.length) return true;
+        if (lr) {
+            // вліво/вправо закриває список, а фокус переходить на сусідню кнопку панелі в той бік, куди натиснули
+            var goR = k === 39 || nm === 'ArrowRight', key0 = a.__lmxOpen;
+            var pills = [].slice.call(a.querySelectorAll('.lmx-onl-bar .selector')), own = key0 && a.querySelector('.lmx-onl-g--' + key0 + ' .selector'), pi = pills.indexOf(own);
+            var tgt = pi >= 0 ? pills[Math.max(0, Math.min(pills.length - 1, pi + (goR ? 1 : -1)))] : own;
+            closeDrop(a);
+            if (tgt) { try { Lampa.Controller.toggle('content'); } catch (x) {} syncNav(a, tgt); }
+            return true;
+        }
+        if (!its.length) return true;
         var nx = its[Math.max(0, Math.min(its.length - 1, (ix < 0 ? 0 : ix) + (up ? -1 : 1)))];
         if (nx && nx !== cur || !document.querySelector('.lmx-onl-drop--pop .focus')) { syncNav(a, nx || cur); popReveal(nx || cur); }
         return true;
