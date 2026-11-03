@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.28';
+    var VERSION = '2.29';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1710,6 +1710,7 @@
     // Типи озвучок (дубляж / багатоголосий / …) — для групування у списку озвучок
     var VK_ORDER = ['dub', 'mvo', 'dvo', 'avo', 'orig', 'sub', 'other'];
     var VK_LABEL = { dub: 'Дубляж', mvo: 'Багатоголосий', dvo: 'Двоголосий', avo: 'Авторський', orig: 'Оригінал', sub: 'Субтитри', other: 'Інше' };
+    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua/i;
     function voiceKind(t) {
         t = String(t || '');
         if (/дубл|\bdub/i.test(t)) return 'dub';
@@ -1846,6 +1847,11 @@
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
             g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            // українські озвучки — вгору (порядок усередині груп зберігається); вимикається в налаштуваннях «Перевага українській озвучці»
+            if (key === 'voice' && uaOn()) {
+                var uaV = opts.filter(function (x) { return UA_VOICE.test(x.title); }), otV = opts.filter(function (x) { return !UA_VOICE.test(x.title); });
+                if (uaV.length && otV.length) opts = uaV.concat([{ sep: true, title: 'Інші озвучки' }], otV);
+            }
         }
         if (!opts.length) return false;
         closeDrop(act);
