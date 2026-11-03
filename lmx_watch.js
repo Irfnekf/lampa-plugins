@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.15';
+    var VERSION = '2.16';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -681,7 +681,7 @@
                 n++;
                 if (!document.body.contains(act) || n > 40) { clearInterval(act.__lmxRC); return; }
                 if (selOpen() || act.__lmxOpen) return;
-                var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                var tg = (act.__lmxRlKey && act.querySelector('.lmx-onl-g--' + act.__lmxRlKey + ' .selector')) || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
                 if (listOff(act)) { resetScroll(act); okTicks = 0; }
@@ -1227,6 +1227,7 @@
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
                 var has = episodeEls(body).length, msg = /не дав результат|no results|помилка/i.test(body.textContent || '');
+                if (Date.now() < (act.__lmxRlMin || 0)) return;
                 if (!has && !msg && n < 330) return;
                 clearInterval(act.__lmxAR);
                 act.classList.remove('lmx-onl-rl');
@@ -1241,7 +1242,8 @@
                     safe(function () {
                         if (!document.body.contains(act) || act.__lmxProbing || selOpen()) return;
                         hideJunk(act);
-                        var tg = act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                        var fk = act.__lmxRlKey; act.__lmxRlKey = '';
+                        var tg = (fk && act.querySelector('.lmx-onl-g--' + fk + ' .selector')) || act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                         if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, tg); }
                     });
                 }, 300);
@@ -1620,6 +1622,8 @@
         var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
         if (!S || !bar) return false;
         if (act.__lmxOpen === key) { closeDrop(act, key); return true; }
+        // щойно вибрали пункт: повторне «ОК» (автоповтор / keyup пульта) не має знову відкривати список
+        if ((act.__lmxPopT || 0) > Date.now() - 700) return true;
         if (key === 'src') {
             var hidden = 0, anyOk = false;
             var lifeFlags = S.sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
@@ -1674,8 +1678,15 @@
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 window.__lmxManual = Date.now();
+                window.__lmxPopSel = Date.now(); act.__lmxPopT = Date.now();
                 closeDrop(act, key);
-                if (!o.sel) { try { o.run(); } catch (e) {} recover(act); if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); } }
+                if (!o.sel) {
+                    try { o.run(); } catch (e) {}
+                    // сезон/озвучка: як і при зміні джерела, ховаємо рідні «сирі» картки й показуємо свою заглушку, поки з'являться наші
+                    if (key === 'season' || key === 'voice') { act.__lmxRlKey = key; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; safe(function () { afterReload(act); }); }
+                    recover(act);
+                    if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); }
+                }
             }));
             d.appendChild(c);
             if (o.sel && !focusEl) focusEl = c;
@@ -1771,7 +1782,7 @@
         var its = [].slice.call(pop.querySelectorAll('.lmx-onl-opt')), cur = popItem(pop), ix = its.indexOf(cur);
         window.__lmxKeyT = Date.now();
         e.preventDefault(); e.stopImmediatePropagation();
-        if (ok) { if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {} return true; }
+        if (ok) { window.__lmxPopSel = Date.now(); if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {} return true; }
         if (lr || !its.length) return true;
         var nx = its[Math.max(0, Math.min(its.length - 1, (ix < 0 ? 0 : ix) + (up ? -1 : 1)))];
         if (nx && nx !== cur || !document.querySelector('.lmx-onl-drop--pop .focus')) { syncNav(a, nx || cur); popReveal(nx || cur); }
@@ -1809,6 +1820,13 @@
         window.__lmxDown = 1;
         document.addEventListener('keydown', navKeys, true);
         document.addEventListener('keydown', backKeys, true);
+        // після вибору пункту списку «ОК» не повинен спрацювати ще раз на тому, куди повернувся фокус (інакше на озвучці стартувало відео)
+        function eatOk(e) {
+            if (Date.now() - (window.__lmxPopSel || 0) > 700) return;
+            if (e.type !== 'click' && !(e.keyCode === 13 || e.key === 'Enter')) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+        }
+        ['keydown', 'keyup', 'keypress', 'click'].forEach(function (t) { document.addEventListener(t, eatOk, true); });
         // страховка: якщо щось (перемальовування, службові таймери) забрало фокус зі списку — повертаємо
         setInterval(function () {
             safe(function () {
