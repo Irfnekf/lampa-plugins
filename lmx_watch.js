@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.54';
+    var VERSION = '2.55';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1509,6 +1509,7 @@
                 if (!act.__lmxProbing) {
                     var q = act.querySelector('.lmx-onl-prog');
                     if (q && has) q.parentNode.removeChild(q);
+                    else if (q && act.__lmxEG) { /* порожнє джерело: далі веде автоперемикання (emptyGuard), смужку знімає страховка */ }
                     else if (q) { var qs = q.querySelector('.lmx-onl-prog__s'); if (qs) qs.textContent = 'Це джерело нічого не дало'; q.classList.add('lmx-onl-prog--end'); deadActions(act); }
                 }
                 setTimeout(function () {
@@ -2003,7 +2004,7 @@
                     if (key === 'season' || key === 'voice' || key === 'src') holdFocus(act, key, 15000);
                     if (key === 'season' || key === 'voice') { act.__lmxRlKey = key; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; safe(function () { afterReload(act); }); }
                     recover(act);
-                    if (key === 'src') { act.__lmxRlKey = 'src'; act.__lmxEG = 0; emptyGuard(act); }
+                    if (key === 'src') { act.__lmxRlKey = 'src'; act.__lmxEG = 0; emptyGuard(act); act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; safe(function () { afterReload(act); }); }
                 }
             }));
             d.appendChild(c);
