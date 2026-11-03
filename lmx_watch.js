@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.51';
+    var VERSION = '2.52';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -949,7 +949,7 @@
             if (hero && hero.nextSibling) hd.insertBefore(bar, hero.nextSibling); else hd.appendChild(bar);
         }
         var ref = findRef(act), want = [], inst = instFor(act), SG = inst ? readSets(inst) : null;
-        if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = si.title; if (vi && vi.title) voice = vi.title; }
+        if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = seTitle(si.title); if (vi && vi.title) voice = vi.title; }
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
         // є дані фільтра — працюємо напряму з ними (кнопки лише там, де такий вибір справді є); немає — старий запасний шлях
@@ -1771,6 +1771,8 @@
         }
         return null;
     }
+    // TMDB-«сезон 0» — це спеціальні випуски (OVA, фільми, спешли), а не справжній сезон
+    function seTitle(t) { return /^\s*(сезон|season)\s*0\s*$/i.test(t || '') ? 'Спеціальні' : t; }
     function readSets(inst) {
         var out = { season: null, voice: null, sort: [] };
         if (!inst || !inst.lmx_sets) return out;
@@ -1818,7 +1820,7 @@
     }
     // Субтитри (навіть українські) озвучкою не вважаємо — лишаються в «Інших»; назва, що закінчується на «UA» (FanVoxUA, AniUA), — українська
     function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (/^\s*(субтитри|subtitles?|sub)(?![a-z\u0400-\u04FF])/i.test(t)) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
-    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
+    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
     function voiceKind(t) {
         t = String(t || '');
         if (/дубл|\bdub/i.test(t)) return 'dub';
@@ -1954,7 +1956,7 @@
         } else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
-            g.items.forEach(function (it) { if (it) opts.push({ title: it.title, sel: !!it.selected, run: function () { if (key === 'voice') vcNote(it.title); selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            g.items.forEach(function (it) { if (it) opts.push({ title: key === 'season' ? seTitle(it.title) : it.title, sel: !!it.selected, run: function () { if (key === 'voice') vcNote(it.title); selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
             // українські озвучки — вгору (порядок усередині груп зберігається); вимикається в налаштуваннях «Перевага українській озвучці»
             if (key === 'voice' && uaOn()) {
                 var uaV = opts.filter(function (x) { return isUaVoice(x.title); }), otV = opts.filter(function (x) { return !isUaVoice(x.title); });
