@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.30';
+    var VERSION = '2.32';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1371,6 +1371,17 @@
             // екран міг бути прокручений вниз — повертаємо нагору, щоб смужку завантаження було видно
             resetScroll(act);
         });
+        // страховка від «чорного екрана» під час перезавантаження: якщо ні панелі, ні смужки завантаження не видно — показуємо рідний інтерфейс
+        [4500, 10000].forEach(function (ms) {
+            setTimeout(function () {
+                safe(function () {
+                    if (!document.body.contains(act) || !act.classList.contains('lmx-onl-rl')) return;
+                    var vis = false;
+                    [].forEach.call(act.querySelectorAll('.lmx-onl-prog, .lmx-onl-bar, .lmx-onl-hero'), function (e) { var r = e.getBoundingClientRect(); if (r.height > 20 && r.width > 20) vis = true; });
+                    if (!vis) act.classList.remove('lmx-onl-rl');
+                });
+            }, ms);
+        });
         clearInterval(act.__lmxAR);
         var n = 0;
         act.__lmxAR = setInterval(function () {
@@ -2586,6 +2597,28 @@
         hd.classList.add('lmx-uak-hero');
         putLogo(hd, card);
     }
+    // Діагностика: стисла схема розмітки активного екрана (класи, розміри, видимість) — копіюється в буфер обміну
+    function copyDiag() {
+        var act = document.querySelector('.activity--active') || document.querySelector('.activity'), out = [], cnt = 0;
+        function walk(el, d) {
+            if (cnt > 520 || d > 9 || el.nodeType !== 1) return;
+            var r = el.getBoundingClientRect(), cs = window.getComputedStyle(el), cl = String(el.className || '').replace(/\s+/g, '.').slice(0, 90);
+            out.push(new Array(d + 1).join(' ') + el.tagName.toLowerCase() + (cl ? '.' + cl : '') + ' [' + Math.round(r.width) + 'x' + Math.round(r.height) + (cs.display === 'none' ? ' none' : '') + (cs.visibility === 'hidden' ? ' hidden' : '') + (el.hasAttribute('data-lmx-old') ? ' OLD' : '') + ']');
+            cnt++;
+            [].forEach.call(el.children, function (c) { walk(c, d + 1); });
+        }
+        var head = 'LMX Watch ' + VERSION + ' | ' + window.innerWidth + 'x' + window.innerHeight + ' | body: ' + document.body.className.slice(0, 160) + '\nact: ' + (act ? act.className : '-') + '\n';
+        if (act) walk(act, 0);
+        var text = head + out.join('\n');
+        function done(ok) { noty(ok ? 'Діагностику скопійовано' : 'Не вдалося скопіювати'); }
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fb(); }); return; }
+        } catch (e) {}
+        fb();
+        function fb() {
+            try { var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-999px;top:0'; document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); document.body.removeChild(ta); done(ok); } catch (e) { done(false); }
+        }
+    }
     function start() {
         safe(function () {
             addCss();
@@ -2624,6 +2657,11 @@
                 field: { name: 'Бажана якість джерела', description: 'Підбір шукатиме джерело з такою якістю або кращою; якщо такого немає — візьме найкраще з наявних' }
             });
             if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_watch_diag', type: 'button' },
+                field: { name: 'Скопіювати діагностику екрана «Онлайн»', description: 'Натисніть, коли на екрані щось не так: опис розмітки потрапить у буфер обміну — вставте його в чат' },
+                onChange: function () { safe(copyDiag); }
+            });
+            if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_watch_ver', type: 'title', default: '' },
                 field: { name: 'LMX Watch · версія ' + VERSION }
             });
@@ -2631,6 +2669,17 @@
                 if (!e || e.type !== 'start') return;
                 obsTarget = null; actT0 = Date.now();
                 [30, 150, 400, 800, 1500, 3000, 5000].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
+                // страховка від «чорного екрана»: якщо наша шапка так і не з'явилась (інша розмітка, помилка), знімаємо режим завантаження — рідний інтерфейс Lampa знову видно
+                [4500, 9000, 15000].forEach(function (ms) {
+                    setTimeout(function () {
+                        safe(function () {
+                            var a = document.querySelector('.activity--active');
+                            if (!a || !a.classList.contains('lmx-onl-load')) return;
+                            var hh = a.querySelector('.lmx-onl-hero'), rr = hh && hh.getBoundingClientRect();
+                            if (!hh || !rr || rr.height < 20) { a.classList.remove('lmx-onl-load'); a.classList.remove('lmx-onl-rl'); }
+                        });
+                    }, ms);
+                });
             });
         });
     }
