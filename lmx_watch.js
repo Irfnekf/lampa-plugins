@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.9';
+    var VERSION = '2.11';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -86,6 +86,12 @@
         S + '.lmx-onl-g--cfg .lmx-onl-pill{min-width:0;padding:.5em .85em;font-size:1.05em;justify-content:center}' +
         S + '.lmx-onl-opt{margin:0;padding:.5em 1.3em;font-size:.95em}' +
         S + '.lmx-onl-opt--on{box-shadow:inset 0 0 0 .14em rgba(255,255,255,.75)}' +
+        // випадаючий список (сезон, озвучення): лежить поверх карток, нічого не зсуває
+        S + '.lmx-onl-drop--pop{position:absolute;z-index:60;display:block;padding:.35em;overflow-y:auto;overflow-x:hidden;border-radius:.8em;background:rgba(18,20,28,.98);border:1px solid rgba(255,255,255,.14);box-shadow:0 1em 3em rgba(0,0,0,.75);box-sizing:border-box}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt{display:flex !important;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;margin:0 0 .12em !important;padding:.5em .9em !important;border:0 !important;border-radius:.5em !important;background:transparent !important;box-shadow:none !important;white-space:nowrap;transform:none !important}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt--on{color:#e9a24a}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt--on::after{content:"\\2713";margin-left:1em}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt.focus{background:#fff !important;color:#0a0b10 !important}' +
         S + '.lmx-onl-opt--dim{opacity:.45}' +
         '.lmx-onl-off{display:none !important}' + B + ' > .lmx-onl-item.lmx-onl-off,' + B + ' > .lmx-onl-off{display:none !important}' +
         S + '.lmx-onl-left{padding:.1em .7em .2em;font-size:.82em;opacity:.85}' +
@@ -1573,6 +1579,28 @@
         if (key) { var pill = act.querySelector('.lmx-onl-g--' + key + ' .selector'); if (pill) syncNav(act, pill); }
         relayout();
     }
+    // Випадаючий список під кнопкою: позиція від кнопки, висота — до низу екрана, довгі списки прокручуються всередині
+    function popPlace(act, d, key, bar) {
+        var g = act.querySelector('.lmx-onl-g--' + key), par = bar.parentNode;
+        var pill = g && (g.querySelector('.selector') || g);
+        if (!pill || !par) return;
+        if (window.getComputedStyle(par).position === 'static') par.style.position = 'relative';
+        var pr = pill.getBoundingClientRect(), br = par.getBoundingClientRect();
+        d.classList.add('lmx-onl-drop--pop');
+        d.style.left = Math.max(0, pr.left - br.left) + 'px';
+        d.style.top = (pr.bottom - br.top + 4) + 'px';
+        d.style.minWidth = Math.max(pr.width, 180) + 'px';
+        d.style.maxWidth = Math.max(240, window.innerWidth - pr.left - 24) + 'px';
+        d.style.maxHeight = Math.max(160, window.innerHeight - pr.bottom - 28) + 'px';
+    }
+    // прокрутка всередині списку (scrollIntoView не використовуємо: він міг би зсунути весь екран)
+    function popReveal(el) {
+        var d = el && el.closest && el.closest('.lmx-onl-drop--pop');
+        if (!d) return;
+        var t = el.offsetTop, h = el.offsetHeight;
+        if (t < d.scrollTop) d.scrollTop = Math.max(0, t - 4);
+        else if (t + h > d.scrollTop + d.clientHeight) d.scrollTop = t + h - d.clientHeight + 4;
+    }
     function toggleDrop(act, key) {
         var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
         if (!S || !bar) return false;
@@ -1638,7 +1666,9 @@
             if (o.sel && !focusEl) focusEl = c;
         });
         bar.parentNode.insertBefore(d, bar.nextSibling);
+        if (key === 'season' || key === 'voice') safe(function () { popPlace(act, d, key, bar); });
         syncNav(act, focusEl || d.querySelector('.selector'));
+        if (d.classList.contains('lmx-onl-drop--pop')) popReveal(focusEl || d.querySelector('.selector'));
         relayout();
         return true;
     }
@@ -1683,6 +1713,13 @@
         // «справжній» фокус — той, що знає навігатор Lampa (клас focus лише косметика і може лишатись на кількох елементах)
         try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
         if (!(cur && cur.nodeType === 1 && a.contains(cur) && document.body.contains(cur))) cur = a.querySelector('.focus');
+        var pop = cur && cur.closest && cur.closest('.lmx-onl-drop--pop');
+        if (pop) {
+            var its = [].slice.call(pop.querySelectorAll('.selector')), ix = its.indexOf(cur), nx = its[ix + (up ? -1 : 1)];
+            window.__lmxKeyT = Date.now();
+            if (nx) { syncNav(a, nx); popReveal(nx); }
+            return true;
+        }
         var rows = navRows(a), ri = -1, k;
         if (!cur) {
             // фокус у шапці Lampa: «вниз» повертає на головну кнопку героя
@@ -1708,7 +1745,15 @@
     }
     function navKeys(e) {
         var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
-        if (!up && !dn) { navCx = null; return; }
+        if (!up && !dn) {
+            navCx = null;
+            // у відкритому списку вліво/вправо нікуди не веде
+            if (e.keyCode === 37 || e.keyCode === 39 || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                var fo = document.querySelector('.activity--active .lmx-onl-drop--pop .focus');
+                if (fo) { e.preventDefault(); e.stopImmediatePropagation(); }
+            }
+            return;
+        }
         if (navStep(up)) { e.preventDefault(); e.stopImmediatePropagation(); }
     }
     // «Назад» під час пошуку джерел: екран у цей час майже порожній, і штатний контролер його ігнорував (доводилось перезаходити).
