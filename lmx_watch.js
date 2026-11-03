@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.34';
+    var VERSION = '2.35';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -193,7 +193,9 @@
         '.lmx-onl-hero__w{margin-top:1.1em;font-size:.85em;font-weight:600;opacity:.9}' +
         '.lmx-onl-hero__bar{position:absolute !important;left:0;right:0;bottom:0;height:.3em;background:rgba(255,255,255,.2)}' +
         '.lmx-onl-hero__bar i{display:block;height:100%;background:#fff}' +
-        '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:13em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}';
+        '@media (max-width:760px){.lmx-onl-hero{padding:1em 1.1em .9em;min-height:13em}.lmx-onl-hero__t{font-size:1.7em;max-width:90%}.lmx-onl-hero__o{max-width:100%}.lmx-onl-hero__logo{max-width:60%}}' +
+        // Телефон: шапка й фільтри займали пів екрана, на серії лишалось 2–3 ряди. Стискаємо шапку, а фільтри ставимо в один рядок, що гортається вбік
+        '@media (max-width:760px){.lmx-onl-hero{min-height:9.5em;margin-bottom:.4em}.lmx-onl-hero__w{margin-top:.5em}' + S + '.lmx-onl-bar{flex-wrap:nowrap;overflow-x:auto;gap:.5em .8em;padding:.1em 0 .5em;-webkit-overflow-scrolling:touch;scrollbar-width:none}' + S + '.lmx-onl-bar::-webkit-scrollbar{display:none}' + S + '.lmx-onl-bar .lmx-onl-g{flex:0 0 auto}' + S + '.lmx-onl-bar .lmx-onl-g__l{display:none}}';
     // Оформлення під тему, яку вибрано в LMX Pack (клас на body ставить LMX Pack: lmx-prem «Кіно», lmx-apple «Скло»; без нього — «Полегшена»)
     var THEME_CSS = (function () {
         var H = 'body.lmx-online ', P = H + '.explorer.lmx-onl ', K = 'body.lmx-prem ' + '.explorer.lmx-onl ', G = 'body.lmx-apple ' + '.explorer.lmx-onl ';
