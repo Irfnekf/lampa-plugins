@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.27';
+    var VERSION = '2.28';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -298,6 +298,12 @@
             C + ' [class*="episode-number"],' + C + ' [class*="__num"]:not([class*="__number-"]){position:absolute !important;left:.55em !important;top:.55em !important;right:auto !important;bottom:auto !important;transform:none !important;margin:0 !important;min-width:1.9em;padding:.12em .55em !important;border-radius:.6em;background:rgba(255,255,255,.92) !important;color:#111 !important;font-size:.9em !important;font-weight:800 !important;line-height:1.3 !important;text-align:center;text-shadow:none !important;z-index:3}' +
             C + ' .videos__item-imgbox[data-n]::before,' + C + ' [class*="imgbox"][data-n]::before{background:rgba(255,255,255,.92);color:#111;border-radius:.6em;font-weight:800}' +
             C + ' .online-prestige-split{display:none !important}' +
+            // без «хвиль»: назва зверху, а смужка перегляду й рядок «рейтинг · дата · якість» завжди притиснуті до низу картки (однаково в усьому ряду)
+            C + ' > [class*="__body"]{display:flex !important;flex-direction:column !important;flex:1 1 auto !important;min-height:0}' +
+            C + ' [class*="__head"]{flex:1 1 auto !important;align-items:flex-start}' +
+            C + ' .time-line,' + C + ' [class*="__timeline"]{flex:0 0 auto;margin:.55em 0 .5em !important}' +
+            C + ' [class*="__footer"],' + C + ' [class*="-footer"]{flex:0 0 auto;margin-top:0 !important;flex-wrap:nowrap !important}' +
+            C + ' [class*="__info"]{flex:1 1 auto;flex-wrap:nowrap !important;min-width:0;white-space:nowrap !important}' +
             C + ' [class*="__footer"],' + C + ' [class*="-footer"]{align-items:center !important;min-height:0 !important}' +
             C + ' [class*="__info"]{align-items:center !important;min-height:0 !important;gap:.3em .6em !important}' +
             C + ' [class*="-rate"]{display:inline-flex !important;align-items:center;gap:.35em;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-size:.92em}' +
