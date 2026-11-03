@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.52';
+    var VERSION = '2.53';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1449,7 +1449,7 @@
             var old = act.querySelector('.lmx-onl-prog'); if (old && old.parentNode) old.parentNode.removeChild(old);
             var hero = act.querySelector('.lmx-onl-hero'), hd = act.querySelector('.explorer__files-head'), pr = document.createElement('div');
             var nm = ''; try { var ii = instFor(act), Sd = ii && readSets(ii), it0 = Sd && Sd.sort && selItem(Sd.sort); nm = it0 ? String(it0.title || '').replace(/\s*~.*$/, '') : ''; } catch (e) {}
-            pr.className = 'lmx-onl-prog';
+            pr.className = 'lmx-onl-prog'; pr.setAttribute('data-lmx-rl', '1');
             var bar0 = act.querySelector('.lmx-onl-bar');
             pr.innerHTML = (bar0 ? '' : PROG_PILLS) + '<div class="lmx-onl-prog__s">Завантажуємо' + (nm ? ': ' + esc(nm) : '') + '…</div><div class="lmx-onl-prog__b"><i></i></div>' + PROG_CARDS;
             // панель фільтрів лишається на місці, а завантаження — під нею, там, де з'являться серії
@@ -1460,10 +1460,22 @@
             resetScroll(act);
         });
         // страховка від «чорного екрана» під час перезавантаження: якщо ні панелі, ні смужки завантаження не видно — показуємо рідний інтерфейс
+        // і від «нескінченного завантаження»: якщо за 14 с нових серій так і не з'явилось, прибираємо смужку й повертаємо наявний список (позначку «старе» знімаємо)
+        setTimeout(function () {
+            safe(function () {
+                if (!document.body.contains(act) || !act.classList.contains('lmx-onl-rl')) return;
+                var bd = act.querySelector('.explorer__files-body .scroll__body');
+                if (!bd || freshEps(bd).length) return;
+                [].forEach.call(bd.querySelectorAll('[data-lmx-old]'), function (el) { el.removeAttribute('data-lmx-old'); });
+                var pq = act.querySelector('.lmx-onl-prog[data-lmx-rl]'); if (pq && pq.parentNode) pq.parentNode.removeChild(pq);
+                act.classList.remove('lmx-onl-rl'); relayout();
+            });
+        }, 14000);
         [4500, 10000].forEach(function (ms) {
             setTimeout(function () {
                 safe(function () {
-                    if (!document.body.contains(act) || !act.classList.contains('lmx-onl-rl')) return;
+                    if (!document.body.contains(act)) return;
+                    if (!act.classList.contains('lmx-onl-rl')) { var st = act.querySelector('.lmx-onl-prog[data-lmx-rl]'); if (st && freshEps(act.querySelector('.explorer__files-body .scroll__body') || document.createElement('div')).length && st.parentNode) st.parentNode.removeChild(st); return; }
                     var vis = false;
                     [].forEach.call(act.querySelectorAll('.lmx-onl-prog, .lmx-onl-bar, .lmx-onl-hero'), function (e) { var r = e.getBoundingClientRect(); if (r.height > 20 && r.width > 20) vis = true; });
                     if (!vis) act.classList.remove('lmx-onl-rl');
@@ -1492,6 +1504,8 @@
                 act.classList.remove('lmx-onl-rl');
                 try { body.style.minHeight = ''; } catch (e) {}
                 relayout();
+                // смужка «Завантажуємо…» від перезавантаження (вибір озвучки/сезону) має зникнути, щойно з'явились серії — навіть якщо фонова перевірка джерел ще йде
+                if (has) safe(function () { var rq = act.querySelector('.lmx-onl-prog[data-lmx-rl]'); if (rq && rq.parentNode) rq.parentNode.removeChild(rq); });
                 if (!act.__lmxProbing) {
                     var q = act.querySelector('.lmx-onl-prog');
                     if (q && has) q.parentNode.removeChild(q);
