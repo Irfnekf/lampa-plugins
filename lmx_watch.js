@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.14';
+    var VERSION = '2.15';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -21,6 +21,11 @@
         return 'https://image.tmdb.org/t/p/' + size + path;
     }
 
+    // Елемент .selectbox у Lampa є в DOM завжди (його додають при старті), тож «меню відкрите» визначаємо за класом на body
+    function selOpen() {
+        try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function') return !!Lampa.Select.opened(); } catch (e) {}
+        return document.body.classList.contains('selectbox--open');
+    }
     var S = 'body.lmx-online .explorer.lmx-onl ';
     var B = S + '.explorer__files-body .scroll__body';
     var CSS = '' +
@@ -153,7 +158,9 @@
         '.lmx-onl-hero > *:not(.lmx-onl-hero__bg):not(.lmx-onl-hero__sh){position:relative;z-index:1}' +
         '.lmx-onl-hero__t{font-size:2.6em;font-weight:800;line-height:1.05;text-transform:uppercase;max-width:60%;visibility:hidden}' +
         '.lmx-onl-hero--tt .lmx-onl-hero__t{visibility:visible}' +
-        '.lmx-onl-hero__logo{display:block;flex:0 0 auto;max-width:48%;max-height:6em;width:auto;height:auto;object-fit:contain;object-position:left bottom;margin-bottom:.45em}' +
+        '.lmx-onl-hero__lg{position:relative;display:flex;align-items:flex-end;height:5.4em;margin-bottom:.45em}' +
+        '.lmx-onl-hero__lg .lmx-onl-hero__t{position:absolute;left:0;bottom:0;margin:0}' +
+        '.lmx-onl-hero__logo{display:block;flex:0 0 auto;max-width:48%;height:100%;width:auto;object-fit:contain;object-position:left bottom}' +
         '.lmx-onl-hero__m{display:flex;align-items:center;gap:.9em;margin-top:.9em;font-weight:600}' +
         '.lmx-onl-hero__q{padding:.08em .5em;border-radius:.4em;background:rgba(255,255,255,.22);font-size:.8em;font-weight:800}' +
         '.lmx-onl-hero__o{margin-top:.7em;max-width:62%;font-size:.95em;line-height:1.4;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
@@ -256,7 +263,7 @@
             return;
         }
         var f = act.querySelector('.filter--filter');
-        if (!f || document.querySelector('.selectbox')) return;
+        if (!f || selOpen()) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         window.__lmxAllowSel = Date.now();
@@ -271,7 +278,7 @@
                 setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 60);
             } else if (++k > 40) {
                 clearInterval(iv);
-                try { if (document.querySelector('.selectbox')) Lampa.Select.close(); if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {}
+                try { if (selOpen()) Lampa.Select.close(); if (ctl) Lampa.Controller.toggle(ctl); } catch (e) {}
                 document.body.classList.remove('lmx-onl-pick');
             }
         }, 80);
@@ -314,6 +321,13 @@
         var kind = (card.name || card.first_air_date || card.number_of_seasons) ? 'tv' : 'movie', key = kind + card.id, done = false;
         // Назва під логотипом схована, поки не з'ясується, є логотип чи ні (щоб текст не блимав перед логотипом)
         function showTitle() { if (!done) { done = true; hero.classList.add('lmx-onl-hero--tt'); } }
+        // Місце під логотип/назву завжди однакове за висотою — шапка не стрибає, коли логотип дозавантажується
+        (function () {
+            var t = hero.querySelector('.lmx-onl-hero__t');
+            if (!t || hero.querySelector('.lmx-onl-hero__lg')) return;
+            var lg = document.createElement('div'); lg.className = 'lmx-onl-hero__lg';
+            hero.insertBefore(lg, t); lg.appendChild(t);
+        })();
         setTimeout(showTitle, 2200);
         function show(path) {
             if (!path || !hero.parentNode) return showTitle();
@@ -328,7 +342,8 @@
             im.onerror = function () { if (!im.__retry) { im.__retry = 1; im.src = img(path, 'original'); } else { if (im.parentNode) im.parentNode.removeChild(im); showTitle(); } };
             im.src = img(path, 'w500');
             var t0 = hero.querySelector('.lmx-onl-hero__t');
-            if (t0) hero.insertBefore(im, t0);
+            var lg0 = hero.querySelector('.lmx-onl-hero__lg');
+            if (lg0) lg0.insertBefore(im, lg0.firstChild); else if (t0) hero.insertBefore(im, t0);
             if (im.complete && im.naturalWidth) im.onload();
         }
         if (key in logoCache) return show(logoCache[key]);
@@ -564,7 +579,7 @@
         clearTimeout(act.__lmxRS);
         function pass(final) {
             safe(function () {
-                if (!document.body.contains(act) || document.querySelector('.selectbox')) return;
+                if (!document.body.contains(act) || selOpen()) return;
                 if (!force && (window.__lmxKeyT || 0) > Date.now() - 400) return;
                 var c = Lampa.Controller.enabled(), nm = c && c.name;
                 // 'select' без відкритого меню — застарілий стан після вкладених меню фільтра: керування «залипло» на закритому меню
@@ -665,7 +680,7 @@
             safe(function () {
                 n++;
                 if (!document.body.contains(act) || n > 40) { clearInterval(act.__lmxRC); return; }
-                if (document.querySelector('.selectbox') || act.__lmxOpen) return;
+                if (selOpen() || act.__lmxOpen) return;
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
@@ -710,7 +725,7 @@
     }
     function openFilterItem(act, rx) {
         var f = act.querySelector('.filter--filter');
-        if (!f || document.querySelector('.selectbox')) return;
+        if (!f || selOpen()) return;
         var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         window.__lmxAllowSel = Date.now();
@@ -1224,7 +1239,7 @@
                 }
                 setTimeout(function () {
                     safe(function () {
-                        if (!document.body.contains(act) || act.__lmxProbing || document.querySelector('.selectbox')) return;
+                        if (!document.body.contains(act) || act.__lmxProbing || selOpen()) return;
                         hideJunk(act);
                         var tg = act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                         if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, tg); }
@@ -1242,7 +1257,7 @@
     var markT = [];
     function refreshMarks() {
         var a = document.querySelector('.activity--active');
-        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen()) return;
         try { if (Lampa.Player && typeof Lampa.Player.opened === 'function' && Lampa.Player.opened()) return; } catch (e) {}
         var body = a.querySelector('.explorer__files-body .scroll__body');
         if (!body) return;
@@ -1342,7 +1357,7 @@
     }
     function keepFocus() {
         var act = document.querySelector('.activity--active');
-        if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.classList.contains('lmx-onl-rl') || document.querySelector('.selectbox')) return;
+        if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.classList.contains('lmx-onl-rl') || selOpen()) return;
         hideJunk(act);
         var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
         try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
@@ -1709,7 +1724,7 @@
     // Повертає true, якщо ми обробили крок (в т.ч. «проковтнули» його на краю), false — віддати штатній навігації Lampa
     function navStep(up) {
         var a = document.querySelector('.activity--active'), cur = null;
-        if (!a || !a.querySelector('.explorer.lmx-onl') || document.querySelector('.selectbox')) return false;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen()) return false;
         // «справжній» фокус — той, що знає навігатор Lampa (клас focus лише косметика і може лишатись на кількох елементах)
         try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
         if (!(cur && cur.nodeType === 1 && a.contains(cur) && document.body.contains(cur))) cur = a.querySelector('.focus');
@@ -1749,7 +1764,7 @@
     }
     function popKeys(e) {
         var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
-        if (!pop || document.querySelector('.selectbox')) return false;
+        if (!pop || selOpen()) return false;
         var k = e.keyCode, nm = e.key, up = k === 38 || nm === 'ArrowUp', dn = k === 40 || nm === 'ArrowDown',
             lr = k === 37 || k === 39 || nm === 'ArrowLeft' || nm === 'ArrowRight', ok = k === 13 || nm === 'Enter';
         if (!up && !dn && !lr && !ok) return false;
@@ -1782,7 +1797,7 @@
         var k = e.keyCode, back = k === 8 || k === 27 || k === 461 || k === 10009 || k === 166 || k === 4 || e.key === 'Escape' || e.key === 'Backspace' || e.key === 'BrowserBack' || e.key === 'GoBack';
         if (!back) return;
         var a = document.querySelector('.activity--active');
-        if (!a || !a.querySelector('.explorer.lmx-onl') || !a.classList.contains('lmx-onl-load') || document.querySelector('.selectbox')) return;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || !a.classList.contains('lmx-onl-load') || selOpen()) return;
         var tag = e.target && e.target.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         e.preventDefault(); e.stopImmediatePropagation();
         try { var gs = window.__lmxProbe; if (gs) { gs.bg = 'off'; gs.done = true; try { gs.job && gs.job.stop && gs.job.stop(); } catch (x) {} } window.__lmxProbe = null; a.__lmxProbing = false; } catch (x) {}
@@ -1798,7 +1813,7 @@
         setInterval(function () {
             safe(function () {
                 var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
-                if (!pop || document.querySelector('.selectbox')) return;
+                if (!pop || selOpen()) return;
                 var f = document.querySelector('.focus');
                 if (f && pop.contains(f)) return;
                 var it = popItem(pop); if (it) { syncNav(a, it); popReveal(it); }
@@ -1814,7 +1829,7 @@
         setInterval(function () {
             safe(function () {
                 var act = document.querySelector('.activity--active');
-                if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || document.getElementById('lmx-scan') || document.querySelector('.selectbox')) { bad = 0; return; }
+                if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
                 if ((window.__lmxKeyT || 0) > Date.now() - 900) { bad = 0; return; }
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg) { bad = 0; return; }
@@ -2147,7 +2162,7 @@
             var tgt = list[li];
             [500, 1500, 3000].forEach(function (d) { setTimeout(function () { safe(function () {
                 var cur = document.querySelector('.focus');
-                if (!document.body.contains(tgt) || (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt) || document.querySelector('.selectbox')) return;
+                if (!document.body.contains(tgt) || (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt) || selOpen()) return;
                 bringIn(tgt);
             }); }, d); });
         });
@@ -2174,7 +2189,7 @@
         if (ss && curSn && !act.__lmxSA) {
             act.__lmxSA = 1;
             var tgt = targetSeason(ss);
-            if (tgt && tgt !== curSn) setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) > Date.now() - 5000 || act.__lmxSA > 1 || document.querySelector('.selectbox')) return; gotoSeason(act, tgt); }); }, 1500);
+            if (tgt && tgt !== curSn) setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) > Date.now() - 5000 || act.__lmxSA > 1 || selOpen()) return; gotoSeason(act, tgt); }); }, 1500);
         }
         // «Продовжити» діє на весь серіал: якщо за прогресом треба інший сезон, ніж відкритий, кнопка веде туди й запускає серію
         var resSn = 0;
