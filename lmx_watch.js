@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.44';
+    var VERSION = '2.47';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1318,21 +1318,54 @@
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
     // Перевага українській озвучці: (1) у відповіді джерела є українські озвучки/позначки; (2) назва джерела з відомих українських. Вимикається в ⚙
     function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
-    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|ukr/i;
+    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|ukr/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
     // Аніме (жанр «Анімація» + японське походження) — перевага джерелам, що спеціалізуються на аніме; додається до бонусу за українську озвучку, а не замість нього
-    var ANIME_SRC = /anime|аніме|anitube|anilib|anidub|hikka|yummy|animevost|jutsu|ukranime|aniua/i;
+    var ANIME_SRC = /anime|аніме|moon|fenix|mikai|bamboo|unimay|anihub|aniworld|anitube|anilib|anidub|hikka|yummy|animevost|jutsu|ukranime|aniua/i;
     function isAnimeCard() {
         try {
             var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
             if (!c) return false;
-            var gen = (c.genres || []).some(function (g) { return g && (g.id === 16 || /анімац|animation|аніме/i.test(String(g.name || ''))); });
+            var gen = (c.genres || []).some(function (g) { return g && (g.id === 16 || /анімац|animation|аніме/i.test(String(g.name || ''))); }) || (c.genre_ids || []).indexOf(16) >= 0;
             var ja = c.original_language === 'ja' || (c.origin_country || []).indexOf('JP') >= 0;
             return gen && ja;
         } catch (e) { return false; }
     }
-    function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && ANIME_SRC.test(String(k || '')) && isAnimeCard() ? 2 : 0; }
-    function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k)) ? 2 : 0) + animeBonus(k); }
+    function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && (ANIME_SRC.test(String(k || '')) || (HINT[k] && HINT[k].a) || learnedAnime(k)) && isAnimeCard() ? 4 : 0; }
+    // Універсальність: плагін не прив'язаний до назв конкретного онлайн-плагіна. Окрім списків слів, діють ще два шари:
+    // (1) значки в назві джерела (🌸/🎌 — аніме, 🇺🇦 — українське): запам'ятовуємо їх із сирої назви, бо в ключі значки відкидаються;
+    // (2) навчання: джерело, що знаходить аніме, але майже ніколи — інші тайтли, плагін вважає аніме-спеціалізованим
+    var HINT = {};
+    function noteHints(it) {
+        try {
+            var k = srcName(it && it.title), t = String(it && it.title || '');
+            if (!k) return;
+            var h = HINT[k] || (HINT[k] = { a: 0, u: 0 });
+            if (/\uD83C\uDF38|\uD83C\uDF8C|\u26E9/.test(t)) h.a = 1;
+            if (/\uD83C\uDDFA\uD83C\uDDE6/.test(t)) h.u = 1;
+        } catch (e) {}
+    }
+    function learnGet() { try { var v = Lampa.Storage.get('lmx_online_learn', ''); if (typeof v === 'string' && v) v = JSON.parse(v); if (v && typeof v === 'object' && v.s) return v; } catch (e) {} return { s: {}, seen: {} }; }
+    function learnNote(sort, cid) {
+        try {
+            if (!cid) return;
+            var L = learnGet(), an = isAnimeCard();
+            if (L.seen[cid]) return;
+            L.seen[cid] = 1;
+            var sk = Object.keys(L.seen); if (sk.length > 300) delete L.seen[sk[0]];
+            sort.forEach(function (x) {
+                if (!x || typeof x.ghost === 'undefined') return;
+                var k = srcName(x.title); if (!k) return;
+                var e = L.s[k] || (L.s[k] = { a: [0, 0], o: [0, 0] }), b = an ? e.a : e.o;
+                b[1]++; if (!x.ghost) b[0]++;
+            });
+            Lampa.Storage.set('lmx_online_learn', JSON.stringify(L));
+        } catch (e) {}
+    }
+    function learnedAnime(k) {
+        try { var e = learnGet().s[k]; return !!e && e.a[1] >= 3 && e.a[0] / e.a[1] >= 0.6 && e.o[1] >= 3 && e.o[0] / e.o[1] <= 0.25; } catch (x) { return false; }
+    }
+    function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k) || (HINT[k] && HINT[k].u)) ? 2 : 0) + animeBonus(k); }
     function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
@@ -1784,8 +1817,8 @@
         try { var m = vcGet(), k = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
     }
     // Субтитри (навіть українські) озвучкою не вважаємо — лишаються в «Інших»; назва, що закінчується на «UA» (FanVoxUA, AniUA), — українська
-    function isUaVoice(t) { if (/^\s*(субтитри|subtitles?|sub)(?![a-z\u0400-\u04FF])/i.test(t)) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
-    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|козацьк|kozac|fan ?vox|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
+    function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (/^\s*(субтитри|subtitles?|sub)(?![a-z\u0400-\u04FF])/i.test(t)) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
+    var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
     function voiceKind(t) {
         t = String(t || '');
         if (/дубл|\bdub/i.test(t)) return 'dub';
@@ -2200,7 +2233,7 @@
             if (!gs.results.length) return finish('Жодне джерело не знайшло цей матеріал');
             gs.results.sort(function (a, b) { return (b.rank - a.rank) || (b.n - a.n); });
             var best = gs.results[0], i;
-            if (cid) { mem.t[cid] = { s: best.name, q: best.rank, at: Date.now() }; memSet(mem); }
+            if (cid) { mem.t[cid] = { s: best.name, q: best.rank, at: Date.now(), v: 2 }; memSet(mem); }
             if (best.name !== gs.cur) {
                 for (i = 0; i < sort.length; i++) if (keyOf(sort[i]) === best.name) { switchTo(inst, sort[i], 'Найкраще джерело'); return finish(); }
             }
@@ -2219,7 +2252,7 @@
             var i, curIt = null;
             for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
             var curKey = curIt ? keyOf(curIt) : '';
-            sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); });
+            sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); noteHints(x); });
             gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
@@ -2234,7 +2267,8 @@
                 var top = live[0], waitedL = Date.now() - t0;
                 if (top && (top.q >= qTarget() || waitedL > 5000)) {
                     live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.q, n: 0 }); });
-                    if (cid) { mem.t[cid] = { s: keyOf(top.it), q: top.q, at: Date.now(), oks: live.map(function (r) { return keyOf(r.it); }) }; memSet(mem); }
+                    learnNote(sort, cid);
+                    if (cid) { mem.t[cid] = { s: keyOf(top.it), q: top.q, at: Date.now(), v: 2, oks: live.map(function (r) { return keyOf(r.it); }) }; memSet(mem); }
                     if (!top.it.selected) switchTo(inst, top.it, 'Відкриваємо найкраще джерело');
                     return finish();
                 }
@@ -2293,7 +2327,7 @@
                 okL.sort(function (a, b) { return ((b.rank + (b.ua || 0) + hBonus(b.name)) - (a.rank + (a.ua || 0) + hBonus(a.name))) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
                 okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
                 var bestO = okL[0];
-                if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
+                if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), v: 2, oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
                 var curK = '';
                 sort.forEach(function (x) { if (x && x.selected) curK = keyOf(x); });
                 if (bestO.name !== curK) { switchTo(inst, bestO.it, 'Відкриваємо найкраще джерело'); }
@@ -2306,7 +2340,7 @@
                 var target = null, c = sort.filter(function (x) { return x && !x.selected && !x.ghost && keyOf(x); }).sort(cmp), curQ = titleQ(curIt && curIt.title);
                 if (qPref() !== 'auto' && probeOn()) { if (c[0] && titleQ(c[0].title) > curQ) target = c[0]; }
                 else {
-                    var pt = mem.t[cid], pref = pt && Date.now() - (pt.at || 0) < 30 * 86400000 ? pt.s : '';
+                    var pt = mem.t[cid], pref = pt && pt.v === 2 && Date.now() - (pt.at || 0) < 30 * 86400000 ? pt.s : '';
                     if (pref && pref !== curKey) for (i = 0; i < c.length; i++) if (keyOf(c[i]) === pref) { target = c[i]; break; }
                 }
                 if (target) return switchTo(inst, target, 'Відкриваємо джерело');
