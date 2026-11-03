@@ -1353,8 +1353,22 @@
             for (i = all.length - 1; i >= 1; i--) if (all[i].parentNode) all[i].parentNode.removeChild(all[i]);
         });
     }
+    // Повільні пристрої (телефон): після зміни джерела старі картки ще стоять у списку, поки приходять нові. Позначаємо наявні як «старі»,
+    // чекаємо свіжих і лише тоді прибираємо старі — інакше екран показував обидва списки одразу
+    function markStale(act) {
+        var b = act.querySelector('.explorer__files-body .scroll__body');
+        if (b) [].forEach.call(b.children, function (el) { if (el.nodeType === 1 && !el.hasAttribute('data-lmx-old') && (el.classList.contains('selector') || el.classList.contains('lmx-onl-off'))) el.setAttribute('data-lmx-old', '1'); });
+    }
+    function dropStale(act) {
+        var b = act.querySelector('.explorer__files-body .scroll__body'), n = 0;
+        if (!b) return;
+        [].slice.call(b.querySelectorAll('[data-lmx-old]')).forEach(function (el) { if (el.parentNode) { el.parentNode.removeChild(el); n++; } });
+        return n;
+    }
+    function freshEps(body) { return episodeEls(body).filter(function (e) { return !e.hasAttribute('data-lmx-old'); }); }
     function afterReload(act) {
         act.classList.add('lmx-onl-rl');
+        markStale(act);
         // відкрита панель вибору (джерело/сезон/озвучка) після вибору зайва — закриваємо, щоб було видно завантаження
         safe(function () { var dr = act.querySelector('.lmx-onl-drop'); if (dr && dr.parentNode) dr.parentNode.removeChild(dr); });
         safe(function () {
@@ -1393,11 +1407,12 @@
                 dedupeUi(act);
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
-                var has = episodeEls(body).length, msg = /не дав результат|no results|помилка/i.test(body.textContent || '');
+                var has = freshEps(body).length, msg = /не дав результат|no results|помилка/i.test(body.textContent || '');
                 if (Date.now() < (act.__lmxRlMin || 0)) return;
                 if (!has && !msg && n < 330) return;
                 clearInterval(act.__lmxAR);
                 // спершу оформлюємо нові картки (клас сітки, нумерація, час), і лише потім показуємо — інакше вони на мить з'являються «сирими» й вишиковуються в плитки на очах
+                dropStale(act);
                 if (has) safe(buildHero);
                 act.classList.remove('lmx-onl-rl');
                 try { body.style.minHeight = ''; } catch (e) {}
