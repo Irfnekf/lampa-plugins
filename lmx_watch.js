@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.21';
+    var VERSION = '2.22';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -145,6 +145,12 @@
         // панель пошуку джерел: на місці карток — прогрес і заготовки, які переливаються
         S + '.lmx-onl-prog{padding:.2em 0 1em}' +
         S + '.lmx-onl-prog__s{font-size:.95em;font-weight:600;opacity:.9;margin:.2em 0 .6em}' +
+        // «Нічого не знайдено»: стандартний блок Lampa («Пошук на … не дав результатів», кнопки, сірі заглушки) ховаємо — замість нього наша панель
+        S + '[class*="online-empty"]{display:none !important}' +
+        S + '.lmx-onl-prog--end{display:flex;flex-direction:column;align-items:center;text-align:center;margin:.4em 0 1em;padding:2.4em 1.5em 2em;border-radius:1.2em;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}' +
+        S + '.lmx-onl-prog--end::before{content:"";display:block;width:3.2em;height:3.2em;margin:0 0 .7em;opacity:.55;background:url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'1.6\' stroke-linecap=\'round\'><circle cx=\'10.5\' cy=\'10.5\' r=\'6.5\'/><path d=\'M15.5 15.5L21 21M8 8l5 5M13 8l-5 5\'/></svg>") center/contain no-repeat}' +
+        S + '.lmx-onl-prog--end .lmx-onl-prog__s{font-size:1.25em;font-weight:700;opacity:1;margin:0 0 .3em;max-width:34em}' +
+        S + '.lmx-onl-prog--end .lmx-onl-dead{justify-content:center;margin-top:1.1em}' +
         S + '.lmx-onl-prog__b{height:.28em;border-radius:99em;background:rgba(255,255,255,.14);overflow:hidden;margin-bottom:1em}' +
         S + '.lmx-onl-prog__b i{display:block;height:100%;width:8%;border-radius:99em;background:#fff;transition:width .5s ease;animation:lmxBar 1.4s ease-in-out infinite alternate}' +
         '@keyframes lmxBar{0%{opacity:.55}100%{opacity:1}}' +
@@ -682,6 +688,8 @@
     }
     function hideJunk(act) {
         var body = act.querySelector('.explorer__files-body .scroll__body'), kids = body ? body.children : [], i, el, ch = false;
+        // кнопки рідного блоку «не дав результатів» невидимі — не даємо їм ловити фокус
+        if (body) [].forEach.call(body.querySelectorAll('[class*="online-empty"].selector, [class*="online-empty"] .selector'), function (e) { e.classList.remove('selector', 'focus'); ch = true; });
         for (i = 0; i < kids.length; i++) {
             el = kids[i];
             if (!el.classList || !el.classList.contains('selector') || el.classList.contains('lmx-onl-item') || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
@@ -1108,6 +1116,7 @@
         row.innerHTML = h;
         if (!next && manySrc) { var ps = pr.querySelector('.lmx-onl-prog__s'); if (ps) ps.textContent = 'Жодне джерело не дало результатів'; }
         pr.appendChild(row);
+        safe(function () { hideJunk(act); });
         [].forEach.call(row.querySelectorAll('.lmx-onl-btn'), function (b) {
             $(b).on('hover:enter click', once(function () {
                 var a = b.getAttribute('data-a');
@@ -1117,7 +1126,7 @@
                     window.__lmxManual = Date.now();
                     if (row.parentNode) row.parentNode.removeChild(row);
                     act.classList.add('lmx-onl-load'); act.__lmxEG = 0;
-                    selIn(inst, 'sort', next); recover(act); emptyGuard(act);
+                    act.__lmxRlKey = 'src'; selIn(inst, 'sort', next); recover(act); emptyGuard(act);
                     return;
                 }
                 var cid = '', card = null;
@@ -1747,7 +1756,7 @@
                     // сезон/озвучка: як і при зміні джерела, ховаємо рідні «сирі» картки й показуємо свою заглушку, поки з'являться наші
                     if (key === 'season' || key === 'voice') { act.__lmxRlKey = key; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; safe(function () { afterReload(act); }); }
                     recover(act);
-                    if (key === 'src') { act.__lmxEG = 0; emptyGuard(act); }
+                    if (key === 'src') { act.__lmxRlKey = 'src'; act.__lmxEG = 0; emptyGuard(act); }
                 }
             }));
             d.appendChild(c);
