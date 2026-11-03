@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.19';
+    var VERSION = '2.20';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -457,6 +457,31 @@
             if (!words) return;
             nodes.forEach(function (n) { if (/^\s*\d{1,2}\.\d{1,2}\.\d{4}\s*$/.test(n.textContent || '')) { n.setAttribute('data-lmx-sep', '1'); n.style.setProperty('display', 'none', 'important'); } });
         });
+    }
+    // Довга назва місяця («30 Листопада 2004») не вміщається в рядок з рейтингом і переходить на другий рядок, ламаючи рівність карток.
+    // Якщо хоч в одній картці дата переноситься — скорочуємо місяць у всіх картках списку («30 лис. 2004»), щоб вигляд був однаковий
+    var MON = { 'січня': 'січ.', 'лютого': 'лют.', 'березня': 'бер.', 'квітня': 'кві.', 'травня': 'тра.', 'червня': 'чер.', 'липня': 'лип.', 'серпня': 'сер.', 'вересня': 'вер.', 'жовтня': 'жов.', 'листопада': 'лис.', 'грудня': 'гру.' };
+    function fitDates(list) {
+        var rows = [], vis = false, wrap = false;
+        list.forEach(function (it) {
+            [].forEach.call(it.querySelectorAll('[class*="__info"], [class*="-footer"], [class*="__footer"]'), function (box) {
+                var nodes = [].slice.call(box.querySelectorAll('*')).filter(function (n) { return !n.children.length && n.offsetHeight; });
+                nodes.forEach(function (n) {
+                    var t = n.getAttribute('data-lmx-full') || n.textContent || '', m = t.match(/^\s*(\d{1,2})\s+([А-Яа-яІіЇїЄє']{4,})\s+(\d{4})\s*$/);
+                    if (!m || !MON[m[2].toLowerCase()]) return;
+                    n.setAttribute('data-lmx-full', t);
+                    if (n.textContent !== t) n.textContent = t;
+                    rows.push({ n: n, first: nodes[0], m: m });
+                });
+            });
+        });
+        rows.forEach(function (r) {
+            if (!r.n.offsetHeight) return;
+            vis = true;
+            if (r.first !== r.n && r.n.getBoundingClientRect().top - r.first.getBoundingClientRect().top > r.n.offsetHeight * 0.6) wrap = true;
+        });
+        if (!vis || !wrap) return;
+        rows.forEach(function (r) { r.n.textContent = r.m[1] + ' ' + MON[r.m[2].toLowerCase()] + ' ' + r.m[3]; });
     }
     function tidySeps(list) {
         list.forEach(function (it) {
@@ -2203,6 +2228,7 @@
         safe(function () { leftTimes(list); });
         safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); tidySeps(list); });
         safe(function () { epInfo(list, card, act); });
+        safe(function () { clearTimeout(act.__lmxFD); act.__lmxFD = setTimeout(function () { safe(function () { fitDates(list); }); setTimeout(function () { safe(function () { fitDates(list); }); }, 1300); }, 350); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
         // перший вхід: Lampa рахує висоту прокрутки до того, як з'явились усі ряди — перераховуємо (раніше це давав лише повторний вибір «Серії 1-10»)
