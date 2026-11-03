@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.18';
+    var VERSION = '2.19';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -99,6 +99,14 @@
         // випадаючий список (сезон, озвучення): лежить поверх карток, нічого не зсуває
         S + '.lmx-onl-drop--pop{position:absolute;z-index:60;display:block;padding:.35em;overflow-y:auto;overflow-x:hidden;border-radius:.8em;background:rgba(18,20,28,.98);border:1px solid rgba(255,255,255,.14);box-shadow:0 1em 3em rgba(0,0,0,.75);box-sizing:border-box}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt{display:flex !important;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;margin:0 0 .12em !important;padding:.5em .9em !important;border:0 !important;border-radius:.5em !important;background:transparent !important;box-shadow:none !important;white-space:nowrap;transform:none !important}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt__n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt__q{flex:0 0 auto;margin-left:.8em;padding:.1em .5em;border-radius:.4em;background:rgba(255,255,255,.14);font-size:.72em;font-weight:700;letter-spacing:.04em}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt.focus .lmx-onl-opt__q{background:rgba(0,0,0,.12)}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt--ok::before{margin-right:.65em;flex:0 0 auto}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-sep{display:block;margin:.35em .5em .2em;padding:.35em 0 0;border-top:1px solid rgba(255,255,255,.14);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;opacity:.55}' +
+        S + '.lmx-onl-drop--pop::before,' + S + '.lmx-onl-drop--pop::after{display:none;position:-webkit-sticky;position:sticky;left:0;right:0;height:1.9em;line-height:1.9em;text-align:center;font-size:.7em;font-weight:600;letter-spacing:.04em;pointer-events:none;z-index:3;color:#fff}' +
+        S + '.lmx-onl-drop--pop[data-up]::before{content:attr(data-up);display:block;top:-.4em;margin-bottom:-1.9em;background:linear-gradient(180deg,rgba(18,20,28,1) 35%,rgba(18,20,28,0))}' +
+        S + '.lmx-onl-drop--pop[data-dn]::after{content:attr(data-dn);display:block;bottom:-.4em;margin-top:-1.9em;background:linear-gradient(0deg,rgba(18,20,28,1) 35%,rgba(18,20,28,0))}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt--on{color:#e9a24a}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt--on::after{content:"\\2713";margin-left:1em}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt.focus{background:#fff !important;color:#0a0b10 !important}' +
@@ -1616,6 +1624,16 @@
         d.style.minWidth = Math.max(pr.width, 180) + 'px';
         d.style.maxWidth = Math.max(240, window.innerWidth - pr.left - 24) + 'px';
         d.style.maxHeight = Math.max(160, window.innerHeight - pr.bottom - 28) + 'px';
+        d.addEventListener('scroll', function () { popHint(d); });
+        popHint(d);
+    }
+    // підказки «↑ ще N / ↓ ще N», коли в списку є пункти поза видимою частиною
+    function popHint(d) {
+        if (!d) return;
+        var its = [].slice.call(d.querySelectorAll('.lmx-onl-opt')), up = 0, dn = 0, top = d.scrollTop, bot = top + d.clientHeight;
+        its.forEach(function (x) { if (x.offsetTop + x.offsetHeight <= top + 2) up++; else if (x.offsetTop >= bot - 2) dn++; });
+        if (up) d.setAttribute('data-up', '\u2191 ще ' + up); else d.removeAttribute('data-up');
+        if (dn) d.setAttribute('data-dn', '\u2193 ще ' + dn); else d.removeAttribute('data-dn');
     }
     // прокрутка всередині списку (scrollIntoView не використовуємо: він міг би зсунути весь екран)
     function popReveal(el) {
@@ -1624,6 +1642,7 @@
         var t = el.offsetTop, h = el.offsetHeight;
         if (t < d.scrollTop) d.scrollTop = Math.max(0, t - 4);
         else if (t + h > d.scrollTop + d.clientHeight) d.scrollTop = t + h - d.clientHeight + 4;
+        popHint(d);
     }
     function toggleDrop(act, key) {
         var inst = instFor(act), S = inst && readSets(inst), opts = [], bar = act.querySelector('.lmx-onl-bar');
@@ -1651,6 +1670,11 @@
                 seenLook[look] = o;
                 opts.push(o);
             });
+            // у розкритому списку спершу джерела з результатами, нижче — без результатів (під розділювачем)
+            if (anyOk && act.__lmxAllSrc) {
+                var okO = opts.filter(function (x) { return x.ok || x.sel; }), noO = opts.filter(function (x) { return !(x.ok || x.sel); });
+                if (okO.length && noO.length) opts = okO.concat([{ sep: true, title: 'Без результатів' }], noO);
+            }
             if (anyOk && (hidden || act.__lmxAllSrc)) opts.push({ title: act.__lmxAllSrc ? 'Лише з результатами' : 'Всі джерела (+' + hidden + ')', sticky: true, run: function () { act.__lmxAllSrc = !act.__lmxAllSrc; } });
         }
         else if (key === 'page') {
@@ -1681,7 +1705,12 @@
             var c = document.createElement('div');
             if (o.sep) { c.className = 'lmx-onl-sep'; c.textContent = o.title; d.appendChild(c); return; }
             c.className = 'simple-button selector lmx-onl-opt' + (o.sel ? ' lmx-onl-opt--on' : '') + (o.dim ? ' lmx-onl-opt--dim' : '') + (o.ok ? ' lmx-onl-opt--ok' : '');
-            c.textContent = o.title;
+            var qm = key === 'src' && !o.sticky ? String(o.title).match(/^(.*?)\s*(?:[~\-\u2013\u2014|\u00b7]\s*)(4K|2160p?|UHD|1440p?|1080p?|FHD|720p?|HD|480p?|SD)\s*$/i) : null;
+            if (qm && qm[1]) {
+                var nm0 = document.createElement('span'), q0 = document.createElement('span');
+                nm0.className = 'lmx-onl-opt__n'; nm0.textContent = qm[1]; q0.className = 'lmx-onl-opt__q'; q0.textContent = qm[2].toUpperCase().replace(/P$/, '');
+                c.appendChild(nm0); c.appendChild(q0);
+            } else { var nm1 = document.createElement('span'); nm1.className = 'lmx-onl-opt__n'; nm1.textContent = o.title; c.appendChild(nm1); }
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 window.__lmxManual = Date.now();
@@ -1699,7 +1728,7 @@
             if (o.sel && !focusEl) focusEl = c;
         });
         bar.parentNode.insertBefore(d, bar.nextSibling);
-        if (key === 'season' || key === 'voice') safe(function () { popPlace(act, d, key, bar); });
+        if (key === 'season' || key === 'voice' || key === 'src') safe(function () { popPlace(act, d, key, bar); });
         syncNav(act, focusEl || d.querySelector('.selector'));
         if (d.classList.contains('lmx-onl-drop--pop')) popReveal(focusEl || d.querySelector('.selector'));
         relayout();
