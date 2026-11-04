@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.70';
+    var VERSION = '2.71';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1083,14 +1083,50 @@
             if (!v || v.indexOf(SRC_MARK) >= 0 || /themoviedb|image\.|\.(?:jpe?g|png|webp|gif|js|css|svg)(?:\?|$)/i.test(v)) return '';
             var act = document.querySelector('.activity--active'), inst = act && instFor(act), S = inst && readSets(inst), best = '', bi = -1;
             if (!S) return '';
-            S.sortAll.forEach(function (x) {
-                var t = x && x.source ? String(x.source) : '';
+            var toks = [];
+            S.sortAll.forEach(function (x) { if (!x) return; if (x.source) toks.push(String(x.source)); var k = srcName(x.title).replace(/\s+/g, ''); if (k) toks.push(k); });
+            toks.forEach(function (t) {
                 if (t.length < 3 || t.length < best.length) return;
                 var re = new RegExp('([\\/=])(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=[\\/?&#]|$)', 'i'), m = re.exec(v);
                 if (m && (t.length > best.length)) { best = t; bi = m.index + m[1].length; }
             });
             return best ? v.slice(0, bi) + SRC_MARK + v.slice(bi + best.length) : '';
         } catch (e) { return ''; }
+    }
+    // Деякі плагіни (BWA) ходять у мережу напряму через XMLHttpRequest / fetch з власними заголовками, повз Lampa.Reguest: слухаємо й їх.
+    // Запам'ятовуємо адресу з назвою джерела (як шаблон) і заголовки цього запиту, щоб решту джерел питати так само
+    function netSeen(url, headers) {
+        try {
+            if (window.__lmxPB || !url) return;
+            var v = String(url);
+            if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) return;   // звичайний Lampac — його бачить обгортка Reguest
+            var gt = genericTpl(v); if (!gt) return;
+            var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
+            window.__lmxProbeUrl = { u: gt, cid: String(c && c.id || ''), t: Date.now(), gen: 1, h: headers || null };
+        } catch (e) {}
+    }
+    function hookNet() {
+        try {
+            if (window.__lmxNetHook) return; window.__lmxNetHook = 1;
+            var X = window.XMLHttpRequest && XMLHttpRequest.prototype;
+            if (X) {
+                var o = X.open, sh = X.setRequestHeader, sd = X.send;
+                X.open = function (m, u) { try { this.__lmxU = u; this.__lmxH = {}; } catch (e) {} return o.apply(this, arguments); };
+                X.setRequestHeader = function (k, v) { try { if (this.__lmxH) this.__lmxH[k] = v; } catch (e) {} return sh.apply(this, arguments); };
+                X.send = function () { try { netSeen(this.__lmxU, this.__lmxH); } catch (e) {} return sd.apply(this, arguments); };
+            }
+            if (typeof window.fetch === 'function') {
+                var f = window.fetch;
+                window.fetch = function (u, init) {
+                    try {
+                        var url = typeof u === 'string' ? u : (u && u.url), h = null, hh = (init && init.headers) || (u && u.headers);
+                        if (hh) { h = {}; if (typeof hh.forEach === 'function') hh.forEach(function (v, k) { h[k] = v; }); else Object.keys(hh).forEach(function (k) { h[k] = hh[k]; }); }
+                        netSeen(url, h);
+                    } catch (e) {}
+                    return f.apply(this, arguments);
+                };
+            }
+        } catch (e) {}
     }
     function hookRequest() {
         try {
@@ -1232,7 +1268,10 @@
             // страховка: якщо мережа не віддала ні відповіді, ні помилки (рідний timeout не спрацював) — завершуємо самі, щоб підбір не стояв
             setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} end(''); } }, (it.to || job.timeout) + 1500);
             try { net.timeout(it.to || job.timeout); } catch (e) {}
-            try { net['native'](urlFor(it.source), end, function () { end(''); }, false, { dataType: 'text' }); } catch (e) { end(''); }
+            var prm = { dataType: 'text' }; if (job.headers) prm.headers = job.headers;
+            window.__lmxPB = true;
+            try { net['native'](urlFor(it.source), end, function () { end(''); }, false, prm); } catch (e) { end(''); }
+            window.__lmxPB = false;
         }
         if (!job.items.length) return job.onEnd();
         for (var w = 0; w < job.par; w++) step();
@@ -2526,13 +2565,13 @@
                         gs.refine = { t: Date.now(), done: !rc.length };
                         if (rc.length) {
                             // як тільки хтось із кандидатів уже явно переміг (українська озвучка + потрібна якість, або 4K у режимі «Якість»), решту не чекаємо
-                            var rjob = { cid: cid, url: pu2.u, par: 6, timeout: 2500, onEach: function (it, r) {
+                            var rjob = { cid: cid, url: pu2.u, headers: pu2.h || null, par: 6, timeout: 2500, onEach: function (it, r) {
                                 if (r && r.s === 'ok' && !gs.refine.done) {
                                     var rq0 = r.q || it.q || 0;
                                     if (balMode() === 'quality' ? rq0 >= 4 : (r.uv > 0 && rq0 >= qTarget())) { gs.refine.done = true; try { rjob.stop(); } catch (e) {} }
                                 }
                             }, onEnd: function () { gs.refine.done = true; },
-                                items: rc.map(function (r) { return { key: keyOf(r.it), source: r.it.source, q: r.q, tor: r.tor, to: r.tor ? 3500 : 0 }; }) };
+                                items: rc.map(function (r) { return { key: keyOf(r.it), source: r.it.source || keyOf(r.it).replace(/\s+/g, ''), q: r.q, tor: r.tor, to: r.tor ? 3500 : 0 }; }) };
                             bgProbe(rjob);
                         }
                     }
@@ -2554,19 +2593,19 @@
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
                     sort.forEach(function (x) {
-                        if (!x || x.ghost || !x.source || !keyOf(x)) return;
+                        if (!x || x.ghost || !(x.source || (pu.gen && keyOf(x))) || !keyOf(x)) return;
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
                         var gq = mem.g[keyOf(x)];
                         if (gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
-                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : 0 });
+                        items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 6, timeout: 3000, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: 6, timeout: 3000, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
@@ -3057,6 +3096,7 @@
             safe(hookFilter);
             safe(hookSelect);
             safe(hookRequest);
+            safe(hookNet);
             safe(hookReplace);
             safe(hookComponent);
             safe(hookController);
