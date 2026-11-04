@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.62';
+    var VERSION = '2.63';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -998,6 +998,7 @@
     var OPTS = {
         ua: ['Перевага українській озвучці', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_ua'],
         bal: ['Баланс вибору джерела', 'balanced', { balanced: 'Збалансовано', ua: 'Українська в пріоритеті', quality: 'Якість у пріоритеті' }, 'lmx_online_bal'],
+        vauto: ['Авто-вибір української озвучки', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_vauto'],
         sortsrc: ['Автосортування списку джерел', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_sortsrc'],
         order: ['Порядок серій', 'std', { std: 'Стандартний', rev: 'Зворотний (нові зверху)' }, 'lmx_online_order'],
         art: ['Якість кадру', 'auto', { auto: 'Авто', max: 'Максимальна (важча)' }, 'lmx_online_art'],
@@ -1400,6 +1401,7 @@
     var BAL_NAMES = { balanced: 'Збалансовано', ua: 'Українська в пріоритеті', quality: 'Якість у пріоритеті' };
     var QL = { 4: '4K', 3: '1080', 2: '720', 1: 'SD' };
     function balMode() { var v = opt('lmx_online_bal', 'balanced'); return BAL[v] ? v : 'balanced'; }
+    function vautoOn() { return opt('lmx_online_vauto', 'on') === 'on'; }
     function sortSrcOn() { return opt('lmx_online_sortsrc', 'on') === 'on'; }
     // o: { q — якість із назви, pe — запис фонової перевірки (реальна якість і озвучки), ms }; повертає { s: бал, why: [причини], ua: 'real'|'guess'|'none'|'' }
     function srcScore(k, o, mem) {
@@ -1516,6 +1518,7 @@
     }
     function freshEps(body) { return episodeEls(body).filter(function (e) { return !e.hasAttribute('data-lmx-old'); }); }
     function afterReload(act) {
+        act.__lmxVT0 = Date.now();
         act.classList.add('lmx-onl-rl');
         markStale(act);
         // відкрита панель вибору (джерело/сезон/озвучка) після вибору зайва — закриваємо, щоб було видно завантаження
@@ -1902,6 +1905,65 @@
     // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
     // Типи озвучок (дубляж / багатоголосий / …) — для групування у списку озвучок
     // Озвучки, які користувач сам обирав двічі й більше, плагін теж вважає «своїми» й піднімає вгору — так список «вчиться» на ваших вподобаннях
+    // Озвучка, яку користувач сам обрав для цього матеріалу: наступного разу відкриваємо одразу її
+    function vpGet() { try { var v = Lampa.Storage.get('lmx_watch_vp', ''); if (typeof v === 'string' && v) v = JSON.parse(v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+    function vpSet(cid, title) {
+        try {
+            cid = String(cid || ''); if (!cid || !title) return;
+            var m = vpGet(), ks = Object.keys(m);
+            if (ks.length > 200) ks.sort(function (a, b) { return (m[a].ts || 0) - (m[b].ts || 0); }).slice(0, ks.length - 150).forEach(function (k) { delete m[k]; });
+            m[cid] = { t: String(title), ts: Date.now() };
+            Lampa.Storage.set('lmx_watch_vp', JSON.stringify(m));
+        } catch (e) {}
+    }
+    function vnorm(t) { return String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+    // Яку озвучку відкрити першою: збережений вибір для цього серіалу → найчастіше обирана українська → дубляж → багатоголосий → перша українська зі списку
+    function pickVoice(cid, items) {
+        var vp = vpGet(), rem = vp[String(cid)] && vnorm(vp[String(cid)].t), vc = vcGet(), best = null, bs = -1, i, t, sc;
+        for (i = 0; i < items.length; i++) {
+            if (!items[i] || !items[i].title) continue;
+            t = String(items[i].title); var n = vnorm(t);
+            if (rem && n === rem) return items[i];
+            if (!isUaVoice(t)) continue;
+            sc = 1 + (vc[n] || 0) * 10 + (/дубл|dub/i.test(t) ? 3 : 0) + (/багатоголос|multi|2\+|різноголос/i.test(t) ? 2 : 0) + (/укр|ukr/i.test(t) ? 1 : 0) - i * 0.001;
+            if (sc > bs) { bs = sc; best = items[i]; }
+        }
+        return best;
+    }
+    // Вибір озвучки «під заставкою»: список уже прийшов, але екран ще закритий смужкою завантаження — міняємо озвучку до першого показу, тож перезавантаження не видно.
+    // Один раз на джерело+сезон; не чіпаємо, якщо користувач уже щось натискав; якщо з новою озвучкою серій немає — повертаємо попередню
+    function voiceGate(act, card, list) {
+        try {
+            if (!vautoOn() || !act.classList.contains('lmx-onl-load') || act.__lmxOpen || selOpen()) return false;
+            var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
+            if (!g || !g.items || g.items.length < 2) return false;
+            var cid = String(card && card.id || ''), sel = S.sort && selItem(S.sort), sn = S.season && selItem(S.season);
+            var key = cid + '|' + (sel ? srcName(sel.title) : '') + '|' + (sn ? seTitle(sn.title) : '');
+            act.__lmxVG = act.__lmxVG || {};
+            if (act.__lmxVG[key]) return false;
+            act.__lmxVG[key] = 1;
+            var t0 = act.__lmxVT0 || 0;
+            if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0 || (window.__lmxUserVoiceT || 0) > t0) return false;
+            var cur = selItem(g), cand = pickVoice(cid, g.items);
+            if (!cand || cand === cur) return false;
+            if (cur && !vpGet()[cid] && isUaVoice(cur.title)) return false;
+            if (cand.title && cur && vnorm(cand.title) === vnorm(cur.title)) return false;
+            act.__lmxVGt = Date.now();
+            var prev = cur, idx = idxOf(g, cand), stype = g.stype;
+            selIn(inst, 'filter', { stype: stype }, { index: idx });
+            setTimeout(function () {
+                safe(function () {
+                    if (!document.body.contains(act)) return;
+                    act.__lmxVGt = 0;
+                    if (act.querySelector('.lmx-onl-item') || !prev) return;
+                    var i2 = instFor(act), S2 = i2 && readSets(i2), g2 = S2 && S2.voice, j;
+                    if (!g2) return;
+                    for (j = 0; j < g2.items.length; j++) if (g2.items[j] && vnorm(g2.items[j].title) === vnorm(prev.title)) { selIn(i2, 'filter', { stype: g2.stype }, { index: idxOf(g2, g2.items[j]) }); break; }
+                });
+            }, 9000);
+            return true;
+        } catch (e) { return false; }
+    }
     function vcGet() { try { var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = parseCached(VC_SLOT, v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
     function vcNote(t) {
         try { var m = vcGet(), k = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
@@ -2052,7 +2114,7 @@
         } else {
             var g = key === 'season' ? S.season : S.voice;
             if (!g) return false;
-            g.items.forEach(function (it) { if (it) opts.push({ title: key === 'season' ? seTitle(it.title) : it.title, sel: !!it.selected, run: function () { if (key === 'voice') vcNote(it.title); selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
+            g.items.forEach(function (it) { if (it) opts.push({ title: key === 'season' ? seTitle(it.title) : it.title, sel: !!it.selected, run: function () { if (key === 'voice') { vcNote(it.title); window.__lmxUserVoiceT = Date.now(); try { var ac2 = Lampa.Activity.active(), cd2 = ac2 && (ac2.movie || ac2.card); vpSet(cd2 && cd2.id, it.title); } catch (e) {} } selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, it) }); } }); });
             // українські озвучки — вгору (порядок усередині груп зберігається); вимикається в налаштуваннях «Перевага українській озвучці»
             if (key === 'voice' && uaOn()) {
                 var uaV = opts.filter(function (x) { return isUaVoice(x.title); }), otV = opts.filter(function (x) { return !isUaVoice(x.title); });
@@ -2576,7 +2638,7 @@
                     if (!natT) natT = Date.now();
                     else if (Date.now() - natT > 3500) { releaseNative(act); return stop(); }
                 } else natT = 0;
-                if (act.__lmxProbing || !isOn()) { since = Date.now(); return; }
+                if (act.__lmxProbing || !isOn() || (act.__lmxVGt && Date.now() - act.__lmxVGt < 9500)) { since = Date.now(); return; }
                 var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], i, curIt = null;
                 if (!inst || !sort.length) return;
                 for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
@@ -2610,6 +2672,7 @@
     var PROG_PILLS = '<div class="lmx-onl-prog__f"><i></i><i></i><i></i><i></i></div>';
     var PROG_CARDS = '<div class="lmx-onl-prog__g"><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i><i class="lmx-onl-prog__c"></i></div>';
     function buildSkeleton(act, hd, card) {
+        act.__lmxVT0 = Date.now();
         var q = (card.title || card.name || ''), year = String(card.release_date || card.first_air_date || '').slice(0, 4), vote = Number(card.vote_average) || 0;
         var h = document.createElement('div');
         h.className = 'lmx-onl-hero lmx-onl-hero--load';
@@ -2679,6 +2742,7 @@
         var hd = act.querySelector('.explorer__files-head') || body, old = hd.querySelector('.lmx-onl-hero');
         if (act.__lmxProbing) return;
         if (!list.length) { if (!old && hd !== body) buildSkeleton(act, hd, card); safe(function () { emptyGuard(act); }); return; }
+        if (voiceGate(act, card, list)) return;
         act.classList.remove('lmx-onl-load');
         var pg = hd.querySelector('.lmx-onl-prog'); if (pg) pg.parentNode.removeChild(pg);
         numberItems(list);
@@ -2951,6 +3015,10 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_bal', type: 'select', values: BAL_NAMES, default: 'balanced' },
                 field: { name: 'Баланс вибору джерела', description: 'Як поєднувати українську озвучку та якість: «Збалансовано» — українська важить трохи більше за рівень якості; «Українська в пріоритеті» — майже завжди українська; «Якість у пріоритеті» — спершу найкраща якість' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_online_vauto', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
+                field: { name: 'Авто-вибір української озвучки', description: 'Поки йде завантаження, обирає українську озвучку (або ту, яку ви вже обирали для цього серіалу) — екран не перезавантажується на очах. Якщо з нею серій немає, повертає попередню' }
             });
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_sortsrc', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
