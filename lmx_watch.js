@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.55';
+    var VERSION = '2.56';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1426,6 +1426,14 @@
             var all = act.querySelectorAll(sel), i;
             for (i = all.length - 1; i >= 1; i--) if (all[i].parentNode) all[i].parentNode.removeChild(all[i]);
         });
+        // після повторних перебудов екрана смужка завантаження могла опинитись над шапкою фільму — шапка завжди перша
+        try {
+            var hr = act.querySelector('.lmx-onl-hero'), hp = hr && hr.parentNode;
+            if (hp && hp.firstElementChild !== hr) {
+                var ft = hp.firstElementChild;
+                if (ft && ft.classList && (ft.classList.contains('lmx-onl-prog') || ft.classList.contains('lmx-onl-bar') || ft.classList.contains('lmx-onl-drop'))) hp.insertBefore(hr, ft);
+            }
+        } catch (e) {}
     }
     // Повільні пристрої (телефон): після зміни джерела старі картки ще стоять у списку, поки приходять нові. Позначаємо наявні як «старі»,
     // чекаємо свіжих і лише тоді прибираємо старі — інакше екран показував обидва списки одразу
@@ -1517,7 +1525,7 @@
                         if (!document.body.contains(act) || act.__lmxProbing || selOpen()) return;
                         hideJunk(act);
                         var fk = act.__lmxRlKey; act.__lmxRlKey = '';
-                        var tg = (fk && act.querySelector('.lmx-onl-g--' + fk + ' .selector')) || act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
+                        var byUser = Date.now() - (window.__lmxManual || 0) < 20000, tg = (byUser && fk && act.querySelector('.lmx-onl-g--' + fk + ' .selector')) || act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') || act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-item');
                         if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, tg); }
                     });
                 }, 300);
