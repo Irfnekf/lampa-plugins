@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.92';
+    var VERSION = '2.93';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1103,71 +1103,18 @@
     function srcName(t) { return String(t || '').replace(/\s*[-–—~]\s*(\d{3,4}p?|4k|uhd|fhd|hd)\b.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
     // ---- Фонова перевірка джерел (як у Nova): не перемикаємо екран, а самі запитуємо ті ж адреси «/lite/<джерело>» і читаємо відповідь ----
     // Адресу вчимося у власних запитів онлайн-плагіна (підміняємо в ній назву джерела); 'rch'/'accsdb'/'blocked' і незрозумілі відповіді пропускаємо
-    var SRC_MARK = '{lmxsrc}';
-    function genericTpl(v) {
-        try {
-            if (!v || v.indexOf(SRC_MARK) >= 0 || /themoviedb|image\.|\.(?:jpe?g|png|webp|gif|js|css|svg)(?:\?|$)/i.test(v)) return '';
-            var act = document.querySelector('.activity--active'), inst = act && instFor(act), S = inst && readSets(inst), best = '', bi = -1;
-            if (!S) return '';
-            var toks = [];
-            S.sortAll.forEach(function (x) { if (!x) return; if (x.source) toks.push(String(x.source)); var k = srcName(x.title).replace(/\s+/g, ''); if (k) toks.push(k); });
-            toks.forEach(function (t) {
-                if (t.length < 3 || t.length < best.length) return;
-                var re = new RegExp('([\\/=])(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=[\\/?&#]|$)', 'i'), m = re.exec(v);
-                if (m && (t.length > best.length)) { best = t; bi = m.index + m[1].length; }
-            });
-            return best ? v.slice(0, bi) + SRC_MARK + v.slice(bi + best.length) : '';
-        } catch (e) { return ''; }
-    }
-    // Деякі плагіни (BWA) ходять у мережу напряму через XMLHttpRequest / fetch з власними заголовками, повз Lampa.Reguest: слухаємо й їх.
-    // Запам'ятовуємо адресу з назвою джерела (як шаблон) і заголовки цього запиту, щоб решту джерел питати так само
-    // BWA (окремий онлайн-плагін) розпізнаємо за запитами до його сервера або за заголовком екрана; lampaua цього не зачіпає
     // Профілі онлайн-плагінів: усе, що відрізняється від стандартного (lampaua) — в одному місці
     var PROFILES = {
         def: { simple: false, first: null, seqWait: 2500, egWait: 0, label: '' },
         bwa: { simple: true, first: /uakino|ua\s*kino/i, seqWait: 20000, egWait: 20000, label: 'Завантажуємо джерело…' }
     };
     function profileOf(gs) { return (gs && gs.bwa) || isBwa() ? PROFILES.bwa : PROFILES.def; }
+    // BWA (окремий онлайн-плагін) розпізнаємо лише за назвою його екрана; ніяких перехоплень мережі й спільного стану з lampaua
     function isBwa() {
         try {
-            if (Date.now() - (window.__lmxBwaT || 0) < 15000) return true;
             var h = document.querySelector('.head__title'), a = Lampa.Activity.active();
             return /^\s*bwa\s*$/i.test(h ? h.textContent : '') || /^\s*bwa\s*$/i.test(String(a && a.title || '')) || /bwa/i.test(String(a && a.component || ''));
         } catch (e) { return false; }
-    }
-    function netSeen(url, headers) {
-        try {
-            if (window.__lmxPB || !url) return;
-            var v = String(url);
-            if (/(^|[\/.])bwa\.[a-z]+\//i.test(v)) window.__lmxBwaT = Date.now();
-            if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) return;   // звичайний Lampac — його бачить обгортка Reguest
-            var gt = genericTpl(v); if (!gt) return;
-            var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
-            window.__lmxProbeUrl = { u: gt, cid: String(c && c.id || ''), t: Date.now(), gen: 1, h: headers || null };
-        } catch (e) {}
-    }
-    function hookNet() {
-        try {
-            if (window.__lmxNetHook) return; window.__lmxNetHook = 1;
-            var X = window.XMLHttpRequest && XMLHttpRequest.prototype;
-            if (X) {
-                var o = X.open, sh = X.setRequestHeader, sd = X.send;
-                X.open = function (m, u) { try { this.__lmxU = u; this.__lmxH = {}; } catch (e) {} return o.apply(this, arguments); };
-                X.setRequestHeader = function (k, v) { try { if (this.__lmxH) this.__lmxH[k] = v; } catch (e) {} return sh.apply(this, arguments); };
-                X.send = function () { try { netSeen(this.__lmxU, this.__lmxH); } catch (e) {} return sd.apply(this, arguments); };
-            }
-            if (typeof window.fetch === 'function') {
-                var f = window.fetch;
-                window.fetch = function (u, init) {
-                    try {
-                        var url = typeof u === 'string' ? u : (u && u.url), h = null, hh = (init && init.headers) || (u && u.headers);
-                        if (hh) { h = {}; if (typeof hh.forEach === 'function') hh.forEach(function (v, k) { h[k] = v; }); else Object.keys(hh).forEach(function (k) { h[k] = hh[k]; }); }
-                        netSeen(url, h);
-                    } catch (e) {}
-                    return f.apply(this, arguments);
-                };
-            }
-        } catch (e) {}
     }
     function hookRequest() {
         try {
@@ -1185,10 +1132,6 @@
                                 if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) {
                                     var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
                                     window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
-                                } else {
-                                    // інший плагін (напр. BWA) з іншою схемою адрес: шукаємо в адресі назву одного з джерел списку й робимо з неї шаблон, у який потім підставляємо решту джерел
-                                    var gt = genericTpl(v);
-                                    if (gt) { var a2 = Lampa.Activity.active(), c2 = a2 && (a2.movie || a2.card); window.__lmxProbeUrl = { u: gt, cid: String(c2 && c2.id || ''), t: Date.now(), gen: 1 }; }
                                 }
                             }
                         } catch (e) {}
@@ -1224,7 +1167,7 @@
     var QB = { 4: '4K', 3: 'FHD', 2: 'HD', 1: 'SD' };
     function qmGet() { var o = Lampa.Storage.get('lmx_online_qm', {}); return o && typeof o === 'object' ? o : {}; }
     function qmPut(cid, key, rank) {
-        if (!cid || !key || !rank) return;
+        if (!cid || !key || !rank || isBwa()) return;
         var o = qmGet(), now = Date.now(), k, n = 0;
         for (k in o) { if (!o[k] || now - (o[k].t || 0) > 604800000) delete o[k]; else n++; }
         var m = o[cid] || (o[cid] = { t: 0, l: {} });
@@ -1235,6 +1178,7 @@
     }
     function qmBadge(cid, key) { var m = qmGet()[cid]; return m && m.l && QB[m.l[key]] || ''; }
     function pcPut(cid, key, e) {
+        if (isBwa()) return;
         if (e && e.s === 'ok' && e.q) qmPut(cid, key, e.q);
         var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
         m.t = e.t = Date.now(); m.l[key] = e; pcSet(o);
@@ -1245,17 +1189,15 @@
     }
     // історія ручного вибору: джерело для тайтла (30 днів) і скільки разів ви обирали його взагалі
     var hCache = { t: 0, h: {} };
-    // лічильники ручного вибору ведемо окремо для кожного плагіна (вибір у BWA не впливає на lampaua)
-    function pk(x) { return (isBwa() ? 'bwa:' : '') + x; }
     function manualPick(cid, key) {
         if (!key) return;
         window.__lmxPickKey = key; window.__lmxPickT = Date.now();   // який саме пункт щойно обрали вручну (до того, як фільтр оновить виділене джерело)
         try {
             var mem = memGet(), ks;
             mem.h = mem.h || {}; mem.m = mem.m || {};
-            mem.h[pk(key)] = Math.min(50, (mem.h[pk(key)] || 0) + 1);
+            mem.h[key] = Math.min(50, (mem.h[key] || 0) + 1);
             if (cid) {
-                mem.m[pk(cid)] = { s: key, at: Date.now() };
+                mem.m[cid] = { s: key, at: Date.now() };
                 ks = Object.keys(mem.m);
                 if (ks.length > 150) { ks.sort(function (a, b) { return mem.m[a].at - mem.m[b].at; }); ks.slice(0, ks.length - 150).forEach(function (k) { delete mem.m[k]; }); }
             }
@@ -1298,7 +1240,7 @@
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
         job.stop = function () { job.stopped = true; nets.forEach(function (n) { try { n.clear(); } catch (e) {} }); };
-        function urlFor(src) { return job.url.indexOf(SRC_MARK) >= 0 ? job.url.replace(SRC_MARK, encodeURIComponent(src)) : job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
+        function urlFor(src) { return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
         function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
         function step() {
             if (job.stopped || idx >= job.items.length) return;
@@ -1427,12 +1369,14 @@
     // ---- Пам'ять джерел: що спрацювало раніше (для цього фільму і взагалі) і якої якості ----
     function memGet() {
         try {
-            var v = Lampa.Storage.get('lmx_online_mem', '');
+            var v = Lampa.Storage.get(memKey(), '');
             if (typeof v === 'string' && v) v = JSON.parse(v);
-            if (v && typeof v === 'object' && v.g && v.t) { if (v.hv !== 2) { v.h = {}; v.m = {}; v.hv = 2; } return v; }   // одноразове скидання накрученого «звичного вибору»
+            if (v && typeof v === 'object' && v.g && v.t) { if (v.hv !== 3) { v.g = {}; v.t = {}; v.h = {}; v.m = {}; v.hv = 3; } return v; }   // одноразове скидання досвіду, накопиченого під час тестів BWA
         } catch (e) {}
         return { g: {}, t: {} };
     }
+    // досвід джерел (успіхи, швидкість, звичний вибір) ведемо окремо для BWA, щоб він не впливав на підбір у lampaua
+    function memKey() { return isBwa() ? 'lmx_online_mem_bwa' : 'lmx_online_mem'; }
     function memSet(mem) {
         try {
             var ks = Object.keys(mem.t);
@@ -1440,7 +1384,7 @@
                 ks.sort(function (a, b) { return (mem.t[a].at || 0) - (mem.t[b].at || 0); });
                 ks.slice(0, ks.length - 150).forEach(function (k) { delete mem.t[k]; });
             }
-            Lampa.Storage.set('lmx_online_mem', JSON.stringify(mem));
+            Lampa.Storage.set(memKey(), JSON.stringify(mem));
         } catch (e) {}
     }
     function qrank(q) { return q === '4K' ? 4 : q === 'FHD' ? 3 : q === 'HD' ? 2 : q ? 1 : 0; }
@@ -1456,6 +1400,7 @@
     function uaLearned(k) { try { var g = memGet().g[k]; return !!(g && (g.ua || 0) >= 1); } catch (e) { return false; } }
     function uaNote(k) { try { if (!k || uaName(k)) return; var mem = memGet(), gg = mem.g[k] || (mem.g[k] = { ok: 0, fail: 0, q: 0 }); if ((gg.ua || 0) < 9) { gg.ua = (gg.ua || 0) + 1; memSet(mem); } } catch (e) {} }
     function learnUaVoice(act, list) {
+        if (isBwa()) return;
         try {
             var inst = instFor(act), S = inst && readSets(inst), sel = S && S.sort && curSrc(act, S.sort), k = sel ? srcName(sel.title) : '';
             if (!k || uaName(k) || act.__lmxUaL === k) return;
@@ -1494,6 +1439,7 @@
     }
     function learnGet() { try { var v = Lampa.Storage.get('lmx_online_learn', ''); if (typeof v === 'string' && v) v = parseCached(LEARN_SLOT, v); if (v && typeof v === 'object' && v.s) return v; } catch (e) {} return { s: {}, seen: {} }; }
     function learnNote(sort, cid) {
+        if (isBwa()) return;
         try {
             if (!cid) return;
             var L = learnGet(), an = isAnimeCard();
@@ -1538,7 +1484,7 @@
         }
         if (animeBonus(k)) { s += W.anime; why.push('аніме-джерело'); }
         if (q) why.push(QL[q]);
-        if (mem.h && (mem.h[pk(k)] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
+        if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
         if (g && (g.fail || 0) > (g.ok || 0)) s -= Math.min(1.5, ((g.fail || 0) - (g.ok || 0)) * 0.25);
         ms = (pe && pe.ms) || (g && g.ms) || 0;
@@ -2632,7 +2578,7 @@
                 }
                 rankLive();
                 // 3: джерело, яке ви вручну обирали для цього тайтла, відкриваємо першим (30 днів)
-                var mp = mem.m && mem.m[pk(cid)], mpIt = null;
+                var mp = mem.m && mem.m[cid], mpIt = null;
                 if (mp && Date.now() - (mp.at || 0) < 30 * 86400000) live.forEach(function (r) { if (!mpIt && keyOf(r.it) === mp.s) mpIt = r; });
                 if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); mpIt.q = Math.max(mpIt.q, qTarget()); mpIt.rq = Math.max(mpIt.rq || 0, qTarget()); }
                 var top = live[0], waitedL = Date.now() - t0;
@@ -2668,9 +2614,7 @@
             if (allSrc && !gs.bg && !life && Date.now() - t0 < 1200) return;
             if (allSrc && !gs.bg) {
                 var pu = window.__lmxProbeUrl;
-                if (pu && pu.cid === cid && sort.length > 1 && pu.gen) {   // шаблон, вивчений з чужого плагіна (BWA): швидка перевірка ненадійна (мовчить про робочі джерела) — одразу йдемо по рейтингу
-                    gs.bg = 'off';
-                } else if (pu && pu.cid === cid && sort.length > 1) {
+                if (pu && pu.cid === cid && sort.length > 1) {
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
                     sort.forEach(function (x) {
@@ -2695,31 +2639,16 @@
                     }, onEnd: function () { gs.bg = 'done'; } };
                     gs.bgDeadline = Date.now() + 14000;
                     bgProbe(gs.job);
-                } else if (Date.now() - t0 > 2000) gs.bg = 'off';
+                } else if (Date.now() - t0 > 3500) gs.bg = 'off';
                 else return;
             }
-            if (gs.bg === 'run' && Date.now() - gs.bgT > 5000) {
+            if (gs.bg === 'run' && Date.now() - gs.bgT > 4000) {
                 // довго чекаємо повільні джерела — вже щось знайшли, тож відкриваємо найкраще з наявного, решта догрузиться у фоні
                 var anyOk = false;
                 sort.forEach(function (x) { var pe = x && keyOf(x) && pcEntry(cid, keyOf(x)); if (pe && pe.s === 'ok') anyOk = true; });
                 if (anyOk) gs.bg = 'done';
             }
             if (gs.bg === 'run') { if (Date.now() > gs.bgDeadline) { try { gs.job.stop(); } catch (e) {} gs.bg = 'done'; } return; }
-            if (gs.bg === 'done' && !gs.uaRetry && uaOn()) {
-                // швидка перевірка могла не дочекатись відповіді українського джерела: перепитуємо до 4 таких із довшим очікуванням, перш ніж обирати
-                gs.uaRetry = true;
-                var puR = window.__lmxProbeUrl, rt = [];
-                sort.forEach(function (x) {
-                    var k = x && keyOf(x), pe = k && pcEntry(cid, k);
-                    if (k && uaBonus(k, null) > 0 && !(pe && pe.s === 'ok') && rt.length < 4) rt.push({ key: k, source: x.source || k.replace(/\s+/g, ''), q: titleQ(x.title), tor: false, to: 0 });
-                });
-                if (rt.length && puR && puR.cid === cid) {
-                    gs.bg = 'run'; gs.bgT = Date.now() + 2000; gs.bgDeadline = Date.now() + 7000; gs.early = false;
-                    gs.job = { cid: cid, url: puR.u, headers: puR.h || null, items: rt, par: 4, timeout: 6000, onEach: function () {}, onEnd: function () { gs.bg = 'done'; } };
-                    bgProbe(gs.job);
-                    return;
-                }
-            }
             if (gs.bg === 'done') {
                 gs.bg = 'fin';
                 var okL = [], skipN = 0;
@@ -3212,7 +3141,6 @@
             safe(hookFilter);
             safe(hookSelect);
             safe(hookRequest);
-            safe(hookNet);
             safe(hookReplace);
             safe(hookComponent);
             safe(hookController);
