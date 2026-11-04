@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.08';
+    var VERSION = '3.09';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -514,6 +514,17 @@
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
     var PAGING = true;   // довгі сезони (понад 60 серій) ділимо на сторінки — сотні карток разом гальмують ТВ
     function pageSizeOf(total) { return total > 600 ? 50 : 30; }   // менша сторінка — менше карток і картинок одночасно на екрані (довгі аніме на ТВ)
+    // Довгі серіали (1200+ серій): картинки прихованих сторінок не вантажимо — телевізор інакше тримає в пам'яті сотні постерів і зависає; повертаємо, коли сторінку відкрито
+    function imgDefer(el, off) {
+        try {
+            var im = el.getElementsByTagName('img'), k, x;
+            for (k = 0; k < im.length; k++) {
+                x = im[k];
+                if (off) { var sv = x.getAttribute('src'); if (sv && !x.__lmxS) { x.__lmxS = sv; x.removeAttribute('src'); } }
+                else if (x.__lmxS) { if (!x.getAttribute('src')) x.setAttribute('src', x.__lmxS); x.__lmxS = null; }
+            }
+        } catch (e) {}
+    }
     function applyOrderPages(act, list) {
         var total = list.length, rev = orderRev(), i, el;
         for (i = 0; i < total; i++) list[i].style.order = rev ? String(total - i) : '';
@@ -533,8 +544,8 @@
         act.__lmxPage = pg;
         for (i = 0; i < total; i++) {
             el = list[i];
-            if (Math.floor(i / size) === pg) { el.classList.remove('lmx-onl-off'); el.style.removeProperty('display'); if (!el.classList.contains('selector')) el.classList.add('selector'); }
-            else { el.classList.add('lmx-onl-off'); el.style.setProperty('display', 'none', 'important'); el.classList.remove('selector', 'focus'); }
+            if (Math.floor(i / size) === pg) { el.classList.remove('lmx-onl-off'); el.style.removeProperty('display'); if (!el.classList.contains('selector')) el.classList.add('selector'); if (total > 300) imgDefer(el, false); }
+            else { el.classList.add('lmx-onl-off'); el.style.setProperty('display', 'none', 'important'); el.classList.remove('selector', 'focus'); if (total > 300) imgDefer(el, true); }
         }
         act.__lmxPages = { size: size, n: n, total: total, pg: pg };
     }
