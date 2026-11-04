@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.07';
+    var VERSION = '3.08';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1229,6 +1229,8 @@
     function bgParse(ans) {
         var b = typeof ans === 'string' ? ans : '';
         if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
+        // довгі серіали (Конан, 1200+ серій) віддають відповіді на мегабайти: на телевізорі їх розбір блокує потік і з'їдає пам'ять — читаємо лише початок
+        if (b.length > 350000) b = b.slice(0, 350000);
         if (!b) return { s: 'skip' };
         if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
         if (PAYWALL.test(b)) return { s: 'skip', acc: 1 };
@@ -1248,6 +1250,8 @@
         return { s: 'empty', c: 0 };
     }
     // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
+    // довгий серіал: сотні серій у кожній відповіді — перевіряємо джерела по два, щоб не вбити пам'ять телевізора
+    function longSeries(c) { try { return (c && (c.number_of_episodes || 0)) > 300; } catch (e) { return false; } }
     function bgProbe(job) {
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
@@ -2617,7 +2621,7 @@
                         gs.refine = { t: Date.now(), done: !rc.length };
                         if (rc.length) {
                             // як тільки хтось із кандидатів уже явно переміг (українська озвучка + потрібна якість, або 4K у режимі «Якість»), решту не чекаємо
-                            var rjob = { cid: cid, url: pu2.u, headers: pu2.h || null, par: 6, timeout: 2500, onEach: function (it, r) {
+                            var rjob = { cid: cid, url: pu2.u, headers: pu2.h || null, par: longSeries(card) ? 2 : 6, timeout: 2500, onEach: function (it, r) {
                                 if (r && r.s === 'ok' && !gs.refine.done) {
                                     var rq0 = r.q || it.q || 0;
                                     if (balMode() === 'quality' ? rq0 >= 4 : (r.uv > 0 && rq0 >= qTarget())) { gs.refine.done = true; try { rjob.stop(); } catch (e) {} }
@@ -2659,7 +2663,7 @@
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: 6, timeout: 4500, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
