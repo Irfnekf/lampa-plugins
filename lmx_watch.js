@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.02';
+    var VERSION = '3.03';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2016,7 +2016,8 @@
     function voiceGate(act, card, list) {
         try {
             if (!vautoOn() || !(act.classList.contains('lmx-onl-load') || act.classList.contains('lmx-onl-rl')) || act.__lmxOpen || selOpen()) return false;   // і при першому відкритті, і після ручної зміни джерела
-            if (!(card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)))) return false;   // для фільмів озвучку не підбираємо
+            var man = Date.now() - (window.__lmxManual || 0) < 120000;   // ручна зміна джерела: озвучку попереднього джерела не переносимо — беремо українську (або будь-яку) вже нового
+            if (!man && !(card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)))) return false;   // для фільмів озвучку не підбираємо
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
             var cid = String(card && card.id || ''), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
@@ -2027,7 +2028,7 @@
             if (act.__lmxVG[key]) return false;
             act.__lmxVG[key] = 1;
             var t0 = act.__lmxVT0 || 0;
-            if (Date.now() - t0 > 12000) return false;   // джерело й так відповідало довго — не додаємо ще одне очікування
+            if (!man && Date.now() - t0 > 12000) return false;   // джерело й так відповідало довго — не додаємо ще одне очікування
             if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0 || (window.__lmxUserVoiceT || 0) > t0) return false;
             var cur = selItem(g), cand = pickVoice(cid, g.items);
             if (!cand || cand === cur) return false;
@@ -2805,7 +2806,10 @@
                     var vg = S.voice, vs0 = S.season && selItem(S.season), vtk = cid + '|' + curKey + '|' + (vs0 ? seTitle(vs0.title) : '');
                     var vt = act.__lmxVTry = act.__lmxVTry || {}, tr = vt[vtk] = vt[vtk] || { n: 0, done: {} }, vcur = selItem(vg);
                     if (vcur && vcur.title) tr.done[vnorm(vcur.title)] = 1;
-                    var vc = tr.n < 3 ? pickVoice(cid, vg.items.filter(function (x) { return x && x.title && !tr.done[vnorm(x.title)]; })) : null;
+                    var left0 = vg.items.filter(function (x) { return x && x.title && !tr.done[vnorm(x.title)]; });
+                    var vc = tr.n < (manual ? 5 : 3) ? pickVoice(cid, left0) : null;
+                    // ручне перемикання джерела: української озвучки в нього немає — відкриваємо будь-яку (крім субтитрів), аби не було порожнього екрана
+                    if (!vc && manual && tr.n < 5) vc = left0.filter(function (x) { return !isSubOnly(x.title) && !/оригінал|original/i.test(x.title); })[0] || null;
                     if (vc) {
                         tr.n++; tr.done[vnorm(vc.title)] = 1; act.__lmxVGt = Date.now(); since = Date.now();
                         heroStatus(act, 'Шукаємо озвучку «' + String(vc.title).trim() + '» на «' + curKey + '»…', false, 0.3);
