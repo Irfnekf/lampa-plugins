@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.81';
+    var VERSION = '2.82';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1451,6 +1451,21 @@
     function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
     var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|klon|kinostrain|serialno|ufdub|moviestape|[еe]н[еe][їi]д|ukr/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
+    // Джерело, на якому ми самі бачили українську озвучку (Filmix із преміумом тощо), вважаємо українським, навіть якщо назва про це не каже
+    function uaLearned(k) { try { var g = memGet().g[k]; return !!(g && (g.ua || 0) >= 1); } catch (e) { return false; } }
+    function learnUaVoice(act, list) {
+        try {
+            var inst = instFor(act), S = inst && readSets(inst), sel = S && S.sort && curSrc(act, S.sort), k = sel ? srcName(sel.title) : '';
+            if (!k || uaName(k) || act.__lmxUaL === k) return;
+            var hit = false, g = S.voice;
+            if (g && g.items) g.items.forEach(function (it) { if (it && it.title && isUaVoice(String(it.title))) hit = true; });
+            if (!hit) (list || []).forEach(function (e) { var t = e.querySelector('[class*="__title"]'); if (t && isUaVoice(String(t.textContent || ''))) hit = true; });
+            act.__lmxUaL = k;
+            if (!hit) return;
+            var mem = memGet(), gg = mem.g[k] || (mem.g[k] = { ok: 0, fail: 0, q: 0 });
+            if ((gg.ua || 0) < 9) { gg.ua = (gg.ua || 0) + 1; memSet(mem); }
+        } catch (e) {}
+    }
     // Аніме (жанр «Анімація» + японське походження) — перевага джерелам, що спеціалізуються на аніме; додається до бонусу за українську озвучку, а не замість нього
     var ANIME_SRC = /anime|аніме|moon|fenix|mikai|bamboo|unimay|anihub|aniworld|anitube|anilib|anidub|hikka|yummy|animevost|jutsu|ukranime|aniua/i;
     function isAnimeCard() {
@@ -1496,7 +1511,7 @@
     function learnedAnime(k) {
         try { var e = learnGet().s[k]; return !!e && e.a[1] >= 3 && e.a[0] / e.a[1] >= 0.6 && e.o[1] >= 3 && e.o[0] / e.o[1] <= 0.25; } catch (x) { return false; }
     }
-    function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k) || (HINT[k] && HINT[k].u)) ? 2 : 0) + animeBonus(k); }
+    function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k) || uaLearned(k) || (HINT[k] && HINT[k].u)) ? 2 : 0) + animeBonus(k); }
     // ---- Єдиний рейтинг джерела. Режим «Баланс» міняє ваги: q — рівень якості (1–4), qHi — вага рівня понад FHD (4K не вдвічі кращий за 1080),
     // ua — реальна українська озвучка саме для цього тайтла, uaGuess — лише припущення за назвою джерела, anime — спеціалізоване аніме-джерело на аніме, hab — ваш звичний вибір
     var BAL = {
@@ -1518,7 +1533,7 @@
         if (uaOn()) {
             if (pe && pe.uv > 0) { s += W.ua + (pe.uv >= 3 ? 0.3 : 0); ua = 'real'; why.push('українська озвучка'); }
             else if (pe && pe.v > 0 && pe.uv === 0) ua = 'none';
-            else if ((pe && pe.u) || uaName(k) || (HINT[k] && HINT[k].u)) { s += W.uaGuess; ua = 'guess'; why.push('українське джерело'); }
+            else if ((pe && pe.u) || uaName(k) || uaLearned(k) || (HINT[k] && HINT[k].u)) { s += W.uaGuess; ua = 'guess'; why.push('українське джерело'); }
         }
         if (animeBonus(k)) { s += W.anime; why.push('аніме-джерело'); }
         if (q) why.push(QL[q]);
@@ -2188,8 +2203,8 @@
                 var prev = seenLook[look];
                 if (prev) { var isSel = curS ? it === curS : !!it.selected; if ((isSel && !prev.sel) || (!isSel && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = isSel; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
                 // українські джерела (за назвою) не ховаємо, навіть якщо швидка перевірка їх не підтвердила: вона могла просто не дочекатись відповіді
-                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected && !(uaOn() && uaName(key0))) { hidden++; return; }
-                if (uaOn() && uaName(key0) && st === 'no' && !seGet(cid0, key0) && !(window.__lmxBad && window.__lmxBad.names.indexOf(key0) >= 0)) st = '';
+                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected && !(uaOn() && (uaName(key0) || uaLearned(key0)))) { hidden++; return; }
+                if (uaOn() && (uaName(key0) || uaLearned(key0)) && st === 'no' && !seGet(cid0, key0) && !(window.__lmxBad && window.__lmxBad.names.indexOf(key0) >= 0)) st = '';
                 var o = { title: title, sel: curS ? it === curS : !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
                 // рейтинг і підпис: реальні дані перевірки (укр. озвучки, швидкість), якщо вони є
                 var pe1 = pcEntry(cid0, key0); pe1 = pe1 && pe1.s === 'ok' ? pe1 : null;
@@ -2950,6 +2965,7 @@
         safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); shortDates(list, card); tidySeps(list); });
         safe(function () { epInfo(list, card, act); });
         safe(function () { learnQuality(act, list, card); });
+        safe(function () { learnUaVoice(act, list); });
         safe(function () { clearTimeout(act.__lmxFD); act.__lmxFD = setTimeout(function () { safe(function () { fitDates(list); }); setTimeout(function () { safe(function () { fitDates(list); }); }, 1300); }, 350); });
         safe(function () { thumbFallback(list, card); [1200, 3000, 7000].forEach(function (d) { setTimeout(function () { safe(function () { thumbFallback(list, card); }); }, d); }); });
         safe(function () { buildBar(act, hd, list); });
