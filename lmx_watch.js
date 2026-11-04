@@ -1,19 +1,19 @@
 /*
- * LMX Watch v1.0 — екран перегляду: вибір джерела, сезону, озвучки й серії для будь-яких онлайн-джерел Lampa (окремий плагін; раніше був частиною LMX Pack)
- *  • Шапка з банером, логотипом і кнопками «Дивитись / Наступна / Перша непереглянута / Спочатку / Продовжити»
+ * LMX Watch — екран перегляду: вибір джерела, сезону, озвучки й серії для будь-яких онлайн-джерел Lampa (окремий плагін; раніше був частиною LMX Pack)
+ *  • Шапка з банером, логотипом і кнопками «Дивитись / Перша непереглянута / Продовжити»
  *  • Один суцільний екран без «стандартного» інтерфейсу Lampa, швидка перевірка джерел у фоні, перемикання джерела без перезавантаження
  *  • Серії широкими картками, ряд вибору (сортування, джерело, сезон, озвучка), «Спробувати інше джерело», «Повторити», «Уточнити пошук»
  *  • Налаштування: Lampa → Налаштування → LMX Watch, а також кнопка ⚙ біля банера
  *  Працює незалежно від LMX Pack: підключіть окремим плагіном.
  */
 // ===== LMX Watch: оформлення екрана «Онлайн» для будь-яких джерел =====
-// Шапка з фоном і кнопками «Продовжити / Наступна», серії широкими картками з кадром і номером, чіпи озвучок. Стандартна розмітка
+// Шапка з фоном і кнопками «Продовжити», серії широкими картками з кадром і номером, чіпи озвучок. Стандартна розмітка
 // онлайн-плагінів (.videos__item, .videos__button, .online-prestige) однакова в більшості джерел, тож діє на всі. Нічого в Lampa не підміняємо.
 (function () {
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.87';
+    var VERSION = '2.89';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1121,6 +1121,12 @@
     // Деякі плагіни (BWA) ходять у мережу напряму через XMLHttpRequest / fetch з власними заголовками, повз Lampa.Reguest: слухаємо й їх.
     // Запам'ятовуємо адресу з назвою джерела (як шаблон) і заголовки цього запиту, щоб решту джерел питати так само
     // BWA (окремий онлайн-плагін) розпізнаємо за запитами до його сервера або за заголовком екрана; lampaua цього не зачіпає
+    // Профілі онлайн-плагінів: усе, що відрізняється від стандартного (lampaua) — в одному місці
+    var PROFILES = {
+        def: { simple: false, first: null, seqWait: 2500, egWait: 0, label: '' },
+        bwa: { simple: true, first: /uakino|ua\s*kino/i, seqWait: 20000, egWait: 20000, label: 'Завантажуємо джерело…' }
+    };
+    function profileOf(gs) { return (gs && gs.bwa) || isBwa() ? PROFILES.bwa : PROFILES.def; }
     function isBwa() {
         try {
             if (Date.now() - (window.__lmxBwaT || 0) < 15000) return true;
@@ -1232,9 +1238,6 @@
         try { Lampa.Storage.set('lmx_online_qm', o); } catch (e) {}
     }
     function qmBadge(cid, key) { var m = qmGet()[cid]; return m && m.l && QB[m.l[key]] || ''; }
-    // джерело, що вимагає акаунт (премʼюм): запамʼятовуємо на 30 днів — не відкриваємо його першим і не обираємо автоматично
-    function accMark(key) { try { if (!key) return; var mem = memGet(), g = mem.g[key] || (mem.g[key] = { ok: 0, fail: 0, q: 0 }); g.acc = Date.now(); memSet(mem); } catch (e) {} }
-    function accOn(key) { try { var g = memGet().g[key]; return !!(g && g.acc && Date.now() - g.acc < 30 * 86400000); } catch (e) { return false; } }
     function pcPut(cid, key, e) {
         if (e && e.s === 'ok' && e.q) qmPut(cid, key, e.q);
         var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
@@ -1292,13 +1295,6 @@
         return { s: 'empty', c: 0 };
     }
     // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
-    function genBad(u, set) {
-        try {
-            var h = String(u).split('/')[2] || '', m = JSON.parse(localStorage.getItem('lmx_gen_bad') || '{}');
-            if (set) { m[h] = Date.now(); localStorage.setItem('lmx_gen_bad', JSON.stringify(m)); return true; }
-            return !!(m[h] && Date.now() - m[h] < 86400000);
-        } catch (e) { return false; }
-    }
     function bgProbe(job) {
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
@@ -1312,7 +1308,7 @@
             function end(ans) {
                 if (ended || job.stopped) return;
                 ended = true;
-                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.acc) accMark(it.key); if (r.s === 'ok') msNote(it.key, r.ms);
+                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') { msNote(it.key, r.ms); if (r.uv > 0) uaNote(it.key); }
                 try { job.onEach(it, r); } catch (e) {}
                 fin(); step();
             }
@@ -1333,7 +1329,7 @@
     function scanText() {
         var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
         if (!gs || gs.done || !gs.total) return 'Шукаємо джерела…';
-        if (isBwa()) return 'Завантажуємо джерело…' + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
+        if (profileOf(gs).label) return profileOf(gs).label + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
         return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
     }
     function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
@@ -1459,6 +1455,7 @@
     function uaName(k) { return UA_SRC.test(String(k || '')); }
     // Джерело, на якому ми самі бачили українську озвучку (Filmix із преміумом тощо), вважаємо українським, навіть якщо назва про це не каже
     function uaLearned(k) { try { var g = memGet().g[k]; return !!(g && (g.ua || 0) >= 1); } catch (e) { return false; } }
+    function uaNote(k) { try { if (!k || uaName(k)) return; var mem = memGet(), gg = mem.g[k] || (mem.g[k] = { ok: 0, fail: 0, q: 0 }); if ((gg.ua || 0) < 9) { gg.ua = (gg.ua || 0) + 1; memSet(mem); } } catch (e) {} }
     function learnUaVoice(act, list) {
         try {
             var inst = instFor(act), S = inst && readSets(inst), sel = S && S.sort && curSrc(act, S.sort), k = sel ? srcName(sel.title) : '';
@@ -1468,8 +1465,7 @@
             if (!hit) (list || []).forEach(function (e) { var t = e.querySelector('[class*="__title"]'); if (t && isUaVoice(String(t.textContent || ''))) hit = true; });
             act.__lmxUaL = k;
             if (!hit) return;
-            var mem = memGet(), gg = mem.g[k] || (mem.g[k] = { ok: 0, fail: 0, q: 0 });
-            if ((gg.ua || 0) < 9) { gg.ua = (gg.ua || 0) + 1; memSet(mem); }
+            uaNote(k);
         } catch (e) {}
     }
     // Аніме (жанр «Анімація» + японське походження) — перевага джерелам, що спеціалізуються на аніме; додається до бонусу за українську озвучку, а не замість нього
@@ -1545,7 +1541,6 @@
         if (q) why.push(QL[q]);
         if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
-        if (g && g.acc && Date.now() - g.acc < 30 * 86400000) s -= 10;
         if (g && (g.fail || 0) > (g.ok || 0)) s -= Math.min(1.5, ((g.fail || 0) - (g.ok || 0)) * 0.25);
         ms = (pe && pe.ms) || (g && g.ms) || 0;
         if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
@@ -2009,7 +2004,7 @@
             if (g.stype === 'season') out.season = g; else if (g.stype === 'voice') out.voice = g;
         });
         out.sortAll = inst.lmx_sets.sort || [];
-        out.sort = out.sortAll.filter(function (x) { return !x || x.selected || !(unbound(x) || accOn(srcName(x.title))); });
+        out.sort = out.sortAll.filter(function (x) { return !x || x.selected || !unbound(x); });
         return out;
     }
     function selItem(g) {
@@ -2546,6 +2541,10 @@
     // Підбір джерела: стан живе в window.__lmxProbe, бо після зміни джерела плагін може перестворити екран — тоді підбір просто
     // продовжується на новому екрані. Спершу відкриваємо те, що спрацювало раніше / має найкращу якість у назві, порожнє міняємо на наступне,
     // нічого не знайшли — «Жодне джерело…». Усе — прямими викликами фільтра, без натискань на меню
+    // Скільки днів пам'ятати «найкраще джерело» для тайтла: фільм і завершений серіал — 30, серіал, що виходить, — 4 (нова серія може з'явитись на іншому джерелі)
+    function memDays(card) {
+        try { var tv = card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)); return tv && !/^(ended|canceled|cancelled)$/i.test(String(card.status || '')) ? 4 : 30; } catch (e) { return 30; }
+    }
     function watchSources(act, card) {
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
@@ -2621,7 +2620,7 @@
             gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
-            var bwa = !!gs.bwa || isBwa();
+            var prof = profileOf(gs), bwa = prof.simple;
             if (bwa) gs.bwa = true;   // раз розпізнали — вважаємо BWA до кінця підбору (ознаки не мають «мигати»)
             // BWA ще не розпізнано (потрібні ~1,5 с без запитів «/lite/»): не вибираємо джерело наосліп
             if (!bwa && !gs.started && Date.now() - gs.t00 < 1600) { var pq = window.__lmxProbeUrl; if (!(pq && !pq.gen && pq.t >= gs.t00 - 2000) && /bwa\.[a-z]+\//i.test(JSON.stringify(Lampa.Storage.get('plugins', '[]')) || '')) return; }   // BWA: простий режим — UAKino за замовчуванням, порожнє міняємо на перше джерело з контентом, без пошуку «кращого»
@@ -2678,13 +2677,15 @@
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
                     sort.forEach(function (x) {
-                        if (!x || x.ghost || !(x.source || (pu.gen && keyOf(x))) || !keyOf(x)) return;
+                        if (!x || x.ghost || !x.source || !keyOf(x)) return;
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
                         var gq = mem.g[keyOf(x)];
                         if (gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
-                        items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : 0 });
+                        // очікування за досвідом: швидке джерело — 3 с, повільне, але робоче — до 8 с (пропорційно його звичному часу відповіді); невідоме — стандартні 4,5 с
+                        var gms = gq && gq.ms || 0;
+                        items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : gms ? Math.max(3000, Math.min(8000, Math.round(gms * 2.2))) : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
@@ -2699,12 +2700,6 @@
                     bgProbe(gs.job);
                 } else if (Date.now() - t0 > 2000) gs.bg = 'off';
                 else return;
-            }
-            if (gs.bg === 'run' && window.__lmxProbeUrl && window.__lmxProbeUrl.gen && Date.now() - gs.bgT > 3500 && gs.bgDone >= 4) {
-                // вивчений шаблон (BWA) нічого не підтвердив — швидка перевірка тут не працює: зупиняємо й запам'ятовуємо хост
-                var anyOk0 = false;
-                sort.forEach(function (x) { var pe = x && keyOf(x) && pcEntry(cid, keyOf(x)); if (pe && pe.s === 'ok') anyOk0 = true; });
-                if (!anyOk0) { try { gs.job.stop(); } catch (e) {} genBad(window.__lmxProbeUrl.u, true); gs.bg = 'off'; return; }
             }
             if (gs.bg === 'run' && Date.now() - gs.bgT > 5000) {
                 // довго чекаємо повільні джерела — вже щось знайшли, тож відкриваємо найкраще з наявного, решта догрузиться у фоні
@@ -2738,9 +2733,8 @@
                     else if (!pe || pe.s === 'skip') skipN++;
                 });
                 if (!okL.length) {
-                    // шаблон адреси вивчено з чужого плагіна (BWA): якщо жодна перевірка нічого не дала, довіряти їй не можна — переходимо на надійний обхід через сам екран
-                    var pgn = window.__lmxProbeUrl;
-                    if (skipN || (pgn && pgn.gen && sort.length > 2)) { gs.bg = 'off'; return; }
+                    // жодна перевірка нічого не підтвердила, але деякі джерела не відповіли — довіряти цьому не можна: переходимо на надійний обхід через сам екран
+                    if (skipN) { gs.bg = 'off'; return; }
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
                 okL.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
@@ -2758,14 +2752,14 @@
                 if (curKey) gs.tried.push(curKey);
                 var target = null, c = sort.filter(function (x) { return x && !x.selected && !x.ghost && keyOf(x); }).sort(cmp), curQ = titleQ(curIt && curIt.title);
                 if (bwa) {
-                    var uak = sort.filter(function (x) { return x && !x.selected && !x.ghost && /uakino|ua\s*kino/i.test(keyOf(x)); })[0];
-                    if (uak && !/uakino|ua\s*kino/i.test(curKey)) target = uak;
+                    var uak = prof.first && sort.filter(function (x) { return x && !x.selected && !x.ghost && prof.first.test(keyOf(x)); })[0];
+                    if (uak && !prof.first.test(curKey)) target = uak;
                 }
                 else if (qPref() !== 'auto' && probeOn()) { if (c[0] && titleQ(c[0].title) > curQ) target = c[0]; }
                 else {
                     // плагін відкрив своє перше джерело (часто не найкраще): якщо за рейтингом є явно краще — одразу відкриваємо його, не ходимо по гірших
                     if (c[0] && curIt && scOf(c[0]) > scOf(curIt) + 0.5) target = c[0];
-                    var pt = mem.t[cid], pref = pt && pt.v === 2 && Date.now() - (pt.at || 0) < 30 * 86400000 ? pt.s : '';
+                    var pt = mem.t[cid], pref = pt && pt.v === 2 && Date.now() - (pt.at || 0) < memDays(card) * 86400000 ? pt.s : '';
                     if (pref && pref !== curKey) for (i = 0; i < c.length; i++) if (keyOf(c[i]) === pref) { target = c[i]; break; }
                 }
                 if (target) return switchTo(inst, target, 'Відкриваємо джерело');
@@ -2790,8 +2784,8 @@
                 try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                 save(gs.cur, -1); return next(inst, sort);
             }
-            if (PAYWALL.test(body.textContent || '') && waited > 250) { accMark(gs.cur); save(gs.cur, -1); return next(inst, sort); }
-            if (waited > (bwa ? 20000 : 2500)) { save(gs.cur, -1); next(inst, sort); }
+            if (PAYWALL.test(body.textContent || '') && waited > 250) { save(gs.cur, -1); return next(inst, sort); }
+            if (waited > prof.seqWait) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
             try { tick(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
@@ -2866,11 +2860,10 @@
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
-                var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (isBwa() ? 20000 : manual ? 12000 : 6000);   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
-                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (isBwa() ? 'Завантажуємо джерело…' : 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
+                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
-                    if (curKey && PAYWALL.test(txt)) accMark(curKey);
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
                     if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
@@ -3040,9 +3033,7 @@
         // Фільм: у списку не серії, а варіанти (релізи/озвучки), тож зверху лишається одна кнопка «Дивитись / Продовжити»
         var isMovie = !(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date));
         var showFirst = !isMovie && firstUn >= 0 && cont >= 0 && firstUn < cont && !resSn && !allSeen;
-        var partial = false && cont >= 0 && pct(list[cont]) >= 1 && pct(list[cont]) < 90 && !resSn && !allSeen;
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
-        var nxt = false && cont >= 0 && cont + 1 < list.length && !isSoon(list[cont + 1]) ? cont + 1 : -1;
         var fSn = 0;
         try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg); if (si) { var mm = String(si.title || '').match(/\d+/); fSn = mm ? parseInt(mm[0], 10) : 0; } } catch (e) {}
         function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
@@ -3061,7 +3052,7 @@
                         '<div class="lmx-onl-hero__a">' +
             (nextSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-season="' + nextSn + '">&#9654;&#xFE0E;&nbsp; ' + (nextSn > curSn ? 'Наступний сезон' : 'Непереглянутий сезон') + ' &middot; S' + nextSn + '</div>' : '') +
             (resSn ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-resume="' + resSn + '">&#9654;&#xFE0E;&nbsp; Продовжити &middot; S' + resSn + '</div>' : cont >= 0 ? '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-go="' + cont + '">&#9654;&#xFE0E;&nbsp; ' + (allSeen ? 'Дивитись знову' : haveProg ? 'Продовжити' : 'Дивитись') + (isMovie ? '' : ' &middot; ' + esc(lab(cont))) + '</div>' : '') +
-            (showFirst ? '<div class="lmx-onl-btn selector" data-go="' + firstUn + '">Перша непереглянута &middot; ' + esc(lab(firstUn)) + '</div>' : '') + (partial ? '<div class="lmx-onl-btn selector" data-start="' + cont + '">Спочатку &middot; ' + esc(lab(cont)) + '</div>' : '') + (nxt >= 0 && haveProg && !allSeen && !resSn ? '<div class="lmx-onl-btn selector" data-go="' + nxt + '">Наступна &middot; ' + esc(lab(nxt)) + '</div>' : '') + (srcTxt ? '<span class="lmx-onl-hero__src">' + esc(srcTxt) + '</span>' : '') + '</div>' +
+            (showFirst ? '<div class="lmx-onl-btn selector" data-go="' + firstUn + '">Перша непереглянута &middot; ' + esc(lab(firstUn)) + '</div>' : '') + (srcTxt ? '<span class="lmx-onl-hero__src">' + esc(srcTxt) + '</span>' : '') + '</div>' +
             (list.length > 1 && !isMovie ? (ss ? '<div class="lmx-onl-hero__w">Переглянуто ' + ss.seen + ' з ' + ss.total + (curSn && ss.per[curSn] ? ' &middot; цей сезон ' + ss.per[curSn].seen + ' з ' + ss.per[curSn].total : '') + '</div>' +
                 '<div class="lmx-onl-hero__bar"><i style="width:' + Math.round(ss.seen / ss.total * 100) + '%"></i></div>' :
                 '<div class="lmx-onl-hero__w">Переглянуто ' + seen + ' з ' + list.length + (list.length - seen > 0 ? ' &middot; залишилось ' + (list.length - seen) : '') + '</div>' +
@@ -3097,14 +3088,6 @@
                 var sn = b.getAttribute('data-season'), rs = b.getAttribute('data-resume');
                 if (rs) { window.__lmxPlay = { cid: String(card.id || ''), season: parseInt(rs, 10), at: Date.now() }; act.__lmxSA = 2; return gotoSeason(act, parseInt(rs, 10)); }
                 if (sn) return gotoSeason(act, parseInt(sn, 10));
-                var st = b.getAttribute('data-start');
-                if (st !== null) {
-                    // перегляд з нуля: скидаємо позначку часу цієї серії
-                    var tt = list[parseInt(st, 10)], jj2 = tt && jd(tt), tl = jj2 && jj2.timeline;
-                    try { if (tl && Lampa.Timeline && Lampa.Timeline.update) { tl.percent = 0; tl.time = 0; Lampa.Timeline.update(tl); } } catch (e) {}
-                    if (tt) press(tt);
-                    return;
-                }
                 var t = list[parseInt(b.getAttribute('data-go'), 10)]; if (t) press(t);
             }));
             addNav(b);
