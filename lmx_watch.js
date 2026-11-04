@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.82';
+    var VERSION = '2.83';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2064,7 +2064,7 @@
     // Один раз на джерело+сезон; не чіпаємо, якщо користувач уже щось натискав; якщо з новою озвучкою серій немає — повертаємо попередню
     function voiceGate(act, card, list) {
         try {
-            if (!vautoOn() || !act.classList.contains('lmx-onl-load') || act.__lmxOpen || selOpen()) return false;
+            if (!vautoOn() || !(act.classList.contains('lmx-onl-load') || act.classList.contains('lmx-onl-rl')) || act.__lmxOpen || selOpen()) return false;   // і при першому відкритті, і після ручної зміни джерела
             if (!(card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)))) return false;   // для фільмів озвучку не підбираємо
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
