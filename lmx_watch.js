@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.96';
+    var VERSION = '2.98';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -488,6 +488,8 @@
         if (!bg) return;
         var url = img(bg, artMax() ? 'w780' : 'w500'), i, box, im;
         for (i = 0; i < list.length; i++) {
+            if (list[i].__lmxTF && list[i].classList.contains('lmx-onl-off')) continue;   // сховану серію вже оформлювали
+            list[i].__lmxTF = 1;
             box = list[i].querySelector('.videos__item-imgbox, [class*="imgbox"], [class*="prestige__img"]');
             if (!box) {
                 // у картці зовсім немає місця під постер (джерело без картинок) — додаємо власне, з кадром фільму
@@ -598,6 +600,7 @@
     function fitDates(list) {
         var rows = [], vis = false, wrap = false;
         list.forEach(function (it) {
+            if (it.classList.contains('lmx-onl-off')) return;   // сховані сторінки довгих сезонів не вимірюємо
             [].forEach.call(it.querySelectorAll('[class*="__info"], [class*="-footer"], [class*="__footer"]'), function (box) {
                 var nodes = [].slice.call(box.querySelectorAll('*')).filter(function (n) { return !n.children.length && n.offsetHeight; });
                 nodes.forEach(function (n) {
@@ -610,8 +613,8 @@
                 });
             });
         });
-        rows.forEach(function (r) {
-            if (!r.n.offsetHeight) return;
+        rows.forEach(function (r, ri) {
+            if (wrap || ri > 40 || !r.n.offsetHeight) return;   // досить перших рядків: перенос видно одразу, далі лише читання розмітки без користі
             vis = true;
             if (r.first !== r.n && r.n.getBoundingClientRect().top - r.first.getBoundingClientRect().top > r.n.offsetHeight * 0.6) wrap = true;
         });
@@ -695,8 +698,10 @@
         }
         var key = card.id + '_' + sn;
         function apply(eps) {
+            var mk = key + (eps ? 'm' : 'n');
             list.forEach(function (it, idx) {
-                if (!it.parentNode) return;
+                if (!it.parentNode || it.__lmxEI === mk) return;   // ця серія вже оформлена з цими даними — не чіпаємо (сотні серій аніме гальмували)
+                it.__lmxEI = mk;
                 var j = jd(it), num = parseInt(j.episode, 10) || (idx + 1), e = eps && eps[num], n = timeNode(it);
                 var run = (e && e.runtime) || (card.episode_run_time && card.episode_run_time[0]) || 0;
                 if (zero(n)) { if (run) { n.textContent = fmtRun(run); n.setAttribute('data-lmx-t', '1'); } else n.style.display = 'none'; }
@@ -2053,7 +2058,7 @@
     // субтитри (будь-де в назві: «Українські субтитри», «UA Sub») — це не озвучка: не обираються й не рахуються автоматично
     function isSubOnly(t) { return /субтитр|subtitle|(^|[^a-z])subs?([^a-z]|$)/i.test(String(t || '')); }
     function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (isSubOnly(t)) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
-    var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|сатурн ?юніон|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
+    var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|amanogawa|аманогава|сатурн ?юніон|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
     function curSeason() {
@@ -2857,6 +2862,21 @@
         seSet(cid, key, 'ok');
         if (best && act.__lmxLQ !== key + best) { act.__lmxLQ = key + best; qmPut(cid, key, best); }
     }
+    // Оформлення карток (час, слоган, озвучка, дати, роздільники) кожна серія проходить один раз: раніше при кожному перемальовуванні
+    // обходились усі сотні серій і браузер щоразу перераховував розмітку. Видимі — одразу, решта — невеликими порціями
+    function decorate(act, list, card) {
+        var fresh = list.filter(function (it) { return !it.__lmxDec; });
+        if (!fresh.length) return;
+        fresh.forEach(function (it) { it.__lmxDec = 1; });
+        var now = fresh.filter(function (it) { return !it.classList.contains('lmx-onl-off'); }), rest = fresh.filter(function (it) { return it.classList.contains('lmx-onl-off'); });
+        function run(l) { safe(function () { fixTimes(l, card); hideTagline(l, card); hideVoice(act, l); dropDupDates(l); shortDates(l, card); tidySeps(l); }); }
+        run(now);
+        (function step() {
+            if (!rest.length || !document.body.contains(act)) return;
+            run(rest.splice(0, 30));
+            if (rest.length) setTimeout(step, 40);
+        })();
+    }
     function buildHero() {
         if (!isOn()) return;
         var act = document.querySelector('.activity--active');
@@ -2892,7 +2912,7 @@
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
-        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); shortDates(list, card); tidySeps(list); });
+        safe(function () { decorate(act, list, card); });
         safe(function () { epInfo(list, card, act); });
         safe(function () { learnQuality(act, list, card); });
         safe(function () { learnUaVoice(act, list); });
