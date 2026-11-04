@@ -611,7 +611,8 @@
     }
 
     // Широкі картки історії («Продовжити перегляд») з кадром і смужкою прогресу — у темах HBO та Apple TV
-    function histItem(m, prog) {
+    function histItem(m, prog, list) {
+        list = list || 'history';
         var it = {};
         for (var k in m) it[k] = m[k];
         it.params = {
@@ -630,7 +631,7 @@
                         h.find('.card__title,.card__age,.card__vote').remove();
                         var v = Number(m.vote_average) || 0;
                         var year = String(m.release_date || m.first_air_date || '').slice(0, 4);
-                        view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">&#9654;&#xFE0E;&nbsp; ' + esc(m.title || m.name) +
+                        view.append('<div class="lmx-hist__shade"></div><div class="lmx-hist__text"><div class="lmx-hist__t">' + (list === 'history' ? '&#9654;&#xFE0E;&nbsp; ' : '') + esc(m.title || m.name) +
                             '</div><div class="lmx-hist__m">' + (prog && prog.s ? '<span>С' + prog.s + ' Е' + prog.e + '</span>' : '') +
                             (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
                             (year ? '<span>' + year + '</span>' : '') +
@@ -641,8 +642,8 @@
                             ev.stopImmediatePropagation();
                             safe(function () {
                                 var el = h[0], nb = h.next('.card')[0] || h.prev('.card')[0];
-                                Lampa.Favorite.remove('history', m);
-                                if (Lampa.Noty) Lampa.Noty.show('Прибрано з історії: ' + (m.title || m.name || ''));
+                                Lampa.Favorite.remove(list, m);
+                                if (Lampa.Noty) Lampa.Noty.show((list === 'history' ? 'Прибрано з історії: ' : 'Прибрано зі списку «Пізніше»: ') + (m.title || m.name || ''));
                                 // картку прибираємо з DOM повністю і даємо Lampa заново зібрати список виділюваних елементів, інакше навігатор
                                 // лишається «на місці» видаленої картки і стрілки вліво/вправо не працюють (вліво відкривалось б меню)
                                 var sc = h.closest('.scroll')[0];
@@ -685,7 +686,7 @@
             try { seen = favIds('viewed'); list = Lampa.Favorite.get({ type: 'wath' }) || []; } catch (e) {}
             list = list.filter(function (c) { return c && c.id && !seen[c.id]; }).slice(0, ROW_MAX);
             if (!list.length) return call();
-            call({ title: 'Переглянути пізніше', results: list, source: 'tmdb' });
+            call({ title: 'Переглянути пізніше', results: list.map(function (c) { return histItem(c, null, 'wath'); }), source: 'tmdb' });
         };
     }
 
@@ -4731,7 +4732,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.335';
+    var VERSION = '10.336';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
