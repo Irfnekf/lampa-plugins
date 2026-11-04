@@ -16,6 +16,8 @@
     window.__lmxSync = true;
 
     var VERSION = '1.28';
+    // Назва в списку розширень Lampa (інакше там «Без назви»)
+    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Sync', description: 'Синхронізація закладок, історії та позицій перегляду між пристроями', author: 'Irfnekf' }; } catch (e) {}
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];

@@ -40,6 +40,8 @@
     window.__lmx_source = true;
 
     var VERSION = '1.1.0';
+    // Назва в списку розширень Lampa (інакше там «Без назви»)
+    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Source', description: 'Додаткове джерело контенту для Lampa', author: 'Irfnekf' }; } catch (e) {}
     var LABEL = 'UAFilms';
     var PREFIX = 'lmxsrc_';
     var CACHE_MS = 10 * 60 * 1000;

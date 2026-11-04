@@ -14,6 +14,8 @@
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
     var VERSION = '2.73';
+    // Назва в списку розширень Lampa (інакше там «Без назви»)
+    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
