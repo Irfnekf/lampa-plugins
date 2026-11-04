@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.76';
+    var VERSION = '2.77';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -576,6 +576,25 @@
     // Довга назва місяця («30 Листопада 2004») не вміщається в рядок з рейтингом і переходить на другий рядок, ламаючи рівність карток.
     // Якщо хоч в одній картці дата переноситься — скорочуємо місяць у всіх картках списку («30 лис. 2004»), щоб вигляд був однаковий
     var MON = { 'січня': 'січ.', 'лютого': 'лют.', 'березня': 'бер.', 'квітня': 'кві.', 'травня': 'тра.', 'червня': 'чер.', 'липня': 'лип.', 'серпня': 'сер.', 'вересня': 'вер.', 'жовтня': 'жов.', 'листопада': 'лис.', 'грудня': 'гру.' };
+    // Дата в картці: фільм — лише рік; серіал — «28 чер. 2005». Назва озвучки в рядку, що повторює заголовок картки, ховається
+    function shortDates(list, card) {
+        var tv = !!(card && (card.number_of_seasons || (card.first_air_date && !card.release_date)));
+        var nm = function (t) { return String(t || '').toLowerCase().replace(/[^\wа-яіїєґ]+/gi, ' ').trim(); };
+        list.forEach(function (it) {
+            var ti = it.querySelector('[class*="__title"]'), tt = ti ? nm(ti.textContent) : '';
+            [].forEach.call(it.querySelectorAll('[class*="__info"] *, [class*="-footer"] *, [class*="__footer"] *'), function (n) {
+                if (n.children.length) return;
+                var t = n.getAttribute('data-lmx-full') || n.textContent || '', m = t.match(/^\s*(\d{1,2})\s+([А-Яа-яІіЇїЄє']{3,})\s+(\d{4})\s*$/);
+                if (m && MON[m[2].toLowerCase()]) {
+                    n.setAttribute('data-lmx-full', t);
+                    var v = tv ? m[1] + ' ' + MON[m[2].toLowerCase()] + ' ' + m[3] : m[3];
+                    if (n.textContent !== v) n.textContent = v;
+                    return;
+                }
+                if (tt && !n.getAttribute('data-lmx-vc') && nm(t) === tt) { n.setAttribute('data-lmx-vc', '1'); n.style.setProperty('display', 'none', 'important'); }
+            });
+        });
+    }
     function fitDates(list) {
         var rows = [], vis = false, wrap = false;
         list.forEach(function (it) {
@@ -2022,6 +2041,7 @@
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
             var cid = String(card && card.id || ''), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
+            if (sel && isTorSrc(sel)) return false;   // торенти мають власну систему вибору озвучок — не чіпаємо
             var key = cid + '|' + (sel ? srcName(sel.title) : '') + '|' + (sn ? seTitle(sn.title) : '');
             act.__lmxVG = act.__lmxVG || {};
             if (act.__lmxVG[key]) return false;
@@ -2906,7 +2926,7 @@
         numberItems(list);
         safe(function () { applyOrderPages(act, list); });
         safe(function () { leftTimes(list); });
-        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); tidySeps(list); });
+        safe(function () { fixTimes(list, card); hideTagline(list, card); hideVoice(act, list); dropDupDates(list); shortDates(list, card); tidySeps(list); });
         safe(function () { epInfo(list, card, act); });
         safe(function () { learnQuality(act, list, card); });
         safe(function () { clearTimeout(act.__lmxFD); act.__lmxFD = setTimeout(function () { safe(function () { fitDates(list); }); setTimeout(function () { safe(function () { fitDates(list); }); }, 1300); }, 350); });
