@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.77';
+    var VERSION = '2.78';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1218,6 +1218,9 @@
         try { Lampa.Storage.set('lmx_online_qm', o); } catch (e) {}
     }
     function qmBadge(cid, key) { var m = qmGet()[cid]; return m && m.l && QB[m.l[key]] || ''; }
+    // джерело, що вимагає акаунт (премʼюм): запамʼятовуємо на 30 днів — не відкриваємо його першим і не обираємо автоматично
+    function accMark(key) { try { if (!key) return; var mem = memGet(), g = mem.g[key] || (mem.g[key] = { ok: 0, fail: 0, q: 0 }); g.acc = Date.now(); memSet(mem); } catch (e) {} }
+    function accOn(key) { try { var g = memGet().g[key]; return !!(g && g.acc && Date.now() - g.acc < 30 * 86400000); } catch (e) { return false; } }
     function pcPut(cid, key, e) {
         if (e && e.s === 'ok' && e.q) qmPut(cid, key, e.q);
         var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
@@ -1252,7 +1255,7 @@
         return Object.keys(out).slice(0, 80);
     }
     // Відповіді-заглушки джерел: потрібен свій акаунт / такого сезону чи тайтла немає
-    var PAYWALL = /только со своим аккаунт|привяжите аккаунт|потрібен (?:свій )?акаунт|привʼяжіть акаунт|привяжіть акаунт|нужна привязк|потрібна прив/i, NOSEASON = /нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|нічого не знайд|немає \d+ сезон/i;
+    var PAYWALL = /только со своим аккаунт|тільки зі своїм акаунт|тільки з власним акаунт|привяжите аккаунт|потрібен (?:свій )?акаунт|привʼяжіть акаунт|привяжіть акаунт|нужна привязк|потрібна прив/i, NOSEASON = /нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|нічого не знайд|немає \d+ сезон/i;
     function bgParse(ans) {
         var b = typeof ans === 'string' ? ans : '';
         if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
@@ -1295,7 +1298,7 @@
             function end(ans) {
                 if (ended || job.stopped) return;
                 ended = true;
-                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') msNote(it.key, r.ms);
+                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.acc) accMark(it.key); if (r.s === 'ok') msNote(it.key, r.ms);
                 try { job.onEach(it, r); } catch (e) {}
                 fin(); step();
             }
@@ -1512,6 +1515,7 @@
         if (q) why.push(QL[q]);
         if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
+        if (g && g.acc && Date.now() - g.acc < 30 * 86400000) s -= 10;
         if (g && (g.fail || 0) > (g.ok || 0)) s -= Math.min(1.5, ((g.fail || 0) - (g.ok || 0)) * 0.25);
         ms = (pe && pe.ms) || (g && g.ms) || 0;
         if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
@@ -1975,7 +1979,7 @@
             if (g.stype === 'season') out.season = g; else if (g.stype === 'voice') out.voice = g;
         });
         out.sortAll = inst.lmx_sets.sort || [];
-        out.sort = out.sortAll.filter(function (x) { return !x || x.selected || !unbound(x); });
+        out.sort = out.sortAll.filter(function (x) { return !x || x.selected || !(unbound(x) || accOn(srcName(x.title))); });
         return out;
     }
     function selItem(g) {
@@ -2747,6 +2751,7 @@
                 try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                 save(gs.cur, -1); return next(inst, sort);
             }
+            if (PAYWALL.test(body.textContent || '') && waited > 250) { accMark(gs.cur); save(gs.cur, -1); return next(inst, sort); }
             if (waited > 2500) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
@@ -2826,6 +2831,7 @@
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
+                    if (curKey && PAYWALL.test(txt)) accMark(curKey);
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
                     if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
