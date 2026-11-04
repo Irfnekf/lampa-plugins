@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.61';
+    var VERSION = '2.62';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -967,7 +967,8 @@
         var ref = findRef(act), want = [], inst = instFor(act), SG = inst ? readSets(inst) : null;
         if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = seTitle(si.title); if (vi && vi.title) voice = vi.title; }
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
-        if (ref) want.push(group(act, 'src', 'Джерело', (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
+        var srcIt = SG && curSrc(act, SG.sort), srcLbl = (srcIt && srcIt.title) ? String(srcIt.title).trim() : '';
+        if (ref) want.push(group(act, 'src', 'Джерело', srcLbl || (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
         // є дані фільтра — працюємо напряму з ними (кнопки лише там, де такий вибір справді є); немає — старий запасний шлях
         if (SG ? SG.season : (season || /сезон|season/i.test(txt))) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'season')) openFilterItem(act, RX_SEASON); }));
         if (SG ? SG.voice : act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'voice')) openFilterItem(act, RX_VOICE); }));
@@ -1449,7 +1450,19 @@
     // «undefined is not an object (evaluating 'closed.onBack')» і вибір не доходить до перезавантаження. Гасимо цю помилку
     // ---- Перезавантаження джерела «на місці» (як у Nova): зміна джерела в онлайн-плагіні викликає Activity.replace() і перестворює весь екран.
     // Перехоплюємо це й просто скидаємо та перезапитуємо поточний компонент — екран лишається, змінюється лише список
-    function selIn(inst, a, b, c) { window.__lmxInplace = Date.now(); return inst.onSelect(a, b, c); }
+    function selIn(inst, a, b, c) {
+        window.__lmxInplace = Date.now();
+        // запам'ятовуємо, яке джерело ми щойно відкрили: прапорці selected у рідному плагіні оновлюються із запізненням (підпис і галочка розходились)
+        try { if (a === 'sort' && b && b.title) { var ac = document.querySelector('.activity--active'); if (ac) ac.__lmxSel = { k: srcName(b.title), t: Date.now() }; } } catch (e) {}
+        return inst.onSelect(a, b, c);
+    }
+    // яке джерело зараз «обране»: наш останній вибір (протягом 90 с), інакше те, що віддає плагін
+    function curSrc(act, items) {
+        var i, m = act && act.__lmxSel;
+        if (m && Date.now() - m.t < 90000) for (i = 0; i < items.length; i++) if (items[i] && srcName(items[i].title) === m.k) return items[i];
+        for (i = 0; i < items.length; i++) if (items[i] && items[i].selected) return items[i];
+        return null;
+    }
     function inplaceOn() { return Date.now() - (window.__lmxInplace || 0) < 2500; }
     function compNow() { try { var a = Lampa.Activity.active(); return (a && a.activity && a.activity.component) || null; } catch (e) { return null; } }
     function reloadable(c) { return !!(c && !c.destroyed && typeof c.createSource === 'function' && (typeof c.search === 'function' || typeof c.find === 'function')); }
@@ -1981,7 +1994,7 @@
             var lifeFlags = S.sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             S.sort.forEach(function (it) { if (it && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
             var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = String(cd0 && cd0.id || ''); } catch (e) {}
-            var seenLook = {}, mem1 = memGet();
+            var seenLook = {}, mem1 = memGet(), curS = curSrc(act, S.sort);
             S.sort.forEach(function (it) {
                 if (!it) return;
                 var key0 = srcName(it.title), st = srcState(key0);
@@ -1991,9 +2004,9 @@
                 var badge = titleQ(it.title) ? '' : qmBadge(cid0, key0), look = key0 + '|' + (titleQ(it.title) || badge);
                 var title = badge ? it.title + ' \u00b7 ' + badge : it.title;
                 var prev = seenLook[look];
-                if (prev) { if ((it.selected && !prev.sel) || (!it.selected && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = !!it.selected; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
+                if (prev) { var isSel = curS ? it === curS : !!it.selected; if ((isSel && !prev.sel) || (!isSel && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = isSel; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
                 if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
-                var o = { title: title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
+                var o = { title: title, sel: curS ? it === curS : !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
                 // рейтинг і підпис: реальні дані перевірки (укр. озвучки, швидкість), якщо вони є
                 var pe1 = pcEntry(cid0, key0); pe1 = pe1 && pe1.s === 'ok' ? pe1 : null;
                 var sc1 = srcScore(key0, { q: titleQ(it.title) || qrank(badge), pe: pe1 }, mem1), sp = [];
@@ -2570,8 +2583,8 @@
                 var curKey = curIt ? srcName(curIt.title) : '';
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
-                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > 12000;
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
+                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 25000 : 12000);
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
