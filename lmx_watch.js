@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.03';
+    var VERSION = '3.05';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -331,9 +331,14 @@
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
     function isSoon(el) { var m = (el.getAttribute && el.getAttribute('style') || '').match(/opacity\s*:\s*([\d.]+)/); return !!m && (parseFloat(m[1]) || 1) < 0.9; }
+    // прогрес серії читається з розмітки; за один прохід його питають по 5–6 разів на кожну серію (у довгих аніме — тисячі пошуків), тож тримаємо результат 0,3 с
     function pct(item) {
+        var now = Date.now(), c = item.__lmxPc;
+        if (c && now - c.t < 300) return c.v;
         var b = item.querySelector('.time-line > div'), w = b && b.style && b.style.width ? parseFloat(b.style.width) : 0;
-        return isFinite(w) ? w : 0;
+        w = isFinite(w) ? w : 0;
+        item.__lmxPc = { v: w, t: now };
+        return w;
     }
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     // розбір data-json кожної серії викликається в багатьох циклах (сотні карток) — запам'ятовуємо результат на самому елементі, поки атрибут не змінився
@@ -506,7 +511,7 @@
     }
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
     var PAGING = true;   // довгі сезони (понад 60 серій) ділимо на сторінки — сотні карток разом гальмують ТВ
-    function pageSizeOf(total) { return total > 600 ? 100 : total > 200 ? 50 : 30; }
+    function pageSizeOf(total) { return total > 600 ? 50 : 30; }   // менша сторінка — менше карток і картинок одночасно на екрані (довгі аніме на ТВ)
     function applyOrderPages(act, list) {
         var total = list.length, rev = orderRev(), i, el;
         for (i = 0; i < total; i++) list[i].style.order = rev ? String(total - i) : '';
@@ -700,7 +705,7 @@
         function apply(eps) {
             var mk = key + (eps ? 'm' : 'n');
             list.forEach(function (it, idx) {
-                if (!it.parentNode || it.__lmxEI === mk) return;   // ця серія вже оформлена з цими даними — не чіпаємо (сотні серій аніме гальмували)
+                if (!it.parentNode || it.__lmxEI === mk || it.classList.contains('lmx-onl-off')) return;   // сховані сторінки оформимо, коли їх відкриють   // ця серія вже оформлена з цими даними — не чіпаємо (сотні серій аніме гальмували)
                 it.__lmxEI = mk;
                 var j = jd(it), num = parseInt(j.episode, 10) || (idx + 1), e = eps && eps[num], n = timeNode(it);
                 var run = (e && e.runtime) || (card.episode_run_time && card.episode_run_time[0]) || 0;
@@ -2197,6 +2202,7 @@
                     act.__lmxPage = k;
                     var lst = act.__lmxList || [];
                     applyOrderPages(act, lst);
+                    safe(function () { var a9 = Lampa.Activity.active(), c9 = a9 && (a9.movie || a9.card); if (c9) epInfo(lst, c9, act); });   // назви/дати серій нової сторінки
                     var hd2 = act.querySelector('.explorer__files-head');
                     if (hd2) safe(function () { buildBar(act, hd2, lst); });
                     var first = null; lst.forEach(function (x) { if (!first && x.classList.contains('selector')) first = x; });
@@ -2794,15 +2800,16 @@
                 if (!inst || !sort.length) return;
                 for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
                 var curKey = curIt ? srcName(curIt.title) : '';
+                try { ['voice', 'season'].forEach(function (gk) { var pq = act.querySelector('.lmx-onl-g--' + gk + ' .lmx-onl-pill__t'), gi = S[gk] && selItem(S[gk]); if (pq && gi && gi.title && pq.textContent !== (gk === 'season' ? seTitle(gi.title) : String(gi.title).trim())) pq.textContent = gk === 'season' ? seTitle(gi.title) : String(gi.title).trim(); }); } catch (e) {}   // підписи кнопок не повинні відставати від реального вибору, поки серій ще нема
                 try { var pl = act.querySelector('.lmx-onl-g--src .lmx-onl-pill__t'); if (pl && curIt && curIt.title && pl.textContent !== String(curIt.title).trim()) pl.textContent = String(curIt.title).trim(); } catch (e) {}
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
                 var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
-                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
-                if (!cd && vautoOn() && S.voice && S.voice.items && S.voice.items.length > 1) {
-                    // Джерело порожнє лише для поточної озвучки, а має інші українські (напр. Mikai без «Дублированный», але з FRONDA): спершу пробуємо їх,
-                    // і лише потім оголошуємо джерело порожнім. До 3 спроб на джерело+сезон
+                // Джерело порожнє лише для поточної озвучки, а має інші (напр. Mikai без «Дублированный», але з FRONDA): спершу пробуємо їх, і лише потім
+                // оголошуємо джерело порожнім. Після ручного вибору джерела не чекаємо 12 с: чорний екран понад ~4,5 с — теж привід спробувати іншу озвучку
+                function tryVoice() {
+                    if (!(vautoOn() && S.voice && S.voice.items && S.voice.items.length > 1)) return false;
                     var vg = S.voice, vs0 = S.season && selItem(S.season), vtk = cid + '|' + curKey + '|' + (vs0 ? seTitle(vs0.title) : '');
                     var vt = act.__lmxVTry = act.__lmxVTry || {}, tr = vt[vtk] = vt[vtk] || { n: 0, done: {} }, vcur = selItem(vg);
                     if (vcur && vcur.title) tr.done[vnorm(vcur.title)] = 1;
@@ -2810,14 +2817,16 @@
                     var vc = tr.n < (manual ? 5 : 3) ? pickVoice(cid, left0) : null;
                     // ручне перемикання джерела: української озвучки в нього немає — відкриваємо будь-яку (крім субтитрів), аби не було порожнього екрана
                     if (!vc && manual && tr.n < 5) vc = left0.filter(function (x) { return !isSubOnly(x.title) && !/оригінал|original/i.test(x.title); })[0] || null;
-                    if (vc) {
-                        tr.n++; tr.done[vnorm(vc.title)] = 1; act.__lmxVGt = Date.now(); since = Date.now();
-                        heroStatus(act, 'Шукаємо озвучку «' + String(vc.title).trim() + '» на «' + curKey + '»…', false, 0.3);
-                        if (manual && !act.__lmxHold) holdFocus(act, 'src', 9000);   // фокус лишається на пілюлі джерела, поки Lampa перемальовує список
-                        selIn(inst, 'filter', { stype: vg.stype }, { index: idxOf(vg, vc) });
-                        return;
-                    }
+                    if (!vc) return false;
+                    tr.n++; tr.done[vnorm(vc.title)] = 1; act.__lmxVGt = Date.now(); since = Date.now();
+                    heroStatus(act, 'Шукаємо озвучку «' + String(vc.title).trim() + '» на «' + curKey + '»…', false, 0.3);
+                    if (manual && !act.__lmxHold) holdFocus(act, 'src', 9000);   // фокус лишається на пілюлі джерела, поки Lampa перемальовує список
+                    try { var vpl = act.querySelector('.lmx-onl-g--voice .lmx-onl-pill__t'); if (vpl) vpl.textContent = String(vc.title).trim(); } catch (e) {}
+                    selIn(inst, 'filter', { stype: vg.stype }, { index: idxOf(vg, vc) });
+                    return true;
                 }
+                if (!cd && (empty || (manual && waited > 4500)) && tryVoice()) return;
+                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
