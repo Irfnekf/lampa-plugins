@@ -64,7 +64,8 @@
         if (!market()) return [url];
         if (kind === 'movie') return [url + (url.indexOf('?') < 0 ? '?' : '&') + 'region=UA'];
         if (kind === 'tv') {
-            return ['discover/tv?sort_by=popularity.desc&' + WATCH + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + dayStr(30), url];
+            // без ток-шоу (10767), новин (10763) і мильних опер (10766) без аніме (для нього є окремий каталог; ключове слово TMDB «anime», 210024) та без тайтлів, які ніхто не оцінив — саме вони засмічували «Популярні серіали»
+            return ['discover/tv?sort_by=popularity.desc&without_genres=10767%7C10763%7C10766&without_keywords=210024&vote_count.gte=15&' + WATCH + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + dayStr(30), url];
         }
         return [url];
     }
@@ -4652,7 +4653,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.332';
+    var VERSION = '10.333';
     safe(function () {
         if (String(Lampa.Storage.get('lmx_ver', '') || '') !== VERSION) Lampa.Storage.set('lmx_ver', VERSION);
     });
