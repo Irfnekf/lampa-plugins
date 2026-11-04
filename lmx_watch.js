@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.58';
+    var VERSION = '2.59';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1119,7 +1119,7 @@
     function pcEntry(cid, key) {
         var m = pcGet()[cid], e = m && m.l && m.l[key];
         if (!e) return null;
-        var ttl = e.s === 'ok' ? 6 * 3600000 : e.s === 'empty' ? 1800000 : 600000;
+        var ttl = e.s === 'ok' ? 12 * 3600000 : e.s === 'empty' ? 1800000 : 600000;
         return Date.now() - (e.t || 0) > ttl ? null : e;
     }
     // Запам'ятована якість джерела для фільму (як rememberQuality у Nova): бейдж 4K/FHD/HD на чипі, тиждень
@@ -2278,7 +2278,6 @@
         }
         return dedupeEps(famFilter(out));
     }
-
     // Підбір джерела: стан живе в window.__lmxProbe, бо після зміни джерела плагін може перестворити екран — тоді підбір просто
     // продовжується на новому екрані. Спершу відкриваємо те, що спрацювало раніше / має найкращу якість у назві, порожнє міняємо на наступне,
     // нічого не знайшли — «Жодне джерело…». Усе — прямими викликами фільтра, без натискань на меню
@@ -2362,11 +2361,18 @@
                         var rc = live.slice(0, 6).filter(function (r) { var pe0 = pcEntry(cid, keyOf(r.it)); return !(pe0 && pe0.s === 'ok' && typeof pe0.v !== 'undefined'); });
                         gs.refine = { t: Date.now(), done: !rc.length };
                         if (rc.length) {
-                            bgProbe({ cid: cid, url: pu2.u, par: 6, timeout: 3200, onEach: function () {}, onEnd: function () { gs.refine.done = true; },
-                                items: rc.map(function (r) { return { key: keyOf(r.it), source: r.it.source, q: r.q, tor: r.tor, to: r.tor ? 4500 : 0 }; }) });
+                            // як тільки хтось із кандидатів уже явно переміг (українська озвучка + потрібна якість, або 4K у режимі «Якість»), решту не чекаємо
+                            var rjob = { cid: cid, url: pu2.u, par: 6, timeout: 2500, onEach: function (it, r) {
+                                if (r && r.s === 'ok' && !gs.refine.done) {
+                                    var rq0 = r.q || it.q || 0;
+                                    if (balMode() === 'quality' ? rq0 >= 4 : (r.uv > 0 && rq0 >= qTarget())) { gs.refine.done = true; try { rjob.stop(); } catch (e) {} }
+                                }
+                            }, onEnd: function () { gs.refine.done = true; },
+                                items: rc.map(function (r) { return { key: keyOf(r.it), source: r.it.source, q: r.q, tor: r.tor, to: r.tor ? 3500 : 0 }; }) };
+                            bgProbe(rjob);
                         }
                     }
-                    if (gs.refine && !gs.refine.done && Date.now() - gs.refine.t < 3600) { heroStatus(act, 'Перевіряємо озвучки…', false, 0.5); return; }
+                    if (gs.refine && !gs.refine.done && Date.now() - gs.refine.t < 2800) { heroStatus(act, 'Перевіряємо озвучки…', false, 0.5); return; }
                     if (gs.refine && !gs.refine.rk) { gs.refine.rk = 1; rankLive(); if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); } top = live[0]; }
                     live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.rq || r.q, n: 0 }); });
                     learnNote(sort, cid);
