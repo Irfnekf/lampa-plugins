@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.25';
+    var VERSION = '1.28';
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
     var DEFAULT_SERVER = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var CATS = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown'];
@@ -190,7 +190,7 @@
         });
         // Таймкоди: зміну визначаємо за вмістом (час/відсоток/тривалість), а не лише за полем updated — у деяких версіях Lampa його немає.
         // Власний час змін зберігаємо в записі (updated), щоб потім порівнювати свіжість між пристроями
-        var tl = tlData(), h, e, u, sig, tsn = st.tsnap || {}, curT = {}, stamp = {}, firstT = !st.tsnap;
+        var tl = tlData(), h, e, u, sig, tsn = st.tsnap || {}, curT = {}, stamp = {}, firstT = !st.tsnap, skewT = Number(o.skew) || 0;
         for (h in tl) {
             e = tl[h];
             if (!e || typeof e !== 'object') continue;
@@ -198,10 +198,12 @@
             curT[h] = sig;
             if (tsn[h] === sig) continue;
             // свіжий час: власний updated Lampa, якщо він змінився з минулої синхронізації; інакше — зараз (і записуємо його в запис)
+            // u — час за годинником цього пристрою (його ж зберігаємо в записі); на сервер їде з поправкою на різницю годинників (skewT),
+            // інакше пристрій із відхиленим годинником помилково «вигравав» або «програвав» у суперечці за свіжість
             if (firstT) u = e.updated || 1;
-            else u = (e.updated && e.updated !== (st.tu || {})[h]) ? e.updated : now;
+            else u = (e.updated && e.updated !== (st.tu || {})[h]) ? e.updated : Date.now();
             if (u !== e.updated) stamp[h] = u;
-            ops.push({ k: 't:' + h, v: JSON.stringify(tlSlim(e)), t: u, d: 0 });
+            ops.push({ k: 't:' + h, v: JSON.stringify(tlSlim(e)), t: u > 1 ? u + skewT : u, d: 0 });
         }
         return { ops: ops, cur: cur, curS: curS, curT: curT, stamp: stamp, first: first, front: front, susp: susp };
     }
@@ -258,6 +260,7 @@
     function applyRows(rows, snap, ctx) {
         var fav = favData(), tl = tlData(), favCh = false, tlCh = false, i, r, p, cat, id, v, loc, setCh = [];
         ctx = ctx || { first: false, ss: {}, sts: {} };
+        var skewA = Number(ctx.skew) || 0;   // різниця «сервер − годинник цього пристрою»: час із сервера переводимо в локальний і навпаки
         if (dedupeFav(fav)) favCh = true;
         if (!ctx.ft) ctx.ft = {};
         if (!ctx.tsnap) ctx.tsnap = {};
@@ -302,7 +305,7 @@
             } else if (p[0] === 't' && !r.d && r.v) {
                 try { v = JSON.parse(r.v); } catch (e) { continue; }
                 loc = tl[p[1]];
-                var locOk = loc && typeof loc === 'object', locU = locOk ? (loc.updated || 0) : -1, doIt;
+                var locOk = loc && typeof loc === 'object', locU = locOk ? ((loc.updated || 0) > 1 ? loc.updated + skewA : (loc.updated || 0)) : -1, doIt;
                 // Правило: нема локального — беремо; чужий новіший — беремо; обидва «без часу» (t≤1) або однаковий час — перемагає той, хто досяг більшого прогресу.
                 // Раніше будь-який чужий запис затирав локальний без поля updated — через це таймкоди «губились»
                 var rp = Number(v.percent || 0), lp = locOk ? Number(loc.percent || 0) : 0;
@@ -311,7 +314,7 @@
                     // перше підключення, локальний запис старий (без часу): виграє той, де переглянуто більше — прогрес не губимо.
                     // Якщо переміг локальний — позначаємо його свіжим, щоб він поїхав на сервер і на інші пристрої
                     doIt = rp > lp;
-                    if (!doIt && lp > rp && ctx.now) { loc.updated = ctx.now; delete ctx.tsnap[p[1]]; tlCh = true; ctx.repush = (ctx.repush || 0) + 1; }
+                    if (!doIt && lp > rp && ctx.now) { loc.updated = ctx.now - skewA; delete ctx.tsnap[p[1]]; tlCh = true; ctx.repush = (ctx.repush || 0) + 1; }
                 }
                 else if (r.t <= 1) doIt = locU <= 1 && rp > lp;          // старий запис без часу ніколи не перебиває те, що вже є
                 else if (locU <= 1) doIt = true;                         // локальний старий, а на сервері є справжній час — беремо серверний
@@ -321,7 +324,7 @@
                 if (doIt) {
                     var n = {};
                     TKEEP.forEach(function (k) { if (typeof v[k] !== 'undefined') n[k] = v[k]; });
-                    n.updated = r.t;
+                    n.updated = r.t > 1 ? r.t - skewA : r.t;
                     tl[p[1]] = n;
                     ctx.tsnap[p[1]] = [n.time, n.percent, n.duration].join('|');
                     tlCh = true;
@@ -589,12 +592,12 @@
         if (!server()) { if (manual) noty('Не вказана адреса сервера'); setStatus('Немає адреси сервера', false); return cb(false); }
         if (!syncActive()) { if (manual) noty('Увімкнена синхронізація CUB — LMX Sync вимкнено'); return cb(false); }
         busy = true;
-        var st = getState(), now = Date.now() + (st0skew());
+        var skew0 = st0skew(), st = getState(), now = Date.now() + skew0;
         // Повне зчитування з сервера (since=0) — безпечне й нічого не затирає (діють ті самі правила «новіше/більше виграє»). Робимо його:
         // вручну («Синхронізувати зараз»), один раз після оновлення плагіна і коли локальних таймкодів стало вдвічі менше, ніж пам'ятає стан (дані пристрою очищали)
         var tlNow = Object.keys(tlData()).length, tsn = Object.keys(st.tsnap || {}).length;
         if (manual || st.pullv !== 2 || (tsn >= 20 && tlNow < tsn * 0.5)) { st.since = 0; if (tsn >= 20 && tlNow < tsn * 0.5) st.tsnap = {}; }
-        var col = collect(st, now, { synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
+        var col = collect(st, now, { skew: skew0, synth: !!st.empty, all: !!st.refNext, recent: !!st.refRecent }), ops = col.ops, chunks = [], i;
         for (i = 0; i < ops.length; i += CHUNK) chunks.push(ops.slice(i, i + CHUNK));
         if (!chunks.length) chunks.push([]);
         var rows = [], n = 0, pushed = ops.length;
@@ -629,7 +632,7 @@
                 for (k in col.cur) snapNext[k] = 1;
                 if (col.susp) col.susp.forEach(function (sk) { snapNext[sk] = 1; });
                 applying = true;
-                var ctx = { now: now, first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {}, stamp: col.stamp, tsnap: {} }, k2;
+                var ctx = { now: now, skew: skew0, first: col.first, ss: {}, sts: st.sts || {}, ft: st.ft || {}, stamp: col.stamp, tsnap: {} }, k2;
                 for (k2 in col.curT) ctx.tsnap[k2] = col.curT[k2];
                 for (k2 in col.curS) ctx.ss[k2] = col.curS[k2];
                 // що ми щойно надіслали — вважаємо актуальним у цей момент
@@ -769,7 +772,7 @@
             });
         });
         safe(function () {
-            if (Lampa.Player && Lampa.Player.listener) Lampa.Player.listener.follow('destroy', function () { schedule(4000); });
+            if (Lampa.Player && Lampa.Player.listener) Lampa.Player.listener.follow('destroy', function () { schedule(1500); });
         });
         // Lampa зберігає прогрес лише раз на 2 хв і при виході з плеєра. Якщо одразу закрити застосунок (телефон), останні хвилини губились.
         // Тому зберігаємо позицію щоразу, коли застосунок згортається/закривається, і раз на 15 с, поки грає відео
@@ -781,12 +784,28 @@
                 if (!t.handler || t.stop_recording || !t.duration || !(t.time > 0)) return;
                 // пишемо лише коли позиція справді зсунулась від старту відео: інакше «свіжий» штамп на старій позиції перебив би новіший прогрес з іншого пристрою
                 if (!posBase || posBase.hash !== t.hash) { posBase = { hash: t.hash, time: t.time }; return; }
-                if (t.time !== posBase.time) t.handler(t.percent, t.time, t.duration);
+                if (t.time !== posBase.time) { t.handler(t.percent, t.time, t.duration); livePush(t, beaconNow); }
+            } catch (e) {}
+        }
+        // Позиція йде на сервер ще під час перегляду (раз на хвилину), а при закритті/згортанні — «маяком», що долітає навіть коли застосунок закривається.
+        // Раніше, якщо вимкнути телевізор посеред серії, сервер дізнавався про позицію лише при наступному запуску, і інший пристрій показував старий момент.
+        // Це один маленький запит із єдиним таймкодом; повну синхронізацію під час перегляду, як і раніше, не запускаємо
+        var lastLive = 0, beaconNow = false;
+        function livePush(t, beacon) {
+            try {
+                if (!t || !t.hash || !code() || !server() || !syncActive() || busy || applying) return;
+                if (!beacon && Date.now() - lastLive < 60000) return;
+                lastLive = Date.now();
+                var obj = { u: getState().u, since: -1, ops: [{ k: 't:' + t.hash, v: JSON.stringify(tlSlim(t)), t: Date.now() + st0skew(), d: 0 }] };
+                if (beacon && window.navigator && navigator.sendBeacon && typeof Blob !== 'undefined') {
+                    try { if (navigator.sendBeacon(server() + '/api/sync', new Blob([JSON.stringify(obj)], { type: 'text/plain;charset=UTF-8' }))) return; } catch (e) {}
+                }
+                post('/api/sync', obj, function () {}, function () {}, 15000);
             } catch (e) {}
         }
         safe(function () {
-            document.addEventListener('visibilitychange', function () { if (document.hidden) savePos(); });
-            window.addEventListener('pagehide', savePos);
+            document.addEventListener('visibilitychange', function () { if (document.hidden) { beaconNow = true; savePos(); beaconNow = false; } });
+            window.addEventListener('pagehide', function () { beaconNow = true; savePos(); beaconNow = false; });
             setInterval(function () { if (!document.hidden) savePos(); }, 15000);
         });
         safe(function () {
@@ -795,7 +814,15 @@
             });
         });
         // раз на 20 хвилин, поки застосунок відкритий і видимий — щоб зміни з інших пристроїв підтягувались у фоні (1 легкий запит)
-        safe(function () { setInterval(function () { if (!document.hidden && code() && Date.now() - (getState().last || 0) > 15 * 60000) schedule(1000); }, 5 * 60000); });
+        // Раніше підтягування йшло рідко (до 20 хв), і телевізор, що довго лишався відкритим, показував застарілі таймкоди. Тепер: легка перевірка
+        // раз на 2 хв, якщо остання синхронізація старша за 4 хв, плюс перевірка при відкритті картки фільму/серіалу (перед тим як натиснути «Дивитись»)
+        safe(function () { setInterval(function () { if (!document.hidden && code() && Date.now() - (getState().last || 0) > 4 * 60000) schedule(1000); }, 2 * 60000); });
+        safe(function () {
+            Lampa.Listener.follow('full', function (e) {
+                if (!e || (e.type !== 'complite' && e.type !== 'start') || document.hidden || !code() || applying || busy) return;
+                if (Date.now() - (getState().last || 0) > 20000) schedule(400);
+            });
+        });
         // перша синхронізація після запуску: Lampa вже завантажила закладки й таймкоди
         // ранній старт нижче вже міг синхронізувати — тоді повторний прохід одразу не потрібен
         if (Date.now() - (getState().last || 0) > 20000) schedule(3000);
