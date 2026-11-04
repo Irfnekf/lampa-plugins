@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.67';
+    var VERSION = '2.68';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1946,12 +1946,14 @@
             if (act.__lmxVG[key]) return false;
             act.__lmxVG[key] = 1;
             var t0 = act.__lmxVT0 || 0;
+            if (Date.now() - t0 > 12000) return false;   // джерело й так відповідало довго — не додаємо ще одне очікування
             if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0 || (window.__lmxUserVoiceT || 0) > t0) return false;
             var cur = selItem(g), cand = pickVoice(cid, g.items);
             if (!cand || cand === cur) return false;
             if (cur && !vpGet()[cid] && isUaVoice(cur.title)) return false;
             if (cand.title && cur && vnorm(cand.title) === vnorm(cur.title)) return false;
             act.__lmxVGt = Date.now();
+            try { heroStatus(act, 'Підбираємо озвучку\u2026', false, 0.92); } catch (e) {}
             var prev = cur, idx = idxOf(g, cand), stype = g.stype;
             selIn(inst, 'filter', { stype: stype }, { index: idx });
             setTimeout(function () {
@@ -1963,7 +1965,7 @@
                     if (!g2) return;
                     for (j = 0; j < g2.items.length; j++) if (g2.items[j] && vnorm(g2.items[j].title) === vnorm(prev.title)) { selIn(i2, 'filter', { stype: g2.stype }, { index: idxOf(g2, g2.items[j]) }); break; }
                 });
-            }, 9000);
+            }, 5000);
             return true;
         } catch (e) { return false; }
     }
@@ -2411,7 +2413,7 @@
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
         var cid = String(card && card.id || ''), mem = memGet(), t = Date.now();
-        var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 120000 : (wantHi ? 60000 : 25000);
+        var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 30000 : (wantHi ? 25000 : 20000);
         var gs = window.__lmxProbe;
         if (!gs || gs.cid !== cid || t - gs.t00 > 150000 || (lastEnter.on && lastEnter.t > gs.t00 + 800 && gs.done)) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
         if (gs.done) { hideScanLater(); return; }
@@ -2457,6 +2459,14 @@
         function tick() {
             if (!document.body.contains(act)) return stop();   // екран перестворено — підбір продовжить новий екран
             if (!isOn() || !autoOn() || Date.now() - gs.t00 > budget) return finish();
+            // Деякі джерела при відкритті показують вікно (прив'язка акаунта, вибір, запит): воно блокує перебір — закриваємо і йдемо до наступного
+            try {
+                if (gs.cur && document.querySelector('.modal, .selectbox') && Date.now() - gs.since > 400) {
+                    try { Lampa.Modal.close(); } catch (e) {} try { Lampa.Select.close(); } catch (e) {}
+                    save(gs.cur, -1);
+                    var i1 = instFor(act), S1 = i1 && readSets(i1); if (S1) return next(i1, S1.sort);
+                }
+            } catch (e) {}
             var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], body = act.querySelector('.explorer__files-body .scroll__body');
             if (!inst || !sort.length || !body) { if (Date.now() - t0 > 8000) finish(); return; }
             var i, curIt = null;
@@ -2663,7 +2673,7 @@
                     if (!natT) natT = Date.now();
                     else if (Date.now() - natT > 3500) { releaseNative(act); return stop(); }
                 } else natT = 0;
-                if (act.__lmxProbing || !isOn() || (act.__lmxVGt && Date.now() - act.__lmxVGt < 9500)) { since = Date.now(); return; }
+                if (act.__lmxProbing || !isOn() || (act.__lmxVGt && Date.now() - act.__lmxVGt < 5500)) { since = Date.now(); return; }
                 var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], i, curIt = null;
                 if (!inst || !sort.length) return;
                 for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
