@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.71';
+    var VERSION = '2.72';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -2687,14 +2687,15 @@
     // зависнути. Показуємо, що нічого не знайдено, і за кілька секунд самі переходимо на найкраще з ще не пробованих джерел
     // Є рідний список серій навіть якщо його розмітка нам незнайома: щонайменше дві «не службові» картки, що вміщають текст і не є кнопками порожнього стану
     function nativeList(body) {
-        if (nestedEps(body).length || body.querySelector('.selector img, .selector .time-line, .selector [style*="background-image"]')) return true;
-        var all = body.querySelectorAll('.selector'), n = 0, i, el;
+        var all = body.querySelectorAll('.selector'), n = 0, rich = 0, i, el;
         for (i = 0; i < all.length; i++) {
             el = all[i];
+            // порожній стан джерела (картинка «нічого не знайдено», кнопки «Змінити джерело») карткою не вважаємо — інакше зникає екран і зупиняється автоперемикання
             if (el.closest('[class*="empty"], .lmx-onl-hero, .lmx-onl-bar, .lmx-onl-drop, .lmx-onl-prog') || /empty|simple-button|videos__button|season|folder|lmx-onl-btn/.test(el.className)) continue;
             if ((el.textContent || '').replace(/\s+/g, '').length > 6) n++;
+            if (el.querySelector('img, .time-line, [style*="background-image"]')) rich++;
         }
-        return n >= 2;
+        return rich >= 1 || n >= 2;
     }
     // Віддати екран рідному вигляду плагіна: прибрати наші смужки, статус і режим завантаження (запасний шлях, коли розмітка джерела нам незнайома)
     function releaseNative(act) {
@@ -2745,6 +2746,7 @@
                 if (!inst || !sort.length) return;
                 for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
                 var curKey = curIt ? srcName(curIt.title) : '';
+                try { var pl = act.querySelector('.lmx-onl-g--src .lmx-onl-pill__t'); if (pl && curIt && curIt.title && pl.textContent !== String(curIt.title).trim()) pl.textContent = String(curIt.title).trim(); } catch (e) {}
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
