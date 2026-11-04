@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.80';
+    var VERSION = '2.81';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1120,10 +1120,19 @@
     }
     // Деякі плагіни (BWA) ходять у мережу напряму через XMLHttpRequest / fetch з власними заголовками, повз Lampa.Reguest: слухаємо й їх.
     // Запам'ятовуємо адресу з назвою джерела (як шаблон) і заголовки цього запиту, щоб решту джерел питати так само
+    // BWA (окремий онлайн-плагін) розпізнаємо за запитами до його сервера або за заголовком екрана; lampaua цього не зачіпає
+    function isBwa() {
+        try {
+            if (Date.now() - (window.__lmxBwaT || 0) < 15000) return true;
+            var h = document.querySelector('.head__title'), a = Lampa.Activity.active();
+            return /^\s*bwa\s*$/i.test(h ? h.textContent : '') || /bwa/i.test(String(a && a.component || ''));
+        } catch (e) { return false; }
+    }
     function netSeen(url, headers) {
         try {
             if (window.__lmxPB || !url) return;
             var v = String(url);
+            if (/(^|[\/.])bwa\.[a-z]+\//i.test(v)) window.__lmxBwaT = Date.now();
             if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) return;   // звичайний Lampac — його бачить обгортка Reguest
             var gt = genericTpl(v); if (!gt) return;
             var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
@@ -2591,7 +2600,9 @@
             gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
-            var life = sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            var bwa = isBwa();   // BWA: простий режим — UAKino за замовчуванням, порожнє міняємо на перше джерело з контентом, без пошуку «кращого»
+            var life = !bwa && sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            if (bwa && !gs.bg) gs.bg = 'off';
             if (life && allSrc && !gs.bg && !gs.lifeOff) {
                 var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean);
                 // рейтинг із реальними даними (якість і озвучки з відповідей джерел), якщо вони вже є; інакше — за назвою
@@ -2722,7 +2733,11 @@
                 gs.started = true; gs.cur = curKey; gs.since = Date.now();
                 if (curKey) gs.tried.push(curKey);
                 var target = null, c = sort.filter(function (x) { return x && !x.selected && !x.ghost && keyOf(x); }).sort(cmp), curQ = titleQ(curIt && curIt.title);
-                if (qPref() !== 'auto' && probeOn()) { if (c[0] && titleQ(c[0].title) > curQ) target = c[0]; }
+                if (bwa) {
+                    var uak = sort.filter(function (x) { return x && !x.selected && !x.ghost && /uakino|ua\s*kino/i.test(keyOf(x)); })[0];
+                    if (uak && !/uakino|ua\s*kino/i.test(curKey)) target = uak;
+                }
+                else if (qPref() !== 'auto' && probeOn()) { if (c[0] && titleQ(c[0].title) > curQ) target = c[0]; }
                 else {
                     // плагін відкрив своє перше джерело (часто не найкраще): якщо за рейтингом є явно краще — одразу відкриваємо його, не ходимо по гірших
                     if (c[0] && curIt && scOf(c[0]) > scOf(curIt) + 0.5) target = c[0];
@@ -2742,7 +2757,7 @@
                 save(gs.cur, rank);
                 heroStatus(act, 'Знайдено: ' + items.length + ' серій' + (qual(items) ? ', ' + qual(items) : '') + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
                 // Послідовний обхід не має сенсу доводити до кінця: джерела йдуть від найкращих, тож щойно знайшлось підходяще за якістю (або вже минуло 15 с і щось є) — відкриваємо
-                if (!probeOn() || gs.results.length >= maxTry || (rank >= (balMode() === 'quality' ? 4 : qTarget()) && uaEnough(sort)) || Date.now() - t0 > 15000) return conclude(inst, sort);
+                if (bwa || !probeOn() || gs.results.length >= maxTry || (rank >= (balMode() === 'quality' ? 4 : qTarget()) && uaEnough(sort)) || Date.now() - t0 > 15000) return conclude(inst, sort);
                 return next(inst, sort);
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (gs.cur ? ': ' + gs.cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
@@ -2752,7 +2767,7 @@
                 save(gs.cur, -1); return next(inst, sort);
             }
             if (PAYWALL.test(body.textContent || '') && waited > 250) { accMark(gs.cur); save(gs.cur, -1); return next(inst, sort); }
-            if (waited > 2500) { save(gs.cur, -1); next(inst, sort); }
+            if (waited > (bwa ? 6000 : 2500)) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
             try { tick(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
