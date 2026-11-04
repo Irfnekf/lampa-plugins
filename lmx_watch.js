@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.12';
+    var VERSION = '3.13';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1268,7 +1268,7 @@
     }
     // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
     // довгий серіал: сотні серій у кожній відповіді — перевіряємо джерела по два, щоб не вбити пам'ять телевізора
-    function longSeries(c) { try { return (c && (c.number_of_episodes || 0)) > 300; } catch (e) { return false; } }
+    function longSeries(c) { try { if (!c) return false; if ((c.number_of_episodes || 0) > 300) return true; var n = 0; (c.seasons || []).forEach(function (x) { n += (x && x.episode_count) || 0; }); return n > 300; } catch (e) { return false; } }
     function bgProbe(job) {
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
@@ -2610,7 +2610,7 @@
             for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
             var curKey = curIt ? keyOf(curIt) : '';
             sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); noteHints(x); });
-            gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;
+            if (gs.bg !== 'run') gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;   // під час фонової перевірки лічильник показує, скільки джерел справді перевіряємо
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
             var prof = profileOf(gs), bwa = prof.simple;
