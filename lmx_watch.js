@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.57';
+    var VERSION = '2.58';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -101,6 +101,7 @@
         S + '.lmx-onl-drop--pop{position:absolute;z-index:60;display:block;padding:.35em;overflow-y:auto;overflow-x:hidden;border-radius:.8em;background:rgba(18,20,28,.98);border:1px solid rgba(255,255,255,.14);box-shadow:0 1em 3em rgba(0,0,0,.75);box-sizing:border-box}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt{display:flex !important;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;margin:0 0 .12em !important;padding:.5em .9em !important;border:0 !important;border-radius:.5em !important;background:transparent !important;box-shadow:none !important;white-space:nowrap;transform:none !important}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt__n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}' +
+        S + '.lmx-onl-drop--pop .lmx-onl-opt__s{flex:0 0 auto;margin-left:.8em;font-size:.72em;opacity:.65;white-space:nowrap}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt__q{flex:0 0 auto;margin-left:.8em;padding:.1em .5em;border-radius:.4em;background:rgba(255,255,255,.14);font-size:.72em;font-weight:700;letter-spacing:.04em}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt.focus .lmx-onl-opt__q{background:rgba(0,0,0,.12)}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt--ok::before{margin-right:.65em;flex:0 0 auto}' +
@@ -995,6 +996,8 @@
     // налаштування-перемикачі: ключ → [заголовок, значення за замовчуванням, {значення: підпис}]
     var OPTS = {
         ua: ['Перевага українській озвучці', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_ua'],
+        bal: ['Баланс вибору джерела', 'balanced', { balanced: 'Збалансовано', ua: 'Українська в пріоритеті', quality: 'Якість у пріоритеті' }, 'lmx_online_bal'],
+        sortsrc: ['Автосортування списку джерел', 'on', { on: 'Увімкнено', off: 'Вимкнено' }, 'lmx_online_sortsrc'],
         order: ['Порядок серій', 'std', { std: 'Стандартний', rev: 'Зворотний (нові зверху)' }, 'lmx_online_order'],
         art: ['Якість кадру', 'auto', { auto: 'Авто', max: 'Максимальна (важча)' }, 'lmx_online_art'],
         focus: ['Виділення', 'ring', { ring: 'Ободок', fill: 'Біла заливка' }, 'lmx_online_focus'],
@@ -1144,9 +1147,6 @@
     }
     // історія ручного вибору: джерело для тайтла (30 днів) і скільки разів ви обирали його взагалі
     var hCache = { t: 0, h: {} };
-    function hBonus(k) {
-        try { if (Date.now() - hCache.t > 2000) hCache = { t: Date.now(), h: memGet().h || {} }; return (hCache.h[k] || 0) >= 3 ? 1 : 0; } catch (e) { return 0; }
-    }
     function manualPick(cid, key) {
         if (!key) return;
         try {
@@ -1162,6 +1162,13 @@
         } catch (e) {}
     }
     function msCmp(a, b) { var x = a && a.ms, y = b && b.ms; return x && y && Math.abs(x - y) > 1500 ? (x < y ? 1 : -1) : 0; }
+    // Назви озвучок із відповіді джерела (поля voice/translate… і кнопки вибору озвучки): за ними знаємо, чи є тут українська озвучка саме для цього тайтла
+    function bgVoices(b) {
+        var out = {}, m, rx = /"(?:voice_name|translate|translation|voice|studio|dub)"\s*:\s*"([^"]{2,80})"/gi, rb = /class="[^"]*videos__button[^"]*"[^>]*>([^<]{2,80})</gi, junk = /^\s*(\d+\s*)?(сезон|season|серія|серия|episode|дивитись|смотреть|всі|все|all|play)/i, t;
+        while ((m = rx.exec(b))) { t = m[1].trim(); if (t && !junk.test(t)) out[t] = 1; }
+        while ((m = rb.exec(b))) { t = m[1].trim(); if (t && !junk.test(t)) out[t] = 1; }
+        return Object.keys(out).slice(0, 80);
+    }
     function bgParse(ans) {
         var b = typeof ans === 'string' ? ans : '';
         if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
@@ -1174,7 +1181,9 @@
             var q = 0, marks = b.match(/(2160|1440|1080|720|576|480|360)\s*p/gi) || [];
             marks.forEach(function (m) { var n = parseInt(m, 10), r = n >= 2160 ? 4 : n >= 1080 ? 3 : n >= 720 ? 2 : 1; if (r > q) q = r; });
             if (/4k|uhd/i.test(b)) q = 4;
-            return { s: 'ok', c: c, q: q, t: tor ? 1 : 0, u: /укр|ukr|українськ|\bua\b|\\u0443\\u043a\\u0440/i.test(b) ? 1 : 0 };
+            var vs = bgVoices(b), uv = 0;
+            vs.forEach(function (x) { if (isUaVoice(x)) uv++; });
+            return { s: 'ok', c: c, q: q, t: tor ? 1 : 0, u: /укр|ukr|українськ|\bua\b|\\u0443\\u043a\\u0440/i.test(b) ? 1 : 0, v: vs.length, uv: uv };
         }
         if (!/videos__|"method"|online-prestige|"data"/i.test(b)) return { s: 'skip' };
         return { s: 'empty', c: 0 };
@@ -1380,6 +1389,37 @@
         try { var e = learnGet().s[k]; return !!e && e.a[1] >= 3 && e.a[0] / e.a[1] >= 0.6 && e.o[1] >= 3 && e.o[0] / e.o[1] <= 0.25; } catch (x) { return false; }
     }
     function uaBonus(k, pe) { return (uaOn() && ((pe && pe.u) || uaName(k) || (HINT[k] && HINT[k].u)) ? 2 : 0) + animeBonus(k); }
+    // ---- Єдиний рейтинг джерела. Режим «Баланс» міняє ваги: q — рівень якості (1–4), qHi — вага рівня понад FHD (4K не вдвічі кращий за 1080),
+    // ua — реальна українська озвучка саме для цього тайтла, uaGuess — лише припущення за назвою джерела, anime — спеціалізоване аніме-джерело на аніме, hab — ваш звичний вибір
+    var BAL = {
+        balanced: { q: 1.0, qHi: 0.5, ua: 1.6, uaGuess: 1.0, anime: 3, hab: 0.7 },
+        ua:       { q: 0.8, qHi: 0.4, ua: 3.6, uaGuess: 2.2, anime: 3, hab: 0.7 },
+        quality:  { q: 1.3, qHi: 1.0, ua: 0.6, uaGuess: 0.4, anime: 3, hab: 0.5 }
+    };
+    var BAL_NAMES = { balanced: 'Збалансовано', ua: 'Українська в пріоритеті', quality: 'Якість у пріоритеті' };
+    var QL = { 4: '4K', 3: '1080', 2: '720', 1: 'SD' };
+    function balMode() { var v = opt('lmx_online_bal', 'balanced'); return BAL[v] ? v : 'balanced'; }
+    function sortSrcOn() { return opt('lmx_online_sortsrc', 'on') === 'on'; }
+    // o: { q — якість із назви, pe — запис фонової перевірки (реальна якість і озвучки), ms }; повертає { s: бал, why: [причини], ua: 'real'|'guess'|'none'|'' }
+    function srcScore(k, o, mem) {
+        o = o || {};
+        var W = BAL[balMode()], pe = o.pe || null, s = 0, why = [], q = (pe && pe.q) || o.q || 0, ua = '', g, ms;
+        mem = mem || memGet();
+        s += q <= 3 ? q * W.q : 3 * W.q + (q - 3) * W.qHi;
+        if (uaOn()) {
+            if (pe && pe.uv > 0) { s += W.ua + (pe.uv >= 3 ? 0.3 : 0); ua = 'real'; why.push('українська озвучка'); }
+            else if (pe && pe.v > 0 && pe.uv === 0) ua = 'none';
+            else if ((pe && pe.u) || uaName(k) || (HINT[k] && HINT[k].u)) { s += W.uaGuess; ua = 'guess'; why.push('українське джерело'); }
+        }
+        if (animeBonus(k)) { s += W.anime; why.push('аніме-джерело'); }
+        if (q) why.push(QL[q]);
+        if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
+        g = mem.g && mem.g[k];
+        if (g && (g.fail || 0) > (g.ok || 0)) s -= Math.min(1.5, ((g.fail || 0) - (g.ok || 0)) * 0.25);
+        ms = (pe && pe.ms) || (g && g.ms) || 0;
+        if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
+        return { s: s, why: why, ua: ua, ms: ms };
+    }
     function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
@@ -1941,7 +1981,7 @@
             var lifeFlags = S.sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             S.sort.forEach(function (it) { if (it && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
             var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = String(cd0 && cd0.id || ''); } catch (e) {}
-            var seenLook = {};
+            var seenLook = {}, mem1 = memGet();
             S.sort.forEach(function (it) {
                 if (!it) return;
                 var key0 = srcName(it.title), st = srcState(key0);
@@ -1954,13 +1994,31 @@
                 if (prev) { if ((it.selected && !prev.sel) || (!it.selected && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = !!it.selected; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
                 if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
                 var o = { title: title, sel: !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
+                // рейтинг і підпис: реальні дані перевірки (укр. озвучки, швидкість), якщо вони є
+                var pe1 = pcEntry(cid0, key0); pe1 = pe1 && pe1.s === 'ok' ? pe1 : null;
+                var sc1 = srcScore(key0, { q: titleQ(it.title) || qrank(badge), pe: pe1 }, mem1), sp = [];
+                if (pe1) { if (sc1.ua === 'real') sp.push('\uD83C\uDDFA\uD83C\uDDE6 ' + pe1.uv); else if (sc1.ua === 'none') sp.push('без укр.'); if (sc1.ms) sp.push((sc1.ms / 1000).toFixed(1) + ' с'); }
+                o.sc = sc1.s; o.why = sc1.why; o.sub = sp.join(' \u00b7 '); o.idx = opts.length;
                 seenLook[look] = o;
                 opts.push(o);
             });
+            // порядок за рейтингом (вимикається в налаштуваннях): джерела без результатів — внизу, решта від найкращого; рівні — як у списку плагіна
+            if (opts.length > 1 && sortSrcOn()) opts.sort(function (x, y) { return ((x.dim ? 1 : 0) - (y.dim ? 1 : 0)) || (y.sc - x.sc) || (x.idx - y.idx); });
             // у розкритому списку спершу джерела з результатами, нижче — без результатів (під розділювачем)
             if (anyOk && act.__lmxAllSrc) {
                 var okO = opts.filter(function (x) { return x.ok || x.sel; }), noO = opts.filter(function (x) { return !(x.ok || x.sel); });
                 if (okO.length && noO.length) opts = okO.concat([{ sep: true, title: 'Без результатів' }], noO);
+            }
+            // ★ рекомендоване джерело (найвищий рейтинг серед тих, що мають результат); при впорядкованому списку — ще й заголовки груп
+            var bestI = -1, bestS = -1e9, realN = opts.filter(function (x) { return !x.sep; }).length;
+            opts.forEach(function (x, i) { if (!x.sep && !x.dim && x.sc > bestS) { bestS = x.sc; bestI = i; } });
+            if (bestI >= 0 && realN > 1) {
+                opts[bestI].star = true;
+                if (sortSrcOn() && bestI === 0) {
+                    var r0 = opts[0];
+                    opts.splice(0, 0, { sep: true, title: '\u2605 Рекомендовано' + (r0.why && r0.why.length ? ' \u00b7 ' + r0.why.join(', ') : '') });
+                    if (realN > 2 && opts[2] && !opts[2].sep) opts.splice(2, 0, { sep: true, title: 'Інші джерела' });
+                }
             }
             if (anyOk && (hidden || act.__lmxAllSrc)) opts.push({ title: act.__lmxAllSrc ? 'Лише з результатами' : 'Всі джерела (+' + hidden + ')', sticky: true, run: function () { act.__lmxAllSrc = !act.__lmxAllSrc; } });
         }
@@ -2000,9 +2058,9 @@
             var qm = key === 'src' && !o.sticky ? String(o.title).match(/^(.*?)\s*(?:[~\-\u2013\u2014|\u00b7]\s*)(4K|2160p?|UHD|1440p?|1080p?|FHD|720p?|HD|480p?|SD)\s*$/i) : null;
             if (qm && qm[1]) {
                 var nm0 = document.createElement('span'), q0 = document.createElement('span');
-                nm0.className = 'lmx-onl-opt__n'; nm0.textContent = qm[1]; q0.className = 'lmx-onl-opt__q'; q0.textContent = qm[2].toUpperCase().replace(/P$/, '');
-                c.appendChild(nm0); c.appendChild(q0);
-            } else { var nm1 = document.createElement('span'); nm1.className = 'lmx-onl-opt__n'; nm1.textContent = o.title; c.appendChild(nm1); }
+                nm0.className = 'lmx-onl-opt__n'; nm0.textContent = (o.star ? '\u2605 ' : '') + qm[1]; q0.className = 'lmx-onl-opt__q'; q0.textContent = qm[2].toUpperCase().replace(/P$/, '');
+                c.appendChild(nm0); if (o.sub) { var sb0 = document.createElement('span'); sb0.className = 'lmx-onl-opt__s'; sb0.textContent = o.sub; c.appendChild(sb0); } c.appendChild(q0);
+            } else { var nm1 = document.createElement('span'); nm1.className = 'lmx-onl-opt__n'; nm1.textContent = (o.star ? '\u2605 ' : '') + o.title; c.appendChild(nm1); if (o.sub) { var sb1 = document.createElement('span'); sb1.className = 'lmx-onl-opt__s'; sb1.textContent = o.sub; c.appendChild(sb1); } }
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 window.__lmxManual = Date.now();
@@ -2285,17 +2343,34 @@
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
             var life = sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             if (life && allSrc && !gs.bg && !gs.lifeOff) {
-                var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean)
-                    .sort(function (a, b) { return ((b.q + uaBonus(keyOf(b.it), null) + hBonus(keyOf(b.it))) - (a.q + uaBonus(keyOf(a.it), null) + hBonus(keyOf(a.it)))) || msCmp(mem.g[keyOf(b.it)], mem.g[keyOf(a.it)]) || (b.g - a.g) || (a.ix - b.ix); });
+                var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean);
+                // рейтинг із реальними даними (якість і озвучки з відповідей джерел), якщо вони вже є; інакше — за назвою
+                function rankLive() {
+                    live.forEach(function (r) { var k = keyOf(r.it), pe = pcEntry(cid, k), sc = srcScore(k, { q: r.q, pe: pe && pe.s === 'ok' ? pe : null }, mem); r.sc = sc.s; r.why = sc.why; r.rq = (pe && pe.s === 'ok' && pe.q) || r.q; });
+                    live.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[keyOf(b.it)], mem.g[keyOf(a.it)]) || (b.g - a.g) || (a.ix - b.ix); });
+                }
+                rankLive();
                 // 3: джерело, яке ви вручну обирали для цього тайтла, відкриваємо першим (30 днів)
                 var mp = mem.m && mem.m[cid], mpIt = null;
                 if (mp && Date.now() - (mp.at || 0) < 30 * 86400000) live.forEach(function (r) { if (!mpIt && keyOf(r.it) === mp.s) mpIt = r; });
-                if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); mpIt.q = Math.max(mpIt.q, qTarget()); }
+                if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); mpIt.q = Math.max(mpIt.q, qTarget()); mpIt.rq = Math.max(mpIt.rq || 0, qTarget()); }
                 var top = live[0], waitedL = Date.now() - t0;
-                if (top && (top.q >= qTarget() || waitedL > 5000)) {
-                    live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.q, n: 0 }); });
+                if (top && (top.rq >= qTarget() || waitedL > 5000)) {
+                    // Не зупиняємось на першому «достатньому»: коротко (до ~3,5 с) питаємо кількох найкращих кандидатів, чи є в них українська озвучка саме для цього тайтла
+                    var pu2 = window.__lmxProbeUrl;
+                    if (!gs.refine && !mpIt && live.length > 1 && pu2 && pu2.cid === cid && probeOn()) {
+                        var rc = live.slice(0, 6).filter(function (r) { var pe0 = pcEntry(cid, keyOf(r.it)); return !(pe0 && pe0.s === 'ok' && typeof pe0.v !== 'undefined'); });
+                        gs.refine = { t: Date.now(), done: !rc.length };
+                        if (rc.length) {
+                            bgProbe({ cid: cid, url: pu2.u, par: 6, timeout: 3200, onEach: function () {}, onEnd: function () { gs.refine.done = true; },
+                                items: rc.map(function (r) { return { key: keyOf(r.it), source: r.it.source, q: r.q, tor: r.tor, to: r.tor ? 4500 : 0 }; }) });
+                        }
+                    }
+                    if (gs.refine && !gs.refine.done && Date.now() - gs.refine.t < 3600) { heroStatus(act, 'Перевіряємо озвучки…', false, 0.5); return; }
+                    if (gs.refine && !gs.refine.rk) { gs.refine.rk = 1; rankLive(); if (mpIt) { live.splice(live.indexOf(mpIt), 1); live.unshift(mpIt); } top = live[0]; }
+                    live.forEach(function (r) { gs.results.push({ name: keyOf(r.it), rank: r.rq || r.q, n: 0 }); });
                     learnNote(sort, cid);
-                    if (cid) { mem.t[cid] = { s: keyOf(top.it), q: top.q, at: Date.now(), v: 2, oks: live.map(function (r) { return keyOf(r.it); }) }; memSet(mem); }
+                    if (cid) { mem.t[cid] = { s: keyOf(top.it), q: top.rq || top.q, at: Date.now(), v: 2, oks: live.map(function (r) { return keyOf(r.it); }) }; memSet(mem); }
                     if (!top.it.selected) switchTo(inst, top.it, 'Відкриваємо найкраще джерело');
                     return finish();
                 }
@@ -2344,14 +2419,14 @@
                 sort.forEach(function (x) {
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
-                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: Math.max(pe.q || 0, titleQ(x.title)), n: pe.c || 0, ua: uaBonus(keyOf(x), pe) });
+                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || titleQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: titleQ(x.title), pe: pe }, mem).s });
                     else if (!pe || pe.s === 'skip') skipN++;
                 });
                 if (!okL.length) {
                     if (skipN) { gs.bg = 'off'; return; }
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
-                okL.sort(function (a, b) { return ((b.rank + (b.ua || 0) + hBonus(b.name)) - (a.rank + (a.ua || 0) + hBonus(a.name))) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
+                okL.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
                 okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
                 var bestO = okL[0];
                 if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), v: 2, oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
@@ -2444,7 +2519,7 @@
                     var mem = memGet();
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
-                        .sort(function (x, y) { return ((titleQ(y.title) + uaBonus(srcName(y.title), null)) - (titleQ(x.title) + uaBonus(srcName(x.title), null))) || (gscore(mem.g[srcName(y.title)]) - gscore(mem.g[srcName(x.title)])); });
+                        .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
                     if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
                     cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
@@ -2797,6 +2872,14 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_auto', type: 'trigger', default: true },
                 field: { name: 'Автоперемикання джерел', description: 'Відкриває джерело, що спрацювало раніше; якщо воно порожнє — пробує наступне (до 6 спроб) і запам\'ятовує результат' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_online_bal', type: 'select', values: BAL_NAMES, default: 'balanced' },
+                field: { name: 'Баланс вибору джерела', description: 'Як поєднувати українську озвучку та якість: «Збалансовано» — українська важить трохи більше за рівень якості; «Українська в пріоритеті» — майже завжди українська; «Якість у пріоритеті» — спершу найкраща якість' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_online_sortsrc', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
+                field: { name: 'Автосортування списку джерел', description: 'Угорі — рекомендоване джерело з поясненням, далі за рейтингом, внизу ті, де нічого немає. Вимкнено — порядок такий, як віддає онлайн-плагін' }
             });
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
