@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.74';
+    var VERSION = '2.75';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -36,6 +36,8 @@
     }
     var S = 'body.lmx-online .explorer.lmx-onl ';
     var B = S + '.explorer__files-body .scroll__body';
+    // сітка серій може стояти не на самому .scroll__body, а на обгортці карток (інші плагіни): правила діють на будь-якому рівні
+    var BG = S + '.explorer__files-body .lmx-onl-grid.lmx-onl-grid';
     var CSS = '' +
         S + '.explorer__files-head{padding-bottom:.3em}' +
         S + '.filter--search,' + S + '.filter--sort,' + S + '.filter--filter,' + S + '.filter--back,' + S + '.simple-button.selector{border-radius:99em;background:rgba(255,255,255,.12)}' +
@@ -43,11 +45,11 @@
         S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
         S + '.videos__button.focus{background:#fff;color:#111}' +
         // список: серії у сітці широких карток (кадр зверху, підпис знизу)
-        B + '.lmx-onl-grid{display:flex;flex-wrap:wrap;align-items:stretch;gap:.9em}' +
+        BG + '{display:flex;flex-wrap:wrap;align-items:stretch;gap:.9em}' +
         B + ' > *{box-sizing:border-box}' +
-        B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex:0 0 calc(20% - .72em);width:calc(20% - .72em);margin:0}' +
-        '@media (max-width:1100px){' + B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
-        '@media (max-width:760px){' + B + '.lmx-onl-grid > .lmx-onl-item,' + B + '.lmx-onl-grid > .videos__item,' + B + '.lmx-onl-grid > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
+        BG + ' > .lmx-onl-item,' + BG + ' > .videos__item,' + BG + ' > .videos__season{flex:0 0 calc(20% - .72em);width:calc(20% - .72em);margin:0}' +
+        '@media (max-width:1100px){' + BG + ' > .lmx-onl-item,' + BG + ' > .videos__item,' + BG + ' > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
+        '@media (max-width:760px){' + BG + ' > .lmx-onl-item,' + BG + ' > .videos__item,' + BG + ' > .videos__season{flex-basis:calc(50% - .45em);width:calc(50% - .45em)}}' +
         S + '.lmx-onl-item,' + S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
         S + '.online-prestige,' + S + '.torrent-item{margin-bottom:.7em}' +
         S + '.lmx-onl-item.focus,' + S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.16);box-shadow:0 0 0 .18em #fff}' +
@@ -55,10 +57,10 @@
         S + '.videos__item.focus::before,' + S + '.videos__season.focus::before,' + S + '.online-prestige.focus::before,' + S + '.torrent-item.focus::before{display:none !important}' +
         S + '.explorer__left{display:none !important}' +
         S + '.explorer__files{width:100% !important}' +
-        B + '.lmx-onl-grid > .lmx-onl-item{display:flex !important;flex-direction:column;align-items:stretch}' +
-        B + '.lmx-onl-grid > .lmx-onl-item > *:first-child{width:100% !important;max-width:none !important;height:auto !important;aspect-ratio:16/9;margin:0 !important;border-radius:1em 1em 0 0;overflow:hidden;position:relative}' +
-        B + '.lmx-onl-grid > .lmx-onl-item > *:first-child img{width:100%;height:100%;object-fit:cover;display:block}' +
-        B + '.lmx-onl-grid > .lmx-onl-item > *:not(:first-child){width:100% !important;box-sizing:border-box;padding:.5em .7em;margin:0 !important}' +
+        BG + ' > .lmx-onl-item{display:flex !important;flex-direction:column;align-items:stretch}' +
+        BG + ' > .lmx-onl-item > *:first-child{width:100% !important;max-width:none !important;height:auto !important;aspect-ratio:16/9;margin:0 !important;border-radius:1em 1em 0 0;overflow:hidden;position:relative}' +
+        BG + ' > .lmx-onl-item > *:first-child img{width:100%;height:100%;object-fit:cover;display:block}' +
+        BG + ' > .lmx-onl-item > *:not(:first-child){width:100% !important;box-sizing:border-box;padding:.5em .7em;margin:0 !important}' +
         S + '.videos__item-imgbox{position:relative;width:100%;aspect-ratio:16/9;border-radius:1em 1em 0 0;overflow:hidden;background:rgba(255,255,255,.05)}' +
         S + '.videos__item-imgbox img{width:100%;height:100%;object-fit:cover;display:block}' +
         S + '.videos__item-imgbox[data-n]::before{content:attr(data-n);position:absolute;left:.5em;top:.5em;z-index:2;min-width:1.9em;padding:.12em .45em;border-radius:.5em;background:rgba(0,0,0,.62);font-size:.85em;font-weight:700;text-align:center;line-height:1.35}' +
@@ -74,9 +76,9 @@
         S + '.lmx-onl-item{height:auto !important;max-height:none !important;min-height:0}' +
         S + '.lmx-onl-item div,' + S + '.lmx-onl-item span{text-overflow:clip !important;-webkit-line-clamp:unset !important;line-clamp:unset !important}' +
         S + '.lmx-onl-item [class*="title"],' + S + '.lmx-onl-item [class*="name"]{white-space:normal !important;overflow:visible !important;-webkit-box-orient:initial !important;max-height:none !important;height:auto !important;overflow-wrap:break-word}' +
-        B + '.lmx-onl-grid > .lmx-onl-item [class*="__title"]{min-height:2.45em}' +
-        B + '.lmx-onl-grid > .lmx-onl-item [class*="__info"],' + B + '.lmx-onl-grid > .lmx-onl-item [class*="-footer"],' + B + '.lmx-onl-grid > .lmx-onl-item [class*="__footer"]{min-height:2.7em;margin-top:auto !important}' +
-        B + '.lmx-onl-grid > .lmx-onl-item > *:first-child{flex:0 0 auto !important}' +
+        BG + ' > .lmx-onl-item [class*="__title"]{min-height:2.45em}' +
+        BG + ' > .lmx-onl-item [class*="__info"],' + BG + ' > .lmx-onl-item [class*="-footer"],' + BG + ' > .lmx-onl-item [class*="__footer"]{min-height:2.7em;margin-top:auto !important}' +
+        BG + ' > .lmx-onl-item > *:first-child{flex:0 0 auto !important}' +
         S + '.videos__item .time-line,' + S + '.online-prestige .time-line{border-radius:99em;height:.28em;background:rgba(255,255,255,.2);overflow:hidden}' +
         S + '.videos__item .time-line > div,' + S + '.online-prestige .time-line > div{background:#fff;border-radius:99em;height:100%}' +
         // поки джерела шукаються: рідний лоадер Lampa ховаємо, замість нього — шапка з логотипом, що переливається
@@ -86,7 +88,7 @@
         '.lmx-onl-hero--load .lmx-onl-hero__logo,.lmx-onl-hero--load .lmx-onl-hero__t{animation:lmxShim 1.6s ease-in-out infinite}' +
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
         '.lmx-onl-hero--load .lmx-onl-hero__s{display:none}' +
-        B + '.lmx-onl-grid > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
+        BG + ' > .lmx-onl-wide{flex:0 0 100%;width:100%}' +
         // стара панель фільтрів лишається в DOM (через неї працюють меню), але не показується, коли нашу панель побудовано
         S.slice(0, -1) + '.lmx-onl-barred .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-bar):not(.lmx-onl-drop):not(.lmx-onl-prog){display:none !important}' +
         S + '.lmx-onl-drop{display:flex;flex-wrap:wrap;gap:.5em;padding:0 0 .9em}' +
@@ -141,6 +143,8 @@
         S + '.explorer__files-head.hide{display:block !important}' +
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
+        // поки автопідбір сам перемикає порожнє джерело, рідний екран «нічого не знайдено» з його кнопками не показуємо
+        'body.lmx-online .activity.lmx-onl-eg .explorer__files-body{visibility:hidden}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-prog){display:none !important}' +
         'body.lmx-online .activity.lmx-onl-rl .explorer__files-body .scroll__body > *{display:none !important}' +
         'body.lmx-onl-pick .selectbox{opacity:0 !important}' +
@@ -292,7 +296,7 @@
     })();
     // Картки серій: «скляна» рамка з відступом, кадр із заокругленням, номер-бейдж, рейтинг пігулкою; рамка фокуса має те ж заокруглення, що й картка
     var CARD_CSS = (function () {
-        var C = 'body.lmx-online .explorer.lmx-onl .explorer__files-body .scroll__body.lmx-onl-grid > .lmx-onl-item', GOLD = '#e9a24a';
+        var C = 'body.lmx-online .explorer.lmx-onl .explorer__files-body .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item', GOLD = '#e9a24a';
         return '' +
             C + '{padding:.5em !important;border-radius:1.3em !important;background:rgba(255,255,255,.1) !important;border:1px solid rgba(255,255,255,.15);transition:background .15s ease,transform .15s ease,box-shadow .15s ease}' +
             C + '.focus{background:rgba(255,255,255,.2) !important;border-color:transparent;box-shadow:0 0 0 .2em #fff !important;transform:scale(1.03);z-index:2}' +
@@ -314,10 +318,10 @@
             C + ' [class*="-rate"]{display:inline-flex !important;align-items:center;gap:.35em;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-size:.92em}' +
             C + ' [class*="__quality"]:not(:empty){margin-left:auto;align-self:center;min-height:0 !important;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-weight:700}' +
             // Скло — справжнє розмиття; Кіно — темна панель із золотом; Полегшена — без розмиття
-            'body.lmx-apple.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
-            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item{background:#14161f !important;border-color:rgba(255,255,255,.08);border-radius:1em !important}' +
-            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent}' +
-            'body.lmx-prem.lmx-online .explorer.lmx-onl .scroll__body.lmx-onl-grid > .lmx-onl-item [class*="episode-number"]{background:rgba(0,0,0,.7) !important;color:' + GOLD + ' !important}';
+            'body.lmx-apple.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item{background:#14161f !important;border-color:rgba(255,255,255,.08);border-radius:1em !important}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent}' +
+            'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item [class*="episode-number"]{background:rgba(0,0,0,.7) !important;color:' + GOLD + ' !important}';
     })();
     function addCss() {
         var st = document.getElementById('lmx-online-css');
@@ -2743,8 +2747,9 @@
         var card = null; try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); } catch (e) {}
         var cid = String(card && card.id || ''), bad = window.__lmxBad;
         if (!bad || bad.cid !== cid) bad = window.__lmxBad = { cid: cid, names: [] };
+        act.classList.add('lmx-onl-eg');
         var natT = 0, since = Date.now(), lastKey = null, cd = 0, cand = null, t0 = Date.now(), EV = ['keydown', 'mousedown', 'touchstart'], iv = 0;
-        function stop() { clearInterval(iv); act.__lmxEG = 0; EV.forEach(function (ev) { document.removeEventListener(ev, cancel, true); }); }
+        function stop() { clearInterval(iv); act.__lmxEG = 0; act.classList.remove('lmx-onl-eg'); EV.forEach(function (ev) { document.removeEventListener(ev, cancel, true); }); }
         function cancel() {
             if (Date.now() - t0 < 600) return;
             if (cd) { heroStatus(act, 'Автоперемикання скасовано. Оберіть джерело кнопкою «Джерело»', true); }
@@ -2867,6 +2872,7 @@
         var ex = act.querySelector('.explorer');
         if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
         if (body.querySelector('.videos__item-imgbox') || (list.length && list[0].querySelector('img'))) body.classList.add('lmx-onl-grid');
+        if (list.length && list[0].parentNode && list[0].parentNode !== body && (body.classList.contains('lmx-onl-grid') || list[0].querySelector('img, [style*="background-image"], [class*="img"]'))) list[0].parentNode.classList.add('lmx-onl-grid');
         // рядки-довідки (без картинки), як «Netflix · Сезон 3 · Серія 5»: на всю ширину сітки
         for (i = 0; i < kids.length; i++) if (kids[i].classList && kids[i].classList.contains('selector') && !kids[i].classList.contains('lmx-onl-item') && !kids[i].classList.contains('videos__button') && !kids[i].classList.contains('lmx-onl-btn')) kids[i].classList.add('lmx-onl-wide');
         var card = null;
