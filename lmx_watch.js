@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.00';
+    var VERSION = '3.01';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -889,7 +889,7 @@
                 if (!tg || act.classList.contains('lmx-onl-load') || act.__lmxProbing) { okTicks = 0; return; }
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
                 if (listOff(act)) { resetScroll(act); okTicks = 0; }
-                else if (okFocus(act) && nm === 'content') { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }
+                else if (okFocus(act) && (nm === 'content' || (window.__lmxKeyT || 0) > rt0)) { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }   // користувач уже сам пересунув фокус (напр. на «Озвучка») — не повертаємо його на джерело
                 hideJunk(act);
                 okTicks = 0;
                 try { Lampa.Controller.toggle('content'); } catch (e) {}
@@ -1467,9 +1467,9 @@
     // ---- Єдиний рейтинг джерела. Режим «Баланс» міняє ваги: q — рівень якості (1–4), qHi — вага рівня понад FHD (4K не вдвічі кращий за 1080),
     // ua — реальна українська озвучка саме для цього тайтла, uaGuess — лише припущення за назвою джерела, anime — спеціалізоване аніме-джерело на аніме, hab — ваш звичний вибір
     var BAL = {
-        balanced: { q: 1.0, qHi: 0.5, ua: 1.6, uaGuess: 1.0, anime: 3, hab: 0.7 },
-        ua:       { q: 0.8, qHi: 0.4, ua: 3.6, uaGuess: 2.2, anime: 3, hab: 0.7 },
-        quality:  { q: 1.3, qHi: 1.0, ua: 0.6, uaGuess: 0.4, anime: 3, hab: 0.5 }
+        balanced: { q: 1.0, qHi: 0.5, ua: 1.6, uaGuess: 1.0, anime: 5, hab: 0.7 },
+        ua:       { q: 0.8, qHi: 0.4, ua: 3.6, uaGuess: 2.2, anime: 5, hab: 0.7 },
+        quality:  { q: 1.3, qHi: 1.0, ua: 0.6, uaGuess: 0.4, anime: 5, hab: 0.5 }
     };
     var BAL_NAMES = { balanced: 'Збалансовано', ua: 'Українська в пріоритеті', quality: 'Якість у пріоритеті' };
     var QL = { 4: '4K', 3: '1080', 2: '720', 1: 'SD' };
@@ -1487,7 +1487,7 @@
             else if (pe && pe.v > 0 && pe.uv === 0) ua = 'none';
             else if ((pe && pe.u) || uaName(k) || uaLearned(k) || (HINT[k] && HINT[k].u)) { s += W.uaGuess; ua = 'guess'; why.push('українське джерело'); }
         }
-        if (animeBonus(k)) { s += W.anime; why.push('аніме-джерело'); }
+        if (animeBonus(k)) { s += ua === 'none' ? 2 : W.anime; why.push('аніме-джерело'); }   // аніме-джерело вище за універсальні (навіть 4K), але без української озвучки — лише трохи
         if (q) why.push(QL[q]);
         if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
