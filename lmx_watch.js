@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.75';
+    var VERSION = '2.76';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1256,6 +1256,13 @@
         return { s: 'empty', c: 0 };
     }
     // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
+    function genBad(u, set) {
+        try {
+            var h = String(u).split('/')[2] || '', m = JSON.parse(localStorage.getItem('lmx_gen_bad') || '{}');
+            if (set) { m[h] = Date.now(); localStorage.setItem('lmx_gen_bad', JSON.stringify(m)); return true; }
+            return !!(m[h] && Date.now() - m[h] < 86400000);
+        } catch (e) { return false; }
+    }
     function bgProbe(job) {
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
@@ -2606,7 +2613,9 @@
             if (allSrc && !gs.bg && !life && Date.now() - t0 < 1200) return;
             if (allSrc && !gs.bg) {
                 var pu = window.__lmxProbeUrl;
-                if (pu && pu.cid === cid && sort.length > 1) {
+                if (pu && pu.cid === cid && sort.length > 1 && pu.gen && genBad(pu.u)) {
+                    gs.bg = 'off';
+                } else if (pu && pu.cid === cid && sort.length > 1) {
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
                     sort.forEach(function (x) {
@@ -2629,8 +2638,14 @@
                     }, onEnd: function () { gs.bg = 'done'; } };
                     gs.bgDeadline = Date.now() + 9000;
                     bgProbe(gs.job);
-                } else if (Date.now() - t0 > 3500) gs.bg = 'off';
+                } else if (Date.now() - t0 > 2000) gs.bg = 'off';
                 else return;
+            }
+            if (gs.bg === 'run' && window.__lmxProbeUrl && window.__lmxProbeUrl.gen && Date.now() - gs.bgT > 3500 && gs.bgDone >= 4) {
+                // вивчений шаблон (BWA) нічого не підтвердив — швидка перевірка тут не працює: зупиняємо й запам'ятовуємо хост
+                var anyOk0 = false;
+                sort.forEach(function (x) { var pe = x && keyOf(x) && pcEntry(cid, keyOf(x)); if (pe && pe.s === 'ok') anyOk0 = true; });
+                if (!anyOk0) { try { gs.job.stop(); } catch (e) {} genBad(window.__lmxProbeUrl.u, true); gs.bg = 'off'; return; }
             }
             if (gs.bg === 'run' && Date.now() - gs.bgT > 5000) {
                 // довго чекаємо повільні джерела — вже щось знайшли, тож відкриваємо найкраще з наявного, решта догрузиться у фоні
@@ -2664,7 +2679,9 @@
                     else if (!pe || pe.s === 'skip') skipN++;
                 });
                 if (!okL.length) {
-                    if (skipN) { gs.bg = 'off'; return; }
+                    // шаблон адреси вивчено з чужого плагіна (BWA): якщо жодна перевірка нічого не дала, довіряти їй не можна — переходимо на надійний обхід через сам екран
+                    var pgn = window.__lmxProbeUrl;
+                    if (skipN || (pgn && pgn.gen && sort.length > 2)) { gs.bg = 'off'; return; }
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
                 okL.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
@@ -2683,6 +2700,8 @@
                 var target = null, c = sort.filter(function (x) { return x && !x.selected && !x.ghost && keyOf(x); }).sort(cmp), curQ = titleQ(curIt && curIt.title);
                 if (qPref() !== 'auto' && probeOn()) { if (c[0] && titleQ(c[0].title) > curQ) target = c[0]; }
                 else {
+                    // плагін відкрив своє перше джерело (часто не найкраще): якщо за рейтингом є явно краще — одразу відкриваємо його, не ходимо по гірших
+                    if (c[0] && curIt && scOf(c[0]) > scOf(curIt) + 0.5) target = c[0];
                     var pt = mem.t[cid], pref = pt && pt.v === 2 && Date.now() - (pt.at || 0) < 30 * 86400000 ? pt.s : '';
                     if (pref && pref !== curKey) for (i = 0; i < c.length; i++) if (keyOf(c[i]) === pref) { target = c[i]; break; }
                 }
