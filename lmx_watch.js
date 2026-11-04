@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.56';
+    var VERSION = '2.57';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -329,7 +329,22 @@
         return isFinite(w) ? w : 0;
     }
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-    function jd(el) { try { return JSON.parse(el.getAttribute('data-json') || '{}') || {}; } catch (e) { return {}; } }
+    // розбір data-json кожної серії викликається в багатьох циклах (сотні карток) — запам'ятовуємо результат на самому елементі, поки атрибут не змінився
+    function jd(el) {
+        var raw = el.getAttribute('data-json') || '{}', c = el.__lmxJ;
+        if (c && c.r === raw) return c.v;
+        var v; try { v = JSON.parse(raw) || {}; } catch (e) { v = {}; }
+        el.__lmxJ = { r: raw, v: v };
+        return v;
+    }
+    // розбір JSON зі сховища лише коли рядок справді змінився (джерела, озвучки, пам'ять читаються десятки разів за відкриття списку)
+    function parseCached(slot, raw) {
+        if (slot.r === raw && slot.ok) return slot.v;
+        var v; try { v = JSON.parse(raw); } catch (e) { return undefined; }
+        slot.r = raw; slot.v = v; slot.ok = true;
+        return v;
+    }
+    var PC_SLOT = {}, LEARN_SLOT = {}, VC_SLOT = {};
     // Перегляд усього серіалу (усі сезони): по кожній серії дивимось позначку часу Lampa (хеш такий самий, як у онлайн-плагінів)
     function seriesStats(card) {
         try {
@@ -1088,7 +1103,7 @@
         } catch (e) {}
     }
     function pcGet() {
-        try { var v = Lampa.Storage.get('lmx_online_pc', ''); if (typeof v === 'string' && v) v = JSON.parse(v); if (v && typeof v === 'object') return v; } catch (e) {}
+        try { var v = Lampa.Storage.get('lmx_online_pc', ''); if (typeof v === 'string' && v) v = parseCached(PC_SLOT, v); if (v && typeof v === 'object') return v; } catch (e) {}
         return {};
     }
     function pcSet(o) {
@@ -1223,7 +1238,6 @@
             if (ready || n > 40) { clearInterval(iv); window.__lmxHL = 0; entering(false); }
         }, 150);
     }
-    function hideScan() { entering(false); }
     // Нічого не знайшли: кнопки «Повторити» та «Уточнити пошук»
     // Найкраще наступне джерело (як nextSource у Nova): не пробуване, не ghost/порожнє; спершу ті, що дали результат, далі за якістю
     function nextSourceFor(act) {
@@ -1345,7 +1359,7 @@
             if (/\uD83C\uDDFA\uD83C\uDDE6/.test(t)) h.u = 1;
         } catch (e) {}
     }
-    function learnGet() { try { var v = Lampa.Storage.get('lmx_online_learn', ''); if (typeof v === 'string' && v) v = JSON.parse(v); if (v && typeof v === 'object' && v.s) return v; } catch (e) {} return { s: {}, seen: {} }; }
+    function learnGet() { try { var v = Lampa.Storage.get('lmx_online_learn', ''); if (typeof v === 'string' && v) v = parseCached(LEARN_SLOT, v); if (v && typeof v === 'object' && v.s) return v; } catch (e) {} return { s: {}, seen: {} }; }
     function learnNote(sort, cid) {
         try {
             if (!cid) return;
@@ -1834,26 +1848,14 @@
     }
     // Що джерело знайшло для цього матеріалу: 'ok' (є серії), 'no' (порожньо), '' (ще не перевіряли)
     // Типи озвучок (дубляж / багатоголосий / …) — для групування у списку озвучок
-    var VK_ORDER = ['dub', 'mvo', 'dvo', 'avo', 'orig', 'sub', 'other'];
-    var VK_LABEL = { dub: 'Дубляж', mvo: 'Багатоголосий', dvo: 'Двоголосий', avo: 'Авторський', orig: 'Оригінал', sub: 'Субтитри', other: 'Інше' };
     // Озвучки, які користувач сам обирав двічі й більше, плагін теж вважає «своїми» й піднімає вгору — так список «вчиться» на ваших вподобаннях
-    function vcGet() { try { var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = JSON.parse(v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+    function vcGet() { try { var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = parseCached(VC_SLOT, v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
     function vcNote(t) {
         try { var m = vcGet(), k = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
     }
     // Субтитри (навіть українські) озвучкою не вважаємо — лишаються в «Інших»; назва, що закінчується на «UA» (FanVoxUA, AniUA), — українська
     function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (/^\s*(субтитри|subtitles?|sub)(?![a-z\u0400-\u04FF])/i.test(t)) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
     var UA_VOICE = /укр|ukr|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
-    function voiceKind(t) {
-        t = String(t || '');
-        if (/дубл|\bdub/i.test(t)) return 'dub';
-        if (/багатоголос|многоголос|\bp?mvo\b/i.test(t)) return 'mvo';
-        if (/двоголос|двухголос|\bdvo\b/i.test(t)) return 'dvo';
-        if (/авторськ|авторск|одноголос|\bavo\b/i.test(t)) return 'avo';
-        if (/субтитр|\bsub/i.test(t)) return 'sub';
-        if (/оригін|оригин|original|\beng\b|\bukr\b/i.test(t)) return 'orig';
-        return 'other';
-    }
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
     function curSeason() {
