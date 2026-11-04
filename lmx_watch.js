@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.66';
+    var VERSION = '2.67';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -2376,7 +2376,20 @@
             if (hasEp(el)) out.push(el);
         }
         if (!out.length) out = nestedEps(body);
+        if (!out.length) out = genericEps(body);
         return dedupeEps(famFilter(out));
+    }
+    // Запасне розпізнавання для невідомої розмітки (інший плагін/тема): картка — найзовнішній фокусований елемент зі списку, що не є кнопкою, службовим рядком порожнього стану
+    // чи нашим елементом, і має картинку, смужку прогресу або достатньо тексту
+    function genericEps(body) {
+        var all = body.querySelectorAll('.selector'), out = [], i, el;
+        for (i = 0; i < all.length; i++) {
+            el = all[i];
+            if (el.closest('[class*="empty"], .lmx-onl-hero, .lmx-onl-bar, .lmx-onl-drop, .lmx-onl-prog') || /empty|simple-button|videos__button|videos__season|folder|lmx-onl-btn/.test(el.className)) continue;
+            if (out.length && out[out.length - 1].contains(el)) continue;
+            if (el.querySelector('img, .time-line, [style*="background-image"]') || (el.textContent || '').replace(/\s+/g, '').length > 6) out.push(el);
+        }
+        return out.length >= 1 && (out.length >= 2 || out[0].querySelector('img, .time-line, [style*="background-image"]')) ? out : [];
     }
     // Деякі онлайн-плагіни кладуть картки не прямо в список, а в проміжну обгортку — шукаємо серії глибше (лише найзовнішні, без службових кнопок)
     function nestedEps(body) {
@@ -2742,6 +2755,7 @@
             if (hasEp(el)) list.push(el);
         }
         list = dedupeEps(famFilter(list));
+        if (!list.length) { var ge = genericEps(body); if (ge.length) list = ge; }
         list.forEach(function (e) { e.classList.add('lmx-onl-item'); });
         var ex = act.querySelector('.explorer');
         if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
