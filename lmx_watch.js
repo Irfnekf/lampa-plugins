@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.63';
+    var VERSION = '2.64';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1937,7 +1937,7 @@
             if (!vautoOn() || !act.classList.contains('lmx-onl-load') || act.__lmxOpen || selOpen()) return false;
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
-            var cid = String(card && card.id || ''), sel = S.sort && selItem(S.sort), sn = S.season && selItem(S.season);
+            var cid = String(card && card.id || ''), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
             var key = cid + '|' + (sel ? srcName(sel.title) : '') + '|' + (sn ? seTitle(sn.title) : '');
             act.__lmxVG = act.__lmxVG || {};
             if (act.__lmxVG[key]) return false;
@@ -2498,18 +2498,18 @@
                         var gq = mem.g[keyOf(x)];
                         if (gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
-                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 9000 : 0 });
+                        items.push({ key: keyOf(x), source: x.source, q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 6, timeout: 4500, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, items: items.slice(0, 40), par: 6, timeout: 3000, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
-                    gs.bgDeadline = Date.now() + 14000;
+                    gs.bgDeadline = Date.now() + 9000;
                     bgProbe(gs.job);
                 } else if (Date.now() - t0 > 3500) gs.bg = 'off';
                 else return;
@@ -2646,7 +2646,7 @@
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
-                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 25000 : 12000);
+                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 12000 : 6000);
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
