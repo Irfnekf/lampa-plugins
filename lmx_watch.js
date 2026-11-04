@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.72';
+    var VERSION = '2.73';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1516,10 +1516,10 @@
         try { if (a === 'sort' && b && b.title) { var ac = document.querySelector('.activity--active'); if (ac) ac.__lmxSel = { k: srcName(b.title), t: Date.now() }; } } catch (e) {}
         return inst.onSelect(a, b, c);
     }
-    // яке джерело зараз «обране»: наш останній вибір (протягом 90 с), інакше те, що віддає плагін
+    // яке джерело зараз «обране»: наш останній вибір (протягом 8 с, поки прапорці плагіна ще не оновились), інакше те, що віддає плагін
     function curSrc(act, items) {
         var i, m = act && act.__lmxSel;
-        if (m && Date.now() - m.t < 90000) for (i = 0; i < items.length; i++) if (items[i] && srcName(items[i].title) === m.k) return items[i];
+        if (m && Date.now() - m.t < 8000) for (i = 0; i < items.length; i++) if (items[i] && srcName(items[i].title) === m.k) return items[i];
         for (i = 0; i < items.length; i++) if (items[i] && items[i].selected) return items[i];
         return null;
     }
@@ -2132,7 +2132,9 @@
                 var title = badge ? it.title + ' \u00b7 ' + badge : it.title;
                 var prev = seenLook[look];
                 if (prev) { var isSel = curS ? it === curS : !!it.selected; if ((isSel && !prev.sel) || (!isSel && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = isSel; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
-                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
+                // українські джерела (за назвою) не ховаємо, навіть якщо швидка перевірка їх не підтвердила: вона могла просто не дочекатись відповіді
+                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected && !(uaOn() && uaName(key0))) { hidden++; return; }
+                if (uaOn() && uaName(key0) && st === 'no' && !seGet(cid0, key0) && !(window.__lmxBad && window.__lmxBad.names.indexOf(key0) >= 0)) st = '';
                 var o = { title: title, sel: curS ? it === curS : !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
                 // рейтинг і підпис: реальні дані перевірки (укр. озвучки, швидкість), якщо вони є
                 var pe1 = pcEntry(cid0, key0); pe1 = pe1 && pe1.s === 'ok' ? pe1 : null;
@@ -2622,6 +2624,21 @@
                 if (anyOk) gs.bg = 'done';
             }
             if (gs.bg === 'run') { if (Date.now() > gs.bgDeadline) { try { gs.job.stop(); } catch (e) {} gs.bg = 'done'; } return; }
+            if (gs.bg === 'done' && !gs.uaRetry && uaOn()) {
+                // швидка перевірка могла не дочекатись відповіді українського джерела: перепитуємо до 4 таких із довшим очікуванням, перш ніж обирати
+                gs.uaRetry = true;
+                var puR = window.__lmxProbeUrl, rt = [];
+                sort.forEach(function (x) {
+                    var k = x && keyOf(x), pe = k && pcEntry(cid, k);
+                    if (k && uaBonus(k, null) > 0 && !(pe && pe.s === 'ok') && rt.length < 4) rt.push({ key: k, source: x.source || k.replace(/\s+/g, ''), q: titleQ(x.title), tor: false, to: 0 });
+                });
+                if (rt.length && puR && puR.cid === cid) {
+                    gs.bg = 'run'; gs.bgT = Date.now() + 2000; gs.bgDeadline = Date.now() + 7000; gs.early = false;
+                    gs.job = { cid: cid, url: puR.u, headers: puR.h || null, items: rt, par: 4, timeout: 6000, onEach: function () {}, onEnd: function () { gs.bg = 'done'; } };
+                    bgProbe(gs.job);
+                    return;
+                }
+            }
             if (gs.bg === 'done') {
                 gs.bg = 'fin';
                 var okL = [], skipN = 0;
