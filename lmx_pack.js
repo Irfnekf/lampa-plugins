@@ -77,7 +77,8 @@
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
-        { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 }
+        { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 },
+        { name: 'LmxLater',        title: 'Переглянути пізніше', custom: laterCall, index: 19 }
     ];
 
     // Максимум карток у ряду (головна й каталоги): решта — у «Ще». Менше карток — легше ТВ
@@ -155,7 +156,7 @@
     }
 
     // Порядок за замовчуванням (поки користувач не змінив його сам)
-    var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxHistory', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxNowPlaying',
+    var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxHistory', 'LmxLater', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxNowPlaying',
         'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxRecs', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
         'LmxSvc_sky', 'LmxSvc_amc'];
 
@@ -540,6 +541,7 @@
         H.trigger('lmx_studio', true, 'Студія / канал у підписі', 'На сторінці фільму: перша плашка з назвою телемережі (HBO, Netflix…) або студії виробництва', null);
         H.trigger('lmx_studios', true, 'Ряд студій на сторінці фільму', 'Після акторів: студії та канали; натискання відкриває підбірку цієї студії', null);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
+        H.trigger('lmx_marks', true, 'Кнопки «Пізніше» і «Переглянуто»', 'На сторінці фільму замість «Закладок»: дві кнопки-позначки. «Пізніше» додає в ряд «Переглянути пізніше» на головній, «Переглянуто» ховає фільм з рекомендацій і цього ряду', null);
         H.select('lmx_tint_lvl', { '1': 'Слабкий', '2': 'Середній', '3': 'Сильний' }, '2', 'Сила кольору постера', 'Наскільки яскраво фон і кнопки підсвічуються кольором постера', restyle);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
@@ -667,6 +669,17 @@
             // порядок — як в історії Lampa: останній переглянутий першим (раніше недосмотрені піднімались нагору, і початок ряду був «не з останнього»)
             list = list.map(function (c) { return histItem(c, watchProgress(c)); });
             call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
+        };
+    }
+
+    // Ряд «Переглянути пізніше»: фільми й серіали, додані кнопкою на сторінці (стандартний список «Буду дивитись» у Lampa); переглянуті сюди не потрапляють
+    function laterCall() {
+        return function (call) {
+            var list = [], seen = {};
+            try { seen = favIds('viewed'); list = Lampa.Favorite.get({ type: 'wath' }) || []; } catch (e) {}
+            list = list.filter(function (c) { return c && c.id && !seen[c.id]; }).slice(0, ROW_MAX);
+            if (!list.length) return call();
+            call({ title: 'Переглянути пізніше', results: list, source: 'tmdb' });
         };
     }
 
@@ -3385,6 +3398,64 @@
         if (after.length) after.after(el); else cont.append(el);
     }
 
+    // ===== Кнопки «Переглянути пізніше» і «Переглянуто» (замість «Закладок»): стандартні списки Lampa «Буду дивитись» (wath) і «Переглянуто» (viewed) =====
+    var MK_LATER = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    var MK_SEEN = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>';
+    function marksCss() {
+        if (document.getElementById('lmx-marks-css')) return;
+        var st = document.createElement('style'); st.id = 'lmx-marks-css';
+        st.textContent = 'html body .full-start__buttons.lmx-marks-on .button--book,html body .full-start-new__buttons.lmx-marks-on .button--book{display:none !important}' +
+            'html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on span,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on svg{color:#ffd54f !important}' +
+            'html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on,html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on span,html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on svg{color:#6fd48a !important}' +
+            'html body .lmx-mkbtn.lmx-mk-on svg circle{fill:currentColor;fill-opacity:.18}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function marksButtons(r, m) {
+        if (!getBool('lmx_marks', true) || !m || !m.id) return;
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length || cont.find('.lmx-mkbtn').length) return;
+        marksCss();
+        cont[0].classList.add('lmx-marks-on');
+        function st() { try { return Lampa.Favorite.check(m) || {}; } catch (e) { return {}; } }
+        function mk(cls, svg, off, on, list) {
+            var el = $('<div class="full-start__button selector lmx-mkbtn ' + cls + '">' + svg + '<span>' + off + '</span></div>');
+            el.paint = function () {
+                var is = !!st()[list];
+                el[0].classList.toggle('lmx-mk-on', is);
+                el.find('span').text(is ? on : off);
+                el[0].__lmxT = is ? on : off;
+            };
+            return el;
+        }
+        var later = mk('button--lmxlater lmx-mk-later', MK_LATER, 'Дивитись пізніше', 'У списку «Пізніше»', 'wath');
+        var seen = mk('button--lmxseen lmx-mk-seen', MK_SEEN, 'Переглянуто', 'Вже переглянуто', 'viewed');
+        function paintAll() { later.paint(); seen.paint(); }
+        later.on('hover:enter', function () {
+            safe(function () {
+                var was = !!st().wath;
+                if (!was && st().viewed) Lampa.Favorite.toggle('viewed', m);   // «пізніше» і «вже переглянуто» разом не бувають
+                Lampa.Favorite.toggle('wath', m);
+                paintAll();
+                if (Lampa.Noty) Lampa.Noty.show(was ? 'Прибрано з «Переглянути пізніше»' : 'Додано до «Переглянути пізніше»');
+            });
+        });
+        seen.on('hover:enter', function () {
+            safe(function () {
+                var was = !!st().viewed;
+                Lampa.Favorite.toggle('viewed', m);
+                if (!was && st().wath) Lampa.Favorite.toggle('wath', m);   // переглянуте з ряду «пізніше» зникає
+                paintAll();
+                if (Lampa.Noty) Lampa.Noty.show(was ? 'Знято позначку «Переглянуто»' : 'Позначено як переглянуте');
+            });
+        });
+        paintAll();
+        var after = cont.find('.lmx-likebtn').first();
+        if (!after.length) after = cont.find('.button--book').first();
+        if (after.length) { after.after(seen); after.after(later); } else { cont.append(later); cont.append(seen); }
+        if (Lampa.Listener && !marksButtons.hooked) { marksButtons.hooked = true; Lampa.Listener.follow('state:changed', function (e) { if (e && e.target === 'favorite') { var c = marksButtons.cur; if (c) c(); } }); }
+        marksButtons.cur = function () { if (document.body.contains(later[0])) paintAll(); };
+    }
+
     // ===== Колір постера для сторінки фільму (тема «Скло»): один раз зменшуємо картинку й беремо найнасиченіший колір =====
     var tintCache = {};
     function tintTL() {
@@ -3523,7 +3594,7 @@
             if (!document.body.contains(r[0] || document.body)) return;
             var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0), w = cont.length ? watchBtnOf(cont) : null;
             // кнопки «Дивитись» за класом/назвою нема (напр. «Smart Online») — беремо першу звичайну кнопку ряду
-            if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
+            if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.lmx-mkbtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
             if (w) { try { window.$(w).trigger('hover:enter'); } catch (e) {} return; }
             if (++tries < 4) setTimeout(go, 500);
         })();
@@ -3535,6 +3606,7 @@
         var r = e.object.activity.render();
         safe(function () { studioRow(e, m); });
         safe(function () { likeButton(r, m); });
+        safe(function () { marksButtons(r, m); });
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -3625,7 +3697,7 @@
         ['#4caf50', 'Зелений'], ['#26c6da', 'Бірюзовий'], ['#42a5f5', 'Блакитний'], ['#7e57c2', 'Фіолетовий'], ['#ec407a', 'Рожевий']];
     var BTN_LOOKS = [['', 'Стандартний'], ['icons', 'Усі компактні (1)'], ['full', 'Усі з підписом (3)']];
     var BTN_NAMES = { 'button--book': 'Закладки', 'button--reaction': 'Реакції', 'button--subscribe': 'Підписатися', 'button--options': 'Опції',
-        'button--play': 'Дивитись', 'button--lmxlike': 'Подобається', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
+        'button--play': 'Дивитись', 'button--lmxlike': 'Подобається', 'button--lmxlater': 'Дивитись пізніше', 'button--lmxseen': 'Переглянуто', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
     var PENCIL = BI('<path d="M4 20l1-4 11-11 3 3L8 19z"/>');
     var IMGI = BI('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>');
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
@@ -4653,7 +4725,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.333';
+    var VERSION = '10.334';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
