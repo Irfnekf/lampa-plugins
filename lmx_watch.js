@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.06';
+    var VERSION = '3.07';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -53,6 +53,8 @@
         S + '.lmx-onl-item,' + S + '.videos__item,' + S + '.videos__season,' + S + '.online-prestige,' + S + '.torrent-item{border-radius:1em;background:rgba(255,255,255,.06);overflow:hidden;transition:background .15s ease,transform .15s ease}' +
         S + '.online-prestige,' + S + '.torrent-item{margin-bottom:.7em}' +
         S + '.lmx-onl-item.focus,' + S + '.videos__item.focus,' + S + '.videos__season.focus,' + S + '.online-prestige.focus,' + S + '.torrent-item.focus{background:rgba(255,255,255,.16);box-shadow:0 0 0 .18em #fff}' +
+        S + '.lmx-onl-item.lmx-onl-dim{opacity:.34 !important;filter:grayscale(.65) brightness(.75);transition:opacity .2s,filter .2s}' +
+        S + '.lmx-onl-item.lmx-onl-dim.focus{opacity:.72 !important;filter:grayscale(.3) brightness(.9)}' +
         S + '.videos__item.focus::after,' + S + '.videos__season.focus::after,' + S + '.online-prestige.focus::after,' + S + '.torrent-item.focus::after,' +
         S + '.videos__item.focus::before,' + S + '.videos__season.focus::before,' + S + '.online-prestige.focus::before,' + S + '.torrent-item.focus::before{display:none !important}' +
         S + '.explorer__left{display:none !important}' +
@@ -2932,7 +2934,7 @@
         }
         list = dedupeEps(famFilter(list));
         if (!list.length) { var ge = genericEps(body); if (ge.length) list = ge; }
-        list.forEach(function (e) { e.classList.add('lmx-onl-item'); });
+        list.forEach(function (e) { e.classList.add('lmx-onl-item'); e.classList.toggle('lmx-onl-dim', isSoon(e) || /disabled|unavailable|not-?avail|soon/i.test(String(e.className))); });   // недоступні серії (нема в джерелі / без цієї озвучки) — темніші
         var ex = act.querySelector('.explorer');
         if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
         if (body.querySelector('.videos__item-imgbox') || (list.length && list[0].querySelector('img'))) body.classList.add('lmx-onl-grid');
