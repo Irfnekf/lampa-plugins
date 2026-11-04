@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.78';
+    var VERSION = '2.79';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -45,7 +45,7 @@
         S + '.videos__button{border-radius:99em;background:rgba(255,255,255,.12);padding:.55em 1.2em;margin:0 .5em .5em 0}' +
         S + '.videos__button.focus{background:#fff;color:#111}' +
         // список: серії у сітці широких карток (кадр зверху, підпис знизу)
-        BG + '{display:flex;flex-wrap:wrap;align-items:stretch;gap:.9em}' +
+        BG + '{display:flex;flex-wrap:wrap;align-items:stretch;gap:.9em;width:100%;max-width:100%;box-sizing:border-box;flex:1 1 100%;min-width:0}' +
         B + ' > *{box-sizing:border-box}' +
         BG + ' > .lmx-onl-item,' + BG + ' > .videos__item,' + BG + ' > .videos__season{flex:0 0 calc(20% - .72em);width:calc(20% - .72em);margin:0}' +
         '@media (max-width:1100px){' + BG + ' > .lmx-onl-item,' + BG + ' > .videos__item,' + BG + ' > .videos__season{flex-basis:calc(33.333% - .62em);width:calc(33.333% - .62em)}}' +
@@ -2637,7 +2637,7 @@
             if (allSrc && !gs.bg && !life && Date.now() - t0 < 1200) return;
             if (allSrc && !gs.bg) {
                 var pu = window.__lmxProbeUrl;
-                if (pu && pu.cid === cid && sort.length > 1 && pu.gen && genBad(pu.u)) {
+                if (pu && pu.cid === cid && sort.length > 1 && pu.gen) {   // шаблон, вивчений з чужого плагіна (BWA): швидка перевірка ненадійна (мовчить про робочі джерела) — одразу йдемо по рейтингу
                     gs.bg = 'off';
                 } else if (pu && pu.cid === cid && sort.length > 1) {
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
