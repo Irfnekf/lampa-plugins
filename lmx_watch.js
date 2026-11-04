@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.99';
+    var VERSION = '3.00';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2058,7 +2058,7 @@
     // субтитри (будь-де в назві: «Українські субтитри», «UA Sub») — це не озвучка: не обираються й не рахуються автоматично
     function isSubOnly(t) { return /субтитр|subtitle|(^|[^a-z])subs?([^a-z]|$)/i.test(String(t || '')); }
     function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (isSubOnly(t)) return false; if (/anidub|ани ?даб|ані ?даб/i.test(t) || (/[ыэъё]/i.test(t) && !/укр|ukr/i.test(t))) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
-    var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|amanogawa|аманогава|inari ?dub|інарі ?даб|4ua|(^|[^a-z0-9])10gu|animesh|анімеш|сатурн ?юніон|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
+    var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|amanogawa|аманогава|fronda|фронда|freedub|фрідаб|inari ?dub|інарі ?даб|4ua|(^|[^a-z0-9])10gu|animesh|анімеш|сатурн ?юніон|\bua\b|\bуа\b|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|\bстб\b|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|\bтет\b|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|\bк1\b|\bк2\b|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
     function curSeason() {
@@ -2795,6 +2795,21 @@
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
                 var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                if (!cd && vautoOn() && S.voice && S.voice.items && S.voice.items.length > 1) {
+                    // Джерело порожнє лише для поточної озвучки, а має інші українські (напр. Mikai без «Дублированный», але з FRONDA): спершу пробуємо їх,
+                    // і лише потім оголошуємо джерело порожнім. До 3 спроб на джерело+сезон
+                    var vg = S.voice, vs0 = S.season && selItem(S.season), vtk = cid + '|' + curKey + '|' + (vs0 ? seTitle(vs0.title) : '');
+                    var vt = act.__lmxVTry = act.__lmxVTry || {}, tr = vt[vtk] = vt[vtk] || { n: 0, done: {} }, vcur = selItem(vg);
+                    if (vcur && vcur.title) tr.done[vnorm(vcur.title)] = 1;
+                    var vc = tr.n < 3 ? pickVoice(cid, vg.items.filter(function (x) { return x && x.title && !tr.done[vnorm(x.title)]; })) : null;
+                    if (vc) {
+                        tr.n++; tr.done[vnorm(vc.title)] = 1; act.__lmxVGt = Date.now(); since = Date.now();
+                        heroStatus(act, 'Шукаємо озвучку «' + String(vc.title).trim() + '» на «' + curKey + '»…', false, 0.3);
+                        if (manual && !act.__lmxHold) holdFocus(act, 'src', 9000);   // фокус лишається на пілюлі джерела, поки Lampa перемальовує список
+                        selIn(inst, 'filter', { stype: vg.stype }, { index: idxOf(vg, vc) });
+                        return;
+                    }
+                }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
