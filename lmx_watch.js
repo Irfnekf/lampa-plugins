@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.11';
+    var VERSION = '3.12';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2535,7 +2535,7 @@
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
         var cid = String(card && card.id || ''), mem = memGet(), t = Date.now();
-        var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 30000 : (wantHi ? 25000 : 20000);
+        var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = longSeries(card) ? 3 : allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 30000 : (wantHi ? 25000 : 20000);
         var gs = window.__lmxProbe;
         if (!gs || gs.cid !== cid || t - gs.t00 > 150000 || (lastEnter.on && lastEnter.t > gs.t00 + 800 && gs.done)) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
         if (gs.done) { hideScanLater(); return; }
@@ -2633,7 +2633,7 @@
                 if (top && (top.rq >= qTarget() || waitedL > 5000)) {
                     // Не зупиняємось на першому «достатньому»: коротко (до ~3,5 с) питаємо кількох найкращих кандидатів, чи є в них українська озвучка саме для цього тайтла
                     var pu2 = window.__lmxProbeUrl;
-                    if (!gs.refine && !mpIt && live.length > 1 && pu2 && pu2.cid === cid && probeOn()) {
+                    if (!gs.refine && !mpIt && live.length > 1 && pu2 && pu2.cid === cid && probeOn() && !longSeries(card)) {
                         var rc = live.slice(0, 6).filter(function (r) { var pe0 = pcEntry(cid, keyOf(r.it)); return !(pe0 && pe0.s === 'ok' && typeof pe0.v !== 'undefined'); });
                         gs.refine = { t: Date.now(), done: !rc.length };
                         if (rc.length) {
@@ -2677,15 +2677,16 @@
                         items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : gms ? Math.max(3000, Math.min(8000, Math.round(gms * 2.2))) : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
-                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
+                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + animeBonus(x.key) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
+                    if (longSeries(card)) items = items.slice(0, 5);   // довгий серіал: відповіді джерел важкі — питаємо лише кількох найімовірніших
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
-                    gs.bgDeadline = Date.now() + 14000;
+                    gs.bgDeadline = Date.now() + (longSeries(card) ? 9000 : 14000);
                     bgProbe(gs.job);
                 } else if (Date.now() - t0 > 3500) gs.bg = 'off';
                 else return;
