@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.91';
+    var VERSION = '2.92';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1131,11 +1131,6 @@
     function isBwa() {
         try {
             if (Date.now() - (window.__lmxBwaT || 0) < 15000) return true;
-            // запасна ознака: BWA встановлений, а сам плагін не робить запитів «/lite/…» через Lampa.Reguest (так працює lampaua), і готових прапорців ghost теж немає
-            var g0 = window.__lmxProbe, p0 = window.__lmxProbeUrl;
-            if (g0 && Date.now() - g0.t00 > 1500 && Date.now() - g0.t00 < 200000 && !(p0 && !p0.gen && p0.t >= g0.t00 - 2000) && /bwa\.[a-z]+\//i.test(JSON.stringify(Lampa.Storage.get('plugins', '[]')) || '')) {
-                return true;
-            }
             var h = document.querySelector('.head__title'), a = Lampa.Activity.active();
             return /^\s*bwa\s*$/i.test(h ? h.textContent : '') || /^\s*bwa\s*$/i.test(String(a && a.title || '')) || /bwa/i.test(String(a && a.component || ''));
         } catch (e) { return false; }
@@ -2626,8 +2621,6 @@
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
             var prof = profileOf(gs), bwa = prof.simple;
             if (bwa) gs.bwa = true;   // раз розпізнали — вважаємо BWA до кінця підбору (ознаки не мають «мигати»)
-            // BWA ще не розпізнано (потрібні ~1,5 с без запитів «/lite/»): не вибираємо джерело наосліп
-            if (!bwa && !gs.started && Date.now() - gs.t00 < 1600) { var pq = window.__lmxProbeUrl; if (!(pq && !pq.gen && pq.t >= gs.t00 - 2000) && /bwa\.[a-z]+\//i.test(JSON.stringify(Lampa.Storage.get('plugins', '[]')) || '')) return; }   // BWA: простий режим — UAKino за замовчуванням, порожнє міняємо на перше джерело з контентом, без пошуку «кращого»
             var life = !bwa && sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             if (bwa && !gs.bg) gs.bg = 'off';
             if (life && allSrc && !gs.bg && !gs.lifeOff) {
