@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.68';
+    var VERSION = '2.69';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1938,6 +1938,7 @@
     function voiceGate(act, card, list) {
         try {
             if (!vautoOn() || !act.classList.contains('lmx-onl-load') || act.__lmxOpen || selOpen()) return false;
+            if (!(card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)))) return false;   // для фільмів озвучку не підбираємо
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
             var cid = String(card && card.id || ''), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
@@ -2421,7 +2422,9 @@
         safe(function () { showScan(card); });
         var t0 = Date.now(), lastSig = '', stableAt = 0, EV = ['keydown', 'mousedown', 'touchstart'];
         function keyOf(it) { return srcName(it && it.title); }
-        function cmp(a, b) { return ((titleQ(b.title)) - (titleQ(a.title))) || (gscore(mem.g[keyOf(b)]) - gscore(mem.g[keyOf(a)])); }
+        function scOf(it) { var k = keyOf(it); return srcScore(k, { q: titleQ(it.title), pe: null }, mem).s; }
+        // порядок обходу — за єдиним рейтингом (якість + українська озвучка за назвою джерела + досвід), а не лише за якістю в назві
+        function cmp(a, b) { return (scOf(b) - scOf(a)) || (gscore(mem.g[keyOf(b)]) - gscore(mem.g[keyOf(a)])); }
         function stop() { clearInterval(iv); EV.forEach(function (ev) { document.removeEventListener(ev, userStop, true); }); if (gs.done) hideScanLater(); }
         function finish(msg) {
             gs.done = true; act.__lmxProbing = false; stop(); hideScanLater();
@@ -2443,13 +2446,19 @@
         }
         function conclude(inst, sort) {
             if (!gs.results.length) return finish('Жодне джерело не знайшло цей матеріал');
-            gs.results.sort(function (a, b) { return (b.rank - a.rank) || (b.n - a.n); });
+            gs.results.sort(function (a, b) { return (srcScore(b.name, { q: b.rank, pe: null }, mem).s - srcScore(a.name, { q: a.rank, pe: null }, mem).s) || (b.rank - a.rank) || (b.n - a.n); });
             var best = gs.results[0], i;
             if (cid) { mem.t[cid] = { s: best.name, q: best.rank, at: Date.now(), v: 2 }; memSet(mem); }
             if (best.name !== gs.cur) {
                 for (i = 0; i < sort.length; i++) if (keyOf(sort[i]) === best.name) { switchTo(inst, sort[i], 'Найкраще джерело'); return finish(); }
             }
             finish();
+        }
+        // «Достатньо» зупинятись лише якщо поточне джерело українське (за назвою) або українських джерел, яких ще не пробували, не лишилось; в режимі «Якість» цього не вимагаємо
+        function uaEnough(sort) {
+            if (balMode() === 'quality' || !uaOn()) return true;
+            if (uaBonus(gs.cur, null) > 0) return true;
+            return !sort.some(function (x) { return x && !x.selected && !x.ghost && keyOf(x) && gs.tried.indexOf(keyOf(x)) < 0 && uaBonus(keyOf(x), null) > 0; });
         }
         function next(inst, sort) {
             var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && keyOf(x) && gs.tried.indexOf(keyOf(x)) < 0; }).sort(cmp);
@@ -2600,11 +2609,11 @@
                 save(gs.cur, rank);
                 heroStatus(act, 'Знайдено: ' + items.length + ' серій' + (qual(items) ? ', ' + qual(items) : '') + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
                 // Послідовний обхід не має сенсу доводити до кінця: джерела йдуть від найкращих, тож щойно знайшлось підходяще за якістю (або вже минуло 15 с і щось є) — відкриваємо
-                if (!probeOn() || gs.results.length >= maxTry || (rank >= (balMode() === 'quality' ? 4 : qTarget())) || Date.now() - t0 > 15000) return conclude(inst, sort);
+                if (!probeOn() || gs.results.length >= maxTry || (rank >= (balMode() === 'quality' ? 4 : qTarget()) && uaEnough(sort)) || Date.now() - t0 > 15000) return conclude(inst, sort);
                 return next(inst, sort);
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (gs.cur ? ': ' + gs.cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
-            if (/не дав результат|no results/i.test(body.textContent || '') && waited > 250) {
+            if (/не дав результат|не дал результат|нет результат|no results/i.test(body.textContent || '') && waited > 250) {
                 // власний таймер плагіна «переключиться через 10 секунд» не чекаємо — скасовуємо його й переходимо самі
                 try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                 save(gs.cur, -1); return next(inst, sort);
@@ -2681,7 +2690,7 @@
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
-                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 12000 : 6000);
+                var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 12000 : 6000);
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
