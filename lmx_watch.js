@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.64';
+    var VERSION = '2.65';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -2291,6 +2291,12 @@
     function loadWatchdog() {
         var a = document.querySelector('.activity--active');
         if (!a) return;
+        // Пошук скінчився, рідний список серій уже на екрані, а наша розмітка його не розпізнала: статус і порожня рамка не мають висіти
+        var bd = a.querySelector('.explorer__files-body .scroll__body');
+        if (!a.classList.contains('lmx-onl-load') && !a.__lmxProbing && bd && !a.querySelector('.lmx-onl-item') && (a.querySelector('.lmx-onl-prog') || a.querySelector('.lmx-onl-hero__s')) && nativeList(bd)) {
+            a.__lmxNatN = (a.__lmxNatN || 0) + 1;
+            if (a.__lmxNatN >= 2) { a.__lmxNatN = 0; releaseNative(a); }
+        } else a.__lmxNatN = 0;
         if (!a.classList.contains('lmx-onl-load')) { a.__lmxLoadT = 0; return; }
         if (!a.__lmxLoadT) { a.__lmxLoadT = Date.now(); return; }
         if (Date.now() - a.__lmxLoadT < 75000) return;
@@ -2565,7 +2571,8 @@
                 gs.results.push({ name: gs.cur, rank: rank, n: items.length });
                 save(gs.cur, rank);
                 heroStatus(act, 'Знайдено: ' + items.length + ' серій' + (qual(items) ? ', ' + qual(items) : '') + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
-                if (!probeOn() || gs.results.length >= maxTry) return conclude(inst, sort);
+                // Послідовний обхід не має сенсу доводити до кінця: джерела йдуть від найкращих, тож щойно знайшлось підходяще за якістю (або вже минуло 15 с і щось є) — відкриваємо
+                if (!probeOn() || gs.results.length >= maxTry || (rank >= (balMode() === 'quality' ? 4 : qTarget())) || Date.now() - t0 > 15000) return conclude(inst, sort);
                 return next(inst, sort);
             }
             heroStatus(act, 'Чекаємо відповіді джерела' + (gs.cur ? ': ' + gs.cur : '') + '… ' + Math.round(waited / 1000) + ' с', false, 0.12 + Math.min(0.6, waited / 20000));
@@ -2574,7 +2581,7 @@
                 try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                 save(gs.cur, -1); return next(inst, sort);
             }
-            if (waited > 3500) { save(gs.cur, -1); next(inst, sort); }
+            if (waited > 2500) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
             try { tick(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
