@@ -180,7 +180,13 @@
     function getOrder() {
         var a = allRows();
         var saved = readJson('lmx_order').filter(function (n) { return a.map[n]; });
-        a.list.forEach(function (n) { if (saved.indexOf(n) < 0) saved.push(n); });
+        // новий ряд, якого нема у збереженому порядку, ставимо слідом за своїм сусідом із порядку за замовчуванням (а не в кінець): «Переглянути пізніше» — під «Історією»
+        a.list.forEach(function (n) {
+            if (saved.indexOf(n) >= 0) return;
+            var di = DEFAULT_ORDER.indexOf(n), pos = -1, k;
+            for (k = di - 1; k >= 0; k--) { pos = saved.indexOf(DEFAULT_ORDER[k]); if (pos >= 0) break; }
+            if (di > 0 && pos >= 0) saved.splice(pos + 1, 0, n); else saved.push(n);
+        });
         return saved;
     }
     function getHidden() {
@@ -4725,7 +4731,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.334';
+    var VERSION = '10.335';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
