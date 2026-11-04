@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.73';
+    var VERSION = '2.74';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1228,11 +1228,15 @@
         while ((m = rb.exec(b))) { t = m[1].trim(); if (t && !junk.test(t)) out[t] = 1; }
         return Object.keys(out).slice(0, 80);
     }
+    // Відповіді-заглушки джерел: потрібен свій акаунт / такого сезону чи тайтла немає
+    var PAYWALL = /только со своим аккаунт|привяжите аккаунт|потрібен (?:свій )?акаунт|привʼяжіть акаунт|привяжіть акаунт|нужна привязк|потрібна прив/i, NOSEASON = /нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|нічого не знайд|немає \d+ сезон/i;
     function bgParse(ans) {
         var b = typeof ans === 'string' ? ans : '';
         if (ans && typeof ans === 'object') { try { b = JSON.stringify(ans).split('\\"').join('"'); } catch (e) { b = ''; } }
         if (!b) return { s: 'skip' };
         if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
+        if (PAYWALL.test(b)) return { s: 'skip', acc: 1 };
+        if (NOSEASON.test(b) && !/videos__item|"method"/i.test(b)) return { s: 'empty', c: 0 };
         var c = (b.match(/videos__item/g) || []).length || (b.match(/"method"\s*:\s*"(play|call|link)"/g) || []).length;
         var tor = /torrent-item|"magnet"|magnet:|"seeders?"|"seeds?"/i.test(b);
         if (!c && tor) c = (b.match(/torrent-item|magnet:/gi) || []).length || 1;
@@ -1521,6 +1525,11 @@
     // яке джерело зараз «обране»: наш останній вибір (протягом 8 с, поки прапорці плагіна ще не оновились), інакше те, що віддає плагін
     function curSrc(act, items) {
         var i, m = act && act.__lmxSel;
+        // правда — підпис на рідній кнопці «Джерело»: прапорці selected у деяких плагінів (BWA) не оновлюються взагалі, а наш запам'ятований вибір може бути застарілим
+        try {
+            var rf = act && findRef(act), rl = rf ? srcName(String(rf.textContent || '').replace(/^\s*(джерело|источник|source)\s*/i, '')) : '';
+            if (rl) for (i = 0; i < items.length; i++) if (items[i] && srcName(items[i].title) === rl) return items[i];
+        } catch (e) {}
         if (m && Date.now() - m.t < 8000) for (i = 0; i < items.length; i++) if (items[i] && srcName(items[i].title) === m.k) return items[i];
         for (i = 0; i < items.length; i++) if (items[i] && items[i].selected) return items[i];
         return null;
@@ -2769,7 +2778,7 @@
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
-                var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > (manual ? 12000 : 6000);
+                var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (manual ? 12000 : 6000);
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
@@ -2783,7 +2792,7 @@
                     cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
-                if (left > 0) { if (!manual) return; heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
+                if (left > 0) { if (!manual) { heroStatus(act, 'Джерело «' + (curKey || '—') + '» нічого не дало. Пробуємо «' + srcName(cand.title) + '»…', false, 0.2); return; } heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
                 var go = cand; cd = 0; cand = null; since = Date.now(); lastKey = null;
                 if (manual) heroStatus(act, 'Відкриваємо «' + srcName(go.title) + '»…', false, 0.2);
                 try { selIn(inst, 'sort', go); } catch (e) {}
