@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.79';
+    var VERSION = '2.80';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2655,12 +2655,12 @@
                     function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: 6, timeout: 3000, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, 40), par: 6, timeout: 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
-                    gs.bgDeadline = Date.now() + 9000;
+                    gs.bgDeadline = Date.now() + 14000;
                     bgProbe(gs.job);
                 } else if (Date.now() - t0 > 2000) gs.bg = 'off';
                 else return;
