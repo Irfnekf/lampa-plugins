@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.01';
+    var VERSION = '3.02';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2380,6 +2380,7 @@
     // Жорсткий запобіжник: «завантаження» не може тривати вічно. Якщо екран понад 75 с у режимі пошуку (джерело мовчить, запит завис, прапорець застряг) —
     // зупиняємо наш пошук і віддаємо екран рідному вигляду плагіна, щоб можна було обрати джерело вручну
     function loadWatchdog() {
+        window.__lmxLW = loadWatchdog;
         var a = document.querySelector('.activity--active');
         if (!a) return;
         // Пошук скінчився, рідний список серій уже на екрані, а наша розмітка його не розпізнала: статус і порожня рамка не мають висіти
@@ -2390,7 +2391,9 @@
         } else a.__lmxNatN = 0;
         if (!a.classList.contains('lmx-onl-load')) { a.__lmxLoadT = 0; return; }
         if (!a.__lmxLoadT) { a.__lmxLoadT = Date.now(); return; }
-        if (Date.now() - a.__lmxLoadT < 75000) return;
+        // підбір «живий», доки тік оновлює мітку; якщо мітка застаріла (екран перестворено, підбір не продовжився) — не чекаємо 75 с, а за ~10 с віддаємо екран
+        var g0 = window.__lmxProbe, stalled = !!(g0 && !g0.done && Date.now() - (g0.tickT || g0.t00 || 0) > 6000);
+        if (Date.now() - a.__lmxLoadT < (stalled ? 9000 : 75000)) return;
         a.__lmxLoadT = 0;
         try { var g = window.__lmxProbe; if (g) { g.bg = 'off'; g.done = true; try { g.job && g.job.stop && g.job.stop(); } catch (x) {} } } catch (x) {}
         releaseNative(a);
@@ -2553,6 +2556,7 @@
             switchTo(inst, c[0], 'Перевіряємо джерело');
         }
         function tick() {
+            gs.tickT = Date.now();   // метка «підбір живий»: за нею запобіжник відрізняє повільне джерело від зависшого підбору
             if (!document.body.contains(act)) return stop();   // екран перестворено — підбір продовжить новий екран
             if (!isOn() || !autoOn() || Date.now() - gs.t00 > budget) return finish();
             // Деякі джерела при відкритті показують вікно (прив'язка акаунта, вибір, запит): воно блокує перебір — закриваємо і йдемо до наступного
