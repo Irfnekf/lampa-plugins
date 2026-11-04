@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.10';
+    var VERSION = '3.11';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -313,8 +313,10 @@
             C + ' > [class*="__body"]{display:flex !important;flex-direction:column !important;flex:1 1 auto !important;min-height:0}' +
             C + ' [class*="__head"]{flex:1 1 auto !important;align-items:flex-start}' +
             C + ' .time-line,' + C + ' [class*="__timeline"]{flex:0 0 auto;margin:.55em 0 .5em !important}' +
-            C + ' [class*="__footer"],' + C + ' [class*="-footer"]{flex:0 0 auto;margin-top:0 !important;flex-wrap:nowrap !important}' +
-            C + ' [class*="__info"]{flex:1 1 auto;flex-wrap:nowrap !important;min-width:0;white-space:nowrap !important}' +
+            C + ' [class*="__footer"],' + C + ' [class*="-footer"]{flex:0 0 auto;margin-top:0 !important;flex-wrap:wrap !important;row-gap:.3em}' +
+            C + ' [class*="__info"]{flex:1 1 auto;flex-wrap:wrap !important;min-width:0;white-space:normal !important}' +
+            C + ' [class*="__info"] > *,' + C + ' [class*="-footer"] > *{max-width:100% !important;min-width:0 !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important}' +
+            C + ' [data-lmx-chip]{display:inline-flex !important;padding:.15em .65em !important;border-radius:99em;background:rgba(255,255,255,.14);font-weight:700;font-size:.9em;color:#f4d58a}' +
             C + ' [class*="__footer"],' + C + ' [class*="-footer"]{align-items:center !important;min-height:0 !important}' +
             C + ' [class*="__info"]{align-items:center !important;min-height:0 !important;gap:.3em .6em !important}' +
             C + ' [class*="-rate"]{display:inline-flex !important;align-items:center;gap:.35em;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-size:.92em}' +
@@ -513,7 +515,7 @@
     }
     // Порядок серій і сторінки довгих сезонів (як у Nova: 10 / 20 / 50 серій на сторінку). Серії поза сторінкою ховаємо й забираємо з навігації
     var PAGING = true;   // довгі сезони (понад 60 серій) ділимо на сторінки — сотні карток разом гальмують ТВ
-    function pageSizeOf(total) { return total > 600 ? 50 : 30; }   // менша сторінка — менше карток і картинок одночасно на екрані (довгі аніме на ТВ)
+    function pageSizeOf(total) { return 30; }   // менша сторінка — менше карток і картинок одночасно на екрані (довгі аніме на ТВ)
     // Довгі серіали (1200+ серій): картинки прихованих сторінок не вантажимо — телевізор інакше тримає в пам'яті сотні постерів і зависає; повертаємо, коли сторінку відкрито
     function imgDefer(el, off) {
         try {
@@ -604,6 +606,10 @@
             var ti = it.querySelector('[class*="__title"]'), tt = ti ? nm(ti.textContent) : '';
             [].forEach.call(it.querySelectorAll('[class*="__info"] *, [class*="-footer"] *, [class*="__footer"] *'), function (n) {
                 if (n.children.length) return;
+                // «Залишилось 5 днів» (серія ще не вийшла) → «Ще 5 дн.»; «14 Листопада» без року → «14 лис.»: короткі позначки завжди вміщаються в картку
+                var t0 = String(n.textContent || ''), cd = t0.match(/^\s*Залишил[а-яіїє]*\s+(\d+)\s*(?:дн[а-яіїє]*|д)\.?\s*$/i), dm = t0.match(/^\s*(\d{1,2})\s+([А-Яа-яІіЇїЄє']{3,})\s*$/);
+                if (cd) { n.setAttribute('data-lmx-chip', '1'); n.textContent = 'Ще ' + cd[1] + ' дн.'; return; }
+                if (dm && MON[dm[2].toLowerCase()] && tv) { n.textContent = dm[1] + ' ' + MON[dm[2].toLowerCase()]; return; }
                 var t = n.getAttribute('data-lmx-full') || n.textContent || '', m = t.match(/^\s*(\d{1,2})\s+([А-Яа-яІіЇїЄє']{3,})\s+(\d{4})\s*$/);
                 if (m && MON[m[2].toLowerCase()]) {
                     n.setAttribute('data-lmx-full', t); n.setAttribute('data-lmx-sd', '1');
