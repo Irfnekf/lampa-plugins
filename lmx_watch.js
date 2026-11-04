@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.86';
+    var VERSION = '2.87';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2982,6 +2982,7 @@
         if (act.__lmxRLn !== list.length) { act.__lmxRLn = list.length; relayout(); [400, 1500, 3500].forEach(function (d) { setTimeout(function () { safe(relayout); }, d); }); }
         // при завантаженні списку опускаємось до останньої переглянутої серії сезону (фокус не чіпаємо)
         safe(function () {
+            if (!(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date))) return;   // фільм: це версії, а не серії — до «останньої переглянутої» не прокручуємо
             var key = list.length + '|' + (jd(list[0]).season || '') + '|' + (act.__lmxASk || ''), li = -1, q;
             for (q = 0; q < list.length; q++) if (pct(list[q]) >= 1) li = q;
             if (li < 5 || act.__lmxAS === list.length + '|' + (jd(list[0]).season || '') + '|' + li) return;
@@ -3109,6 +3110,20 @@
             addNav(b);
         })(btns[i]);
         // Lampa прокручує список до сфокусованої серії, і шапка залишалась нагорі за кадром. Поки пульт не чіпали, ставимо фокус на «Продовжити»
+        // Фільм: картки — це версії (озвучка, якість), а не серії, тож фокус не залишаємо на «останній переглянутій» (його туди ставить сама Lampa) — повертаємо на головну кнопку.
+        // Один раз для кожного нового списку й лише якщо пульт у цей момент не чіпали
+        if (isMovie && btns.length) {
+            var mfSig = list.length + '|' + String(list[0] && list[0].textContent || '').replace(/\s+/g, ' ').slice(0, 40);
+            if (body.__lmxMF !== mfSig) {
+                body.__lmxMF = mfSig;
+                [80, 400, 900, 1600].forEach(function (d) {
+                    setTimeout(function () { safe(function () {
+                        var f = document.querySelector('.focus');
+                        if (f && f.classList.contains('lmx-onl-item') && Date.now() - (window.__lmxKeyT || 0) > 1500 && Date.now() - (window.__lmxTouchT || 0) > 1500 && window.Navigator && Navigator.focus && document.body.contains(btns[0])) Navigator.focus(btns[0]);
+                    }); }, d);
+                });
+            }
+        }
         if (btns.length && !body.__lmxFocus && (window.__lmxKeyT || 0) <= actT0) {
             body.__lmxFocus = 1;
             setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) <= actT0 && window.Navigator && Navigator.focus) Navigator.focus(btns[0]); }); }, 60);
