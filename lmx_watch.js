@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.69';
+    var VERSION = '2.70';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1077,6 +1077,21 @@
     function srcName(t) { return String(t || '').replace(/\s*[-–—~]\s*(\d{3,4}p?|4k|uhd|fhd|hd)\b.*$/i, '').replace(/[^\wа-яіїєґ]+/gi, ' ').trim().toLowerCase(); }
     // ---- Фонова перевірка джерел (як у Nova): не перемикаємо екран, а самі запитуємо ті ж адреси «/lite/<джерело>» і читаємо відповідь ----
     // Адресу вчимося у власних запитів онлайн-плагіна (підміняємо в ній назву джерела); 'rch'/'accsdb'/'blocked' і незрозумілі відповіді пропускаємо
+    var SRC_MARK = '{lmxsrc}';
+    function genericTpl(v) {
+        try {
+            if (!v || v.indexOf(SRC_MARK) >= 0 || /themoviedb|image\.|\.(?:jpe?g|png|webp|gif|js|css|svg)(?:\?|$)/i.test(v)) return '';
+            var act = document.querySelector('.activity--active'), inst = act && instFor(act), S = inst && readSets(inst), best = '', bi = -1;
+            if (!S) return '';
+            S.sortAll.forEach(function (x) {
+                var t = x && x.source ? String(x.source) : '';
+                if (t.length < 3 || t.length < best.length) return;
+                var re = new RegExp('([\\/=])(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?=[\\/?&#]|$)', 'i'), m = re.exec(v);
+                if (m && (t.length > best.length)) { best = t; bi = m.index + m[1].length; }
+            });
+            return best ? v.slice(0, bi) + SRC_MARK + v.slice(bi + best.length) : '';
+        } catch (e) { return ''; }
+    }
     function hookRequest() {
         try {
             var R = Lampa.Reguest;
@@ -1093,6 +1108,10 @@
                                 if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) {
                                     var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
                                     window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
+                                } else {
+                                    // інший плагін (напр. BWA) з іншою схемою адрес: шукаємо в адресі назву одного з джерел списку й робимо з неї шаблон, у який потім підставляємо решту джерел
+                                    var gt = genericTpl(v);
+                                    if (gt) { var a2 = Lampa.Activity.active(), c2 = a2 && (a2.movie || a2.card); window.__lmxProbeUrl = { u: gt, cid: String(c2 && c2.id || ''), t: Date.now(), gen: 1 }; }
                                 }
                             }
                         } catch (e) {}
@@ -1195,7 +1214,7 @@
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
         job.stop = function () { job.stopped = true; nets.forEach(function (n) { try { n.clear(); } catch (e) {} }); };
-        function urlFor(src) { return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
+        function urlFor(src) { return job.url.indexOf(SRC_MARK) >= 0 ? job.url.replace(SRC_MARK, encodeURIComponent(src)) : job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
         function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
         function step() {
             if (job.stopped || idx >= job.items.length) return;
