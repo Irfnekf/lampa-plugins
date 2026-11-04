@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.05';
+    var VERSION = '3.06';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1283,7 +1283,8 @@
         if (profileOf(gs).label) return profileOf(gs).label + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
         return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
     }
-    function scanFrac() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
+    function scanFrac() { var gs = window.__lmxProbe, tf = gs && gs.t00 ? Math.min(0.9, (Date.now() - gs.t00) / 24000) : 0; return Math.max(tf, scanFrac0()); }
+    function scanFrac0() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
     // Один екран замість трьох: поки йде перевірка, стандартний екран джерела ховаємо (клас на body), а наш скелет — шапка з логотипом, що переливається,
     // і шкала прогресу — будується в самій активності ще до першої відмальовки, навіть коли плагін перестворює її при зміні джерела
     function scanning() { var g = window.__lmxProbe; return !!(g && !g.done && Date.now() - g.t00 < 130000); }
@@ -2564,7 +2565,13 @@
         }
         function tick() {
             gs.tickT = Date.now();   // метка «підбір живий»: за нею запобіжник відрізняє повільне джерело від зависшого підбору
-            if (!document.body.contains(act)) return stop();   // екран перестворено — підбір продовжить новий екран
+            if (!document.body.contains(act)) {
+                // екран перестворено (плагін при зміні джерела робить Activity.replace) — передаємо підбір новому екрану, інакше лічильник і шкала зависають
+                stop();
+                setTimeout(function () { safe(function () { var na = document.querySelector('.activity--active'), a2 = Lampa.Activity.active(), c2 = a2 && (a2.movie || a2.card); if (na && na !== act && !gs.done && c2 && na.querySelector('.explorer') && !na.__lmxWatch) watchSources(na, c2); }); }, 400);
+                return;
+            }
+            if (!gs.done && Date.now() - (gs.hsT || 0) > 500) { gs.hsT = Date.now(); try { heroStatus(act, '', false, scanFrac()); } catch (e) {} }   // лічильник і шкала рухаються завжди, а не лише при відповіді джерела   // екран перестворено — підбір продовжить новий екран
             if (!isOn() || !autoOn() || Date.now() - gs.t00 > budget) return finish();
             // Деякі джерела при відкритті показують вікно (прив'язка акаунта, вибір, запит): воно блокує перебір — закриваємо і йдемо до наступного
             try {
@@ -2678,7 +2685,7 @@
                 });
                 if (!okL.length) {
                     // жодна перевірка нічого не підтвердила, але деякі джерела не відповіли — довіряти цьому не можна: переходимо на надійний обхід через сам екран
-                    if (skipN) { gs.bg = 'off'; return; }
+                    if (skipN) { gs.bg = 'off'; gs.slow = true; return; }   // жодне джерело не встигло відповісти — вони повільні (довгі серіали), тож і далі чекаємо довше
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
                 okL.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
@@ -2729,7 +2736,7 @@
                 save(gs.cur, -1); return next(inst, sort);
             }
             if (PAYWALL.test(body.textContent || '') && waited > 250) { save(gs.cur, -1); return next(inst, sort); }
-            if (waited > prof.seqWait) { save(gs.cur, -1); next(inst, sort); }
+            if (waited > (gs.slow ? Math.max(prof.seqWait, 9000) : prof.seqWait)) { save(gs.cur, -1); next(inst, sort); }
         }
         var iv = setInterval(function () {
             try { tick(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} finish('Помилка підбору: ' + (e && e.message)); }
