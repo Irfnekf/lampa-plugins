@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.59';
+    var VERSION = '2.60';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -948,7 +948,7 @@
     }
     function findRef(act) {
         var all = act.querySelectorAll('.explorer__files-head .selector'), i;
-        for (i = 0; i < all.length; i++) if (/^\s*(джерел|source)/i.test(all[i].textContent || '') && !all[i].closest('.lmx-onl-bar')) return all[i];
+        for (i = 0; i < all.length; i++) if (/^\s*(джерел|источник|source)/i.test(all[i].textContent || '') && !all[i].closest('.lmx-onl-bar')) return all[i];
         return null;
     }
     function buildBar(act, hd, list) {
@@ -2276,8 +2276,22 @@
             if (!el.classList || !(el.classList.contains('selector') || el.classList.contains('lmx-onl-off')) || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
             if (hasEp(el)) out.push(el);
         }
+        if (!out.length) out = nestedEps(body);
         return dedupeEps(famFilter(out));
     }
+    // Деякі онлайн-плагіни кладуть картки не прямо в список, а в проміжну обгортку — шукаємо серії глибше (лише найзовнішні, без службових кнопок)
+    function nestedEps(body) {
+        var all = body.querySelectorAll('.selector'), out = [], i, el;
+        for (i = 0; i < all.length; i++) {
+            el = all[i];
+            if (el.closest('.lmx-onl-hero, .lmx-onl-bar, .lmx-onl-drop, .lmx-onl-prog') || el.classList.contains('lmx-onl-btn') || el.classList.contains('videos__button') || el.classList.contains('simple-button') || el.classList.contains('videos__season') || /folder/.test(el.className)) continue;
+            if (!hasEp(el)) continue;
+            if (out.length && out[out.length - 1].contains(el)) continue;
+            out.push(el);
+        }
+        return out;
+    }
+
     // Підбір джерела: стан живе в window.__lmxProbe, бо після зміни джерела плагін може перестворити екран — тоді підбір просто
     // продовжується на новому екрані. Спершу відкриваємо те, що спрацювало раніше / має найкращу якість у назві, порожнє міняємо на наступне,
     // нічого не знайшли — «Жодне джерело…». Усе — прямими викликами фільтра, без натискань на меню
@@ -2481,13 +2495,25 @@
 
     // Страж порожнього результату: після ручного вибору (або будь-коли, коли серій немає) джерело може відповісти «не дав результатів» або
     // зависнути. Показуємо, що нічого не знайдено, і за кілька секунд самі переходимо на найкраще з ще не пробованих джерел
+    // Віддати екран рідному вигляду плагіна: прибрати наші смужки, статус і режим завантаження (запасний шлях, коли розмітка джерела нам незнайома)
+    function releaseNative(act) {
+        try {
+            act.__lmxProbing = false; act.__lmxEG = 0;
+            var g = window.__lmxProbe; if (g) { g.done = true; try { g.job && g.job.stop && g.job.stop(); } catch (e) {} }
+            [].forEach.call(act.querySelectorAll('.lmx-onl-prog, .lmx-onl-hero__s'), function (e) { if (e.parentNode) e.parentNode.removeChild(e); });
+            act.classList.remove('lmx-onl-load', 'lmx-onl-rl', 'lmx-onl-barred');
+            document.body.classList.remove('lmx-onl-entering', 'lmx-onl-barred');
+            var h = act.querySelector('.lmx-onl-hero'); if (h) h.classList.remove('lmx-onl-hero--load');
+            relayout();
+        } catch (e) {}
+    }
     function emptyGuard(act) {
         if (act.__lmxEG) return;
         act.__lmxEG = 1;
         var card = null; try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); } catch (e) {}
         var cid = String(card && card.id || ''), bad = window.__lmxBad;
         if (!bad || bad.cid !== cid) bad = window.__lmxBad = { cid: cid, names: [] };
-        var since = Date.now(), lastKey = null, cd = 0, cand = null, t0 = Date.now(), EV = ['keydown', 'mousedown', 'touchstart'], iv = 0;
+        var natT = 0, since = Date.now(), lastKey = null, cd = 0, cand = null, t0 = Date.now(), EV = ['keydown', 'mousedown', 'touchstart'], iv = 0;
         function stop() { clearInterval(iv); act.__lmxEG = 0; EV.forEach(function (ev) { document.removeEventListener(ev, cancel, true); }); }
         function cancel() {
             if (Date.now() - t0 < 600) return;
@@ -2508,6 +2534,11 @@
                     } catch (e) {}
                     return stop();
                 }
+                // Рідний список серій уже на екрані, а наш розбір його не розпізнав (інша розмітка плагіна) — не висимо «Перевіряємо джерела…», а віддаємо екран рідному вигляду
+                if (nestedEps(body).length || body.querySelector('.selector img, .selector .time-line')) {
+                    if (!natT) natT = Date.now();
+                    else if (Date.now() - natT > 3500) { releaseNative(act); return stop(); }
+                } else natT = 0;
                 if (act.__lmxProbing || !isOn()) { since = Date.now(); return; }
                 var inst = instFor(act), S = inst && readSets(inst), sort = S ? S.sort : [], i, curIt = null;
                 if (!inst || !sort.length) return;
@@ -2515,7 +2546,7 @@
                 var curKey = curIt ? srcName(curIt.title) : '';
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
                 var waited = Date.now() - since, txt = body.textContent || '';
-                var empty = (/не дав результат|no results|нічого не знайд|помилка/i.test(txt) && waited > 700) || waited > 12000;
+                var empty = (/не дав результат|no results|нічого не знайд|помилка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон/i.test(txt) && waited > 700) || waited > 12000;
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : 'Перевіряємо джерела…', false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
@@ -2526,7 +2557,7 @@
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
-                    if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); return stop(); }
+                    if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); [].forEach.call(act.querySelectorAll('.lmx-onl-prog'), function (e) { if (e.parentNode) e.parentNode.removeChild(e); }); act.classList.remove('lmx-onl-load'); act.__lmxProbing = false; relayout(); return stop(); }
                     cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
