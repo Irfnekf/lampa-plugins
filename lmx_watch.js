@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '2.65';
+    var VERSION = '2.66';
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
@@ -1866,14 +1866,17 @@
     }
     // TMDB-«сезон 0» — це спеціальні випуски (OVA, фільми, спешли), а не справжній сезон
     function seTitle(t) { return /^\s*(сезон|season)\s*0\s*$/i.test(t || '') ? 'Спеціальні' : t; }
+    // Джерела з підписом «нужна привязка» (без прив'язки акаунта) нічого не віддають: у перевірках і автопідборі їх пропускаємо. Після прив'язки підпис зникає, і джерело працює як усі
+    function unbound(x) { try { return !!(x && /нужна привязк|потрібна прив[’'`]?язк|потрібен прив/i.test(String(x.subtitle || x.description || x.info || ''))); } catch (e) { return false; } }
     function readSets(inst) {
-        var out = { season: null, voice: null, sort: [] };
+        var out = { season: null, voice: null, sort: [], sortAll: [] };
         if (!inst || !inst.lmx_sets) return out;
         (inst.lmx_sets.filter || []).forEach(function (g) {
             if (!g || !g.items || !g.items.length) return;
             if (g.stype === 'season') out.season = g; else if (g.stype === 'voice') out.voice = g;
         });
-        out.sort = inst.lmx_sets.sort || [];
+        out.sortAll = inst.lmx_sets.sort || [];
+        out.sort = out.sortAll.filter(function (x) { return !x || x.selected || !unbound(x); });
         return out;
     }
     function selItem(g) {
@@ -2053,14 +2056,15 @@
         if ((act.__lmxPopT || 0) > Date.now() - 700) return true;
         if (key === 'src') {
             var hidden = 0, anyOk = false;
-            var lifeFlags = S.sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
-            S.sort.forEach(function (it) { if (it && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
+            var allSrc = S.sortAll || S.sort, lifeFlags = allSrc.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            allSrc.forEach(function (it) { if (it && !unbound(it) && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
             var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = String(cd0 && cd0.id || ''); } catch (e) {}
-            var seenLook = {}, mem1 = memGet(), curS = curSrc(act, S.sort);
-            S.sort.forEach(function (it) {
+            var seenLook = {}, mem1 = memGet(), curS = curSrc(act, allSrc);
+            allSrc.forEach(function (it) {
                 if (!it) return;
                 var key0 = srcName(it.title), st = srcState(key0);
                 if (lifeFlags) st = it.ghost ? 'no' : 'ok';
+                if (unbound(it) && !it.selected) st = 'no';
                 var se0 = seGet(cid0, key0); if (se0) st = se0;
                 // дублі (однакова назва й якість) об'єднуємо; бейдж якості береться з назви або з пам'яті попередніх перевірок
                 var badge = titleQ(it.title) ? '' : qmBadge(cid0, key0), look = key0 + '|' + (titleQ(it.title) || badge);
@@ -2074,6 +2078,7 @@
                 var sc1 = srcScore(key0, { q: titleQ(it.title) || qrank(badge), pe: pe1 }, mem1), sp = [];
                 if (pe1) { if (sc1.ua === 'real') sp.push('\uD83C\uDDFA\uD83C\uDDE6 ' + pe1.uv); else if (sc1.ua === 'none') sp.push('без укр.'); if (sc1.ms) sp.push((sc1.ms / 1000).toFixed(1) + ' с'); }
                 o.sc = sc1.s; o.why = sc1.why; o.sub = sp.join(' \u00b7 '); o.idx = opts.length;
+                if (unbound(it)) { o.sub = 'потрібна прив\u2019язка'; o.dim = true; o.ok = false; o.sc = -1e6; }
                 seenLook[look] = o;
                 opts.push(o);
             });
