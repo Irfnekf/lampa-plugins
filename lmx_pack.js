@@ -1378,16 +1378,6 @@
         if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
         var tagHtml = m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '');
         var premT = themeBase() === 'prem';
-        if (journalOn()) {
-            // Полегшена: мітка-рубрика, заголовок, рядок з типом і роком, велика оцінка; колір смуги — за оцінкою
-            view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text lmx-jt" style="--c:' + (v ? ratingColor(v) : '#fff') + '">' +
-                '<div class="lmx-hero__kick">' + (tagHtml || (isTv ? 'Серіал' : 'Фільм')) + '</div>' +
-                '<div class="lmx-hero__title">' + heroTitle(m.title || m.name) + '</div>' +
-                '<div class="lmx-hero__meta"><span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
-                (GENRES[(m.genre_ids || [])[0]] ? '<span>' + GENRES[(m.genre_ids || [])[0]] + '</span>' : '') + '</div>' +
-                (v ? '<div class="lmx-hero__sc">' + v.toFixed(1) + '<small>/ 10</small></div>' : '') +
-                '<div class="lmx-hero__o">' + esc(ov) + '</div></div>');
-        } else
         view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text">' + (premT ? '<div class="lmx-hero__kick">' + (tagHtml || (isTv ? 'Серіал' : 'Фільм')) + '</div>' : '') + '<div class="lmx-hero__title">' +
             heroTitle(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
             (premT ? '' : tagHtml) +
@@ -2295,19 +2285,7 @@
         return '@media (min-width:761px){' + [
             // розмір слайдів — як на сторінках каталогів (Аніме, Дорами та ін.)
             D + '.card--lmxhero' + X + '{width:58vw !important;margin-left:0 !important;margin-right:1.2em !important}',
-            all(D, V, 'height:25vw !important'),
-            all(M, V, 'border-radius:.5em !important'),
-            M + '.card--lmxhero.focus' + X + ' .card__view{box-shadow:inset 0 0 0 .16em #fff !important}',
-            M + '.lmx-hero__shade' + X + '{background:linear-gradient(90deg,rgba(10,10,12,.92) 0%,rgba(10,10,12,.55) 38%,rgba(10,10,12,0) 66%) !important}',
-            M + '.lmx-hero__text.lmx-jt' + X + '{left:2em !important;right:auto !important;bottom:auto !important;top:50% !important;transform:translateY(-50%) !important;max-width:46% !important;padding-left:1.3em;border-left:.3em solid var(--c)}',
-            M + '.lmx-jt .lmx-hero__kick{font-size:.72em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--c);margin-bottom:.8em;opacity:1}',
-            M + '.lmx-jt .lmx-hero__tag{background:none;padding:0;border-radius:0;color:inherit;font-size:1em}',
-            M + '.lmx-jt .lmx-hero__title' + X + '{font-size:2.4em !important;font-weight:800 !important;line-height:1.05 !important;margin-bottom:.35em !important}',
-            M + '.lmx-jt .lmx-hero__meta' + X + '{font-size:.9em !important;opacity:.75;gap:.9em;margin-bottom:.5em}',
-            M + '.lmx-jt .lmx-hero__meta span+span::before{content:"/";opacity:.5;margin-right:.9em}',
-            M + '.lmx-jt .lmx-hero__sc{font-size:2.8em;font-weight:200;line-height:1;color:var(--c)}',
-            M + '.lmx-jt .lmx-hero__sc small{font-size:.32em;margin-left:.3em;font-weight:400;color:#fff;opacity:.7}',
-            M + '.lmx-jt .lmx-hero__o' + X + '{font-size:.85em !important;opacity:.7;margin-top:.7em !important;max-height:2.8em !important}'
+            all(D, V, 'height:25vw !important')
         ].join('') + '}' + [
             // заголовки рядів: дрібні, великі літери з розрядкою й тонкою лінією до краю
             'html body .items-line.items-line .items-line__title' + X + '{display:flex !important;align-items:center;font-size:.85em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.8}',
@@ -4808,7 +4786,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.342';
+    var VERSION = '10.343';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
