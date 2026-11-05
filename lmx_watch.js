@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.13';
+    var VERSION = '3.14';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1428,7 +1428,7 @@
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
     // Перевага українській озвучці: (1) у відповіді джерела є українські озвучки/позначки; (2) назва джерела з відомих українських. Вимикається в ⚙
     function uaOn() { return opt('lmx_online_ua', 'on') === 'on'; }
-    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|klon|kinostrain|serialno|ufdub|moviestape|[еe]н[еe][їi]д|ukr/i;
+    var UA_SRC = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|klon|kinostrain|serialno|ufdub|moviestape|[еe]н[еe][їi]д|ukr|filmix|фільмікс|фильмикс/i;
     function uaName(k) { return UA_SRC.test(String(k || '')); }
     // Джерело, на якому ми самі бачили українську озвучку (Filmix із преміумом тощо), вважаємо українським, навіть якщо назва про це не каже
     function uaLearned(k) { try { var g = memGet().g[k]; return !!(g && (g.ua || 0) >= 1); } catch (e) { return false; } }
