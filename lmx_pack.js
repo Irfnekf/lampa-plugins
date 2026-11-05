@@ -2289,29 +2289,34 @@
     // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
     function journalCss() {
         if (!journalOn()) return '';
-        var z = getStr('lmx_card_size', 'm'), W = z === 'xl' ? '58em' : z === 'l' ? '52em' : '46em', Hh = z === 'xl' ? '29em' : z === 'l' ? '26em' : '23em';
-        var P = 'html body:not(.lmx-ph) ';
-        return [
-            P + '.card--lmxhero{width:' + W + ' !important}',
-            P + '.card--lmxhero .card__view{height:' + Hh + ';border-radius:.5em}',
-            P + '.card--lmxhero.focus .card__view{box-shadow:inset 0 0 0 .16em #fff !important}',
-            P + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(90deg,rgba(10,10,12,.92) 0%,rgba(10,10,12,.55) 38%,rgba(10,10,12,0) 66%)}',
-            P + '.card--lmxhero .lmx-hero__text.lmx-jt{left:1.6em;right:auto;bottom:auto;top:50%;transform:translateY(-50%);max-width:48%;padding-left:1.3em;border-left:.3em solid var(--c)}',
-            P + '.lmx-jt .lmx-hero__kick{font-size:.72em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--c);margin-bottom:.8em;opacity:1}',
-            P + '.lmx-jt .lmx-hero__tag{background:none;padding:0;border-radius:0;color:inherit;font-size:1em}',
-            P + '.lmx-jt .lmx-hero__title{font-size:2.3em;font-weight:800;line-height:1.05;margin-bottom:.35em}',
-            P + '.lmx-jt .lmx-hero__meta{font-size:.9em;opacity:.75;gap:.9em;margin-bottom:.5em}',
-            P + '.lmx-jt .lmx-hero__meta span+span::before{content:"/";opacity:.5;margin-right:.9em}',
-            P + '.lmx-jt .lmx-hero__sc{font-size:2.8em;font-weight:200;line-height:1;color:var(--c)}',
-            P + '.lmx-jt .lmx-hero__sc small{font-size:.32em;margin-left:.3em;font-weight:400;color:#fff;opacity:.7}',
-            P + '.lmx-jt .lmx-hero__o{font-size:.8em;opacity:.7;margin-top:.7em;max-height:2.8em}',
+        // селектори як у miniCss (той самий префікс, :not(#lmx-x) і !important), але стоять у CSS пізніше — тому перемагають
+        var X = ':not(#lmx-x)', M = 'html body .items-line.lmx-mini ', D = 'html body .items-line.lmx-mini--def ';
+        var V = '.card--lmxhero' + X + ' .card__view,' + '.card--lmxhero.focus' + X + ' .card__view,' + '.card--lmxhero.hover' + X + ' .card__view';
+        function all(P, sel, body) { return sel.split(',').map(function (q) { return P + q; }).join(',') + '{' + body + '}'; }
+        return '@media (min-width:761px){' + [
+            // розмір слайдів — як на сторінках каталогів (Аніме, Дорами та ін.)
+            D + '.card--lmxhero' + X + '{width:58vw !important;margin-left:0 !important;margin-right:1.2em !important}',
+            all(D, V, 'height:25vw !important'),
+            all(M, V, 'border-radius:.5em !important'),
+            M + '.card--lmxhero.focus' + X + ' .card__view{box-shadow:inset 0 0 0 .16em #fff !important}',
+            M + '.lmx-hero__shade' + X + '{background:linear-gradient(90deg,rgba(10,10,12,.92) 0%,rgba(10,10,12,.55) 38%,rgba(10,10,12,0) 66%) !important}',
+            M + '.lmx-hero__text.lmx-jt' + X + '{left:2em !important;right:auto !important;bottom:auto !important;top:50% !important;transform:translateY(-50%) !important;max-width:46% !important;padding-left:1.3em;border-left:.3em solid var(--c)}',
+            M + '.lmx-jt .lmx-hero__kick{font-size:.72em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--c);margin-bottom:.8em;opacity:1}',
+            M + '.lmx-jt .lmx-hero__tag{background:none;padding:0;border-radius:0;color:inherit;font-size:1em}',
+            M + '.lmx-jt .lmx-hero__title' + X + '{font-size:2.4em !important;font-weight:800 !important;line-height:1.05 !important;margin-bottom:.35em !important}',
+            M + '.lmx-jt .lmx-hero__meta' + X + '{font-size:.9em !important;opacity:.75;gap:.9em;margin-bottom:.5em}',
+            M + '.lmx-jt .lmx-hero__meta span+span::before{content:"/";opacity:.5;margin-right:.9em}',
+            M + '.lmx-jt .lmx-hero__sc{font-size:2.8em;font-weight:200;line-height:1;color:var(--c)}',
+            M + '.lmx-jt .lmx-hero__sc small{font-size:.32em;margin-left:.3em;font-weight:400;color:#fff;opacity:.7}',
+            M + '.lmx-jt .lmx-hero__o' + X + '{font-size:.85em !important;opacity:.7;margin-top:.7em !important;max-height:2.8em !important}'
+        ].join('') + '}' + [
             // заголовки рядів: дрібні, великі літери з розрядкою й тонкою лінією до краю
-            P + '.items-line__title{display:flex;align-items:center;font-size:.85em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.8}',
-            P + '.items-line__title::after{content:"";flex:1;height:1px;margin:0 2em 0 1.2em;background:rgba(255,255,255,.14)}',
+            'html body .items-line.items-line .items-line__title' + X + '{display:flex !important;align-items:center;font-size:.85em;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.8}',
+            'html body .items-line .items-line__title::after{content:"";flex:1;height:1px;margin:0 2em 0 1.2em;background:rgba(255,255,255,.14)}',
             // каталоги: плоскі темні плитки з логотипом і кольоровою смужкою знизу
-            P + '.card--lmxstudio .card__view{background:#181a20 !important;border-radius:.5em;border-bottom:.22em solid var(--lmx-pc,#555);justify-content:flex-start;padding-left:1.1em}',
-            P + '.card--lmxstudio .lmx-studio__logo{flex:none;margin-right:.7em}',
-            P + '.card--lmxstudio .lmx-studio__name{font-size:1.1em;font-weight:700;text-align:left;padding:0;white-space:nowrap}'
+            'html body .card--lmxstudio .card__view{background:#181a20 !important;border-radius:.5em;border-bottom:.22em solid var(--lmx-pc,#555);justify-content:flex-start;padding-left:1.1em}',
+            'html body .card--lmxstudio .lmx-studio__logo{flex:none;margin-right:.7em}',
+            'html body .card--lmxstudio .lmx-studio__name{font-size:1.1em;font-weight:700;text-align:left;padding:0;white-space:nowrap}'
         ].join('');
     }
     function themeCss() {
@@ -4804,7 +4809,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.340';
+    var VERSION = '10.341';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
