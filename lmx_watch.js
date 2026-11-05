@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.16';
+    var VERSION = '3.18';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -410,6 +410,7 @@
         }
         var f = act.querySelector('.filter--filter');
         if (!f || selOpen()) return;
+        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         window.__lmxAllowSel = Date.now();
         try { $(f).trigger('hover:enter'); } catch (e) {}
@@ -1767,6 +1768,18 @@
                 Lampa.Player.listener.follow('external', function () { outsidePl = true; });
                 // як у Nova (hookQuality): при старті відтворення обираємо з доступних потоків найближчий до бажаної якості, але не вищий за неї
                 Lampa.Player.listener.follow('start', function (data) {
+                    safe(warmNext);
+                    // озвучка, з якою ви справді дивитесь серіал, запам'ятовується для нього (навіть якщо ви її не вибирали вручну): наступного разу відкриється вона
+                    try {
+                        var pa = document.querySelector('.activity--active'), pc = Lampa.Activity.active(), pm = pc && (pc.movie || pc.card);
+                        if (isOn() && pa && pm && pm.id && (pm.name || pm.number_of_seasons || (pm.first_air_date && !pm.release_date))) {
+                            var pi = instFor(pa), pS = pi && readSets(pi), pg = pS && pS.voice, pv = pg && selItem(pg);
+                            if (pg && pg.items && pg.items.length > 1 && pv && pv.title && !isSubOnly(pv.title) && !/оригінал|original/i.test(pv.title)) {
+                                var cur0 = vpGet()[String(pm.id)];
+                                if (!cur0 || vnorm(cur0.t) !== vnorm(pv.title)) vpSet(pm.id, pv.title, true);
+                            }
+                        }
+                    } catch (e) {}
                     try {
                         if (!isOn()) return;
                         var qp = qPref(), want = qp === '4k' ? 2160 : qp === 'fhd' ? 1080 : qp === 'hd' ? 720 : 0;
@@ -2025,19 +2038,22 @@
     // Озвучки, які користувач сам обирав двічі й більше, плагін теж вважає «своїми» й піднімає вгору — так список «вчиться» на ваших вподобаннях
     // Озвучка, яку користувач сам обрав для цього матеріалу: наступного разу відкриваємо одразу її
     function vpGet() { try { var v = Lampa.Storage.get('lmx_watch_vp', ''); if (typeof v === 'string' && v) v = JSON.parse(v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
-    function vpSet(cid, title) {
+    function vpSet(cid, title, auto) {
         try {
             cid = String(cid || ''); if (!cid || !title) return;
             var m = vpGet(), ks = Object.keys(m);
             if (ks.length > 200) ks.sort(function (a, b) { return (m[a].ts || 0) - (m[b].ts || 0); }).slice(0, ks.length - 150).forEach(function (k) { delete m[k]; });
             m[cid] = { t: String(title), ts: Date.now() };
+            if (auto) m[cid].a = 1;   // запам'ятовано автоматично зі перегляду, а не обрано вручну
             Lampa.Storage.set('lmx_watch_vp', JSON.stringify(m));
         } catch (e) {}
     }
     function vnorm(t) { return String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
     // Яку озвучку відкрити першою: збережений вибір для цього серіалу → найчастіше обирана українська → дубляж → багатоголосий → перша українська зі списку
     function pickVoice(cid, items) {
-        var vp = vpGet(), rem = vp[String(cid)] && vnorm(vp[String(cid)].t), vc = vcGet(), best = null, bs = -1, i, t, sc;
+        var vp = vpGet(), ve = vp[String(cid)], rem = ve && vnorm(ve.t), vc = vcGet(), best = null, bs = -1, i, t, sc;
+        // автоматично запам'ятована НЕ українська озвучка не заважає відкрити українську, якщо вона з'явилась; вручну обрану поважаємо завжди
+        if (ve && ve.a && !isUaVoice(ve.t) && items.some(function (x) { return x && x.title && isUaVoice(String(x.title)); })) rem = '';
         for (i = 0; i < items.length; i++) {
             if (!items[i] || !items[i].title) continue;
             t = String(items[i].title); var n = vnorm(t);
@@ -3196,6 +3212,53 @@
         hd.classList.add('lmx-uak-hero');
         putLogo(hd, card);
     }
+    // ---- Підвантаження наступної серії: поки йде поточна, один раз «будимо» посилання наступної (лише для серій із відкладеним посиланням method:'call'), щоб джерело
+    // встигло віддати потік і перемикання в плеєрі було швидшим. Один запит, лише коли плеєр стартував з нашого екрана; вимикається в налаштуваннях
+    function prefetchOn() { var v = Lampa.Storage.get('lmx_online_prefetch', 'true'); return v === true || v === 'true'; }
+    function trackPlay() {
+        if (window.__lmxTP) return;
+        window.__lmxTP = 1;
+        try { $(document).on('hover:enter', '.lmx-onl-item', function () { window.__lmxPlayEl = this; window.__lmxPlayT = Date.now(); }); } catch (e) {}
+    }
+    function warmNext() {
+        try {
+            if (!prefetchOn() || !isOn()) return;
+            var el = window.__lmxPlayEl;
+            if (!el || !document.body.contains(el) || Date.now() - (window.__lmxPlayT || 0) > 20000) return;
+            var nx = el.nextElementSibling;
+            while (nx && !(nx.classList && nx.classList.contains('lmx-onl-item'))) nx = nx.nextElementSibling;
+            if (!nx || nx.__lmxWarm) return;
+            nx.__lmxWarm = 1;
+            var j = jd(nx), u = j && j.url;
+            if (!u || j.method !== 'call' || typeof u !== 'string' || !/^https?:/i.test(u)) return;
+            var net = new Lampa.Reguest(); net.__lmxProbe = true;
+            try { net.timeout(8000); } catch (e) {}
+            net.silent(u, function () {}, function () {}, false, { dataType: 'text' });
+        } catch (e) {}
+    }
+    // ---- «Здоров'я джерел»: що ми знаємо про кожне джерело зі зібраного досвіду (успіхи, невдачі, швидкість, якість)
+    function showHealth() {
+        var enabled = ''; try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
+        function back() { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
+        var mem = memGet(), g = mem.g || {}, keys = Object.keys(g).filter(function (k) { return g[k] && ((g[k].ok || 0) + (g[k].fail || 0)) > 0; });
+        keys.sort(function (a, b) { return gscore(g[b]) - gscore(g[a]); });
+        var QN = { 4: '4K', 3: 'FHD', 2: 'HD', 1: 'SD' };
+        var items = keys.map(function (k) {
+            var x = g[k], q = Math.round(x.q || 0), quar = (x.fail || 0) >= 3 && x.fail > (x.ok || 0) * 2 && Date.now() - (x.ft || 0) < 86400000;
+            return { title: k, subtitle: '✓ ' + (x.ok || 0) + '  ✗ ' + (x.fail || 0) + (x.ms ? '  · ' + (x.ms / 1000).toFixed(1) + ' с' : '') + (QN[q] ? '  · ' + QN[q] : '') + (quar ? '  · тимчасово пропускається' : ''), k: k };
+        });
+        if (!items.length) { try { Lampa.Noty.show('Досвіду про джерела ще немає: відкрийте кілька фільмів чи серіалів онлайн'); } catch (e) {} return; }
+        items.push({ title: 'Скинути накопичену статистику', subtitle: 'Плагін почне вчитись заново', k: '__reset' });
+        Lampa.Select.show({
+            title: 'Здоров’я джерел',
+            items: items,
+            onBack: back,
+            onSelect: function (a) {
+                if (a.k === '__reset') { try { var m2 = memGet(); m2.g = {}; memSet(m2); Lampa.Noty.show('Статистику джерел скинуто'); } catch (e) {} }
+                back();
+            }
+        });
+    }
     // Діагностика: стисла схема розмітки активного екрана (класи, розміри, видимість) — копіюється в буфер обміну
     function copyDiag() {
         var act = document.querySelector('.activity--active') || document.querySelector('.activity'), out = [], cnt = 0;
@@ -3245,6 +3308,7 @@
             safe(downRescue);
             safe(upRescue);
             safe(viewGuard);
+            safe(trackPlay);
             setInterval(function () { if (!document.hidden) safe(loadWatchdog); }, 3000);
             safe(watchInsert);
             setInterval(function () { if (!document.hidden) safe(uakAdapt); }, 600);
@@ -3270,6 +3334,15 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
                 field: { name: 'Бажана якість джерела', description: 'Підбір шукатиме джерело з такою якістю або кращою; якщо такого немає — візьме найкраще з наявних' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_online_prefetch', type: 'trigger', default: true },
+                field: { name: 'Підвантажувати наступну серію', description: 'Під час перегляду один раз «будить» посилання наступної серії, щоб перемикання в плеєрі було швидшим' }
+            });
+            if (S2 && S2.addParam) S2.addParam({
+                component: 'lmx_watch', param: { name: 'lmx_watch_health', type: 'button' },
+                field: { name: 'Здоров\u2019я джерел', description: 'Які джерела відповідають швидко й стабільно, а які часто підводять — за вашим досвідом. Тут же можна скинути статистику' },
+                onChange: function () { safe(showHealth); }
             });
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_watch_diag', type: 'button' },
