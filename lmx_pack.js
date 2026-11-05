@@ -537,6 +537,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
+        H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені кнопкою «Переглянуто», не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
         H.select('lmx_c_soon', COLOR_NAMES, 'blue', 'Колір: скоро й очікується', 'Лише в темі «Полегшена»', restyle);
@@ -612,7 +613,7 @@
     }
 
     // Широкі картки історії («Продовжити перегляд») з кадром і смужкою прогресу — у темах HBO та Apple TV
-    function histItem(m, prog, list, extra) {
+    function histItem(m, prog, list) {
         list = list || 'history';
         var it = {};
         for (var k in m) it[k] = m[k];
@@ -636,11 +637,10 @@
                             '</div><div class="lmx-hist__m">' + (prog && prog.s ? '<span>С' + prog.s + ' Е' + prog.e + '</span>' : '') +
                             (v ? '<span style="color:' + ratingColor(v) + '">&#9734; ' + v.toFixed(1) + '</span>' : '') +
                             (year ? '<span>' + year + '</span>' : '') +
-                            (extra ? '<span class="lmx-hist__left">' + esc(extra) + '</span>' : '') +
                             (prog && prog.left > 0 ? '<span class="lmx-hist__left">' + (prog.left <= 10 ? 'переглянуто' : 'лишилось ' + fmtDur(prog.left)) + '</span>' : '') + '</div></div>' +
                             (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
                         // довге утримання OK прибирає фільм з історії перегляду (картка зникає, фокус переходить на сусідню)
-                        if (list !== 'none') h.on('hover:long', function (ev) {
+                        h.on('hover:long', function (ev) {
                             ev.stopImmediatePropagation();
                             safe(function () {
                                 var nb = h.next('.card')[0] || h.prev('.card')[0];
@@ -656,7 +656,7 @@
                         });
                         // наш обробник має спрацювати раніше за рідне меню картки
                         try {
-                            var evs = list !== 'none' && window.$._data(h[0], 'events'), arr = evs && evs['hover:long'];
+                            var evs = window.$._data(h[0], 'events'), arr = evs && evs['hover:long'];
                             if (arr && arr.length > 1) { var mine = arr.pop(); arr.unshift(mine); }
                         } catch (e) {}
                     });
@@ -1107,7 +1107,7 @@
             comp.create = function () {
                 var self = this, id = object.service_id;
                 this.activity.loader(true);
-                var cats = id === 'mood' ? moodCats() : id === 'schedule' ? schedCats() : svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = false;
+                var cats = id === 'mood' ? moodCats() : svcCats(id), isAn = !!(SVC[id] && SVC[id].hero), heroL = null, heroDone = false;
                 var svcName = (SERVICES.filter(function (x) { return x[0] === id; })[0] || [])[1] || '';
                 var heroTitle = isAn ? (id === 'dorama' ? 'Дорами' : 'Аніме') + ': у топі та скоро' : svcName + ': у тренді';
                 var cache = svcCache[id];
@@ -1118,13 +1118,12 @@
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url2 || cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep && !cats[i].sched, total_pages: cats[i].newep || cats[i].sched ? 1 : 20 };
+                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url2 || cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
-                    if (cats[i].sched) { schedBuild(cats[i].sched, function (arr) { res[i] = arr || []; done(); }); return; }
                     if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
                     var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
@@ -1223,7 +1222,7 @@
                 // афіша: для аніме й дорам — своя, для платформ — тренди платформи; якщо довго вантажиться (4 с), сторінка будується без неї
                 function gotHero(l) { if (heroDone) return; heroDone = true; heroL = l; safe(function () { heroL.forEach(function (m) { heroPreload(imgUrl(m.backdrop_path, 'w1280')); }); }); tryBuild(); }
                 var heroT = setTimeout(function () { if (!heroDone) { heroDone = true; tryBuild(); } }, (isAn || ALT_SVC[id]) ? 9000 : 4000);
-                if (id === 'mood' || id === 'schedule') { clearTimeout(heroT); heroDone = true; tryBuild(); return this.render(); }
+                if (id === 'mood') { clearTimeout(heroT); heroDone = true; tryBuild(); return this.render(); }
                 try { (isAn ? animeHeroList(SVC[id].hero, gotHero) : svcHeroList(id, gotHero)); } catch (e) { clearTimeout(heroT); heroDone = true; tryBuild(); }
                 return this.render();
             };
@@ -1783,88 +1782,6 @@
         for (var w = 0; w < 3; w++) pump();
     }
 
-    // ===== Розклад: серіали з історії, «Пізніше» і «Дивлюсь» — що вже вийшло нового і коли вийде наступна серія =====
-    var schedCache = null, DOW = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'], MONS = ['січ.', 'лют.', 'бер.', 'кві.', 'тра.', 'чер.', 'лип.', 'сер.', 'вер.', 'жов.', 'лис.', 'гру.'];
-    function fmtDay(d) {
-        var m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (!m) return '';
-        var dt = new Date(+m[1], +m[2] - 1, +m[3]);
-        return DOW[dt.getDay()] + ', ' + (+m[3]) + ' ' + MONS[+m[2] - 1];
-    }
-    function schedList() {
-        var seenId = {}, out = [];
-        ['history', 'wath', 'look'].forEach(function (t) {
-            var l = []; try { l = Lampa.Favorite.get({ type: t }) || []; } catch (e) {}
-            l.forEach(function (c) {
-                if (!c || !c.id || seenId[c.id]) return;
-                if (!(c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons)) return;
-                seenId[c.id] = 1; out.push(c);
-            });
-        });
-        return out.slice(0, 60);
-    }
-    // Один прохід по серіалах, три добірки: kind = 'new' | 'week' | 'later'
-    function schedBuild(kind, cb) {
-        var list = schedList();
-        if (!list.length) return cb([]);
-        var key = list.map(function (c) { return c.id; }).join(',') + '|' + dayStr(0);
-        if (schedCache && schedCache.key === key && Date.now() - schedCache.t < 600000) return cb(pick(schedCache.data));
-        if (schedCache && schedCache.key === key && schedCache.wait) { schedCache.wait.push(function (d) { cb(pick(d)); }); return; }
-        var wait = [function (d) { cb(pick(d)); }];
-        schedCache = { key: key, t: 0, wait: wait };
-        var data = [], qi = 0, left = list.length, today = dayStr(0), weekEnd = dayStr(7), lo = dayStr(-14), far = dayStr(90);
-        function pick(d) {
-            var out = d.filter(function (x) { return x.k === kind; });
-            out.sort(function (a, b) { return kind === 'new' ? String(b.d).localeCompare(String(a.d)) : String(a.d).localeCompare(String(b.d)); });
-            return out.map(function (x) { return x.card; });
-        }
-        function add(j, k, ep) {
-            if (!j || !j.id || !ep || !ep.air_date) return;
-            var card = { id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path || j.poster_path,
-                overview: j.overview, vote_average: j.vote_average, vote_count: j.vote_count, first_air_date: j.first_air_date,
-                original_language: j.original_language, genre_ids: (j.genres || []).map(function (g) { return g.id; }), media_type: 'tv' };
-            var extra = k === 'new' ? 'вийшла ' + fmtDay(ep.air_date) : fmtDay(ep.air_date);
-            data.push({ k: k, d: ep.air_date, card: histItem(card, { s: ep.season_number, e: ep.episode_number, pct: 0, left: 0 }, 'none', extra) });
-        }
-        function fin() {
-            if (--left > 0) return;
-            schedCache = { key: key, t: Date.now(), data: data };
-            wait.forEach(function (f) { try { f(data); } catch (e) {} });
-        }
-        function pump() {
-            if (qi >= list.length) return;
-            var c = list[qi++];
-            load(c.id, function (j) {
-                try {
-                    var l = j && j.last_episode_to_air, n = j && j.next_episode_to_air;
-                    if (l && l.air_date && l.air_date >= lo && l.air_date <= today) add(j, 'new', l);
-                    if (n && n.air_date && n.air_date >= today) {
-                        if (n.air_date <= weekEnd) add(j, 'week', n);
-                        else if (n.air_date <= far) add(j, 'later', n);
-                    }
-                } catch (e) {}
-                fin(); pump();
-            });
-        }
-        for (var w = 0; w < 3; w++) pump();
-    }
-    function schedCats() {
-        return [
-            { title: 'Вийшли нові серії', sched: 'new', min: 1 },
-            { title: 'Виходить цього тижня', sched: 'week', min: 1 },
-            { title: 'Далі', sched: 'later', min: 1 }
-        ];
-    }
-    function schedMenu() {
-        if (!Lampa.Menu || !Lampa.Menu.addButton || document.querySelector('.menu__item.lmx-schedmenu')) return;
-        var ico = '<svg viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 15h3"/></svg>';
-        var el = Lampa.Menu.addButton(ico, 'Розклад', function () {
-            registerServicePage();
-            Lampa.Activity.push({ url: '', title: 'Розклад серій', component: 'lmx_service', service_id: 'schedule', page: 1 });
-        });
-        if (el && el[0]) el[0].classList.add('lmx-schedmenu');
-    }
-
     function makeCall(row) {
         if (row.custom) return function () { return row.custom(); };
         return function () {
@@ -2003,6 +1920,28 @@
         return sel + ',' + sel + ' span{color:' + col + ' !important}' +
             sel + ' svg{color:' + col + ' !important;stroke:' + col + ' !important}' +
             sel + ' svg path{fill:' + col + ' !important;stroke:' + col + ' !important}';
+    }
+    // ===== Стандартний екран «Розклад» Lampa (календар на 30 днів): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою, кадр серії з заокругленням =====
+    function timetableCss() {
+        if (!getBool('lmx_timetable', true)) return '';
+        return [
+            '.timetable{padding:0 1.5em}',
+            '.timetable__item:before{top:.28em;left:.28em;right:.28em;bottom:.28em;border-radius:1em;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}',
+            '.timetable__inner{padding-bottom:100%}',
+            '.timetable__item--any:before{background:linear-gradient(155deg,rgba(255,196,110,.22),rgba(255,255,255,.08) 62%);border-color:rgba(255,206,130,.32)}',
+            '.timetable__item:first-child:before{border-color:#ffc46e;box-shadow:0 0 0 .1em rgba(255,196,110,.35)}',
+            '.timetable__item:first-child .timetable__date:after{content:"сьогодні";margin-left:.55em;padding:.05em .55em;border-radius:99em;background:#ffc46e;color:#1a1306;font-size:.78em;font-weight:800;letter-spacing:.02em;text-transform:uppercase;vertical-align:.08em}',
+            '.timetable__date{top:1.05em;left:1.15em;right:1em;font-size:.92em;font-weight:700;opacity:.88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+            '.timetable__body{left:1.15em;right:1.05em;bottom:1.1em}',
+            '.timetable__preview{margin-bottom:.7em}',
+            '.timetable__preview>img{display:block;width:6.6em;max-width:100%;height:3.7em;object-fit:cover;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.08)}',
+            '.timetable__preview>div{font-size:.82em;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+            '.timetable__body>div{font-weight:700;line-height:1.5}',
+            '.timetable__body>div>span{width:.32em;height:.95em;margin-right:.55em;border-radius:99em;margin-bottom:-.14em}',
+            '.timetable__item.focus{color:#111;z-index:2}',
+            '.timetable__item.focus:before{background:#fff;border-color:#fff;transform:scale(1.035);box-shadow:0 .5em 1.6em rgba(0,0,0,.45)}',
+            '.timetable__item.focus .timetable__date:after{background:#111;color:#ffc46e}'
+        ].join('\n');
     }
     function buildCss() {
         var fs = SIZES[getStr('lmx_size', 'm')] || SIZES.m;
@@ -2780,7 +2719,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss();
+        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -4820,7 +4759,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.338';
+    var VERSION = '10.339';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -4865,8 +4804,6 @@
         safe(addSettings);
         safe(moodMenu);
         safe(function () { setTimeout(function () { safe(moodMenu); }, 2500); });
-        safe(schedMenu);
-        safe(function () { setTimeout(function () { safe(schedMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
         safe(function () {
