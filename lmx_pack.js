@@ -3804,6 +3804,14 @@
         var els = cont.find('.full-start__button, .simple-button').not('.lmx-folder, .lmx-edit').toArray(), seen = {}, out = [];
         els.forEach(function (el) { if (el.__lmxId != null) seen[el.__lmxId] = 1; });
         els.forEach(function (el) {
+            // Lampa впізнає закріплену кнопку за хешем її HTML. Дві однакові кнопки «Онлайн» (різні плагіни) відрізняються лише підписом у jQuery-даних,
+            // який у HTML не потрапляє, тож хеш збігається: закріплення зачіпає обидві, одна зникає з меню. Виносимо підпис в атрибут — HTML стає різним
+            safe(function () {
+                if (el.getAttribute('data-subtitle') == null) {
+                    var sub = window.$ ? window.$(el).data('subtitle') : null;
+                    if (sub != null && sub !== '' && typeof sub !== 'object') el.setAttribute('data-subtitle', String(sub));
+                }
+            });
             if (el.__lmxId == null) {
                 el.__lmxT = btnTitleOf(el);
                 var sv = el.querySelector('svg');
@@ -4031,7 +4039,8 @@
     var PIN_T0 = Date.now(), pinWatched = false;
     function pinKey(el) {
         var cl = String(el.className || '').split(/\s+/).filter(function (c) { return /^(view--|button--)/.test(c) && c !== 'button--priority'; });
-        return cl.length ? cl.sort().join(' ') : 't:' + norm(btnTitleOf(el));
+        var sub = el.getAttribute ? el.getAttribute('data-subtitle') : '';
+        return cl.length ? cl.sort().join(' ') + (sub ? '|' + sub : '') : 't:' + norm(btnTitleOf(el));
     }
     function pinWatch() {
         if (pinWatched || !Lampa.Storage || !Lampa.Storage.listener) return;
@@ -4786,7 +4795,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.343';
+    var VERSION = '10.344';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
