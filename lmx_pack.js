@@ -537,7 +537,6 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
-        H.trigger('lmx_journal', true, 'Оформлення «Журнал» (Полегшена)', 'Плоска афіша з великою оцінкою й кольоровою смугою, заголовки рядів із лінією, плоскі плитки каталогів. Лише для теми «Полегшена»', function () { try { applyStyle(); } catch (e) {} });
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені кнопкою «Переглянуто», не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -1315,8 +1314,8 @@
         var sz = a.length <= 8 ? 1 : (a.length <= 13 ? 2 : (a.length <= 20 ? 3 : 4));
         return '<span class="lmx-w1 lmx-s' + sz + '">' + esc(a) + '</span>' + (b ? '<span class="lmx-w2">' + esc(b) + '</span>' : '');
     }
-    // «Журнал» — оформлення теми «Полегшена»: плоске, без скла й розмиття (лише на ТВ/ПК)
-    function journalOn() { return themeBase() === 'default' && getBool('lmx_journal', true) && !isMobile(); }
+    // Вигляд теми «Полегшена»: плоский, без скла й розмиття (ТВ/ПК)
+    function journalOn() { return themeBase() === 'default' && !isMobile(); }
     function board() { var t = themeBase(); return t === 'apple' || t === 'hbo' || t === 'prem'; }
     function heroSources() {
         return [['trending/all/week', '', 1], ['movie/now_playing?region=UA', 'movie', 1]].concat(hypeSources());
@@ -1380,7 +1379,7 @@
         var tagHtml = m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '');
         var premT = themeBase() === 'prem';
         if (journalOn()) {
-            // «Журнал» (Полегшена): мітка-рубрика, заголовок, рядок з типом і роком, велика оцінка; колір смуги — за оцінкою
+            // Полегшена: мітка-рубрика, заголовок, рядок з типом і роком, велика оцінка; колір смуги — за оцінкою
             view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text lmx-jt" style="--c:' + (v ? ratingColor(v) : '#fff') + '">' +
                 '<div class="lmx-hero__kick">' + (tagHtml || (isTv ? 'Серіал' : 'Фільм')) + '</div>' +
                 '<div class="lmx-hero__title">' + heroTitle(m.title || m.name) + '</div>' +
@@ -4809,7 +4808,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.341';
+    var VERSION = '10.342';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
