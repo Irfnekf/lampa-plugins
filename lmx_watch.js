@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.15';
+    var VERSION = '3.16';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -24,6 +24,15 @@
     }
 
     // Елемент .selectbox у Lampa є в DOM завжди (його додають при старті), тож «меню відкрите» визначаємо за класом на body
+    // Плеєр відкритий (або вмикається наступна серія): наші сторожові таймери не мають забирати в нього керування — раніше натискання «наступна серія» викидало у список
+    function plyOn() {
+        try {
+            if (Lampa.Player && typeof Lampa.Player.opened === 'function' && Lampa.Player.opened()) return true;
+            var c = Lampa.Controller.enabled();
+            return !!(c && /^player/i.test(c.name || ''));
+        } catch (e) { return false; }
+    }
+    function ctlContent() { if (plyOn()) return; try { Lampa.Controller.toggle('content'); } catch (e) {} }
     function selOpen() {
         try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return true; } catch (e) {}
         // у різних збірках Lampa «відкрито» позначається по-різному — дивимось на всі ознаки
@@ -794,7 +803,7 @@
                 var f = act.querySelector('.focus');
                 if (f === tg) return;
                 var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
-                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                ctlContent();
                 if (window.Navigator && Navigator.focus) Navigator.focus(tg);
             });
         }, 90);
@@ -916,7 +925,7 @@
                 else if (okFocus(act) && (nm === 'content' || (window.__lmxKeyT || 0) > rt0)) { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }   // користувач уже сам пересунув фокус (напр. на «Озвучка») — не повертаємо його на джерело
                 hideJunk(act);
                 okTicks = 0;
-                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                ctlContent();
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
                 try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
                 if (window.Navigator && Navigator.focus) Navigator.focus(listOff(act) ? act.querySelector('.lmx-onl-item') || tg : tg);
@@ -1702,7 +1711,7 @@
                         hideJunk(act);
                         var fk = act.__lmxRlKey; act.__lmxRlKey = '';
                         var byUser = Date.now() - (window.__lmxManual || 0) < 20000, tg = (byUser && fk && act.querySelector('.lmx-onl-g--' + fk + ' .selector')) || act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') || act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-item');
-                        if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, tg); }
+                        if (tg) { ctlContent(); syncNav(act, tg); }
                     });
                 }, 300);
             });
@@ -1738,7 +1747,7 @@
                 var cur = document.querySelector('.focus');
                 if (cur && document.body.contains(cur) && cur.offsetWidth) return;
                 var tg = keepIdx >= 0 && els[keepIdx] && document.body.contains(els[keepIdx]) && els[keepIdx].offsetWidth ? els[keepIdx] : (a.querySelector('.lmx-onl-btn.selector') || a.querySelector('.lmx-onl-item'));
-                if (tg) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(a, tg); }
+                if (tg) { ctlContent(); syncNav(a, tg); }
             });
         }, 120);
         relayout();
@@ -1937,7 +1946,7 @@
                     try {
                         if (isOn() && document.querySelector('.activity--active .explorer.lmx-onl') && p && Array.isArray(p.items) && p.items.some(function (i) { return i && i.reset; }) &&
                             Date.now() - (window.__lmxAllowSel || 0) > 4000 && !document.body.classList.contains('lmx-onl-pick')) {
-                            setTimeout(function () { try { Lampa.Controller.toggle('content'); } catch (e) {} }, 0);
+                            setTimeout(function () { ctlContent(); }, 0);
                             return;
                         }
                     } catch (e) {}
@@ -2229,7 +2238,7 @@
                     var hd2 = act.querySelector('.explorer__files-head');
                     if (hd2) safe(function () { buildBar(act, hd2, lst); });
                     var first = null; lst.forEach(function (x) { if (!first && x.classList.contains('selector')) first = x; });
-                    if (first) { try { Lampa.Controller.toggle('content'); } catch (e) {} syncNav(act, first); bringIn(first); }
+                    if (first) { ctlContent(); syncNav(act, first); bringIn(first); }
                 } });
             })(pk);
         } else {
@@ -2372,7 +2381,7 @@
             var pills = [].slice.call(a.querySelectorAll('.lmx-onl-bar .selector')), own = key0 && a.querySelector('.lmx-onl-g--' + key0 + ' .selector'), pi = pills.indexOf(own);
             var tgt = pi >= 0 ? pills[Math.max(0, Math.min(pills.length - 1, pi + (goR ? 1 : -1)))] : own;
             closeDrop(a);
-            if (tgt) { try { Lampa.Controller.toggle('content'); } catch (x) {} syncNav(a, tgt); }
+            if (tgt) { ctlContent(); syncNav(a, tgt); }
             return true;
         }
         if (!its.length) return true;
@@ -2443,7 +2452,7 @@
         ['keydown', 'keyup', 'keypress', 'click'].forEach(function (t) { document.addEventListener(t, eatOk, true); });
         // страховка: якщо щось (перемальовування, службові таймери) забрало фокус зі списку — повертаємо
         setInterval(function () {
-            if (document.hidden) return;
+            if (document.hidden || plyOn()) return;
             safe(function () {
                 var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
                 if (!pop || selOpen()) return;
@@ -2460,7 +2469,7 @@
         window.__lmxVG = 1;
         var bad = 0;
         setInterval(function () {
-            if (document.hidden) return;
+            if (document.hidden || plyOn()) return;
             safe(function () {
                 var act = document.querySelector('.activity--active');
                 if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || act.__lmxHold || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
@@ -2470,7 +2479,7 @@
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
                 if (listOff(act)) {
                     resetScroll(act);
-                    try { Lampa.Controller.toggle('content'); } catch (e) {}
+                    ctlContent();
                     var it0 = act.querySelector('.lmx-onl-item') || tg;
                     if (window.Navigator && Navigator.focus) Navigator.focus(it0);
                     return;
@@ -2480,7 +2489,7 @@
                 if (++bad < 2) return;
                 bad = 0;
                 hideJunk(act);
-                try { Lampa.Controller.toggle('content'); } catch (e) {}
+                ctlContent();
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
                 try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
                 if (window.Navigator && Navigator.focus) Navigator.focus(tg);
@@ -3002,7 +3011,7 @@
                 if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0) return;
                 if (cur && cur !== tgt && cur.closest && cur.closest('.lmx-onl-bar, .lmx-onl-drop')) return;
                 if (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt && cur !== list[0]) return;
-                if (cur !== tgt) { try { Lampa.Controller.toggle('content'); } catch (e) {} if (window.Navigator && Navigator.focus) Navigator.focus(tgt); }
+                if (cur !== tgt) { ctlContent(); if (window.Navigator && Navigator.focus) Navigator.focus(tgt); }
                 bringIn(tgt);
             }); }, d); });
         });
@@ -3087,7 +3096,7 @@
                         var f = act.querySelector('.focus'), tg = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
                         if (!tg || (f && !f.classList.contains('lmx-onl-item'))) return;
                         var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
-                        try { Lampa.Controller.toggle('content'); } catch (e) {}
+                        ctlContent();
                         if (window.Navigator && Navigator.focus) Navigator.focus(tg);
                         resetScroll(act);
                     });
