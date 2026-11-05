@@ -554,7 +554,6 @@
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_perf_btn', 'Перевірити налаштування Lampa', 'Показує, які опції інтерфейсу Lampa (тип фону, скляний стиль, анімація…) вантажать ТВ, і може виставити рекомендовані', function () { safe(perfCheck); });
-        H.button('lmx_diag_btn', 'Діагностика кнопок', 'Тимчасово: що відбувається з кнопками картки (для налагодження)', openDiag);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
         H.trigger('lmx_info', true, 'Тривалість і статус', 'Рядок над кнопками: «1 год 45 хв», «Вийшов», «Наступна серія: завтра (С2Е5)». Діє при наступному відкритті', null);
 
@@ -4038,41 +4037,6 @@
     // Закріплена довгим натисканням кнопка: Lampa зберігає лише хеш HTML кнопки, який легко «ламається». Тримаємо власну копію
     // (за класами кнопки) і при відкритті сторінки, якщо закріплення зникло, відновлюємо його в Lampa
     var PIN_T0 = Date.now(), pinWatched = false;
-    // Тимчасова діагностика кнопок картки: журнал у пам'яті (останні записи) + екран у налаштуваннях
-    var diagLog = [];
-    function diagAdd(tag, withBtns) {
-        safe(function () {
-            var d = new Date(), t = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
-            var lines = [];
-            if (withBtns && btnLast && btnLast.find) {
-                btnLast.find('.full-start__button').each(function () {
-                    var el = this, cl = String(el.className || '').split(/\s+/).filter(function (c) { return /^(view--|button--|lampac|lmx-bh|hide$|lmx-primary|lmx-virt|lmx-edit|lmx-mk|lmx-like|lmx-folder)/.test(c); }).join('.');
-                    var sub = el.getAttribute('data-subtitle') || '', tx = String(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
-                    var par = el.parentNode && el.parentNode.className && String(el.parentNode.className).indexOf('buttons--container') >= 0 ? 'B' : 'R';
-                    var vis = ''; try { vis = window.getComputedStyle(el).display === 'none' ? ' X' : ''; } catch (e) {}
-                    var hs = ''; try { hs = ' #' + Lampa.Utils.hash(window.$(el).clone().removeClass('focus').prop('outerHTML')); } catch (e) {}
-                    lines.push(par + ':' + tx + (sub ? '[' + sub + ']' : '') + '{' + cl + '}' + vis + hs);
-                });
-            }
-            var pr = ''; try { pr = String(Lampa.Storage.get('full_btn_priority', '')); } catch (e) {}
-            var pn = ''; try { pn = String(Lampa.Storage.get('lmx_btn_pin', '')); } catch (e) {}
-            var body = tag + ' | prio=' + pr + ' pin=' + pn + (lines.length ? '\n' + lines.join('\n') : '');
-            if (diagLog.length && diagLog[diagLog.length - 1].b === body) return;
-            diagLog.push({ t: t, b: body });
-            if (diagLog.length > 14) diagLog.shift();
-        });
-    }
-    function openDiag() {
-        if (!(Lampa.Modal && Lampa.Modal.open && window.$)) { if (Lampa.Noty) Lampa.Noty.show('Немає вікна'); return; }
-        var enabled = Lampa.Controller.enabled().name;
-        var wrap = $('<div></div>');
-        var last = diagLog.slice(-5);
-        if (!last.length) wrap.append('<div class="selector" style="font-size:.9em">Журнал порожній: відкрий картку фільму з кнопками «Онлайн», закріпи кнопку, а потім повернись сюди</div>');
-        last.forEach(function (e) {
-            wrap.append($('<div class="selector" style="font-size:.62em;line-height:1.3;white-space:pre-wrap;word-break:break-all;margin-bottom:.8em;padding:.3em"></div>').text(e.t + ' ' + e.b));
-        });
-        Lampa.Modal.open({ title: 'Журнал кнопок (останні ' + last.length + ')', html: wrap, size: 'large', mask: true, onBack: function () { Lampa.Modal.close(); Lampa.Controller.toggle(enabled); } });
-    }
     function pinKey(el) {
         var cl = String(el.className || '').split(/\s+/).filter(function (c) { return /^(view--|button--)/.test(c) && c !== 'button--priority'; });
         var sub = el.getAttribute ? el.getAttribute('data-subtitle') : '';
@@ -4083,32 +4047,39 @@
         pinWatched = true;
         Lampa.Storage.listener.follow('change', function (e) {
             if (!e || e.name !== 'full_btn_priority') return;
-            diagAdd('закріплення змінено: ' + String(e.value).slice(0, 12), true);
-            if (e.value) {
-                setTimeout(function () {
-                    safe(function () {
-                        var c = document.querySelector('.full-start-new__buttons .button--priority, .full-start__buttons .button--priority');
-                        if (c) Lampa.Storage.set('lmx_btn_pin', pinKey(c));
-                    });
-                }, 300);
-            } else if (Date.now() - PIN_T0 > 10000) Lampa.Storage.set('lmx_btn_pin', '');
+            if (!e.value && Date.now() - PIN_T0 > 10000) Lampa.Storage.set('lmx_btn_pin', '');
         });
+    }
+    // Дві кнопки з однаковою назвою («Онлайн» від різних плагінів) Lampa відрізняє лише за хешем HTML, а наша стилізація цей HTML змінює.
+    // Тому закріплену кнопку позначаємо власним атрибутом і будуємо головну кнопку самі, не покладаючись на хеш
+    function pinMark(btn) {
+        var $ = window.$;
+        $('[data-lmx-pin]').removeAttr('data-lmx-pin');
+        $(btn).attr('data-lmx-pin', '1');
     }
     function pinRestore(r, cont) {
         safe(function () {
             pinWatch();
-            if (cont.find('.button--priority').length) return;
             var pin = String(Lampa.Storage.get('lmx_btn_pin', '') || '');
-            if (!pin) return;
+            var cur = cont.find('.button--priority');
+            if (!pin || (cur.length && cur.attr('data-lmx-pin'))) return;
             var host = r[0]; host.__lmxPinN = (host.__lmxPinN || 0) + 1;
             if (host.__lmxPinN > 12) return;
             var hit = null;
             r.find('.buttons--container > .full-start__button').not('.hide').each(function () { if (!hit && pinKey(this) === pin) hit = window.$(this); });
             if (!hit) return;
-            var h = Lampa.Utils.hash(hit.clone().removeClass('focus').prop('outerHTML'));
-            // Lampa збирає кнопки при кожному перемиканні контролера: після виправлення значення перемикаємо, щоб закріплена з'явилась одразу
-            diagAdd('відновлення: шукаю ' + pin + ', знайдено ' + (hit.attr('data-subtitle') || hit.text().trim().slice(0, 12)) + ', хеш ' + h, true);
-            if (String(Lampa.Storage.get('full_btn_priority', '')) !== String(h)) Lampa.Storage.set('full_btn_priority', h);
+            pinMark(hit[0]);
+            cur.remove();
+            var clon = hit.clone().removeClass('focus view--torrent').addClass('button--priority');
+            clon.on('hover:enter', function () { hit.trigger('hover:enter'); }).on('hover:long', function () {
+                clon.remove();
+                Lampa.Storage.set('full_btn_priority', '');
+                Lampa.Storage.set('lmx_btn_pin', '');
+                Lampa.Controller.toggle('content');
+            });
+            cont.prepend(clon);
+            // службове значення: жодна кнопка не збігається за хешем, тож Lampa не ховає з меню «Джерело» і не дублює чужу кнопку
+            if (String(Lampa.Storage.get('full_btn_priority', '')) !== 'lmx') Lampa.Storage.set('full_btn_priority', 'lmx');
             if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start');
         });
     }
@@ -4198,7 +4169,22 @@
                     }
                 }
             } catch (e) {}
-            safe(function () { if (o && o.items) diagAdd('меню: ' + o.items.map(function (it) { return String(it && it.title || '').replace(/<[^>]*>/g, '').slice(0, 14) + (it && it.subtitle ? '[' + it.subtitle + ']' : ''); }).join(' | '), true); });
+            safe(function () {
+                if (!o || !o.onLong || o.__lmxL || Lampa.Controller.enabled().name !== 'full_start') return;
+                var ol = o.onLong; o.__lmxL = true;
+                if (o.items) o.items = o.items.filter(function (it) { return !(it && it.btn && it.btn[0] && it.btn[0].hasAttribute && it.btn[0].hasAttribute('data-lmx-pin')); });
+                o.onLong = function (a) {
+                    safe(function () {
+                        if (a && a.btn && a.btn[0]) {
+                            Lampa.Storage.set('lmx_btn_pin', pinKey(a.btn[0]));
+                            pinMark(a.btn[0]);
+                        }
+                    });
+                    var rv = ol.apply(this, arguments);
+                    safe(function () { Lampa.Storage.set('full_btn_priority', 'lmx'); });
+                    return rv;
+                };
+            });
             return orig.apply(this, arguments);
         };
         Lampa.Select.__lmxP = true;
@@ -4299,7 +4285,6 @@
             try { btnApply(r); } catch (e) { console.error('LMX btns', e); }
             node.__lmxSig = sig();
             busy = false;
-            diagAdd('ряд оброблено', true);
         }
         var rt = 0;
         function markReady() {
@@ -4591,23 +4576,7 @@
             if (on && btnScanNow) btnScanNow(function (n) { after(n || menuGet().length); });
             else after(0);
         });
-        var diag = bigRow('lmx-be__look', '<div><b>Діагностика кнопок</b><span class="lmx-ord__sub">Показує, як влаштовані перші кнопки на сторінці (для налагодження)</span></div>');
-        bind(diag, function () {
-            var rows = [];
-            if (btnLast && btnLast.length) {
-                rows.push({ title: 'Показувати всі кнопки: ' + (getBool('lmx_btn_all', false) ? 'так' : 'ні'), subtitle: getBool('lmx_btn_all', false) ? 'порядок і цифри 1/2/3 діють для всіх кнопок' : 'перша кнопка велика, цифри на ній не діють' });
-                var c = btnLast.find('.full-start-new__buttons, .full-start__buttons').eq(0);
-                c.children().each(function (i) {
-                    if (i > 4) return;
-                    var e = this, lab = labelsOf(e).map(function (x) { return x.tagName.toLowerCase(); }).join(',');
-                    rows.push({ title: (i + 1) + '. ' + (e.__lmxId || e.className.split(' ').slice(0, 3).join(' ')),
-                        subtitle: 'режим: ' + (e.__lmxD || '-') + ' | width: ' + (e.style.width || '-') + ' | дітей: ' + lab + ' | class: ' + String(e.className).replace(/full-start__button/, 'fsb').slice(0, 80) });
-                });
-            }
-            if (!rows.length) rows.push({ title: 'Відкрийте сторінку фільму і спробуйте ще раз' });
-            pick('Діагностика', rows, function () {});
-        });
-        top.append(mk, col, look, allRow, diag);
+        top.append(mk, col, look, allRow);
 
         var reset = bigRow('lmx-be__reset', 'Скинути за замовчуванням');
         bind(reset, function () {
@@ -4835,7 +4804,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.346';
+    var VERSION = '10.347';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
