@@ -641,7 +641,7 @@
                         h.on('hover:long', function (ev) {
                             ev.stopImmediatePropagation();
                             safe(function () {
-                                var el = h[0], nb = h.next('.card')[0] || h.prev('.card')[0];
+                                var nb = h.next('.card')[0] || h.prev('.card')[0];
                                 Lampa.Favorite.remove(list, m);
                                 if (Lampa.Noty) Lampa.Noty.show((list === 'history' ? 'Прибрано з історії: ' : 'Прибрано зі списку «Пізніше»: ') + (m.title || m.name || ''));
                                 // картку прибираємо з DOM повністю і даємо Lampa заново зібрати список виділюваних елементів, інакше навігатор
@@ -811,7 +811,7 @@
                 { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35&sort_by=popularity.desc' },
                 { t: 'Драми', k: 'tv', q: 'with_original_language=ja&with_genres=16,18&sort_by=popularity.desc' },
                 { t: 'Детективи й психологія', k: 'tv', q: 'with_original_language=ja&with_genres=16,9648&sort_by=popularity.desc' }
-            ], kw = animeCos('lmx_anime_kw'), co = animeCos('lmx_anime_cos');
+            ], kw = animeCos('lmx_anime_kw');
             ANIME_TAGS.forEach(function (tg) {
                 var id = kw[tg[0]];
                 if (id) out.push({ t: tg[1], k: 'tv', q: JA + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
@@ -3054,6 +3054,8 @@
     }
 
     // Офіційний логотип фільму з TMDB замість текстового заголовка (якщо є)
+    // Кеші за ключем фільму не ростуть безмежно за довгу сесію на ТВ: тримаємо останні N записів
+    function capKeys(o, max) { var ks = Object.keys(o), i; if (ks.length > max) for (i = 0; i < ks.length - max; i++) delete o[ks[i]]; }
     var logoCache = {};
     function pickLogo(list) {
         var best = null, bestScore = -1;
@@ -3116,7 +3118,7 @@
         var key = kind + m.id;
         if (key in logoCache) return applyLogo(r, logoCache[key]);
         Lampa.Api.sources.tmdb.get(kind + '/' + m.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
-            logoCache[key] = pickLogo(j && j.logos);
+            logoCache[key] = pickLogo(j && j.logos); capKeys(logoCache, 80);
             applyLogo(r, logoCache[key]);
         }, function () { reveal(r); });
         setTimeout(function () { reveal(r); }, 1800);
@@ -3535,7 +3537,7 @@
             var rgb = null;
             try { rgb = tintFrom(img); } catch (e) { rgb = null; }
             if (Object.keys(tintCache).length > 300) tintCache = {};
-            tintCache[key] = rgb;
+            tintCache[key] = rgb; capKeys(tintCache, 80);
             if (r[0] && document.body.contains(r[0])) tintApply(rgb, r);
         };
         img.onerror = function () { tintCache[key] = null; };

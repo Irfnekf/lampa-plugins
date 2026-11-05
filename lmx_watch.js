@@ -401,7 +401,6 @@
         }
         var f = act.querySelector('.filter--filter');
         if (!f || selOpen()) return;
-        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         window.__lmxAllowSel = Date.now();
         try { $(f).trigger('hover:enter'); } catch (e) {}
@@ -442,6 +441,7 @@
         im.src = m[1];
         if (im.complete && im.naturalWidth) { bg.style.transition = 'none'; bg.style.opacity = ''; }
     }
+    function capKeys(o, max) { var ks = Object.keys(o), i; if (ks.length > max) for (i = 0; i < ks.length - max; i++) delete o[ks[i]]; }
     var logoCache = {};
     function pickLogo(list) {
         var best = null, bs = -1;
@@ -486,7 +486,7 @@
         if (key in logoCache) return show(logoCache[key]);
         if (!(Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb && card.id)) return showTitle();
         Lampa.Api.sources.tmdb.get(kind + '/' + card.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
-            logoCache[key] = pickLogo(j && j.logos);
+            logoCache[key] = pickLogo(j && j.logos); capKeys(logoCache, 80);
             show(logoCache[key]);
         }, function () { showTitle(); });
     }
@@ -752,7 +752,7 @@
         try {
             Lampa.Api.sources.tmdb.get('tv/' + card.id + '/season/' + sn, {}, function (r) {
                 var map = {}; ((r && r.episodes) || []).forEach(function (e) { map[e.episode_number] = e; });
-                epCache[key] = map; apply(map);
+                epCache[key] = map; capKeys(epCache, 12); apply(map);
             }, function () {});
         } catch (e) {}
     }
@@ -855,7 +855,7 @@
     // Інколи джерело віддає той самий список двічі (стара й нова відповідь після швидкого перемикання) і серії лягають одна за одною.
     // Серія визначається сезоном, номером і озвучкою; дублікати прибираємо, лишаючи свіжіший (останній) екземпляр
     function dedupeEps(els) {
-        var seen = {}, drop = [], i, j, k, key;
+        var seen = {}, drop = [], i, j, key;
         for (i = els.length - 1; i >= 0; i--) {
             j = jd(els[i]);
             if (!j || j.episode === undefined || j.episode === null || j.episode === '') continue;
@@ -954,7 +954,6 @@
     function openFilterItem(act, rx) {
         var f = act.querySelector('.filter--filter');
         if (!f || selOpen()) return;
-        var ctl = ''; try { ctl = Lampa.Controller.enabled().name; } catch (e) {}
         document.body.classList.add('lmx-onl-pick');
         window.__lmxAllowSel = Date.now();
         try { $(f).trigger('hover:enter'); } catch (e) {}
@@ -2444,6 +2443,7 @@
         ['keydown', 'keyup', 'keypress', 'click'].forEach(function (t) { document.addEventListener(t, eatOk, true); });
         // страховка: якщо щось (перемальовування, службові таймери) забрало фокус зі списку — повертаємо
         setInterval(function () {
+            if (document.hidden) return;
             safe(function () {
                 var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
                 if (!pop || selOpen()) return;
@@ -2460,6 +2460,7 @@
         window.__lmxVG = 1;
         var bad = 0;
         setInterval(function () {
+            if (document.hidden) return;
             safe(function () {
                 var act = document.querySelector('.activity--active');
                 if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.__lmxOpen || act.__lmxHold || document.getElementById('lmx-scan') || selOpen()) { bad = 0; return; }
@@ -2740,7 +2741,7 @@
                 if (target) return switchTo(inst, target, 'Відкриваємо джерело');
             }
             if (gs.cur && curKey && curKey !== gs.cur) { if (Date.now() - gs.since > 10000) finish(); return; }   // перемикання ще триває
-            var waited = Date.now() - gs.since, items = episodeEls(body);
+            var waited = Date.now() - gs.since; items = episodeEls(body);
             if (items.length) {
                 var sig = items.length + ':' + qual(items);
                 if (sig !== lastSig) { lastSig = sig; stableAt = Date.now(); return; }
@@ -2987,7 +2988,7 @@
         // при завантаженні списку опускаємось до останньої переглянутої серії сезону (фокус не чіпаємо)
         safe(function () {
             if (!(card.name || card.number_of_seasons || (card.first_air_date && !card.release_date))) return;   // фільм: це версії, а не серії — до «останньої переглянутої» не прокручуємо
-            var key = list.length + '|' + (jd(list[0]).season || '') + '|' + (act.__lmxASk || ''), li = -1, q;
+            var li = -1, q;
             for (q = 0; q < list.length; q++) if (pct(list[q]) >= 1) li = q;
             if (li < 5 || act.__lmxAS === list.length + '|' + (jd(list[0]).season || '') + '|' + li) return;
             act.__lmxAS = list.length + '|' + (jd(list[0]).season || '') + '|' + li;
@@ -3235,9 +3236,9 @@
             safe(downRescue);
             safe(upRescue);
             safe(viewGuard);
-            setInterval(function () { safe(loadWatchdog); }, 3000);
+            setInterval(function () { if (!document.hidden) safe(loadWatchdog); }, 3000);
             safe(watchInsert);
-            setInterval(function () { safe(uakAdapt); }, 600);
+            setInterval(function () { if (!document.hidden) safe(uakAdapt); }, 600);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
             applyView(curView());
