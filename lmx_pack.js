@@ -2269,6 +2269,45 @@
     function menuFitCss() {
         return 'body .menu__item{padding-right:.6em}body .menu__item .menu__text{font-size:.95em;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}';
     }
+    // Текст на сторінці фільму (рейтинги, рядок «сезони · серії · жанри», плашки тривалості/статусу, опис) — під стиль кожної теми.
+    // Назву (логотип) не чіпаємо. Лише широкий екран; телефон лишається як є
+    function textCss() {
+        var X = ':not(#lmx-x)';
+        function rules(scope, list) { return list.map(function (r) { return r[0].split(',').map(function (sel) { return scope + sel.trim() + X; }).join(',') + '{' + r[1] + '}'; }).join(''); }
+        var STATUS = '.lmx-info .lmx-ip.lmx-done,.lmx-info .lmx-ip.lmx-next,.lmx-info .lmx-ip.lmx-soon,.lmx-info .lmx-ip.lmx-bad';
+        var PLAIN = '.lmx-info .lmx-ip:not(.lmx-done):not(.lmx-next):not(.lmx-soon):not(.lmx-bad)';
+        var rate = [
+            ['.full-start__rate > div:first-child', 'font-size:1.3em;font-weight:800;color:#fff'],
+            ['.full-start__rate > div:last-child', 'font-size:.62em;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-left:.5em']
+        ];
+        var split = [['.full-start-new__split', 'font-size:.55em;opacity:.35;margin:0 .9em;vertical-align:middle']];
+        // Кіно: чиста типографіка без плашок, статус — підпис із лінією зліва
+        var kino = rules('body.lmx-prem.lmx-full ', rate.concat(split, [
+            ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;letter-spacing:.01em;color:#c3c8ee;opacity:1'],
+            [PLAIN, 'color:#9aa0c4;font-size:1em'],
+            [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;padding-left:.7em;background:none !important'],
+            ['.lmx-info .lmx-ip.lmx-done::before,.lmx-info .lmx-ip.lmx-next::before,.lmx-info .lmx-ip.lmx-soon::before,.lmx-info .lmx-ip.lmx-bad::before', 'content:none !important'],
+            ['.lmx-descr__t', 'color:rgba(255,255,255,.8);line-height:1.6;font-size:1.02em']
+        ]));
+        // Скло: матові скляні таблетки й опис у прозорій панелі
+        var glass = rules('body.lmx-apple.lmx-full ', rate.concat(split, [
+            ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;color:rgba(255,255,255,.78);opacity:1'],
+            ['.lmx-info .lmx-ip', 'background:rgba(255,255,255,.14) !important;border:1px solid rgba(255,255,255,.22);border-radius:99em;padding:.35em .9em;font-size:.95em;color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)'],
+            ['.lmx-info .lmx-ip::before', 'content:none !important'],
+            [STATUS, 'background:rgba(143,155,255,.4) !important;border-color:rgba(143,155,255,.7);font-weight:700'],
+            ['.lmx-descr', 'background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:1.2em;padding:.8em 1.1em;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)'],
+            ['.lmx-descr__t', 'color:rgba(255,255,255,.85);line-height:1.6']
+        ]));
+        // Полегшена: пласкі плашки; кольорові статуси лишаються як є
+        var flat = rules('body.lmx-full:not(.lmx-prem):not(.lmx-apple) ', rate.concat(split, [
+            ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;color:#d3d6e0;opacity:1'],
+            [PLAIN, 'background:rgba(255,255,255,.12) !important;border-radius:.5em;padding:.35em .75em;font-size:.95em;color:#fff'],
+            ['.lmx-info .lmx-ip::before', 'content:none !important'],
+            ['.lmx-descr__t', 'color:rgba(255,255,255,.82);line-height:1.6']
+        ]));
+        return '@media (min-width:761px){' + kino + glass + flat + '}';
+    }
+
     function journalCss() {
         if (!journalOn()) return '';
         // селектори як у miniCss (той самий префікс, :not(#lmx-x) і !important), але стоять у CSS пізніше — тому перемагають
@@ -2739,7 +2778,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss() + journalCss() + menuFitCss();
+        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss() + journalCss() + menuFitCss() + textCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -4978,7 +5017,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.357';
+    var VERSION = '10.358';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
