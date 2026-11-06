@@ -92,6 +92,10 @@
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
         ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['ua', 'Українське', 9003], ['anime', 'Аніме', 9000, 'Популярне в аніме'], ['dorama', 'Дорами', 9001, 'Популярне в дорамах']
     ];
+    // На Сяйві (siaivo.*) є власний розділ аніме з українським контентом — нашого каталогу аніме там не показуємо (ні плитку, ні ряд на головній)
+    var ON_SIAIVO = false;
+    try { ON_SIAIVO = /siaivo/i.test(String(location.hostname || '')); } catch (e) {}
+    if (ON_SIAIVO) SERVICES = SERVICES.filter(function (x) { return x[0] !== 'anime'; });
     var MOODS = [
         ['relax', 'Розслабитись', '35%7C10751'],
         ['think', 'Подумати', '9648%7C878'],
@@ -5076,7 +5080,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.372';
+    var VERSION = '10.373';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
