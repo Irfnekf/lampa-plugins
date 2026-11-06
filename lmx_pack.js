@@ -4710,7 +4710,7 @@
         if (!window.$) return;
         if (!document.getElementById('lmx-ne-css')) {
             var st = document.createElement('style'); st.id = 'lmx-ne-css';
-            st.textContent = '.lmx-nebell{position:relative}.lmx-nebadge{position:absolute;right:-.15em;top:-.15em;min-width:1.25em;height:1.25em;padding:0 .3em;border-radius:1em;font-size:.62em;font-weight:700;line-height:1.25em;text-align:center;color:#fff;display:none}' +
+            st.textContent = '.lmx-nebell{position:relative}body.lmx-bell-off .lmx-nebell{display:none !important}.lmx-nebadge{position:absolute;right:-.15em;top:-.15em;min-width:1.25em;height:1.25em;padding:0 .3em;border-radius:1em;font-size:.62em;font-weight:700;line-height:1.25em;text-align:center;color:#fff;display:none}' +
                 '.lmx-nebell.lmx-has .lmx-nebadge{display:block}' +
                 '.lmx-nedd{position:fixed;z-index:9999;width:29em;max-width:92vw;max-height:70vh;overflow:hidden auto;background:#1c1f27;border:1px solid rgba(255,255,255,.1);border-radius:.9em;box-shadow:0 1em 3em rgba(0,0,0,.65);color:#fff;font-size:1em}' +
                 'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
@@ -4731,6 +4731,12 @@
                 'body.lmx-apple .lmx-ne__s b{color:#fff}body.lmx-apple .lmx-nebadge{background:rgba(255,255,255,.92);color:#000}';
             document.head.appendChild(st);
         }
+        // режим дзвіночка задає налаштування «Дзвіночок у шапці» (розділ NoCub): наш показуємо лише в режимі «lmx»
+        function syncMode() {
+            safe(function () { document.body.classList.toggle('lmx-bell-off', String(Lampa.Storage.get('lmx_bell_mode', 'lmx') || 'lmx') !== 'lmx'); });
+        }
+        syncMode();
+        safe(function () { Lampa.Storage.listener.follow('change', function (e) { if (e && e.name === 'lmx_bell_mode') syncMode(); }); });
         // у «Полегшена» колір нових серій з налаштування; у «Кіно» і «Скло» він вбудований (нейтральний), його задає CSS теми
         function color() {
             var bc = document.body.classList;
@@ -4983,7 +4989,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.354';
+    var VERSION = '10.355';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -5108,7 +5114,6 @@
     var ITEMS = [
         { key: 'nocub_reactions', name: 'Реакції', desc: 'Кнопки реакцій на картках і на сторінці фільму' },
         { key: 'nocub_reviews', name: 'Коментарі та відгуки', desc: 'Блок «Коментарі» на сторінці фільму, разом із кнопкою «додати»' },
-        { key: 'nocub_bell', name: 'Дзвіночок сповіщень', desc: 'Іконка сповіщень у шапці' },
         { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
         { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Вбудований акаунт і синхронізація CUB (пункт «Синхронізація», вхід у CUB, профілі). Сторонні плагіни синхронізації не чіпає' },
         { key: 'nocub_meta', name: 'Метадані та настрої', desc: 'Блоки «Метадані» (темп, екшн, насильство, страх, гумор) і «Настрої» на сторінці фільму; є не в усіх фільмів' },
@@ -5120,10 +5125,13 @@
     ];
     var PROMO = ['halloween', 'helloween', 'newyear', 'new-year', 'christmas', 'xmas', 'blackfriday', 'black-friday', 'cybermonday', 'sale', 'promo', 'discount', 'gift', 'valentine', 'easter', 'birthday', 'anniversary'];
     // Відомі кнопки шапки (решта — «невідомі» для суворого режиму)
-    var KNOWN_HEAD = /open--(search|settings|broadcast|notice|profile|feed|premium)|notice--icon|full--screen|lmx-themebtn|head__back|head__menu|head__logo/;
+    var KNOWN_HEAD = /open--(search|settings|broadcast|notice|profile|feed|premium)|notice--icon|full--screen|lmx-themebtn|lmx-nebell|head__back|head__menu|head__logo/;
 
     function defOf(key) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].key === key) return !!ITEMS[i].def; return false; }
+    // Дзвіночок: 'lmx' — наш «Нові серії» (дзвіночок CUB ховаємо), 'cub' — стандартний, 'none' — жодного
+    function bellMode() { var m = String(Lampa.Storage.get('lmx_bell_mode', 'lmx') || 'lmx'); return m === 'cub' || m === 'none' ? m : 'lmx'; }
     function on(key) {
+        if (key === 'nocub_bell') return bellMode() !== 'cub';
         var v = Lampa.Storage.get(key, defOf(key) ? 'true' : 'false');
         return v === true || v === 'true';
     }
@@ -5294,6 +5302,7 @@
 
         if (st && c !== lastCss) { st.textContent = c; lastCss = c; }
         ITEMS.forEach(function (it) { document.body.classList.toggle(it.key, on(it.key)); });
+        document.body.classList.toggle('nocub_bell', on('nocub_bell'));
     }
 
     var timer = 0;
@@ -5310,6 +5319,11 @@
             icon: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
         });
         S.addParam({ component: 'nocub', param: { name: 'nocub_t', type: 'title', default: '' }, field: { name: 'Сховати елементи CUB' } });
+        S.addParam({
+            component: 'nocub', param: { name: 'lmx_bell_mode', type: 'select', values: { lmx: 'Наш «Нові серії» (LMX)', cub: 'Стандартний (CUB)', none: 'Сховати обидва' }, default: 'lmx' },
+            field: { name: 'Дзвіночок у шапці', description: 'Який дзвіночок показувати: наш зі списком нових серій, стандартний CUB або жодного' },
+            onChange: function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); }
+        });
         ITEMS.forEach(function (it) {
             S.addParam({
                 component: 'nocub', param: { name: it.key, type: 'trigger', default: !!it.def },
