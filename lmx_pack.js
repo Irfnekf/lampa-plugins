@@ -2292,8 +2292,21 @@
             ['.full-start__rate > div:last-child', 'font-size:.62em;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-left:.5em']
         ];
         var split = [['.full-start-new__split', 'font-size:.55em;opacity:.35;margin:0 .9em;vertical-align:middle']];
+        // Нижня частина сторінки (опис, дата/країни, жанр/виробництво/теги, заголовки рядів, серії) — той самий відтінок, що й верх
+        function low(c) {
+            return [
+                ['.full-descr__text', 'color:' + c.text + ';line-height:1.65'],
+                ['.full-descr__info-name', 'color:' + c.label + ';font-size:.78em;letter-spacing:.14em;text-transform:uppercase;font-weight:600;opacity:1'],
+                ['.full-descr__info-body', 'color:' + c.text + ';font-weight:600'],
+                ['.tag-count__name', 'color:' + c.text + ';font-weight:600'],
+                ['.tag-count__count', c.badge],
+                ['.full-start-new ~ .items-line .items-line__title', 'color:' + c.title + ';letter-spacing:.02em'],
+                ['.full-episode__name', 'color:' + c.title],
+                ['.full-episode__date,.full-episode__num', 'color:' + c.label]
+            ];
+        }
         // Кіно: чиста типографіка без плашок, статус — підпис із лінією зліва
-        var kino = rules('body.lmx-prem.lmx-full ', rate.concat(split, [
+        var kino = rules('body.lmx-prem.lmx-full ', low({ text: '#c3c8ee', label: '#8c93bd', title: '#e4e7ff', badge: 'background:rgba(143,155,255,.22) !important;color:#fff !important;border-radius:.4em' }).concat(rate, split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;letter-spacing:.01em;color:#c3c8ee;opacity:1'],
             [PLAIN, 'color:#9aa0c4;font-size:1em'],
             [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;border-radius:0;padding:.2em 0 .2em .7em;margin:.35em 0 .1em;background:none !important'],
@@ -2302,7 +2315,7 @@
             ['.lmx-descr__t', 'color:#c3c8ee;line-height:1.6;font-size:1.02em']
         ]));
         // Скло: матові скляні таблетки й опис у прозорій панелі
-        var glass = rules('body.lmx-apple.lmx-full ', rate.concat(split, [
+        var glass = rules('body.lmx-apple.lmx-full ', low({ text: 'rgba(255,255,255,.85)', label: 'rgba(255,255,255,.55)', title: '#fff', badge: 'background:rgba(255,255,255,.18) !important;color:#fff !important;border-radius:99em' }).concat(rate, split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;color:rgba(255,255,255,.78);opacity:1'],
             ['.lmx-info .lmx-ip', 'background:rgba(255,255,255,.14) !important;border:1px solid rgba(255,255,255,.22);border-radius:99em;padding:.35em .9em;font-size:.95em;color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)'],
             ['.lmx-info .lmx-ip::before', 'content:none !important'],
@@ -2311,7 +2324,7 @@
             ['.lmx-descr__t', 'color:rgba(255,255,255,.85);line-height:1.6']
         ]));
         // Полегшена: пласкі плашки; кольорові статуси лишаються як є
-        var flat = rules('body.lmx-full:not(.lmx-prem):not(.lmx-apple) ', rate.concat(split, [
+        var flat = rules('body.lmx-full:not(.lmx-prem):not(.lmx-apple) ', low({ text: 'rgba(255,255,255,.82)', label: 'rgba(255,255,255,.55)', title: '#fff', badge: 'color:#111 !important' }).concat(rate, split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;color:#d3d6e0;opacity:1'],
             [PLAIN, 'background:rgba(255,255,255,.12) !important;border-radius:.5em;padding:.35em .75em;font-size:.95em;color:#fff'],
             ['.lmx-info .lmx-ip::before', 'content:none !important'],
@@ -5029,7 +5042,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.366';
+    var VERSION = '10.367';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
