@@ -628,6 +628,14 @@
                             (year ? '<span>' + year + '</span>' : '') +
                             (prog && prog.left > 0 ? '<span class="lmx-hist__left">' + (prog.left <= 10 ? 'переглянуто' : 'лишилось ' + fmtDur(prog.left)) + '</span>' : '') + '</div></div>' +
                             (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
+                        // мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро», як на звичайних картках (серіали — після запиту до TMDB, коли картка видна)
+                        safe(function () {
+                            var el = h[0];
+                            if (m.name && !m.title) {
+                                el.__lmx = { el: el, id: m.id };
+                                if (io) io.observe(el); else { queue.push(el.__lmx); pumpSoon(); }
+                            } else addMark(view[0], movieMark(m));
+                        });
                         // довге утримання OK прибирає фільм з історії перегляду (картка зникає, фокус переходить на сусідню)
                         h.on('hover:long', function (ev) {
                             ev.stopImmediatePropagation();
@@ -1846,6 +1854,9 @@
     }
     // Лише те, що вже вийшло: сезони до останньої вийшовшої серії та кількість вийшовших серій
     // (TMDB у number_of_seasons / number_of_episodes враховує й анонсовані, ще не вийшли сезони)
+    function sizeLabel(st) {
+        return st.s + ' сез · ' + st.e + ' сер';
+    }
     function airedStats(j) {
         var last = j && j.last_episode_to_air;
         if (!last || !(last.season_number > 0)) return null;
@@ -2023,7 +2034,7 @@
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
                 '.card--lmxhist{width:23em !important}' +
                 '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:1em;overflow:hidden;position:relative;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
-                '.card--lmxhist > *:not(.card__view):not(.lmx-sel),.card--lmxhist .card__view > *:not(.lmx-hist__shade):not(.lmx-hist__text):not(.lmx-hist__bar){display:none !important}' +
+                '.card--lmxhist > *:not(.card__view):not(.lmx-sel),.card--lmxhist .card__view > *:not(.lmx-hist__shade):not(.lmx-hist__text):not(.lmx-hist__bar):not(.lmx-tr):not(.lmx-box){display:none !important}' +
                 '.lmx-hist__shade{position:absolute;left:0;right:0;bottom:0;height:80%;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 45%,rgba(0,0,0,0) 100%)}' +
                 '.lmx-hist__text{position:absolute;left:1em;right:1em;bottom:1.15em;color:#fff;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
                 '.lmx-hist__t{font-size:1.05em;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -2865,7 +2876,7 @@
         if (!view) return;
         var st = airedStats(j);
         if (!view.querySelector('.lmx-box') && st) {
-            addTo(view, 'lmx-box', '<span class="lmx-pill">' + code(st.s, st.e) + '</span>');
+            addTo(view, 'lmx-box', '<span class="lmx-pill">' + sizeLabel(st) + '</span>');
         }
         addMark(view, tvMark(j));
     }
@@ -5017,7 +5028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.358';
+    var VERSION = '10.360';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
