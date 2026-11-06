@@ -1110,7 +1110,7 @@
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
                 var res = cache.res; res.forEach(function (r, i) { if (!r || !r.length) delete res[i]; });
-                var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false;
+                var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false, tries2 = 0, relaxed = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
@@ -1142,7 +1142,7 @@
                         (function go() {
                             tgetFb(cats[i].url, { page: pg }, function (j, u) {
                                 if (!empty(j)) cats[i].url2 = u;
-                                got[pg - 1] = cleanResults(j && j.results, !!cats[i].f).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
+                                got[pg - 1] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
                                 end();
                             }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[pg - 1] = []; end(); });
                         })();
@@ -1166,6 +1166,13 @@
                     if (heroL && heroL.length) data.push({ title: heroTitle, results: heroItems(heroL), params: { items: { mapping: 'line', view: 15 } } });
                     data = data.concat(firstRows);
                     if (!data.length && next < cats.length) { firstReady = false; return startFirst(); }
+                    // порожньо (збій мережі/TMDB, усі відповіді відсіяні): спершу ще раз, потім без вимоги українського опису — лише для цієї сторінки, щоб каталог не лишався порожнім
+                    if (!data.length && tries2 < 2) {
+                        tries2++;
+                        if (tries2 === 2) relaxed = true;
+                        res.length = 0; next = 0; firstReady = false; firstRows = [];
+                        return setTimeout(startFirst, 1200);
+                    }
                     self.activity.loader(false);
                     if (!data.length) return self.empty();
                     built = true;
@@ -5056,7 +5063,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.368';
+    var VERSION = '10.369';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
