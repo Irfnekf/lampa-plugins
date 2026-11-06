@@ -632,7 +632,7 @@
                         safe(function () {
                             var el = h[0];
                             if (m.first_air_date || m.number_of_seasons || m.original_name || (m.name && !m.title) || m.media_type === 'tv' || m.type === 'tv') {
-                                el.__lmx = { el: el, id: m.id };
+                                el.__lmx = { el: el, id: m.id, noBox: list === 'history' };
                                 if (io) io.observe(el); else { queue.push(el.__lmx); pumpSoon(); }
                             } else addMark(view[0], movieMark(m));
                         });
@@ -2871,11 +2871,11 @@
     }
 
     // Серіали: значок С3Е24 і мітки «Нова серія»/«Сьогодні»
-    function renderTv(el, j) {
+    function renderTv(el, j, noBox) {
         var view = el.querySelector('.card__view');
         if (!view) return;
         var st = airedStats(j);
-        if (!view.querySelector('.lmx-box') && st) {
+        if (!noBox && !view.querySelector('.lmx-box') && st) {
             addTo(view, 'lmx-box', '<span class="lmx-pill">' + sizeLabel(st) + '</span>');
         }
         addMark(view, tvMark(j));
@@ -2932,7 +2932,7 @@
                 active++;
                 load(task.id, function (j) {
                     active--;
-                    if (j) renderTv(task.el, j);
+                    if (j) renderTv(task.el, j, task.noBox);
                     if (queue.length) setTimeout(pump, 120);
                 });
             })(queue.shift());
@@ -5028,7 +5028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.363';
+    var VERSION = '10.364';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
