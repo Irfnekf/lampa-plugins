@@ -4651,7 +4651,9 @@
     var neCache = null, neBusy = false;
     function neKey(e) { return e.season + ':' + e.episode; }
     function neCollect(cb) {
-        if (neCache && Date.now() - neCache.t < 600000) return cb(neCache.data);
+        // кеш на 2 години (у пам'яті й у сховищі), щоб не ганяти десятки запитів до TMDB при кожному запуску
+        if (!neCache) { var pc = jsonStore('lmx_ne_cache', null); if (pc && pc.data && Date.now() - pc.t < 7200000) neCache = pc; }
+        if (neCache && Date.now() - neCache.t < 7200000) return cb(neCache.data);
         if (neBusy) return cb(neCache ? neCache.data : []);
         var seen = {}, list = [];
         ['look', 'like', 'book', 'wath'].forEach(function (t) {
@@ -4662,7 +4664,7 @@
                 seen[c.id] = 1; list.push(c);
             });
         });
-        list = list.slice(0, 40);
+        list = list.slice(0, 30);
         if (!list.length) { neCache = { t: Date.now(), data: [] }; return cb([]); }
         neBusy = true;
         var lo = dayStr(-14), hi = dayStr(0), out = [], qi = 0, left = list.length;
@@ -4671,6 +4673,7 @@
             neBusy = false;
             out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
             neCache = { t: Date.now(), data: out };
+            safe(function () { Lampa.Storage.set('lmx_ne_cache', neCache); });
             cb(out);
         }
         function pump() {
@@ -4679,12 +4682,13 @@
             load(c.id, function (j) {
                 var le = j && j.last_episode_to_air;
                 if (le && le.air_date && le.air_date >= lo && le.air_date <= hi) {
-                    out.push({ id: j.id, name: j.name || c.name, poster: j.poster_path, backdrop: j.backdrop_path, season: le.season_number, episode: le.episode_number, epname: le.name || '', date: le.air_date, card: j });
+                    out.push({ id: j.id, name: j.name || c.name, poster: j.poster_path, backdrop: j.backdrop_path, season: le.season_number, episode: le.episode_number, epname: le.name || '', date: le.air_date,
+                        card: { id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path, overview: j.overview, vote_average: j.vote_average, first_air_date: j.first_air_date, original_language: j.original_language, media_type: 'tv', source: 'tmdb' } });
                 }
                 fin(); pump();
             });
         }
-        for (var k = 0; k < 4; k++) pump();
+        for (var k = 0; k < 2; k++) pump();
     }
     function neUnseen(arr) {
         var seen = jsonStore('lmx_ne_seen', {});
@@ -4799,14 +4803,19 @@
             var b = $('<div class="head__action selector lmx-nebell" title="Нові серії"></div>').html(
                 '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="lmx-nebadge"></span>');
             b.on('hover:enter click', open);
+            b.on('hover:focus', function () { neWarm(); });
             var th = box.find('.lmx-themebtn').eq(0);
             if (th.length) th.after(b); else { var se = box.find('.open--settings').eq(0); if (se.length) se.before(b); else box.append(b); }
-            refresh();
+            // якщо є свіжий кеш, лічильник показуємо одразу (без мережі)
+            safe(function () { var pc = neCache || jsonStore('lmx_ne_cache', null); if (pc && pc.data && Date.now() - pc.t < 7200000) refresh(); });
         }
         ensure();
         var n = 0, iv = setInterval(function () { ensure(); if (++n > 20) clearInterval(iv); }, 1500);
-        setInterval(refresh, 20 * 60000);
-        document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+        // запити до TMDB не на старті (головна ще вантажиться), а згодом, коли все вже відмальовано
+        function neWarm() { if (neWarm.t) return; neWarm.t = setTimeout(function () { neWarm.t = 0; if (!document.hidden) refresh(); }, 100); }
+        setTimeout(refresh, 45000);
+        setInterval(refresh, 30 * 60000);
+        
     }
 
     // ===== Навігація «вгору/вниз» між рядами кнопок на сторінці фільму =====
@@ -4968,7 +4977,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.351';
+    var VERSION = '10.352';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
