@@ -4704,8 +4704,13 @@
             var st = document.createElement('style'); st.id = 'lmx-ne-css';
             st.textContent = '.lmx-nebell{position:relative}.lmx-nebadge{position:absolute;right:-.15em;top:-.15em;min-width:1.25em;height:1.25em;padding:0 .3em;border-radius:1em;font-size:.62em;font-weight:700;line-height:1.25em;text-align:center;color:#fff;display:none}' +
                 '.lmx-nebell.lmx-has .lmx-nebadge{display:block}' +
-                '.lmx-ne{display:flex;align-items:center;gap:1em}.lmx-ne img{width:2.6em;height:3.9em;object-fit:cover;border-radius:.4em;flex:none;background:#222}' +
-                '.lmx-ne.lmx-ne--seen{opacity:.55}.lmx-ne .lmx-ne__s{font-weight:700}';
+                '.lmx-nedd{position:fixed;z-index:9999;width:29em;max-width:92vw;max-height:70vh;overflow:hidden auto;background:#1c1f27;border:1px solid rgba(255,255,255,.1);border-radius:.9em;box-shadow:0 1em 3em rgba(0,0,0,.65);color:#fff;font-size:1em}' +
+                'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
+                '.lmx-nedd__h{display:flex;justify-content:space-between;padding:.9em 1.1em .7em;font-size:.8em;font-weight:800;letter-spacing:.14em;border-bottom:1px solid rgba(255,255,255,.1)}.lmx-nedd__h span{opacity:.55;font-weight:500;letter-spacing:0}' +
+                '.lmx-ne{display:flex;align-items:center;gap:1em;padding:.7em 1.1em;margin:.2em .4em;border-radius:.7em}' +
+                '.lmx-ne.focus,.lmx-ne.hover{background:rgba(255,255,255,.17)}.lmx-ne img{width:2.7em;height:4em;object-fit:cover;border-radius:.45em;flex:none;background:#2a2d36}' +
+                '.lmx-ne__t{font-size:1.05em;font-weight:600}.lmx-ne__s{font-size:.88em;opacity:.8;margin-top:.25em}.lmx-ne__s b{font-weight:700;opacity:1}' +
+                '.lmx-ne__d{margin-left:auto;text-align:right;font-size:.75em;opacity:.65;white-space:nowrap}.lmx-ne__dot{display:block;width:.7em;height:.7em;border-radius:50%;margin:0 0 .5em auto}';
             document.head.appendChild(st);
         }
         function color() { return 'rgb(' + (RGB[getStr('lmx_c_next', 'orange')] || RGB.orange) + ')'; }
@@ -4715,37 +4720,64 @@
             b.find('.lmx-nebadge').text(n > 9 ? '9+' : String(n)).css('background', color());
         }
         function refresh() { safe(function () { neCollect(function (arr) { badge(neUnseen(arr).length); }); }); }
+        var dd = null;
+        function closeDD(back) {
+            if (!dd) return;
+            dd.remove(); dd = null;
+            if (back) { try { Lampa.Controller.toggle(back); } catch (e) {} }
+        }
         function open() {
+            if (dd) return closeDD(Lampa.Controller.enabled().name === 'lmx_ne' ? 'content' : null);
             var enabled = Lampa.Controller.enabled().name;
             neCollect(function (arr) {
-                var seen = jsonStore('lmx_ne_seen', {}), fresh = {};
-                arr.forEach(function (e) { fresh[e.id] = seen[e.id] !== neKey(e); });
+                var seen = jsonStore('lmx_ne_seen', {}), fresh = {}, nFresh = 0;
+                arr.forEach(function (e) { fresh[e.id] = seen[e.id] !== neKey(e); if (fresh[e.id]) nFresh++; });
                 if (!arr.length) { if (Lampa.Noty) Lampa.Noty.show('Нових серій за останні 2 тижні немає'); return; }
                 var c = color();
-                var items = arr.map(function (e) {
-                    var el = $('<div class="selectbox-item selector lmx-ne' + (fresh[e.id] ? '' : ' lmx-ne--seen') + '"></div>');
+                dd = $('<div class="lmx-nedd"></div>');
+                dd.append($('<div class="lmx-nedd__h">НОВІ СЕРІЇ</div>').append($('<span></span>').text(nFresh ? nFresh + ' ' + plural(nFresh, 'непереглянута', 'непереглянуті', 'непереглянутих') : 'усе переглянуто')));
+                var els = [];
+                arr.forEach(function (e) {
+                    var el = $('<div class="selector lmx-ne"></div>');
                     if (e.poster) el.append($('<img>').attr('src', imgUrl(e.poster, 'w154')));
                     var tx = $('<div></div>');
-                    tx.append($('<div class="selectbox-item__title"></div>').text(e.name));
-                    var sub = $('<div class="selectbox-item__subtitle"></div>');
-                    sub.append($('<span class="lmx-ne__s"></span>').css('color', fresh[e.id] ? c : '').text('S' + e.season + ' E' + e.episode));
-                    sub.append(document.createTextNode((e.epname ? ' · ' + e.epname : '') + ' · ' + neAgo(e.date)));
-                    tx.append(sub); el.append(tx);
-                    return { title: e.name, html: el, card: e };
+                    tx.append($('<div class="lmx-ne__t"></div>').text(e.name));
+                    tx.append($('<div class="lmx-ne__s"></div>').append($('<b></b>').css('color', c).text('S' + e.season + ' E' + e.episode)).append(document.createTextNode(e.epname ? ' · ' + e.epname : '')));
+                    el.append(tx);
+                    var d = $('<div class="lmx-ne__d"></div>');
+                    if (fresh[e.id]) d.append($('<span class="lmx-ne__dot"></span>').css('background', c));
+                    d.append(document.createTextNode(neAgo(e.date)));
+                    el.append(d);
+                    el.on('hover:enter click', function () {
+                        closeDD();
+                        Lampa.Activity.push({ url: '', component: 'full', id: e.id, method: 'tv', card: e.card, source: 'tmdb' });
+                    });
+                    dd.append(el); els.push(el[0]);
                 });
-                // відкрили список: усе, що там є, вважаємо баченим, лічильник зникає
+                // під дзвіночком, правим краєм до нього
+                var br = $('.lmx-nebell')[0].getBoundingClientRect();
+                dd.css({ top: Math.round(br.bottom + 10) + 'px', right: Math.max(8, Math.round(window.innerWidth - br.right - 20)) + 'px' });
+                $('body').append(dd);
+                // відкрили список: усе в ньому вважаємо баченим, лічильник зникає
                 arr.forEach(function (e) { seen[e.id] = neKey(e); });
                 Lampa.Storage.set('lmx_ne_seen', seen);
                 badge(0);
-                Lampa.Select.show({
-                    title: 'Нові серії',
-                    items: items,
-                    onSelect: function (it) {
-                        var j = it.card.card;
-                        Lampa.Activity.push({ url: '', component: 'full', id: it.card.id, method: 'tv', card: j, source: 'tmdb' });
-                    },
-                    onBack: function () { Lampa.Controller.toggle(enabled); }
+                var idx = 0;
+                function foc(i) {
+                    idx = Math.max(0, Math.min(els.length - 1, i));
+                    try { Lampa.Controller.collectionFocus(els[idx], dd); } catch (e) {}
+                    $(els).removeClass('focus'); $(els[idx]).addClass('focus');
+                    try { els[idx].scrollIntoView({ block: 'nearest' }); } catch (e) {}
+                }
+                Lampa.Controller.add('lmx_ne', {
+                    toggle: function () { Lampa.Controller.collectionSet(dd); foc(idx); },
+                    up: function () { foc(idx - 1); },
+                    down: function () { foc(idx + 1); },
+                    left: function () {},
+                    right: function () {},
+                    back: function () { closeDD(enabled); }
                 });
+                Lampa.Controller.toggle('lmx_ne');
             });
         }
         function ensure() {
@@ -4923,7 +4955,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.348';
+    var VERSION = '10.349';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
