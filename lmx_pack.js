@@ -1110,7 +1110,7 @@
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
                 var res = cache.res; res.forEach(function (r, i) { if (!r || !r.length) delete res[i]; });
-                var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false, tries2 = 0, relaxed = false;
+                var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false, tries2 = 0, relaxed = false, altQ = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
@@ -1124,6 +1124,8 @@
                     if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
                     var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
+                    // запасний запит для збірок Lampa, де дискавер за «мова=ja + жанр=анімація» повертає порожньо: ключове слово TMDB «anime» (210024)
+                    var qurl = (altQ && id === 'anime' && cats[i].url.indexOf('with_keywords=') < 0) ? cats[i].url.split('with_original_language=ja&with_genres=16').join('with_keywords=210024') : cats[i].url;
                     var dbg = (window.__lmxDbg = window.__lmxDbg || []);
                     if (dbg.length > 200) dbg.splice(0, 100);
                     function end() {
@@ -1140,7 +1142,7 @@
                     for (var pg = 1; pg <= pages; pg++) (function (pg) {
                         var tries = 0;
                         (function go() {
-                            tgetFb(cats[i].url, { page: pg }, function (j, u) {
+                            tgetFb(qurl, { page: pg }, function (j, u) {
                                 if (!empty(j)) cats[i].url2 = u;
                                 got[pg - 1] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
                                 end();
@@ -1167,9 +1169,10 @@
                     data = data.concat(firstRows);
                     if (!data.length && next < cats.length) { firstReady = false; return startFirst(); }
                     // порожньо (збій мережі/TMDB, усі відповіді відсіяні): спершу ще раз, потім без вимоги українського опису — лише для цієї сторінки, щоб каталог не лишався порожнім
-                    if (!data.length && tries2 < 2) {
+                    if (!data.length && tries2 < (id === 'anime' ? 3 : 2)) {
                         tries2++;
-                        if (tries2 === 2) relaxed = true;
+                        if (tries2 >= 2) relaxed = true;
+                        if (tries2 === 3) altQ = true;
                         res.length = 0; next = 0; firstReady = false; firstRows = [];
                         return setTimeout(startFirst, 1200);
                     }
@@ -5072,7 +5075,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.370';
+    var VERSION = '10.371';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
