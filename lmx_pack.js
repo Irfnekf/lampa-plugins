@@ -2278,13 +2278,13 @@
     // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
     // Бокове меню: довгі пункти («Налаштування», «Інформація») не вміщалися у плашку фокуса й обрізалися по правому краю
     function menuFitCss() {
-        return 'body .menu__item{padding-right:.6em}body .menu__item .menu__text{font-size:.95em;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}';
+        return 'body .menu__item{padding-right:.6em}body .menu__item .menu__text{font-size:1.02em;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}';
     }
     // Текст на сторінці фільму (рейтинги, рядок «сезони · серії · жанри», плашки тривалості/статусу, опис) — під стиль кожної теми.
     // Назву (логотип) не чіпаємо. Лише широкий екран; телефон лишається як є
     function textCss() {
         var X = ':not(#lmx-x)';
-        function rules(scope, list) { return list.map(function (r) { return r[0].split(',').map(function (sel) { return scope + sel.trim() + X; }).join(',') + '{' + r[1] + '}'; }).join(''); }
+        function rules(scope, list) { return list.map(function (r) { return r[0].split(',').map(function (sel) { sel = sel.trim(); return scope + (/::(before|after)$/.test(sel) ? sel.replace(/(::(before|after))$/, X + '$1') : sel + X); }).join(',') + '{' + r[1] + '}'; }).join(''); }
         var STATUS = '.lmx-info .lmx-ip.lmx-done,.lmx-info .lmx-ip.lmx-next,.lmx-info .lmx-ip.lmx-soon,.lmx-info .lmx-ip.lmx-bad';
         var PLAIN = '.lmx-info .lmx-ip:not(.lmx-done):not(.lmx-next):not(.lmx-soon):not(.lmx-bad)';
         var rate = [
@@ -2296,7 +2296,7 @@
         var kino = rules('body.lmx-prem.lmx-full ', rate.concat(split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;letter-spacing:.01em;color:#c3c8ee;opacity:1'],
             [PLAIN, 'color:#9aa0c4;font-size:1em'],
-            [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;padding-left:.7em;background:none !important'],
+            [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;border-radius:0;padding:0 0 0 .7em;background:none !important'],
             ['.lmx-info .lmx-ip.lmx-done::before,.lmx-info .lmx-ip.lmx-next::before,.lmx-info .lmx-ip.lmx-soon::before,.lmx-info .lmx-ip.lmx-bad::before', 'content:none !important'],
             ['.lmx-descr__t', 'color:rgba(255,255,255,.8);line-height:1.6;font-size:1.02em']
         ]));
@@ -5028,7 +5028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.361';
+    var VERSION = '10.362';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
