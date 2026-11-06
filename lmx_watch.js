@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.19';
+    var VERSION = '3.20';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1070,9 +1070,10 @@
         fade: ['Розмиті краї постера', 'off', { off: 'Вимкнено', on: 'Увімкнено' }, 'lmx_online_fade']
     };
     function curView() { var v = Lampa.Storage.get('lmx_online_view', 'tile'); return VIEWS[v] ? v : 'tile'; }
-    function openCfg(act) {
-        var enabled = '';
-        try { enabled = Lampa.Controller.enabled().name; } catch (e) {}
+    // sel — пункт, на якому лишається фокус після зміни; en — контролер, у який повертаємось, коли вікно закрите
+    function openCfg(act, sel, en) {
+        var enabled = en || '';
+        if (!enabled) { try { enabled = Lampa.Controller.enabled().name; } catch (e) {} }
         function back() { try { Lampa.Controller.toggle(enabled); } catch (e) {} }
         Lampa.Select.show({
             title: 'Налаштування вікна · v' + VERSION,
@@ -1081,26 +1082,26 @@
                 { title: 'Автоперемикання джерел', subtitle: autoOn() ? 'Увімкнено' : 'Вимкнено', k: 'auto' },
                 { title: 'Підбирати найкраще джерело', subtitle: probeOn() ? 'Увімкнено' : 'Вимкнено', k: 'probe' },
                 { title: 'Бажана якість', subtitle: QPREF[qPref()], k: 'q' }
-            ].concat(Object.keys(OPTS).map(function (k) { var o = OPTS[k]; return { title: o[0], subtitle: o[2][opt(o[3], o[1])] || o[2][o[1]], k: 'o:' + k }; })),
+            ].concat(Object.keys(OPTS).map(function (k) { var o = OPTS[k]; return { title: o[0], subtitle: o[2][opt(o[3], o[1])] || o[2][o[1]], k: 'o:' + k }; })).map(function (it) { if (sel && it.k === sel) it.selected = true; return it; }),
             onBack: back,
             onSelect: function (a) {
                 if (a.k === 'q') {
                     Lampa.Select.show({
                         title: 'Бажана якість',
                         items: Object.keys(QPREF).map(function (key) { return { title: QPREF[key], subtitle: key === qPref() ? 'Зараз' : '', k: key }; }),
-                        onBack: back,
-                        onSelect: function (b) { try { Lampa.Storage.set('lmx_online_q', b.k); } catch (e) {} back(); }
+                        onBack: function () { openCfg(act, 'q', enabled); },
+                        onSelect: function (b) { try { Lampa.Storage.set('lmx_online_q', b.k); } catch (e) {} openCfg(act, 'q', enabled); }
                     });
                     return;
                 }
                 if (a.k === 'probe') {
                     try { Lampa.Storage.set('lmx_online_probe', probeOn() ? 'false' : 'true'); } catch (e) {}
-                    back();
+                    openCfg(act, 'probe', enabled);
                     return;
                 }
                 if (a.k === 'auto') {
                     try { Lampa.Storage.set('lmx_online_auto', autoOn() ? 'false' : 'true'); } catch (e) {}
-                    back();
+                    openCfg(act, 'auto', enabled);
                     return;
                 }
                 if (/^o:/.test(a.k)) {
@@ -1110,18 +1111,18 @@
                     var ha = document.querySelector('.activity--active .lmx-onl-hero');
                     if (ha) ha.setAttribute('data-sig', '');
                     safe(buildHero);
-                    back();
+                    openCfg(act, a.k, enabled);
                     return;
                 }
                 var cur = curView();
                 Lampa.Select.show({
                     title: 'Вигляд серій',
                     items: Object.keys(VIEWS).map(function (key) { return { title: VIEWS[key], subtitle: key === cur ? 'Зараз' : '', k: key }; }),
-                    onBack: back,
+                    onBack: function () { openCfg(act, 'view', enabled); },
                     onSelect: function (b) {
                         try { Lampa.Storage.set('lmx_online_view', b.k); } catch (e) {}
                         applyView(b.k);
-                        back();
+                        openCfg(act, 'view', enabled);
                     }
                 });
             }
