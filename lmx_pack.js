@@ -4711,10 +4711,24 @@
                 '.lmx-ne::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.1) 85%)}' +
                 '.lmx-ne.focus,.lmx-ne.hover{box-shadow:0 0 0 .22em #fff}' +
                 '.lmx-ne__x{position:absolute;left:1em;bottom:.8em;right:1em}.lmx-ne__t{font-size:1.1em;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s{font-size:.88em;margin-top:.25em;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s b{font-weight:700}' +
-                '.lmx-ne__n{position:absolute;right:.7em;top:.7em;font-size:.6em;font-weight:800;letter-spacing:.08em;padding:.35em .7em;border-radius:.4em;color:#fff}';
+                '.lmx-ne__n{position:absolute;right:.7em;top:.7em;font-size:.6em;font-weight:800;letter-spacing:.08em;padding:.35em .7em;border-radius:.4em;color:#fff}' +
+                // Кіно: прямі кути, темно-синій фон, білі акценти
+                'body.lmx-prem .lmx-nedd{background:linear-gradient(145deg,#1d2040,#0c0d22);border-radius:0;border-color:rgba(255,255,255,.1)}' +
+                'body.lmx-prem .lmx-nedd__h{letter-spacing:.22em}body.lmx-prem .lmx-ne{border-radius:0}body.lmx-prem .lmx-ne.focus,body.lmx-prem .lmx-ne.hover{box-shadow:0 0 0 .2em #fff}' +
+                'body.lmx-prem .lmx-ne__n{background:#fff;color:#000;border-radius:0}body.lmx-prem .lmx-ne__s b{color:#fff}body.lmx-prem .lmx-nebadge{background:#fff;color:#000}' +
+                // Скло: матове скло, великі заокруглення, прозорі плашки
+                'body.lmx-apple .lmx-nedd{border-radius:1.4em}body.lmx-apple .lmx-ne{border-radius:1.1em;margin:.5em .7em}' +
+                'body.lmx-apple .lmx-ne.focus,body.lmx-apple .lmx-ne.hover{box-shadow:0 0 0 .18em rgba(255,255,255,.9),0 0 1.4em rgba(255,255,255,.28)}' +
+                'body.lmx-apple .lmx-ne__n{background:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.3);border-radius:1em;padding:.35em .9em}' +
+                'body.lmx-apple .lmx-ne__s b{color:#fff}body.lmx-apple .lmx-nebadge{background:rgba(255,255,255,.92);color:#000}';
             document.head.appendChild(st);
         }
-        function color() { return 'rgb(' + (RGB[getStr('lmx_c_next', 'orange')] || RGB.orange) + ')'; }
+        // у «Полегшена» колір нових серій з налаштування; у «Кіно» і «Скло» він вбудований (нейтральний), його задає CSS теми
+        function color() {
+            var bc = document.body.classList;
+            if (bc.contains('lmx-prem') || bc.contains('lmx-apple')) return '';
+            return 'rgb(' + (RGB[getStr('lmx_c_next', 'orange')] || RGB.orange) + ')';
+        }
         function badge(n) {
             var b = $('.lmx-nebell');
             b.toggleClass('lmx-has', n > 0);
@@ -4772,8 +4786,8 @@
                     toggle: function () { Lampa.Controller.collectionSet(dd); foc(idx); },
                     up: function () { foc(idx - 1); },
                     down: function () { foc(idx + 1); },
-                    left: function () {},
-                    right: function () {},
+                    left: function () { closeDD(enabled); },
+                    right: function () { closeDD(enabled); },
                     back: function () { closeDD(enabled); }
                 });
                 Lampa.Controller.toggle('lmx_ne');
@@ -4954,7 +4968,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.350';
+    var VERSION = '10.351';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
