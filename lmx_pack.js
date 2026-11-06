@@ -631,7 +631,7 @@
                         // мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро», як на звичайних картках (серіали — після запиту до TMDB, коли картка видна)
                         safe(function () {
                             var el = h[0];
-                            if (m.name && !m.title) {
+                            if (m.first_air_date || m.number_of_seasons || m.original_name || (m.name && !m.title) || m.media_type === 'tv' || m.type === 'tv') {
                                 el.__lmx = { el: el, id: m.id };
                                 if (io) io.observe(el); else { queue.push(el.__lmx); pumpSoon(); }
                             } else addMark(view[0], movieMark(m));
@@ -5028,7 +5028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.362';
+    var VERSION = '10.363';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
