@@ -2296,8 +2296,9 @@
         var kino = rules('body.lmx-prem.lmx-full ', rate.concat(split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;letter-spacing:.01em;color:#c3c8ee;opacity:1'],
             [PLAIN, 'color:#9aa0c4;font-size:1em'],
-            [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;border-radius:0;padding:0 0 0 .7em;background:none !important'],
+            [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;border-radius:0;padding:.2em 0 .2em .7em;margin:.35em 0 .1em;background:none !important'],
             ['.lmx-info .lmx-ip.lmx-done::before,.lmx-info .lmx-ip.lmx-next::before,.lmx-info .lmx-ip.lmx-soon::before,.lmx-info .lmx-ip.lmx-bad::before', 'content:none !important'],
+            ['.lmx-info', 'row-gap:.45em;margin-bottom:.9em'],
             ['.lmx-descr__t', 'color:rgba(255,255,255,.8);line-height:1.6;font-size:1.02em']
         ]));
         // Скло: матові скляні таблетки й опис у прозорій панелі
@@ -5028,7 +5029,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.364';
+    var VERSION = '10.365';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
