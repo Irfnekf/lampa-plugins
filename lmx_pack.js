@@ -4740,10 +4740,12 @@
         }
         function refresh() { safe(function () { neCollect(function (arr) { badge(neUnseen(arr).length); }); }); }
         var dd = null;
-        function closeDD(back) {
+        function closeDD(back, dir) {
             if (!dd) return;
             dd.remove(); dd = null;
             if (back) { try { Lampa.Controller.toggle(back); } catch (e) {} }
+            // вліво/вправо: фокус переходить на сусідню кнопку шапки
+            if (dir && back === 'head') { try { Lampa.Controller.move(dir); } catch (e) {} }
         }
         function open() {
             if (dd) return closeDD(Lampa.Controller.enabled().name === 'lmx_ne' ? 'content' : null);
@@ -4790,8 +4792,8 @@
                     toggle: function () { Lampa.Controller.collectionSet(dd); foc(idx); },
                     up: function () { foc(idx - 1); },
                     down: function () { foc(idx + 1); },
-                    left: function () { closeDD(enabled); },
-                    right: function () { closeDD(enabled); },
+                    left: function () { closeDD(enabled, 'left'); },
+                    right: function () { closeDD(enabled, 'right'); },
                     back: function () { closeDD(enabled); }
                 });
                 Lampa.Controller.toggle('lmx_ne');
@@ -4977,7 +4979,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.352';
+    var VERSION = '10.353';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
