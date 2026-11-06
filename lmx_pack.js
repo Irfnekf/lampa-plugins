@@ -4810,9 +4810,15 @@
             // вліво/вправо: фокус переходить на сусідню кнопку шапки
             if (dir && back === 'head') { try { Lampa.Controller.move(dir); } catch (e) {} }
         }
+        var lastOpen = 0, ddBack = null;
         function open() {
+            // на телефоні один дотик дає і hover:enter, і click — без цього список відкривався й одразу закривався
+            var tn = Date.now();
+            if (tn - lastOpen < 600) return;
+            lastOpen = tn;
             if (dd) return closeDD(Lampa.Controller.enabled().name === 'lmx_ne' ? 'content' : null);
             var enabled = Lampa.Controller.enabled().name;
+            ddBack = enabled;
             neCollect(function (arr) {
                 var seen = jsonStore('lmx_ne_seen', {}), fresh = {}, nFresh = 0;
                 arr.forEach(function (e) { fresh[e.id] = seen[e.id] !== neKey(e); if (fresh[e.id]) nFresh++; });
@@ -4838,7 +4844,8 @@
                 });
                 // під дзвіночком, правим краєм до нього
                 var br = $('.lmx-nebell')[0].getBoundingClientRect();
-                dd.css({ top: Math.round(br.bottom + 10) + 'px', right: Math.max(8, Math.round(window.innerWidth - br.right - 20)) + 'px' });
+                if (window.innerWidth <= 760) dd.css({ top: Math.round(br.bottom + 8) + 'px', left: '8px', right: '8px', width: 'auto', maxWidth: 'none', maxHeight: Math.round(window.innerHeight - br.bottom - 24) + 'px' });
+                else dd.css({ top: Math.round(br.bottom + 10) + 'px', right: Math.max(8, Math.round(window.innerWidth - br.right - 20)) + 'px' });
                 $('body').append(dd);
                 // відкрили список: усе в ньому вважаємо баченим, лічильник зникає
                 arr.forEach(function (e) { seen[e.id] = neKey(e); });
@@ -4876,6 +4883,13 @@
         }
         ensure();
         var n = 0, iv = setInterval(function () { ensure(); if (++n > 20) clearInterval(iv); }, 1500);
+        // дотик поза списком закриває його (на телефоні немає кнопки «назад» під рукою)
+        document.addEventListener('click', function (ev) {
+            if (!dd || Date.now() - lastOpen < 600) return;
+            var t = ev.target;
+            if (t && t.closest && (t.closest('.lmx-nedd') || t.closest('.lmx-nebell'))) return;
+            closeDD(ddBack);
+        }, true);
         // запити до TMDB не на старті (головна ще вантажиться), а згодом, коли все вже відмальовано
         function neWarm() { if (neWarm.t) return; neWarm.t = setTimeout(function () { neWarm.t = 0; if (!document.hidden) refresh(); }, 100); }
         setTimeout(refresh, 45000);
@@ -5042,7 +5056,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.367';
+    var VERSION = '10.368';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
