@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.18';
+    var VERSION = '3.19';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3320,16 +3320,8 @@
                 field: { name: 'Автоперемикання джерел', description: 'Відкриває джерело, що спрацювало раніше; якщо воно порожнє — пробує наступне (до 6 спроб) і запам\'ятовує результат' }
             });
             if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_bal', type: 'select', values: BAL_NAMES, default: 'balanced' },
-                field: { name: 'Баланс вибору джерела', description: 'Як поєднувати українську озвучку та якість: «Збалансовано» — українська важить трохи більше за рівень якості; «Українська в пріоритеті» — майже завжди українська; «Якість у пріоритеті» — спершу найкраща якість' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_vauto', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
                 field: { name: 'Авто-вибір української озвучки', description: 'Поки йде завантаження, обирає українську озвучку (або ту, яку ви вже обирали для цього серіалу) — екран не перезавантажується на очах. Якщо з нею серій немає, повертає попередню' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_sortsrc', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
-                field: { name: 'Автосортування списку джерел', description: 'Угорі — рекомендоване джерело з поясненням, далі за рейтингом, внизу ті, де нічого немає. Вимкнено — порядок такий, як віддає онлайн-плагін' }
             });
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
@@ -3343,11 +3335,6 @@
                 component: 'lmx_watch', param: { name: 'lmx_watch_health', type: 'button' },
                 field: { name: 'Здоров\u2019я джерел', description: 'Які джерела відповідають швидко й стабільно, а які часто підводять — за вашим досвідом. Тут же можна скинути статистику' },
                 onChange: function () { safe(showHealth); }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_watch_diag', type: 'button' },
-                field: { name: 'Скопіювати діагностику екрана «Онлайн»', description: 'Натисніть, коли на екрані щось не так: опис розмітки потрапить у буфер обміну — вставте його в чат' },
-                onChange: function () { safe(copyDiag); }
             });
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_watch_ver', type: 'title', default: '' },
