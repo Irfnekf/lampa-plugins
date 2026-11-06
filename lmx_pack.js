@@ -1174,7 +1174,16 @@
                         return setTimeout(startFirst, 1200);
                     }
                     self.activity.loader(false);
-                    if (!data.length) return self.empty();
+                    if (!data.length) {
+                        // коротка причина прямо на екрані: на сторонніх збірках Lampa (інші адреси) запити до TMDB можуть не проходити
+                        safe(function () {
+                            var d = (window.__lmxDbg || []).filter(function (x) { return x.s === id; }), er = 0, to = 0, nn = 0;
+                            d.forEach(function (x) { er += x.err || 0; if (x.n < 0) to++; else nn += x.n; });
+                            var why = to || er ? 'TMDB не відповідає (помилок: ' + (er + to) + ')' : (nn ? 'знайдено ' + nn + ', але без постера/опису' : 'TMDB повернув порожні списки');
+                            if (Lampa.Noty) Lampa.Noty.show('Каталог порожній: ' + why);
+                        });
+                        return self.empty();
+                    }
                     built = true;
                     self.build(data);
                     moreSoon();
@@ -5063,7 +5072,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.369';
+    var VERSION = '10.370';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
