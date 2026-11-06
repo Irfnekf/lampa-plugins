@@ -2276,6 +2276,10 @@
     // ===== ТЕМА ЗАСТОСУНКУ =====
     // «hbo» — повний вигляд у дусі застосунку HBO Max: постери без підписів, біле кільце у фокусі,
     // чистий рядок метаданих, біла кнопка «Дивитись» і круглі кнопки-іконки
+    // Бокове меню: довгі пункти («Налаштування», «Інформація») не вміщалися у плашку фокуса й обрізалися по правому краю
+    function menuFitCss() {
+        return 'body .menu__item{padding-right:.6em}body .menu__item .menu__text{font-size:.9em;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}';
+    }
     function journalCss() {
         if (!journalOn()) return '';
         // селектори як у miniCss (той самий префікс, :not(#lmx-x) і !important), але стоять у CSS пізніше — тому перемагають
@@ -2746,7 +2750,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss() + journalCss();
+        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss() + journalCss() + menuFitCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -4979,7 +4983,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.353';
+    var VERSION = '10.354';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
