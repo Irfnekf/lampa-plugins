@@ -1183,7 +1183,8 @@
                             var d = (window.__lmxDbg || []).filter(function (x) { return x.s === id; }), er = 0, to = 0, nn = 0;
                             d.forEach(function (x) { er += x.err || 0; if (x.n < 0) to++; else nn += x.n; });
                             var why = to || er ? 'TMDB не відповідає (помилок: ' + (er + to) + ')' : (nn ? 'знайдено ' + nn + ', але без постера/опису' : 'TMDB повернув порожні списки');
-                            if (Lampa.Noty) Lampa.Noty.show('Каталог порожній: ' + why);
+                            var srcs = ''; try { srcs = Object.keys(Lampa.Api.sources || {}).join(', ') + ' | ' + String(Lampa.Storage.get('source', '')); } catch (e) {}
+                            if (Lampa.Noty) Lampa.Noty.show('Каталог порожній: ' + why + (srcs ? '. Джерела: ' + srcs : ''));
                         });
                         return self.empty();
                     }
@@ -5075,7 +5076,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.371';
+    var VERSION = '10.372';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
