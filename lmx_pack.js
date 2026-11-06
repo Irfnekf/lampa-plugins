@@ -4679,7 +4679,7 @@
             load(c.id, function (j) {
                 var le = j && j.last_episode_to_air;
                 if (le && le.air_date && le.air_date >= lo && le.air_date <= hi) {
-                    out.push({ id: j.id, name: j.name || c.name, poster: j.poster_path, season: le.season_number, episode: le.episode_number, epname: le.name || '', date: le.air_date, card: j });
+                    out.push({ id: j.id, name: j.name || c.name, poster: j.poster_path, backdrop: j.backdrop_path, season: le.season_number, episode: le.episode_number, epname: le.name || '', date: le.air_date, card: j });
                 }
                 fin(); pump();
             });
@@ -4707,10 +4707,11 @@
                 '.lmx-nedd{position:fixed;z-index:9999;width:29em;max-width:92vw;max-height:70vh;overflow:hidden auto;background:#1c1f27;border:1px solid rgba(255,255,255,.1);border-radius:.9em;box-shadow:0 1em 3em rgba(0,0,0,.65);color:#fff;font-size:1em}' +
                 'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
                 '.lmx-nedd__h{display:flex;justify-content:space-between;padding:.9em 1.1em .7em;font-size:.8em;font-weight:800;letter-spacing:.14em;border-bottom:1px solid rgba(255,255,255,.1)}.lmx-nedd__h span{opacity:.55;font-weight:500;letter-spacing:0}' +
-                '.lmx-ne{display:flex;align-items:center;gap:1em;padding:.7em 1.1em;margin:.2em .4em;border-radius:.7em}' +
-                '.lmx-ne.focus,.lmx-ne.hover{background:rgba(255,255,255,.17)}.lmx-ne img{width:2.7em;height:4em;object-fit:cover;border-radius:.45em;flex:none;background:#2a2d36}' +
-                '.lmx-ne__t{font-size:1.05em;font-weight:600}.lmx-ne__s{font-size:.88em;opacity:.8;margin-top:.25em}.lmx-ne__s b{font-weight:700;opacity:1}' +
-                '.lmx-ne__d{margin-left:auto;text-align:right;font-size:.75em;opacity:.65;white-space:nowrap}.lmx-ne__dot{display:block;width:.7em;height:.7em;border-radius:50%;margin:0 0 .5em auto}';
+                '.lmx-ne{position:relative;display:block;height:7.2em;margin:.5em .6em;border-radius:.7em;overflow:hidden;background:#2a2d36 center/cover no-repeat}' +
+                '.lmx-ne::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.1) 85%)}' +
+                '.lmx-ne.focus,.lmx-ne.hover{box-shadow:0 0 0 .22em #fff}' +
+                '.lmx-ne__x{position:absolute;left:1em;bottom:.8em;right:1em}.lmx-ne__t{font-size:1.1em;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s{font-size:.88em;margin-top:.25em;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s b{font-weight:700}' +
+                '.lmx-ne__n{position:absolute;right:.7em;top:.7em;font-size:.6em;font-weight:800;letter-spacing:.08em;padding:.35em .7em;border-radius:.4em;color:#fff}';
             document.head.appendChild(st);
         }
         function color() { return 'rgb(' + (RGB[getStr('lmx_c_next', 'orange')] || RGB.orange) + ')'; }
@@ -4739,15 +4740,13 @@
                 var els = [];
                 arr.forEach(function (e) {
                     var el = $('<div class="selector lmx-ne"></div>');
-                    if (e.poster) el.append($('<img>').attr('src', imgUrl(e.poster, 'w154')));
-                    var tx = $('<div></div>');
+                    var bg = e.backdrop ? imgUrl(e.backdrop, 'w780') : (e.poster ? imgUrl(e.poster, 'w500') : '');
+                    if (bg) el.css('background-image', 'url(' + bg + ')');
+                    if (fresh[e.id]) el.append($('<div class="lmx-ne__n">НОВА</div>').css('background', c));
+                    var tx = $('<div class="lmx-ne__x"></div>');
                     tx.append($('<div class="lmx-ne__t"></div>').text(e.name));
-                    tx.append($('<div class="lmx-ne__s"></div>').append($('<b></b>').css('color', c).text('S' + e.season + ' E' + e.episode)).append(document.createTextNode(e.epname ? ' · ' + e.epname : '')));
+                    tx.append($('<div class="lmx-ne__s"></div>').append($('<b></b>').css('color', c).text('S' + e.season + ' E' + e.episode)).append(document.createTextNode((e.epname ? ' · ' + e.epname : '') + ' · ' + neAgo(e.date))));
                     el.append(tx);
-                    var d = $('<div class="lmx-ne__d"></div>');
-                    if (fresh[e.id]) d.append($('<span class="lmx-ne__dot"></span>').css('background', c));
-                    d.append(document.createTextNode(neAgo(e.date)));
-                    el.append(d);
                     el.on('hover:enter click', function () {
                         closeDD();
                         Lampa.Activity.push({ url: '', component: 'full', id: e.id, method: 'tv', card: e.card, source: 'tmdb' });
@@ -4955,7 +4954,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.349';
+    var VERSION = '10.350';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
