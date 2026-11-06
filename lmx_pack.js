@@ -2299,7 +2299,7 @@
             [STATUS, 'color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:.85em;border-left:.22em solid #8f9bff;border-radius:0;padding:.2em 0 .2em .7em;margin:.35em 0 .1em;background:none !important'],
             ['.lmx-info .lmx-ip.lmx-done::before,.lmx-info .lmx-ip.lmx-next::before,.lmx-info .lmx-ip.lmx-soon::before,.lmx-info .lmx-ip.lmx-bad::before', 'content:none !important'],
             ['.lmx-info', 'row-gap:.45em;margin-bottom:.9em'],
-            ['.lmx-descr__t', 'color:rgba(255,255,255,.8);line-height:1.6;font-size:1.02em']
+            ['.lmx-descr__t', 'color:#c3c8ee;line-height:1.6;font-size:1.02em']
         ]));
         // Скло: матові скляні таблетки й опис у прозорій панелі
         var glass = rules('body.lmx-apple.lmx-full ', rate.concat(split, [
@@ -5029,7 +5029,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.365';
+    var VERSION = '10.366';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
