@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.24';
+    var VERSION = '3.25';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1905,6 +1905,19 @@
                             };
                         });
                     }
+                    if (name === 'content' && object && typeof object.enter === 'function' && !object.__lmxEn) {
+                        object.__lmxEn = 1;
+                        var oEnter = object.enter;
+                        object.enter = function () {
+                            try {
+                                if (isOn() && Date.now() - (window.__lmxPickT || 0) < 800) {
+                                    var fe2 = document.querySelector('.activity--active .focus');
+                                    if (fe2 && fe2.classList && fe2.classList.contains('lmx-onl-item')) return;
+                                }
+                            } catch (e) {}
+                            return oEnter.apply(this, arguments);
+                        };
+                    }
                     if (name === 'content' && object && typeof object.toggle === 'function' && !object.__lmxT) {
                         object.__lmxT = 1;
                         var tg0 = object.toggle;
@@ -1921,6 +1934,21 @@
                 } catch (e) {}
                 return realAdd.apply(K, arguments);
             };
+            // Вибір пункту у списку джерела/сезону/озвучки закриває його, а повторне «Enter» (автоповтор клавіші пульта, подвійна подія) потрапляло
+            // на картку серії, що опинилась під ним, — і відтворення запускалось саме. Одразу після вибору «Enter» на картці серії ігноруємо (0,8 с)
+            if (typeof K.enter === 'function' && !K.__lmxEnter) {
+                K.__lmxEnter = 1;
+                var realEnter = K.enter;
+                K.enter = function () {
+                    try {
+                        if (isOn() && Date.now() - (window.__lmxPickT || 0) < 800) {
+                            var fe = document.querySelector('.activity--active .focus');
+                            if (fe && fe.classList && fe.classList.contains('lmx-onl-item')) return;
+                        }
+                    } catch (e) {}
+                    return realEnter.apply(this, arguments);
+                };
+            }
             K.__lmxCtl = 1;
         } catch (e) {}
     }
@@ -2324,7 +2352,7 @@
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 window.__lmxManual = Date.now();
-                window.__lmxPopSel = Date.now(); act.__lmxPopT = Date.now();
+                window.__lmxPopSel = Date.now(); window.__lmxPickT = Date.now(); act.__lmxPopT = Date.now();
                 closeDrop(act, key);
                 if (!o.sel) {
                     try { o.run(); } catch (e) {}
