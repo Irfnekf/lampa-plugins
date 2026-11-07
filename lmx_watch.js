@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.20';
+    var VERSION = '3.21';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1985,11 +1985,12 @@
         var i, el, inst;
         for (i = 0; i < FILTERS.length; i++) {
             inst = FILTERS[i];
-            try { el = inst.render && inst.render(); el = el && el[0]; if (el && act.contains(el)) return inst; } catch (e) {}
+            try { el = inst.render && inst.render(); el = el && el[0]; if (el && act.contains(el)) { inst.lmx_comp = compNow(); return inst; } } catch (e) {}
         }
         for (i = 0; i < FILTERS.length; i++) {
             inst = FILTERS[i];
-            if (inst.lmx_sets && (inst.lmx_sets.sort || inst.lmx_sets.filter) && Date.now() - inst.lmx_t < 60000) return inst;
+            // запасний шлях лише для того самого онлайн-плагіна: інакше «Сортувати» в іншому плагіні (Alpac тощо) показувало б дані lampaua
+            if (inst.lmx_sets && (inst.lmx_sets.sort || inst.lmx_sets.filter) && Date.now() - inst.lmx_t < 60000 && (!inst.lmx_comp || inst.lmx_comp === compNow())) return inst;
         }
         return null;
     }
