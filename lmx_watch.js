@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.31';
+    var VERSION = '3.32';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2505,10 +2505,43 @@
     }
     // Жорсткий запобіжник: «завантаження» не може тривати вічно. Якщо екран понад 75 с у режимі пошуку (джерело мовчить, запит завис, прапорець застряг) —
     // зупиняємо наш пошук і віддаємо екран рідному вигляду плагіна, щоб можна було обрати джерело вручну
+    // Порожній екран без жодного пояснення (після зміни сезону/озвучки джерело нічого не віддало, а смужка завантаження вже знята): показуємо
+    // або «Завантажуємо…» (поки відповідь ще може прийти), або чесне «нічого немає» з кнопками. Кожна перевірка — раз на 3 с, лише на екрані з джерелами
+    function blankGuard(a) {
+        var ex = a.querySelector('.explorer.lmx-onl'), body = ex && a.querySelector('.explorer__files-body .scroll__body'), pr = a.querySelector('.lmx-onl-prog');
+        var bg = a.querySelector('.lmx-onl-prog[data-lmx-bg]');
+        if (!body || !a.querySelector('.lmx-onl-hero') || a.__lmxProbing || a.__lmxEG || a.__lmxOpen || a.__lmxHold
+            || a.classList.contains('lmx-onl-load') || a.classList.contains('lmx-onl-rl') || selOpen() || selCtl() || plyOn()) { a.__lmxBlankN = 0; return; }
+        if (freshEps(body).length || a.querySelector('.lmx-onl-item')) {
+            a.__lmxBlankN = 0;
+            if (bg && bg.parentNode) bg.parentNode.removeChild(bg);
+            return;
+        }
+        if (pr && !bg) { a.__lmxBlankN = 0; return; }
+        a.__lmxBlankN = (a.__lmxBlankN || 0) + 1;
+        if (a.__lmxBlankN < 2) return;
+        var msg = /не дав результат|no results|нічого не знайдено|помилка/i.test(body.textContent || '');
+        var dead = msg || a.__lmxBlankN >= 6;
+        if (!bg) {
+            bg = document.createElement('div'); bg.className = 'lmx-onl-prog'; bg.setAttribute('data-lmx-bg', '1');
+            bg.innerHTML = '<div class="lmx-onl-prog__s"></div><div class="lmx-onl-prog__b"><i></i></div>' + PROG_CARDS;
+            var bar0 = a.querySelector('.lmx-onl-bar'), hero = a.querySelector('.lmx-onl-hero');
+            if (bar0 && bar0.parentNode) bar0.parentNode.insertBefore(bg, bar0.nextSibling);
+            else if (hero && hero.parentNode) hero.parentNode.insertBefore(bg, hero.nextSibling);
+            else return;
+        }
+        var ps = bg.querySelector('.lmx-onl-prog__s');
+        if (!dead) { if (ps) ps.textContent = 'Завантажуємо…'; return; }
+        if (ps) ps.textContent = msg ? 'Для цього сезону чи озвучки тут нічого немає. Оберіть іншу озвучку, сезон або джерело' : 'Джерело довго не відповідає. Оберіть іншу озвучку, сезон або джерело';
+        bg.classList.add('lmx-onl-prog--end');
+        deadActions(a);
+        hideJunk(a);
+    }
     function loadWatchdog() {
         window.__lmxLW = loadWatchdog;
         var a = document.querySelector('.activity--active');
         if (!a) return;
+        safe(function () { blankGuard(a); });
         // Пошук скінчився, рідний список серій уже на екрані, а наша розмітка його не розпізнала: статус і порожня рамка не мають висіти
         var bd = a.querySelector('.explorer__files-body .scroll__body');
         if (!a.classList.contains('lmx-onl-load') && !a.__lmxProbing && bd && !a.querySelector('.lmx-onl-item') && (a.querySelector('.lmx-onl-prog') || a.querySelector('.lmx-onl-hero__s')) && nativeList(bd)) {
