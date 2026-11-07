@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.30';
+    var VERSION = '3.31';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3046,10 +3046,9 @@
         })();
     }
     function buildHero() {
-        if (!isOn()) return;
         var act = document.querySelector('.activity--active');
         var body = act && act.querySelector('.explorer__files-body .scroll__body');
-        if (!body) return;
+        if (!body || !isOn()) return;
         // Джерела розмічають серії по-різному (.videos__item, .online-prestige, з префіксами на кшталт .onl-online-prestige…), тому не
         // покладаємось на назви класів: серією вважаємо кожен фокусований елемент списку, у якому є картинка або смужка прогресу
         var kids = body.children, list = [], i;
@@ -3460,7 +3459,7 @@
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
                 obsTarget = null; actT0 = Date.now();
-                [30, 150, 400, 800, 1500, 3000, 5000].forEach(function (ms) { setTimeout(function () { safe(arm); safe(buildHero); }, ms); });
+                [30, 150, 400, 800, 1500, 3000, 5000].forEach(function (ms) { setTimeout(function () { if (!document.querySelector('.activity--active .explorer__files-body')) return; safe(arm); safe(buildHero); }, ms); });
                 // страховка від «чорного екрана»: якщо наша шапка так і не з'явилась (інша розмітка, помилка), знімаємо режим завантаження — рідний інтерфейс Lampa знову видно
                 [4500, 9000, 15000].forEach(function (ms) {
                     setTimeout(function () {
