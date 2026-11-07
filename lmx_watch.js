@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.27';
+    var VERSION = '3.28';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -823,7 +823,7 @@
     // 2 с після нього, лише цей цикл тримає фокус на пілюлі, яку щойно обрав користувач (або на кнопці шапки при першому показі); натискання клавіші його вимикає
     function holdFocus(act, key, ms) {
         var t0 = Date.now();
-        act.__lmxHold = { key: key, until: t0 + ms };
+        act.__lmxHold = { key: key, until: t0 + ms, t0: t0 };
         clearInterval(act.__lmxHI);
         act.__lmxHI = setInterval(function () {
             safe(function () {
@@ -2898,6 +2898,10 @@
         function cancel() {
             if (Date.now() - t0 < 600) return;
             if (cd) { heroStatus(act, 'Автоперемикання скасовано. Оберіть джерело кнопкою «Джерело»', true); }
+            else safe(function () {
+                var b = act.querySelector('.explorer__files-body .scroll__body');
+                if (b && !freshEps(b).length && !act.__lmxProbing) heroStatus(act, 'Це джерело ще нічого не дало. Оберіть інше кнопкою «Джерело»', true);
+            });
             stop();
         }
         EV.forEach(function (ev) { document.addEventListener(ev, cancel, true); });
@@ -2906,7 +2910,8 @@
                 if (!document.body.contains(act) || Date.now() - t0 > 180000) return stop();
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
-                if (episodeEls(body).length) {
+                // стара відповідь попереднього джерела ще в списку (data-lmx-old) — це не результат: інакше сторож вимикався одразу й порожнє джерело лишалось без допомоги
+                if (freshEps(body).length) {
                     // серії з'явились: якщо це джерело раніше позначили «порожнім» — знімаємо позначку
                     try {
                         var i0 = instFor(act), S0 = i0 && readSets(i0), sel0 = S0 && S0.sort.filter(function (x) { return x && x.selected; })[0], k0 = sel0 ? srcName(sel0.title) : '', p0 = bad.names.indexOf(k0);
@@ -3365,6 +3370,20 @@
         safe(function () {
             addCss();
             document.body.classList.toggle('lmx-online', isOn());
+            // Рідний Lampac після завантаження списку сам ставить фокус на «останню» картку (екран їхав до серій 06–08 і назад).
+            // Поки триває утримання фокуса на пілюлі (користувач нічого не тиснув), фокус на картки серій не пускаємо
+            if (window.Navigator && Navigator.focus && !Navigator.__lmxFG) {
+                Navigator.__lmxFG = 1;
+                var realFocus = Navigator.focus;
+                Navigator.focus = function (el) {
+                    try {
+                        var aa = document.querySelector('.activity--active'), hh = aa && aa.__lmxHold;
+                        if (hh && hh.key !== 'hero' && Date.now() < hh.until && el && el.classList && el.classList.contains('lmx-onl-item')
+                            && !((window.__lmxKeyT || 0) > (hh.t0 || 0)) && document.querySelector('.activity--active .focus') !== el) return;
+                    } catch (e) {}
+                    return realFocus.apply(this, arguments);
+                };
+            }
             if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; document.addEventListener('keydown', function () { window.__lmxKeyT = Date.now(); }, true); }
             // Дотик/колесо: на телефоні фокусу немає, і наші «рятувальні» цикли (viewGuard, recover, resync) щоразу ставили фокус на кнопку шапки —
             // список прокручувався нагору просто під пальцем. Тепер вони стають осторонь, поки користувач сам гортає
