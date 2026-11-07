@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.34';
+    var VERSION = '3.35';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1021,8 +1021,9 @@
                 setTimeout(function () { document.body.classList.remove('lmx-onl-pick'); }, 40);
             } else if (++n > 12) {
                 clearInterval(iv);
-                // такого пункту в меню фільтра цього джерела немає — лишаємо рідне меню відкритим, щоб було що вибрати
+                // такого пункту в меню фільтра цього джерела немає — лишаємо рідне меню відкритим, щоб було що вибрати (але порожнє меню з одним «Скинути фільтр» закриваємо)
                 document.body.classList.remove('lmx-onl-pick');
+                try { if (selOpen() && document.querySelectorAll('.selectbox-item').length <= 1) { Lampa.Select.close(); ctlContent(); } } catch (e) {}
             }
         }, 60);
     }
@@ -2027,6 +2028,11 @@
                 // «Вправо» на екрані «Онлайн» відкривало стандартне меню «Фільтр» — у нас свої кнопки, тож глушимо його (крім наших власних викликів)
                 S0.show = function (p) {
                     try {
+                        // меню «Фільтр» лише з «Скинути фільтр» (у джерела ще немає ні сезонів, ні озвучок) — порожня панель справа, що лишалась на екрані: не показуємо ніколи
+                        if (isOn() && document.querySelector('.activity--active .explorer.lmx-onl') && p && Array.isArray(p.items) && p.items.length && p.items.every(function (i) { return i && i.reset; })) {
+                            setTimeout(function () { ctlContent(); }, 0);
+                            return;
+                        }
                         if (isOn() && document.querySelector('.activity--active .explorer.lmx-onl') && p && Array.isArray(p.items) && p.items.some(function (i) { return i && i.reset; }) &&
                             Date.now() - (window.__lmxAllowSel || 0) > 1200 && !document.body.classList.contains('lmx-onl-pick')) {
                             setTimeout(function () { ctlContent(); }, 0);
@@ -2970,7 +2976,7 @@
                 var curKey = curIt ? srcName(curIt.title) : '';
                 try { ['voice', 'season'].forEach(function (gk) { var pq = act.querySelector('.lmx-onl-g--' + gk + ' .lmx-onl-pill__t'), gi = S[gk] && selItem(S[gk]); if (pq && gi && gi.title && pq.textContent !== (gk === 'season' ? seTitle(gi.title) : String(gi.title).trim())) pq.textContent = gk === 'season' ? seTitle(gi.title) : String(gi.title).trim(); }); } catch (e) {}   // підписи кнопок не повинні відставати від реального вибору, поки серій ще нема
                 try { var pl = act.querySelector('.lmx-onl-g--src .lmx-onl-pill__t'); if (pl && curIt && curIt.title && pl.textContent !== String(curIt.title).trim()) pl.textContent = String(curIt.title).trim(); } catch (e) {}
-                if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; }
+                if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; act.__lmxNg = 0; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
                 var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
@@ -2997,6 +3003,20 @@
                     return true;
                 }
                 if (!cd && (empty || (manual && waited > 20000)) && tryVoice()) return;
+                // Після перемикання ДЖЕРЕЛА запит інколи «губиться» (список не приходить ні з відповіддю «порожньо», ні з помилкою), хоча той самий запит
+                // через вибір сезону/озвучки спрацьовує одразу. Тому, якщо за 8 с нічого немає, робимо саме цю дію: повторно обираємо поточний сезон (або озвучку),
+                // а коли це неможливо — повторюємо запит джерела. Не більше двох спроб на джерело (на 8 с і на 20 с)
+                if (!empty && !cd && (act.__lmxNg || 0) < 2 && waited > ((act.__lmxNg || 0) ? 20000 : 8000)) {
+                    act.__lmxNg = (act.__lmxNg || 0) + 1;
+                    heroStatus(act, 'Повторюємо запит до «' + (curKey || 'джерела') + '»…', false, 0.4);
+                    var ngG = (S.season && S.season.items && S.season.items.length) ? S.season : (S.voice && S.voice.items && S.voice.items.length ? S.voice : null), ngDone = false;
+                    if (ngG) { try { var ngI = selItem(ngG); if (ngI) { selIn(inst, 'filter', { stype: ngG.stype }, { index: idxOf(ngG, ngI) }); ngDone = true; } } catch (e) { ngDone = false; } }
+                    if (!ngDone) { try { if (typeof inst.find === 'function') inst.find(); } catch (e) {} }
+                    since = Date.now();
+                    act.__lmxRlKey = ''; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = []; act.__lmxVGt = Date.now();
+                    safe(function () { afterReload(act); });
+                    return;
+                }
                 if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' + (waited > 9000 ? ' · джерело відповідає повільно, можна обрати інше кнопкою «Джерело»' : '') : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
