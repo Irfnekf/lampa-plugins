@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.33';
+    var VERSION = '3.34';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -180,9 +180,9 @@
         S + '.lmx-onl-prog__f i{display:block;width:11em;height:2.6em;border-radius:99em;background:rgba(255,255,255,.08);animation:lmxShim 1.6s ease-in-out infinite}' +
         S + '.lmx-onl-prog--end .lmx-onl-prog__f{display:none}' +
         S + '.lmx-onl-prog__g{display:flex;gap:.9em}' +
-        S + '.lmx-onl-prog__c{display:flex;flex-direction:column;box-sizing:border-box;flex:0 0 calc(20% - .72em);border-radius:1em;overflow:hidden;background:rgba(255,255,255,.06);animation:lmxShim 1.6s ease-in-out infinite}' +
-        S + '.lmx-onl-prog__c::before{content:"";display:block;width:100%;aspect-ratio:16/9;background:rgba(255,255,255,.07)}' +
-        S + '.lmx-onl-prog__c::after{content:"";display:block;height:5.15em;background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.12)) .7em .75em/62% .85em no-repeat,linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)) .7em 2.15em/38% .7em no-repeat,linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)) .7em 3.8em/30% .8em no-repeat}' +
+        S + '.lmx-onl-prog__c{display:flex;flex-direction:column;box-sizing:border-box;flex:0 0 calc(20% - .72em);border-radius:1em;overflow:hidden;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.08);animation:lmxShim 1.6s ease-in-out infinite}' +
+        S + '.lmx-onl-prog__c::before{content:"";display:block;width:100%;aspect-ratio:16/9;background:rgba(255,255,255,.12)}' +
+        S + '.lmx-onl-prog__c::after{content:"";display:block;height:5.15em;background:linear-gradient(rgba(255,255,255,.2),rgba(255,255,255,.2)) .7em .75em/62% .85em no-repeat,linear-gradient(rgba(255,255,255,.13),rgba(255,255,255,.13)) .7em 2.15em/38% .7em no-repeat,linear-gradient(rgba(255,255,255,.13),rgba(255,255,255,.13)) .7em 3.8em/30% .8em no-repeat}' +
         '@media (max-width:1100px){' + S + '.lmx-onl-prog__c{flex-basis:calc(33.333% - .62em)}' + S + '.lmx-onl-prog__c:nth-child(n+4){display:none}}' +
         '@media (max-width:760px){' + S + '.lmx-onl-prog__c{flex-basis:calc(50% - .45em)}' + S + '.lmx-onl-prog__c:nth-child(n+3){display:none}}' +
         S + '.lmx-onl-prog__c:nth-child(2){animation-delay:.15s}' + S + '.lmx-onl-prog__c:nth-child(3){animation-delay:.3s}' + S + '.lmx-onl-prog__c:nth-child(4){animation-delay:.45s}' + S + '.lmx-onl-prog__c:nth-child(5){animation-delay:.6s}' +
@@ -807,7 +807,7 @@
                     try {
                         var n = act.querySelectorAll('.explorer__files-body .selector').length, el = Date.now() - t0;
                         if (n === last) same++; else { same = 0; last = n; }
-                        if (!document.body.contains(act) || (el >= 300 && same >= 2) || el >= 1500) {
+                        if (!document.body.contains(act) || (el >= 250 && same >= 2) || el >= 900) {
                             act.classList.remove('lmx-onl-hold'); act.classList.add('lmx-onl-fadein');
                             var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition');
                             setTimeout(function () { try { act.classList.remove('lmx-onl-fadein'); } catch (e) {} }, 260);
@@ -2512,8 +2512,8 @@
     function blankGuard(a) {
         var ex = a.querySelector('.explorer.lmx-onl'), body = ex && a.querySelector('.explorer__files-body .scroll__body'), pr = a.querySelector('.lmx-onl-prog');
         var bg = a.querySelector('.lmx-onl-prog[data-lmx-bg]');
-        if (!body || !a.querySelector('.lmx-onl-hero') || a.__lmxProbing || a.__lmxEG || a.__lmxOpen || a.__lmxHold
-            || a.classList.contains('lmx-onl-load') || a.classList.contains('lmx-onl-rl') || selOpen() || selCtl() || plyOn()) { a.__lmxBlankN = 0; return; }
+        var busy = !!(a.__lmxProbing || a.__lmxEG || a.classList.contains('lmx-onl-load') || a.classList.contains('lmx-onl-rl'));
+        if (!body || !a.querySelector('.lmx-onl-hero') || a.__lmxOpen || a.__lmxHold || selOpen() || selCtl() || plyOn()) { a.__lmxBlankN = 0; return; }
         if (freshEps(body).length || a.querySelector('.lmx-onl-item')) {
             a.__lmxBlankN = 0;
             if (bg && bg.parentNode) bg.parentNode.removeChild(bg);
@@ -2523,7 +2523,7 @@
         a.__lmxBlankN = (a.__lmxBlankN || 0) + 1;
         if (a.__lmxBlankN < 2) return;
         var msg = /не дав результат|no results|нічого не знайдено|помилка/i.test(body.textContent || '');
-        var dead = msg || a.__lmxBlankN >= 6;
+        var dead = !busy && (msg || a.__lmxBlankN >= 6);
         if (!bg) {
             bg = document.createElement('div'); bg.className = 'lmx-onl-prog'; bg.setAttribute('data-lmx-bg', '1');
             bg.innerHTML = '<div class="lmx-onl-prog__s"></div><div class="lmx-onl-prog__b"><i></i></div>' + PROG_CARDS;
@@ -2533,7 +2533,7 @@
             else return;
         }
         var ps = bg.querySelector('.lmx-onl-prog__s');
-        if (!dead) { if (ps) ps.textContent = 'Завантажуємо…'; return; }
+        if (!dead) { if (ps && !ps.textContent) ps.textContent = busy ? 'Шукаємо…' : 'Завантажуємо…'; return; }
         if (ps) ps.textContent = msg ? 'Для цього сезону чи озвучки тут нічого немає. Оберіть іншу озвучку, сезон або джерело' : 'Джерело довго не відповідає. Оберіть іншу озвучку, сезон або джерело';
         bg.classList.add('lmx-onl-prog--end');
         deadActions(a);
@@ -2975,7 +2975,7 @@
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
                 var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
                 // Джерело порожнє лише для поточної озвучки, а має інші (напр. Mikai без «Дублированный», але з FRONDA): спершу пробуємо їх, і лише потім
-                // оголошуємо джерело порожнім. Після ручного вибору джерела не чекаємо 12 с: чорний екран понад ~4,5 с — теж привід спробувати іншу озвучку
+                // оголошуємо джерело порожнім. Повільна відповідь ≠ порожня: зміна озвучки перезапускає запит, тож за 4,5 с вона обривала довгий пошук (UAKino, JackTor) і не давала йому завершитись — тепер чекаємо 20 с
                 function tryVoice() {
                     if (!(vautoOn() && S.voice && S.voice.items && S.voice.items.length > 1)) return false;
                     var vg = S.voice, vs0 = S.season && selItem(S.season), vtk = cid + '|' + curKey + '|' + (vs0 ? seTitle(vs0.title) : '');
@@ -2996,8 +2996,8 @@
                     safe(function () { afterReload(act); });
                     return true;
                 }
-                if (!cd && (empty || (manual && waited > 4500)) && tryVoice()) return;
-                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                if (!cd && (empty || (manual && waited > 20000)) && tryVoice()) return;
+                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' + (waited > 9000 ? ' · джерело відповідає повільно, можна обрати інше кнопкою «Джерело»' : '') : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
