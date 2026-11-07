@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.29';
+    var VERSION = '3.30';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2541,7 +2541,7 @@
         setInterval(function () {
             if (document.hidden || plyOn()) return;
             safe(function () {
-                var a = document.querySelector('.activity--active'), pop = a && a.querySelector('.lmx-onl-drop--pop');
+                var pop = document.querySelector('.activity--active .lmx-onl-drop--pop'), a = pop && document.querySelector('.activity--active');
                 if (!pop || selOpen()) return;
                 var f = document.querySelector('.focus');
                 if (f && pop.contains(f)) return;
@@ -3262,7 +3262,7 @@
         });
         var host = document.querySelector('.activitys__slides') || document.body;
         new MutationObserver(function (muts) {
-            if (!isOn() || !((Date.now() - lastEnter.t <= 2500 && lastEnter.on) || scanning())) return;
+            if (!((Date.now() - lastEnter.t <= 2500 && lastEnter.on) || scanning()) || !isOn()) return;
             var i, j, n, cl, ex;
             for (i = 0; i < muts.length; i++) for (j = 0; j < muts[i].addedNodes.length; j++) {
                 n = muts[i].addedNodes[j];
@@ -3290,7 +3290,8 @@
     // Екран плагіна UAKino: свій компонент, без Lampa.Filter, тож нашу логіку він не бачить. Додаємо лише безпечне, без нових фокусних елементів:
     // логотип замість тексту назви (як у нашій шапці), мітку для стилів. Його навігацію й кнопки не чіпаємо
     function uakAdapt() {
-        if (!isOn()) return;
+        var hd0 = document.querySelector('.uakino-online__head-text');
+        if (!hd0 || hd0.getAttribute('data-lmx-uak') || !isOn()) return;
         var act = document.querySelector('.activity--active'), hd = act && act.querySelector('.uakino-online__head-text');
         if (!hd || hd.getAttribute('data-lmx-uak')) return;
         hd.setAttribute('data-lmx-uak', '1');
@@ -3381,6 +3382,7 @@
                 var realFocus = Navigator.focus;
                 Navigator.focus = function (el) {
                     try {
+                        if (!(el && el.classList && el.classList.contains('lmx-onl-item'))) return realFocus.apply(this, arguments);
                         var aa = document.querySelector('.activity--active'), hh = aa && aa.__lmxHold;
                         if (hh && hh.key !== 'hero' && Date.now() < hh.until && el && el.classList && el.classList.contains('lmx-onl-item')
                             && !((window.__lmxKeyT || 0) > (hh.t0 || 0)) && document.querySelector('.activity--active .focus') !== el) return;
