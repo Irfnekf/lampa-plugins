@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.32';
+    var VERSION = '3.33';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2028,10 +2028,12 @@
                 S0.show = function (p) {
                     try {
                         if (isOn() && document.querySelector('.activity--active .explorer.lmx-onl') && p && Array.isArray(p.items) && p.items.some(function (i) { return i && i.reset; }) &&
-                            Date.now() - (window.__lmxAllowSel || 0) > 4000 && !document.body.classList.contains('lmx-onl-pick')) {
+                            Date.now() - (window.__lmxAllowSel || 0) > 1200 && !document.body.classList.contains('lmx-onl-pick')) {
                             setTimeout(function () { ctlContent(); }, 0);
                             return;
                         }
+                        // дозвіл разовий: наступне «Вправо» одразу після власного вибору не має відкривати стандартне меню «Фільтр»
+                        if (p && Array.isArray(p.items) && p.items.some(function (i) { return i && i.reset; })) window.__lmxAllowSel = 0;
                     } catch (e) {}
                     return realShow.apply(S0, arguments);
                 };
