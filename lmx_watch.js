@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.23';
+    var VERSION = '3.24';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -155,7 +155,8 @@
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
         // після завантаження список ще ~0,35 с лишається схованим: за цей час картки приймають остаточну форму, а фокус стає на місце (без стрибків і «з'їзду» вниз). Запасний вихід — анімація, що сама показує список
-        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{opacity:0;animation:lmxHold .22s ease .3s both}' +
+        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{opacity:0}' +
+        'body.lmx-online .activity.lmx-onl-fadein .explorer__files-body{animation:lmxHold .2s ease both}' +
         '@keyframes lmxHold{from{opacity:0}to{opacity:1}}' +
         // поки автопідбір сам перемикає порожнє джерело, рідний екран «нічого не знайдено» з його кнопками не показуємо
         'body.lmx-online .activity.lmx-onl-eg .explorer__files-body{visibility:hidden}' +
@@ -794,8 +795,24 @@
             act.classList.add('lmx-onl-hold');
             // поки список схований, прокрутка йде без анімації — картки не «їдуть» і не «сповзають» на очах
             var sb = act.querySelector('.explorer__files-body .scroll__body'); if (sb) sb.classList.add('notransition');
+            var t0 = Date.now(), last = -1, same = 0;
             clearTimeout(act.__lmxHT);
-            act.__lmxHT = setTimeout(function () { try { act.classList.remove('lmx-onl-hold'); var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition'); } catch (e) {} }, 580);
+            // Показуємо список, коли він перестав рости (джерело домальовує картки по одній): мінімум 0,3 с, максимум 1,5 с
+            (function poll() {
+                act.__lmxHT = setTimeout(function () {
+                    try {
+                        var n = act.querySelectorAll('.explorer__files-body .selector').length, el = Date.now() - t0;
+                        if (n === last) same++; else { same = 0; last = n; }
+                        if (!document.body.contains(act) || (el >= 300 && same >= 2) || el >= 1500) {
+                            act.classList.remove('lmx-onl-hold'); act.classList.add('lmx-onl-fadein');
+                            var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition');
+                            setTimeout(function () { try { act.classList.remove('lmx-onl-fadein'); } catch (e) {} }, 260);
+                            return;
+                        }
+                        poll();
+                    } catch (e) { try { act.classList.remove('lmx-onl-hold'); } catch (x) {} }
+                }, 100);
+            })();
         } catch (e) {}
     }
     function press(el) { window.__lmxAllowSel = Date.now(); try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
@@ -1328,7 +1345,8 @@
         var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
         if (!gs || gs.done || !gs.total) return 'Шукаємо джерела…';
         if (profileOf(gs).label) return profileOf(gs).label + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
-        return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
+        var hint = (typeof gs.cur === 'string' && gs.cur ? ' \u00b7 ' + gs.cur : '') + (gs.results && gs.results.length ? ' \u00b7 знайдено ' + gs.results.length : '');
+        return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + hint + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
     }
     function scanFrac() { var gs = window.__lmxProbe, tf = gs && gs.t00 ? Math.min(0.9, (Date.now() - gs.t00) / 24000) : 0; return Math.max(tf, scanFrac0()); }
     function scanFrac0() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
@@ -1414,6 +1432,11 @@
     function heroStatus(act, text, stop, frac) {
         var gs0 = window.__lmxProbe;
         if (!stop && gs0 && !gs0.done) { text = scanText(); frac = scanFrac(); }
+        // Не перемикаємо тип повідомлення («перевіряємо» ↔ «джерело нічого не дало») частіше, ніж раз на 1,5 с — текст не блимає
+        if (!stop) {
+            var cat = /нічого не дало|Пробуємо/.test(String(text || '')) ? 'f' : 'o', hs = act.__lmxHS;
+            if (hs && hs.c !== cat && Date.now() - hs.t < 1500) text = hs.x; else act.__lmxHS = { c: cat, t: hs && hs.c === cat ? hs.t : Date.now(), x: text };
+        }
         var s = act.querySelector('.lmx-onl-hero__s'), h = act.querySelector('.lmx-onl-hero'), pr = act.querySelector('.lmx-onl-prog'), ps = pr && pr.querySelector('.lmx-onl-prog__s'), pb = pr && pr.querySelector('.lmx-onl-prog__b i');
         if (s) s.textContent = text;
         if (ps) ps.textContent = text;
