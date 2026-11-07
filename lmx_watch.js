@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.28';
+    var VERSION = '3.29';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -180,7 +180,11 @@
         S + '.lmx-onl-prog__f i{display:block;width:11em;height:2.6em;border-radius:99em;background:rgba(255,255,255,.08);animation:lmxShim 1.6s ease-in-out infinite}' +
         S + '.lmx-onl-prog--end .lmx-onl-prog__f{display:none}' +
         S + '.lmx-onl-prog__g{display:flex;gap:.9em}' +
-        S + '.lmx-onl-prog__c{flex:0 0 calc(20% - .72em);aspect-ratio:16/11;border-radius:1em;background:rgba(255,255,255,.07);animation:lmxShim 1.6s ease-in-out infinite}' +
+        S + '.lmx-onl-prog__c{display:flex;flex-direction:column;box-sizing:border-box;flex:0 0 calc(20% - .72em);border-radius:1em;overflow:hidden;background:rgba(255,255,255,.06);animation:lmxShim 1.6s ease-in-out infinite}' +
+        S + '.lmx-onl-prog__c::before{content:"";display:block;width:100%;aspect-ratio:16/9;background:rgba(255,255,255,.07)}' +
+        S + '.lmx-onl-prog__c::after{content:"";display:block;height:5.15em;background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.12)) .7em .75em/62% .85em no-repeat,linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)) .7em 2.15em/38% .7em no-repeat,linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)) .7em 3.8em/30% .8em no-repeat}' +
+        '@media (max-width:1100px){' + S + '.lmx-onl-prog__c{flex-basis:calc(33.333% - .62em)}' + S + '.lmx-onl-prog__c:nth-child(n+4){display:none}}' +
+        '@media (max-width:760px){' + S + '.lmx-onl-prog__c{flex-basis:calc(50% - .45em)}' + S + '.lmx-onl-prog__c:nth-child(n+3){display:none}}' +
         S + '.lmx-onl-prog__c:nth-child(2){animation-delay:.15s}' + S + '.lmx-onl-prog__c:nth-child(3){animation-delay:.3s}' + S + '.lmx-onl-prog__c:nth-child(4){animation-delay:.45s}' + S + '.lmx-onl-prog__c:nth-child(5){animation-delay:.6s}' +
         S + '.lmx-onl-prog--end .lmx-onl-prog__g,' + S + '.lmx-onl-prog--end .lmx-onl-prog__b{display:none}' +
         S + '.lmx-onl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 1.3em;padding:.1em 0 .9em}' +
