@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.25';
+    var VERSION = '3.26';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2947,6 +2947,9 @@
                     if (manual && !act.__lmxHold) holdFocus(act, 'src', 9000);   // фокус лишається на пілюлі джерела, поки Lampa перемальовує список
                     try { var vpl = act.querySelector('.lmx-onl-g--voice .lmx-onl-pill__t'); if (vpl) vpl.textContent = String(vc.title).trim(); } catch (e) {}
                     selIn(inst, 'filter', { stype: vg.stype }, { index: idxOf(vg, vc) });
+                    // автоматична зміна озвучки теж перезавантажує список — показуємо заглушку, інакше під панеллю 2–5 с порожньо
+                    act.__lmxRlKey = ''; act.__lmxRlMin = Date.now() + 450; act.__lmxKeep = [];
+                    safe(function () { afterReload(act); });
                     return true;
                 }
                 if (!cd && (empty || (manual && waited > 4500)) && tryVoice()) return;
