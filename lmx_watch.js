@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.22';
+    var VERSION = '3.23';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -95,7 +95,7 @@
         // поки джерела шукаються: рідний лоадер Lampa ховаємо, замість нього — шапка з логотипом, що переливається
         'body.lmx-online .activity.lmx-onl-load .activity__body{opacity:1 !important}' +
         'body.lmx-online .activity.lmx-onl-load .activity__loader{display:none !important}' +
-        '@keyframes lmxShim{0%{opacity:.45;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.7) drop-shadow(0 0 .5em rgba(255,255,255,.55))}100%{opacity:.45;filter:brightness(.8)}}' +
+        '@keyframes lmxShim{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}' +
         '.lmx-onl-hero--load .lmx-onl-hero__logo,.lmx-onl-hero--load .lmx-onl-hero__t{animation:lmxShim 1.6s ease-in-out infinite}' +
         '.lmx-onl-hero__s{margin-top:.9em;font-size:.95em;font-weight:600;opacity:.85}' +
         '.lmx-onl-hero--load .lmx-onl-hero__s{display:none}' +
@@ -155,7 +155,7 @@
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
         // після завантаження список ще ~0,35 с лишається схованим: за цей час картки приймають остаточну форму, а фокус стає на місце (без стрибків і «з'їзду» вниз). Запасний вихід — анімація, що сама показує список
-        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{visibility:hidden;animation:lmxHold .01s linear .4s both}' +
+        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{visibility:hidden;animation:lmxHold .01s linear .46s both}' +
         '@keyframes lmxHold{from{visibility:hidden}to{visibility:visible}}' +
         // поки автопідбір сам перемикає порожнє джерело, рідний екран «нічого не знайдено» з його кнопками не показуємо
         'body.lmx-online .activity.lmx-onl-eg .explorer__files-body{visibility:hidden}' +
@@ -790,8 +790,10 @@
     function settleHold(act) {
         try {
             act.classList.add('lmx-onl-hold');
+            // поки список схований, прокрутка йде без анімації — картки не «їдуть» і не «сповзають» на очах
+            var sb = act.querySelector('.explorer__files-body .scroll__body'); if (sb) sb.classList.add('notransition');
             clearTimeout(act.__lmxHT);
-            act.__lmxHT = setTimeout(function () { try { act.classList.remove('lmx-onl-hold'); } catch (e) {} }, 350);
+            act.__lmxHT = setTimeout(function () { try { act.classList.remove('lmx-onl-hold'); var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition'); } catch (e) {} }, 420);
         } catch (e) {}
     }
     function press(el) { window.__lmxAllowSel = Date.now(); try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
@@ -3034,9 +3036,11 @@
             // Список опускається до останньої переглянутої серії — фокус теж має бути там, інакше він лишається на кнопці шапки/першій картці,
             // і перше ж натискання повертає екран нагору. Утримання фокуса на кнопці шапки для цього знімаємо
             act.__lmxHold = null; clearInterval(act.__lmxHI); act.__lmxAutoT = Date.now();
-            [700, 1700, 3200].forEach(function (d) { setTimeout(function () { safe(function () {
+            // Фокус і прокрутку виставляємо, поки список ще схований (0–260 мс); пізніше (700 мс) лише страхуємо, якщо картка не в кадрі
+            [0, 120, 260, 700].forEach(function (d) { setTimeout(function () { safe(function () {
                 var cur = document.querySelector('.focus');
                 if (!document.body.contains(tgt) || selOpen() || act.__lmxOpen) return;
+                if (d >= 700) { var rr = tgt.getBoundingClientRect(); if (cur === tgt && rr.bottom > 40 && rr.top < window.innerHeight - 20) return; }
                 if ((window.__lmxKeyT || 0) > t0 || (window.__lmxTouchT || 0) > t0) return;
                 if (cur && cur !== tgt && cur.closest && cur.closest('.lmx-onl-bar, .lmx-onl-drop')) return;
                 if (cur && cur.classList.contains('lmx-onl-item') && cur !== tgt && cur !== list[0]) return;
@@ -3047,7 +3051,8 @@
         var refEl = findRef(act), srcTxt = ((refEl && refEl.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim().replace(/\s*~.*$/, '') + (chosen(filterText(act), RX_VOICE) ? ' \u00b7 ' + chosen(filterText(act), RX_VOICE) : '')).replace(/^\s*\u00b7\s*/, '');
         var sst = seriesStats(card), sig = list.length + ':' + list.map(function (el) { return Math.round(pct(el)); }).join(',') + '|' + srcTxt + '|' + (sst ? sst.seen + '/' + sst.total : '');
         if (old && old.getAttribute('data-sig') === sig) return;
-        if (old) old.parentNode.removeChild(old);
+        var oldFocIdx = -1;
+        if (old) { try { oldFocIdx = [].indexOf.call(old.querySelectorAll('.lmx-onl-btn'), old.querySelector('.focus')); } catch (e) {} old.parentNode.removeChild(old); }
 
         var seen = 0, cont = -1, k;
         for (k = 0; k < list.length; k++) { if (isSoon(list[k])) continue; var pp = pct(list[k]); if (pp >= 90) seen++; else if (pp >= 1 && cont < 0) cont = k; }
@@ -3116,6 +3121,7 @@
         // і список «сповзає» назад — це видно як стрибок картки. Переносимо фокус одразу й підстраховуємось кількома короткими повторами
         if (!act.__lmxFF) {
             act.__lmxFF = Date.now();
+            var autoOwns = !!(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000);
             if ((!window.__lmxKeyT || window.__lmxKeyT < Date.now() - 1500) && !(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000)) holdFocus(act, 'hero', 1800);
             var tk0 = window.__lmxKeyT || 0;
             [0, 60, 150, 300, 500].forEach(function (d) {
@@ -3123,7 +3129,7 @@
                     safe(function () {
                         if (!document.body.contains(act) || selOpen() || act.__lmxOpen || (window.__lmxKeyT || 0) > tk0) return;
                         var f = act.querySelector('.focus'), tg = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
-                        if (!tg || (f && !f.classList.contains('lmx-onl-item'))) return;
+                        if (!tg || autoOwns || (f && !f.classList.contains('lmx-onl-item'))) return;
                         var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
                         ctlContent();
                         if (window.Navigator && Navigator.focus) Navigator.focus(tg);
@@ -3133,6 +3139,8 @@
             });
         }
         var btns = h.querySelectorAll('.lmx-onl-btn');
+        // шапку перебудовано (змінився прогрес), а фокус стояв на її кнопці — одразу повертаємо його на таку саму нову, інакше Lampa кидає його на картку
+        if (oldFocIdx >= 0 && btns.length && window.Navigator && Navigator.focus) safe(function () { ctlContent(); Navigator.focus(btns[Math.min(oldFocIdx, btns.length - 1)]); });
         for (i = 0; i < btns.length; i++) (function (b) {
             $(b).on('hover:enter click', once(function () {
                 var sn = b.getAttribute('data-season'), rs = b.getAttribute('data-resume');
