@@ -155,8 +155,8 @@
         S + '.lmx-onl-wide{display:none !important}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-body{visibility:hidden}' +
         // після завантаження список ще ~0,35 с лишається схованим: за цей час картки приймають остаточну форму, а фокус стає на місце (без стрибків і «з'їзду» вниз). Запасний вихід — анімація, що сама показує список
-        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{visibility:hidden;animation:lmxHold .01s linear .46s both}' +
-        '@keyframes lmxHold{from{visibility:hidden}to{visibility:visible}}' +
+        'body.lmx-online .activity.lmx-onl-hold .explorer__files-body{opacity:0;animation:lmxHold .22s ease .3s both}' +
+        '@keyframes lmxHold{from{opacity:0}to{opacity:1}}' +
         // поки автопідбір сам перемикає порожнє джерело, рідний екран «нічого не знайдено» з його кнопками не показуємо
         'body.lmx-online .activity.lmx-onl-eg .explorer__files-body{visibility:hidden}' +
         'body.lmx-online .activity.lmx-onl-load .explorer__files-head > *:not(.lmx-onl-hero):not(.lmx-onl-prog){display:none !important}' +
@@ -789,11 +789,13 @@
     }
     function settleHold(act) {
         try {
+            // лише на переході «завантаження → список»; повторні виклики не перезапускають приховування (інакше список блимав би знову)
+            if (act.classList.contains('lmx-onl-hold') || !(act.classList.contains('lmx-onl-load') || act.classList.contains('lmx-onl-rl'))) return;
             act.classList.add('lmx-onl-hold');
             // поки список схований, прокрутка йде без анімації — картки не «їдуть» і не «сповзають» на очах
             var sb = act.querySelector('.explorer__files-body .scroll__body'); if (sb) sb.classList.add('notransition');
             clearTimeout(act.__lmxHT);
-            act.__lmxHT = setTimeout(function () { try { act.classList.remove('lmx-onl-hold'); var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition'); } catch (e) {} }, 420);
+            act.__lmxHT = setTimeout(function () { try { act.classList.remove('lmx-onl-hold'); var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition'); } catch (e) {} }, 580);
         } catch (e) {}
     }
     function press(el) { window.__lmxAllowSel = Date.now(); try { $(el).trigger('hover:enter'); } catch (e) { try { el.click(); } catch (x) {} } }
@@ -3037,7 +3039,7 @@
             // і перше ж натискання повертає екран нагору. Утримання фокуса на кнопці шапки для цього знімаємо
             act.__lmxHold = null; clearInterval(act.__lmxHI); act.__lmxAutoT = Date.now();
             // Фокус і прокрутку виставляємо, поки список ще схований (0–260 мс); пізніше (700 мс) лише страхуємо, якщо картка не в кадрі
-            [0, 120, 260, 700].forEach(function (d) { setTimeout(function () { safe(function () {
+            [0, 100, 220, 700].forEach(function (d) { setTimeout(function () { safe(function () {
                 var cur = document.querySelector('.focus');
                 if (!document.body.contains(tgt) || selOpen() || act.__lmxOpen) return;
                 if (d >= 700) { var rr = tgt.getBoundingClientRect(); if (cur === tgt && rr.bottom > 40 && rr.top < window.innerHeight - 20) return; }
@@ -3360,6 +3362,18 @@
             if (S2 && S2.addParam) S2.addParam({
                 component: 'lmx_watch', param: { name: 'lmx_watch_ver', type: 'title', default: '' },
                 field: { name: 'LMX Watch · версія ' + VERSION }
+            });
+            // Логотип назви вантажимо наперед, ще на картці фільму: на «Онлайн» він уже в кеші й з'являється одразу, без підміни тексту
+            Lampa.Listener.follow('full', function (e) {
+                safe(function () {
+                    var m = e && e.type === 'complite' && e.data && e.data.movie; if (!m || !m.id) return;
+                    var kind = (m.name || m.first_air_date || m.number_of_seasons) ? 'tv' : 'movie', key = kind + m.id;
+                    if (key in logoCache || !(Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb)) return;
+                    Lampa.Api.sources.tmdb.get(kind + '/' + m.id + '/images?include_image_language=uk%2Cen%2Cnull', {}, function (j) {
+                        logoCache[key] = pickLogo(j && j.logos); capKeys(logoCache, 80);
+                        if (logoCache[key]) { var pi = new Image(); pi.src = img(logoCache[key], 'w500'); }
+                    }, function () {});
+                });
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
