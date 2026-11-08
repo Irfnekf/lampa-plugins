@@ -3379,14 +3379,15 @@
     // Де шукати: спершу kinohub.uk (той самий сервер, що в marks.js, де мітки працюють), далі парсер із налаштувань Lampa і jac.red.
     // У кожного — два діалекти: v1 (/api/v1.0/torrents) і Jackett-сумісний v2 (/api/v2.0/indexers/all/results, як у самій Lampa).
     // Комбінація, що спрацювала, запам'ятовується; та, що не відповіла, 5 хвилин не чіпається
-    var uaqMode = '', uaqBadCombo = {};
+    var uaqMode = '', uaqBadCombo = {}, UAQ_PUB = 'http://jack.spawn.pp.ua', UAQ_PUB_KEY = '2';
     function uaqCombos() {
         var hosts = [], h, i, out = [], cfg = '';
         try { cfg = String(Lampa.Storage.get('jackett_url', '') || '').replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').replace('jacred.xyz', 'jac.red'); } catch (e) {}
         hosts.push('https://kinohub.uk');   // перший — той самий сервер, що працює в marks.js
         if (cfg) hosts.push(/^https?:\/\//i.test(cfg) ? cfg : 'https://' + cfg);
+        hosts.push(UAQ_PUB);                // публічний парсер (Jackett-діалект v2, ключ відкритий), щоб мітки працювали й без власного парсера
         hosts.push('https://jac.red');
-        for (i = 0; i < hosts.length; i++) if (hosts.indexOf(hosts[i]) === i) { out.push(hosts[i] + '|v1'); out.push(hosts[i] + '|v2'); }
+        for (i = 0; i < hosts.length; i++) if (hosts.indexOf(hosts[i]) === i) { if (hosts[i] !== UAQ_PUB) out.push(hosts[i] + '|v1'); out.push(hosts[i] + '|v2'); }
         try { if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode3', '') || ''); } catch (e) {}
         if (uaqMode && out.indexOf(uaqMode) > 0) { out.splice(out.indexOf(uaqMode), 1); out.unshift(uaqMode); }
         return out;
@@ -3397,8 +3398,8 @@
         for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000)) order.push(all[i]);
         var vi = 0, fails = [], emptyTag = '', emptyHosts = 0;
         function urlFor(c) {
-            var p = c.split('|'), base = p[0];
-            if (p[1] === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
+            var p = c.split('|'), base = p[0], kk = base === UAQ_PUB ? UAQ_PUB_KEY : key;
+            if (p[1] === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(kk) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
             return base + '/api/v1.0/torrents?search=' + encodeURIComponent(qq) + (yr ? '&relased=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : '');
         }
         function next(why) {
@@ -5893,7 +5894,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.454';
+    var VERSION = '10.455';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
