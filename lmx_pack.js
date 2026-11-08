@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c9', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c10', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3338,17 +3338,18 @@
         for (k in j) if (Array.isArray(j[k])) return j[k];
         return null;
     }
-    // Де шукати: спершу парсер із налаштувань Lampa (він точно доступний на цьому пристрої), далі kinohub.uk (його ж використовує marks.js) і jac.red.
+    // Де шукати: спершу kinohub.uk (той самий сервер, що в marks.js, де мітки працюють), далі парсер із налаштувань Lampa і jac.red.
     // У кожного — два діалекти: v1 (/api/v1.0/torrents) і Jackett-сумісний v2 (/api/v2.0/indexers/all/results, як у самій Lampa).
     // Комбінація, що спрацювала, запам'ятовується; та, що не відповіла, 5 хвилин не чіпається
     var uaqMode = '', uaqBadCombo = {};
     function uaqCombos() {
         var hosts = [], h, i, out = [], cfg = '';
         try { cfg = String(Lampa.Storage.get('jackett_url', '') || '').replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').replace('jacred.xyz', 'jac.red'); } catch (e) {}
+        hosts.push('https://kinohub.uk');   // перший — той самий сервер, що працює в marks.js
         if (cfg) hosts.push(/^https?:\/\//i.test(cfg) ? cfg : 'https://' + cfg);
-        hosts.push('https://kinohub.uk', 'https://jac.red');
+        hosts.push('https://jac.red');
         for (i = 0; i < hosts.length; i++) if (hosts.indexOf(hosts[i]) === i) { out.push(hosts[i] + '|v1'); out.push(hosts[i] + '|v2'); }
-        try { if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode2', '') || ''); } catch (e) {}
+        try { if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode3', '') || ''); } catch (e) {}
         if (uaqMode && out.indexOf(uaqMode) > 0) { out.splice(out.indexOf(uaqMode), 1); out.unshift(uaqMode); }
         return out;
     }
@@ -3385,7 +3386,7 @@
                 if (bad) { uaqBadCombo[c] = Date.now(); return next(tag + ': ' + bad); }
                 delete uaqBadCombo[c];
                 uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + tag;
-                if (uaqMode !== c) { uaqMode = c; try { Lampa.Storage.set('lmx_uaq_mode2', c); } catch (e) {} }
+                if (uaqMode !== c) { uaqMode = c; try { Lampa.Storage.set('lmx_uaq_mode3', c); } catch (e) {} }
                 cb(j, '', tag);
             }
             try {
@@ -5831,7 +5832,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.437';
+    var VERSION = '10.438';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
