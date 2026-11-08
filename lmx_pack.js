@@ -2266,7 +2266,7 @@
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end}' +
             '.lmx-uaq{display:inline-flex;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:700;line-height:1;padding:.28em .6em .28em .34em;border-radius:99em;color:#fff;white-space:nowrap;background:rgba(30,32,60,.62);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}' +
             '.lmx-uaq--nf{padding:.28em .6em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-right:.4em;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}.lmx-uaq--nf i{display:none}' +
-            '.lmx-mark+.lmx-uaq{margin-top:.35em}' +
+            '.lmx-tr>*{flex:none}.lmx-mark+.lmx-uaq{margin-top:.5em}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c8', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c9', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3328,7 +3328,6 @@
         return r.width > 0 && r.right > -W * 0.8 && r.left < W * 2.2 && r.bottom > -H * 0.8 && r.top < H * 2;
     }
     var uaqDbg = { ok: 0, fail: 0, last: '' }, uaqDown = { n: 0, until: 0 };
-    function uaqBases() { return ['https://jac.red']; }
     // один запит до jac.red; cb(json | null, опис_збою)
     // масив роздач з відповіді (JacRed: масив; Jackett-стиль: Results; запасні назви полів)
     function uaqItems(j) {
@@ -3339,27 +3338,40 @@
         for (k in j) if (Array.isArray(j[k])) return j[k];
         return null;
     }
-    // Два діалекти JacRed: v1 (/api/v1.0/torrents — як у marks.js) і Jackett-сумісний v2 (/api/v2.0/indexers/all/results — його ж використовує сама Lampa).
-    // Якщо один не відповідає, пробуємо інший; той, що спрацював, запам'ятовуємо
-    var uaqMode = '';
+    // Де шукати: спершу парсер із налаштувань Lampa (він точно доступний на цьому пристрої), далі kinohub.uk (його ж використовує marks.js) і jac.red.
+    // У кожного — два діалекти: v1 (/api/v1.0/torrents) і Jackett-сумісний v2 (/api/v2.0/indexers/all/results, як у самій Lampa).
+    // Комбінація, що спрацювала, запам'ятовується; та, що не відповіла, 5 хвилин не чіпається
+    var uaqMode = '', uaqBadCombo = {};
+    function uaqCombos() {
+        var hosts = [], h, i, out = [], cfg = '';
+        try { cfg = String(Lampa.Storage.get('jackett_url', '') || '').replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').replace('jacred.xyz', 'jac.red'); } catch (e) {}
+        if (cfg) hosts.push(/^https?:\/\//i.test(cfg) ? cfg : 'https://' + cfg);
+        hosts.push('https://kinohub.uk', 'https://jac.red');
+        for (i = 0; i < hosts.length; i++) if (hosts.indexOf(hosts[i]) === i) { out.push(hosts[i] + '|v1'); out.push(hosts[i] + '|v2'); }
+        try { if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode2', '') || ''); } catch (e) {}
+        if (uaqMode && out.indexOf(uaqMode) > 0) { out.splice(out.indexOf(uaqMode), 1); out.unshift(uaqMode); }
+        return out;
+    }
     function uaqGet(q, yr, cb) {
-        var base = uaqBases()[0], key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), order;
-        try { key = String(Lampa.Storage.get('jackett_key', '') || ''); if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode', '') || ''); } catch (e) {}
-        order = uaqMode === 'v2' ? ['v2', 'v1'] : ['v1', 'v2'];
+        var key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), now = Date.now(), all = uaqCombos(), order = [], i;
+        try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
+        for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000)) order.push(all[i]);
         var vi = 0, fails = [];
-        function urlFor(v) {
-            if (v === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
+        function urlFor(c) {
+            var p = c.split('|'), base = p[0];
+            if (p[1] === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
             return base + '/api/v1.0/torrents?search=' + encodeURIComponent(qq) + (yr ? '&relased=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : '');
         }
         function next(why) {
             if (why) fails.push(why);
             if (vi >= order.length) {
-                var w = fails.join('; ');
+                var w = fails.join('; ') || 'усі адреси недоступні';
                 uaqDbg.fail++; uaqDbg.last = w;
+                if (!uaqDbg.warned && uaqDbg.fail >= 6 && !uaqDbg.ok) { uaqDbg.warned = 1; try { if (Lampa.Noty) Lampa.Noty.show('Мітки якості: немає зв’язку з JacRed (' + w.slice(0, 160) + ')', { time: 12000 }); } catch (e) {} }
                 if (++uaqDown.n >= 4) { uaqDown.n = 0; uaqDown.until = Date.now() + 120000; }
                 return cb(null, w);
             }
-            var v = order[vi++], url = urlFor(v), done = false;
+            var c = order[vi++], url = urlFor(c), done = false, tag = c.replace(/^https?:\/\//, '');
             function fin(j, bad) {
                 if (done) return; done = true;
                 if (!bad && typeof j === 'string' && !/\S/.test(j)) j = [];
@@ -3370,10 +3382,11 @@
                     else if (j === null || j === undefined || j === '' || (typeof j === 'object' && !Object.keys(j).length)) j = [];   // порожня відповідь = нічого не знайдено, не збій
                     else bad = 'незнайомий формат';
                 }
-                if (bad) return next(v + ': ' + bad);
-                uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + v;
-                if (uaqMode !== v) { uaqMode = v; try { Lampa.Storage.set('lmx_uaq_mode', v); } catch (e) {} }
-                cb(j, '', v);
+                if (bad) { uaqBadCombo[c] = Date.now(); return next(tag + ': ' + bad); }
+                delete uaqBadCombo[c];
+                uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + tag;
+                if (uaqMode !== c) { uaqMode = c; try { Lampa.Storage.set('lmx_uaq_mode2', c); } catch (e) {} }
+                cb(j, '', tag);
             }
             try {
                 if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function (e) { fin(null, 'немає відповіді' + (e && e.status ? ' ' + e.status : '')); }); }
@@ -3522,7 +3535,7 @@
                 if (!j) lines.push(t[0] + ': НЕМАЄ ВІДПОВІДІ (' + why + ')');
                 else {
                     var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: !uaqLong(t[0]) }), f = arr[0] || {};
-                    lines.push(t[0] + ' [' + uaqMode + ']: роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
+                    lines.push(t[0] + ' [' + String(uaqMode).replace(/^https?:\/\//, '') + ']: роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
                 }
                 one();
             });
@@ -5818,7 +5831,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.436';
+    var VERSION = '10.437';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
