@@ -2731,7 +2731,9 @@
             '@media (min-width:761px){' + T + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
             '@media (min-width:761px){' + T + '.card--lmxhero[data-lmxi="0"]{width:calc(100vw - 6em) !important;margin-left:0 !important;margin-right:1em !important}}' +
             // останній слайд: запас справа, щоб стрічка доїхала до кінця й зліва не просвічував попередній слайд
-            '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero:last-child{margin-right:7em !important}}' +
+            // останній слайд: прокрутка Lampa не рахує правий відступ картки, тож у кінець ставимо справжній порожній елемент (.lmx-endpad), а слайди лівіше поточного ховаємо (після завершення перемикання)
+            '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .lmx-endpad{flex:none;width:8em;height:1px}' +
+            'html body.lmx-prem .items-line.lmx-hero-line:not(.lmx-mini) .card--lmxhero.lmx-before:not(#lmx-x){visibility:hidden !important;transition:visibility 0s linear 1.3s !important}}' +
             // один слайд на екрані: смужку попереднього слайда зліва (~2,2em) обрізаємо; справа сусіда й так не видно
             '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .scroll{clip-path:inset(0 0 0 2.2em)}}' +
             T + '.lmx-hero-line{position:relative}' +
@@ -3680,9 +3682,13 @@
             if (line.__lmxWin !== ci + ':' + nn) {
                 line.__lmxWin = ci + ':' + nn;
                 var hs = line.querySelectorAll('.card--lmxhero');
+                var hb = hs.length && hs[0].parentElement;
+                if (hb && !hb.querySelector(':scope > .lmx-endpad')) { var ep = document.createElement('div'); ep.className = 'lmx-endpad'; hb.appendChild(ep); }
                 for (var hi = 0; hi < hs.length; hi++) {
                     var far = Math.abs((parseInt(hs[hi].getAttribute('data-lmxi'), 10) || 0) - ci) > 1;
                     if (hs[hi].classList.contains('lmx-far') !== far) hs[hi].classList.toggle('lmx-far', far);
+                    var bf = (parseInt(hs[hi].getAttribute('data-lmxi'), 10) || 0) < ci;
+                    if (hs[hi].classList.contains('lmx-before') !== bf) hs[hi].classList.toggle('lmx-before', bf);
                 }
             }
         }
@@ -5401,7 +5407,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.401';
+    var VERSION = '10.402';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
