@@ -553,8 +553,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
-        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з jac.red; результат пам\'ятається 3 дні', rebuild);
-        H.button('lmx_uaq_test', 'Перевірити мітки якості й UA', 'Нічого не скидає: показує, чи відповідає JacRed, і чому немає міток у частини карток', uaqSelfTest);
+        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з торрент-індексів (JacRed і твій парсер); результат пам\'ятається 3 дні', rebuild);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -3604,36 +3603,6 @@
         if (!w) return r;
         return { u: 1, q: Math.max(r && r.q || 0, w.q), t: r && r.t || 0 };
     }
-    // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
-    function uaqSelfTest() {
-        uaqFail = {}; uaqBadCombo = {}; uaqDown.until = 0; uaqDown.n = 0;
-        var en = ''; try { en = Lampa.Controller.enabled().name; } catch (e) {}
-        if (Lampa.Noty) Lampa.Noty.show('Перевіряю мітки…');
-        var tests = [['Dune: Part Two', 2024, 'movie']], lines = ['Без мітки (' + uaqNoMark.length + ', формат «запит рік: роздач/збігів»):'].concat(uaqNoMark.slice(-8).reverse()), i = 0;
-        function show() {
-            function back() { try { Lampa.Controller.toggle(en); } catch (e) {} }
-            try { Lampa.Select.show({ title: 'Мітки: перевірка ' + VERSION, items: lines.map(function (l) { return { title: l }; }), onBack: back, onSelect: back }); }
-            catch (e) { if (Lampa.Noty) Lampa.Noty.show(lines.join(' | '), { time: 12000 }); }
-        }
-        function sum(j, t, y) {
-            var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: t[2] === 'tv' || !uaqLong(t[0]) });
-            return arr.length + ' роздач/' + r.m + ' збігів, UA ' + (r.u ? 'так' : 'ні') + ', ' + (UAQ_LBL[r.q] || '—');
-        }
-        function one() {
-            var t = tests[i++];
-            if (!t) return show();
-            var short = t[0].slice(0, 22);
-            uaqGet(t[0], t[1], function (j1, why, host) {
-                if (!j1) { lines.push(short + ': НЕМАЄ ВІДПОВІДІ (' + why + ')'); return one(); }
-                var f = (uaqItems(j1) || [])[0] || {};
-                uaqGet(t[0], 0, function (j2) {
-                    lines.push(short + ' @' + host + ' | з роком: ' + sum(j1, t) + ' | без року: ' + (j2 ? sum(j2, t) : 'збій') + (f.originalname || f.title || f.Title ? ' | напр.: ' + String(f.originalname || f.title || f.Title).slice(0, 30) + ' [' + (f.relased || '?') + ']' : ''));
-                    one();
-                });
-            });
-        }
-        one();
-    }
     function uaqTick() {
         if (document.hidden || (!uaqQ.length && !uaqDeep.length && !uaqUaf.length) || Date.now() < uaqDown.until) return;
         var keep = [], i, j, nearLeft = 0;
@@ -5924,7 +5893,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.453';
+    var VERSION = '10.454';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
