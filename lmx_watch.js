@@ -13,10 +13,12 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.38';
+    var VERSION = '3.39';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
+    // заглушка «Завантаження» в фільтрі джерела (напр. films.aartzz): справжніх джерел ще немає, це не джерело
+    function isStub(t) { return /^\s*(завантаження|загрузка|loading)\s*\.{0,3}\s*$/i.test(String(t || '')); }
     function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
     function img(path, size) {
         try { if (Lampa.TMDB && Lampa.TMDB.image) return Lampa.TMDB.image('t/p/' + size + path); } catch (e) {}
@@ -2988,10 +2990,16 @@
                 for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
                 var curKey = curIt ? srcName(curIt.title) : '';
                 try { ['voice', 'season'].forEach(function (gk) { var pq = act.querySelector('.lmx-onl-g--' + gk + ' .lmx-onl-pill__t'), gi = S[gk] && selItem(S[gk]); if (pq && gi && gi.title && pq.textContent !== (gk === 'season' ? seTitle(gi.title) : String(gi.title).trim())) pq.textContent = gk === 'season' ? seTitle(gi.title) : String(gi.title).trim(); }); } catch (e) {}   // підписи кнопок не повинні відставати від реального вибору, поки серій ще нема
-                try { var pl = act.querySelector('.lmx-onl-g--src .lmx-onl-pill__t'); if (pl && curIt && curIt.title && pl.textContent !== String(curIt.title).trim()) pl.textContent = String(curIt.title).trim(); } catch (e) {}
+                try { var pl = act.querySelector('.lmx-onl-g--src .lmx-onl-pill__t'); var plT = curIt && curIt.title ? (isStub(curIt.title) ? 'Пошук джерел…' : String(curIt.title).trim()) : ''; if (pl && plT && pl.textContent !== plT) pl.textContent = plT; } catch (e) {}
                 if (curKey !== lastKey) { lastKey = curKey; since = Date.now(); cd = 0; cand = null; act.__lmxNg = 0; }
                 var waited = Date.now() - since, txt = body.textContent || '';
                 var manual = Date.now() - (window.__lmxManual || 0) < 120000;
+                // джерел ще немає (є лише заглушка «Завантаження»): терпляче чекаємо перших провайдерів, не повторюємо запит і не позначаємо «порожнім»
+                if (curIt && isStub(curIt.title) && waited < 60000) {
+                    safe(function () { if (!freshEps(body).length) ensureProg(act); });
+                    heroStatus(act, 'Шукаємо джерела… ' + Math.round(waited / 1000) + ' с', false, 0.3);
+                    return;
+                }
                 var empty = (/не дав результат|не дал результат|no results|нічого не знайд|ничего не найд|помилка|ошибка|нет \d+ сезон|нет сезон|нет серий|нет результат|не найден|попробуйте другой источник|спробуйте інше джерело|немає \d+ сезон|только со своим аккаунт|привяжите аккаунт|скройте источник|потрібен (?:свій )?акаунт/i.test(txt) && waited > 700) || waited > (profileOf(window.__lmxProbe).egWait || (manual ? 12000 : 6000));   // BWA відповідає повільно: чекаємо довше, щоб не перемикати джерело, яке ще вантажиться
                 // Джерело порожнє лише для поточної озвучки, а має інші (напр. Mikai без «Дублированный», але з FRONDA): спершу пробуємо їх, і лише потім
                 // оголошуємо джерело порожнім. Повільна відповідь ≠ порожня: зміна озвучки перезапускає запит, тож за 4,5 с вона обривала довгий пошук (UAKino, JackTor) і не давала йому завершитись — тепер чекаємо 20 с
@@ -3040,7 +3048,7 @@
                     if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
-                    var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
+                    var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
                     if (!c.length) {
                         // раніше тут усі панелі знімались, і лишався порожній екран з крихітним статусом у шапці. Тепер — видима панель із кнопками «Усі джерела» / «Повторити»
