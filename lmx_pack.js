@@ -3095,8 +3095,33 @@
         }
     }
 
+    // Старі ТВ (Chromium до 84) не підтримують gap у flex: відступи між «Фільм 2026 Фантастика», зірочкою й рейтингом зникають
+    function flexGapOk() {
+        try {
+            var d = document.createElement('div');
+            d.style.cssText = 'display:flex;flex-direction:column;row-gap:1px;position:absolute;left:-99px;top:0;visibility:hidden';
+            d.innerHTML = '<div style="height:1px"></div><div style="height:1px"></div>';
+            document.body.appendChild(d);
+            var ok = d.scrollHeight === 3;
+            document.body.removeChild(d);
+            return ok;
+        } catch (e) { return true; }
+    }
+    function nogapCss() {
+        var B = 'body.lmx-nogap ';
+        return B + '.lmx-hero__meta>*+*{margin-left:.8em}' +
+            B + '.card--lmxhero .lmx-hero__meta>*+*{margin-left:1em}' +
+            B + '.lmx-hist__m>*+*{margin-left:1em}' +
+            B + '.lmx-hero__acts>*+*{margin-right:.9em}' +
+            B + '.lmx-hero__about>*+*{margin-left:.6em}' +
+            B + '.lmx-hero__v>i,' + B + '.lmx-cin__v>i{margin-right:.3em}' +
+            B + '.lmx-why>*+*{margin-left:.4em}' +
+            B + '.lmx-dots>*+*,' + B + '.lmx-pdots>*+*{margin-left:.6em}' +
+            B + '.lmx-info>*{margin:0 .5em .5em 0}';
+    }
     function applyStyle() {
         safe(applyFullClass);
+        safe(function () { if (document.body) document.body.classList.toggle('lmx-nogap', !flexGapOk()); });
         safe(applyThemeClass);
         var s = document.getElementById('lmx-css');
         if (!s) {
@@ -3104,7 +3129,7 @@
             s.id = 'lmx-css';
             document.head.appendChild(s);
         }
-        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + timetableCss() + journalCss() + menuFitCss() + textCss();
+        s.textContent = buildCss() + themeCss() + premCss() + appleCss() + detailCss() + detailCss('body.lmx-ph ') + phoneCss() + miniCss() + heroPhoneCss() + nogapCss() + timetableCss() + journalCss() + menuFitCss() + textCss();
     }
 
     // ===== Пошук даних картки (кілька способів, бо внутрішності Lampa різняться між версіями) =====
@@ -3256,7 +3281,9 @@
 
     var io = ('IntersectionObserver' in window) ? new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
-            if (!e.isIntersecting) return;
+            // старі Chromium (ТВ Samsung ~2018) не мають isIntersecting — тоді дивимось на intersectionRatio/розмір перетину
+            var vis = typeof e.isIntersecting === 'boolean' ? e.isIntersecting : ((e.intersectionRatio || 0) > 0 || !!(e.intersectionRect && (e.intersectionRect.width || e.intersectionRect.height)));
+            if (!vis) return;
             io.unobserve(e.target);
             if (e.target.__lmx) queue.push(e.target.__lmx);
         });
@@ -5357,7 +5384,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.391';
+    var VERSION = '10.392';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
