@@ -553,14 +553,14 @@
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
-        H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені кнопкою «Переглянуто», не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
+        H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
 
         // ---- Сторінка фільму ----
         H.title('lmx_t_page', 'Сторінка фільму');
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
-        H.trigger('lmx_pagebtns', true, 'Кнопки «Пізніше» і «Переглянуто»', 'На сторінці фільму замість «Закладок»: дві кнопки-позначки. «Пізніше» додає в ряд «Переглянути пізніше» на головній, «Переглянуто» ховає фільм з рекомендацій і цього ряду', null);
+        H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
@@ -3893,8 +3893,7 @@
     function marksCss() {
         if (document.getElementById('lmx-marks-css')) return;
         var st = document.createElement('style'); st.id = 'lmx-marks-css';
-        st.textContent = 'html body .full-start__buttons.lmx-marks-on .button--book,html body .full-start-new__buttons.lmx-marks-on .button--book{display:none !important}' +
-            'html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on span,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on svg{color:#ffd54f !important}' +
+        st.textContent = 'html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on span,html body .lmx-mkbtn.lmx-mk-later.lmx-mk-on svg{color:#ffd54f !important}' +
             'html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on,html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on span,html body .lmx-mkbtn.lmx-mk-seen.lmx-mk-on svg{color:#6fd48a !important}' +
             'html body .lmx-mkbtn.lmx-mk-on svg circle{fill:currentColor;fill-opacity:.18}';
         (document.head || document.documentElement).appendChild(st);
@@ -3917,8 +3916,7 @@
             return el;
         }
         var later = mk('button--lmxlater lmx-mk-later', MK_LATER, 'Дивитись пізніше', 'У списку «Пізніше»', 'wath');
-        var seen = mk('button--lmxseen lmx-mk-seen', MK_SEEN, 'Переглянуто', 'Вже переглянуто', 'viewed');
-        function paintAll() { later.paint(); seen.paint(); }
+        function paintAll() { later.paint(); }
         later.on('hover:enter', function () {
             safe(function () {
                 var was = !!st().wath;
@@ -3928,19 +3926,10 @@
                 if (Lampa.Noty) Lampa.Noty.show(was ? 'Прибрано з «Переглянути пізніше»' : 'Додано до «Переглянути пізніше»');
             });
         });
-        seen.on('hover:enter', function () {
-            safe(function () {
-                var was = !!st().viewed;
-                Lampa.Favorite.toggle('viewed', m);
-                if (!was && st().wath) Lampa.Favorite.toggle('wath', m);   // переглянуте з ряду «пізніше» зникає
-                paintAll();
-                if (Lampa.Noty) Lampa.Noty.show(was ? 'Знято позначку «Переглянуто»' : 'Позначено як переглянуте');
-            });
-        });
         paintAll();
         var after = cont.find('.lmx-likebtn').first();
         if (!after.length) after = cont.find('.button--book').first();
-        if (after.length) { after.after(seen); after.after(later); } else { cont.append(later); cont.append(seen); }
+        if (after.length) after.after(later); else cont.append(later);
         if (Lampa.Listener && !marksButtons.hooked) { marksButtons.hooked = true; Lampa.Listener.follow('state:changed', function (e) { if (e && e.target === 'favorite') { var c = marksButtons.cur; if (c) c(); } }); }
         marksButtons.cur = function () { if (document.body.contains(later[0])) paintAll(); };
     }
@@ -5429,7 +5418,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.411';
+    var VERSION = '10.412';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
