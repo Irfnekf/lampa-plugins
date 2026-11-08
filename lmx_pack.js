@@ -3354,14 +3354,31 @@
             Lampa.Api.sources.tmdb.get(kind + '/' + job.id + '?language=' + (lang || 'ru'), {}, function (j) { cb(j && (j.title || j.name) ? String(j.title || j.name) : ''); }, function () { cb(''); });
         } catch (e) { cb(''); }
     }
+    var uaqDeep = [], uaqPend = {};
+    function uaqFinish(job, r) {
+        uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
+        delete uaqPend[job.key];
+        var m = uaqMerge(r, job.id), i;
+        for (i = 0; i < job.views.length; i++) { var v = job.views[i]; safe(function () { if (v && v.isConnected !== false) uaqAdd(v, m); }); }
+    }
+    function uaqGiveUp(job) { delete uaqPend[job.key]; uaqFail[job.key] = Date.now(); }
+    // швидкий прохід: один запит (назва + рік). Якщо збігів немає — картка йде в «глибоку» чергу (інші назви, без року)
     function uaqFetch(job) {
         uaqBusy++;
-        function finish(r) {
+        job.wants = [job.title].concat(job.alt ? [job.alt] : []);
+        uaqGet(job.title, job.yr, function (j) {
             uaqBusy--;
-            uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
-            safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, uaqMerge(r, job.id)); });
-        }
-        var wants = [job.title].concat(job.alt ? [job.alt] : []), plan = [[job.title, job.yr], [job.title, 0]], last = null, langs = ['ru', 'en'];
+            if (!j) return uaqGiveUp(job);
+            var r = uaqParseMany(j, job, job.wants);
+            if (r.m) return uaqFinish(job, r);
+            job.last = r;
+            uaqDeep.push(job);
+        });
+    }
+    // глибокий прохід: назва без року, українська, російська й англійська — по одній, лише коли швидкий прохід не завантажений
+    function uaqDeepRun(job) {
+        uaqBusy++;
+        var plan = [[job.title, 0]], langs = ['ru', 'en'], wants = job.wants;
         if (job.alt) plan.push([job.alt, job.yr]);
         function go() {
             var p = plan.shift();
@@ -3372,13 +3389,12 @@
                         go();
                     }, langs.shift());
                 }
-                return last ? finish(last) : (uaqBusy--, uaqFail[job.key] = Date.now());
+                uaqBusy--; return uaqFinish(job, job.last);
             }
             uaqGet(p[0], p[1], function (j) {
                 if (!j) return go();
                 var r = uaqParseMany(j, job, wants);
-                if (r.m) return finish(r);
-                last = r;
+                if (r.m) { uaqBusy--; return uaqFinish(job, r); }
                 go();
             });
         }
@@ -3417,14 +3433,21 @@
         });
     }
     function uaqTick() {
-        if (document.hidden || !uaqQ.length) return;
-        var keep = [], i, j;
+        if (document.hidden || (!uaqQ.length && !uaqDeep.length)) return;
+        var keep = [], i, j, nearLeft = 0;
         for (i = 0; i < uaqQ.length; i++) {
             j = uaqQ[i];
-            if (!document.documentElement.contains(j.el)) continue;
-            if (uaqBusy < 4 && uaqNear(j.el)) uaqFetch(j); else keep.push(j);
+            if (!document.documentElement.contains(j.el)) { delete uaqPend[j.key]; continue; }
+            if (!uaqNear(j.el)) keep.push(j);
+            else if (uaqBusy < 4) uaqFetch(j);
+            else { keep.push(j); nearLeft++; }
         }
-        uaqQ = keep.length > 400 ? keep.slice(keep.length - 400) : keep;
+        if (keep.length > 400) { for (i = 0; i < keep.length - 400; i++) delete uaqPend[keep[i].key]; keep = keep.slice(keep.length - 400); }
+        uaqQ = keep;
+        while (!nearLeft && uaqDeep.length && uaqBusy < 2) {
+            j = uaqDeep.shift();
+            if (document.documentElement.contains(j.el)) uaqDeepRun(j); else uaqFinish(j, j.last);
+        }
     }
     function uaqWant(view, d, type) {
         if (!d || !d.id || !getBool('lmx_uaq', true)) return;
@@ -3437,9 +3460,11 @@
         if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
         var title = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title);
         if (!title) return;
+        if (uaqPend[key]) { uaqPend[key].views.push(view); return; }
         var el = view.closest ? view.closest('.card') : view.parentNode;
         var alt = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
-        uaqQ.push({ id: d.id, key: key, view: view, el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' });
+        var job = { id: d.id, key: key, views: [view], el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' };
+        uaqPend[key] = job; uaqQ.push(job);
         if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200);
         safe(uaqTick);
     }
@@ -5683,7 +5708,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.429';
+    var VERSION = '10.430';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
