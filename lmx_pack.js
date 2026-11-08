@@ -3373,11 +3373,11 @@
         if (uaqMode && out.indexOf(uaqMode) > 0) { out.splice(out.indexOf(uaqMode), 1); out.unshift(uaqMode); }
         return out;
     }
-    function uaqGet(q, yr, cb) {
+    function uaqGet(q, yr, cb, maxHosts) {
         var key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), now = Date.now(), all = uaqCombos(), order = [], i;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000)) order.push(all[i]);
-        var vi = 0, fails = [], emptyTag = '';
+        var vi = 0, fails = [], emptyTag = '', emptyHosts = 0;
         function urlFor(c) {
             var p = c.split('|'), base = p[0];
             if (p[1] === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
@@ -3409,6 +3409,7 @@
                 uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + tag;
                 if (!j.length) {   // порожньо: той самий сервер у другому діалекті не питаємо, пробуємо інший сервер (напр. свій парсер із Toloka)
                     if (!emptyTag) emptyTag = tag;
+                    if (maxHosts && ++emptyHosts >= maxHosts) vi = order.length;   // у «глибокому» проході не обходимо всі сервери: перші два порожні — досить
                     var hb = c.split('|')[0];
                     while (vi < order.length && order[vi].split('|')[0] === hb) vi++;
                     return next('');
@@ -3554,7 +3555,7 @@
                 uaqStep(job, p[0], p[1], j, r);
                 if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
-            });
+            }, 2);
         }
         go();
     }
@@ -5895,7 +5896,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.448';
+    var VERSION = '10.449';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
