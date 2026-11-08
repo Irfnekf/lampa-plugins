@@ -2264,9 +2264,9 @@
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end}' +
-            '.lmx-uaq{display:inline-flex;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:700;line-height:1;padding:.28em .6em .28em .34em;border-radius:99em;color:#fff;white-space:nowrap;background:rgba(30,32,60,.62);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}' +
-            '.lmx-uaq--nf{padding:.28em .6em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-right:.4em;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}.lmx-uaq--nf i{display:none}' +
-            '.lmx-tr>*{flex:none}.lmx-mark+.lmx-uaq{margin-top:.5em}' +
+            '.lmx-uaq{position:absolute;left:0;top:34%;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:800;line-height:1;padding:.7em .4em;border-radius:0 .7em .7em 0;color:#fff;background:rgba(8,9,18,.85);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}' +
+            '.lmx-uaq b{font-weight:inherit;writing-mode:vertical-rl;letter-spacing:.08em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-bottom:.55em;flex:none;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}' +
+            '.lmx-tr>*{flex:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -2722,9 +2722,9 @@
             T + '.lmx-cin__g{opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:.62em}' +
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
-            T + '.lmx-uaq{border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:.28em .6em .28em .34em;background:rgba(5,6,15,.78);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
-            T + '.lmx-uaq--nf{padding:.28em .6em}' +
-            T + '.lmx-uaq i{border-radius:.12em;width:1.3em;height:.9em}' +
+            T + '.lmx-uaq{border-radius:0 .3em .3em 0;text-transform:uppercase;letter-spacing:.05em;background:rgba(5,6,15,.84);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
+            T + '.lmx-uaq i{border-radius:.12em;width:.9em;height:1.3em;margin-bottom:.5em}' +
+            T + '.lmx-uaq b{letter-spacing:.1em}' +
             T + '.lmx-box .lmx-pill{background:rgba(5,6,15,.78) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
             T + '.lmx-pill.lmx-m-next{background:' + G + ' !important;color:#fff !important}' +
             T + '.lmx-pill.lmx-m-new{background:#fff !important;color:#05060f !important}' +
@@ -2989,8 +2989,8 @@
             A + '.lmx-cin__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
             A + '.lmx-cin__y{opacity:.7;font-weight:500}' +
             // мітки — капсули
-            A + '.lmx-uaq{font-weight:600;letter-spacing:.02em;padding:.34em .8em .34em .4em}' +
-            A + '.lmx-uaq--nf{padding:.34em .9em}' +
+            A + '.lmx-uaq{background:rgba(30,32,60,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);border-radius:0 .9em .9em 0;font-weight:700}' +
+            A + '.lmx-uaq b{letter-spacing:.06em}' +
             A + '.lmx-pill{border:0 !important;border-radius:99em;font-weight:600;letter-spacing:.02em;padding:.34em .9em}' +
             A + '.lmx-box .lmx-pill{background:rgba(30,32,60,.62) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#fff !important}' +
             A + '.lmx-pill.lmx-m-next{background:#0a84ff !important;color:#fff !important}' +
@@ -3316,12 +3316,10 @@
         if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
         var old = view.querySelector('.lmx-uaq');
         if (old) { if (!force) return; if (old.parentNode) old.parentNode.removeChild(old); }
-        var tr = view.querySelector('.lmx-tr');
-        if (!tr) { tr = document.createElement('div'); tr.className = 'lmx-tr'; view.appendChild(tr); }
-        var sp = document.createElement('span');
-        sp.className = 'lmx-uaq' + (r.u ? '' : ' lmx-uaq--nf');
-        sp.innerHTML = (r.u ? '<i></i>' : '') + (r.q >= 2 ? UAQ_LBL[r.q] : '');
-        tr.appendChild(sp);
+        var sp = document.createElement('div');
+        sp.className = 'lmx-uaq';
+        sp.innerHTML = (r.u ? '<i></i>' : '') + '<b>' + (r.q >= 2 ? UAQ_LBL[r.q] : '') + '</b>';
+        view.appendChild(sp);
     }
     function uaqNear(el) {
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
@@ -5868,7 +5866,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.441';
+    var VERSION = '10.442';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
