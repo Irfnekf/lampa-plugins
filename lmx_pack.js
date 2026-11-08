@@ -649,6 +649,7 @@
                             (year ? '<span>' + year + '</span>' : '') +
                             (prog && prog.left > 0 ? '<span class="lmx-hist__left">' + (prog.left <= 10 ? 'переглянуто' : 'лишилось ' + fmtDur(prog.left)) + '</span>' : '') + '</div></div>' +
                             (prog && prog.pct > 0 ? '<div class="lmx-hist__bar"><i style="width:' + prog.pct + '%"></i></div>' : ''));
+                        safe(function () { if (m && m.id) uaqWant(view[0], m, (m.first_air_date || m.number_of_seasons || m.original_name || (m.name && !m.title) || m.media_type === 'tv' || m.type === 'tv') ? 'tv' : 'movie'); });
                         // мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро», як на звичайних картках (серіали — після запиту до TMDB, коли картка видна)
                         safe(function () {
                             var el = h[0];
@@ -3329,8 +3330,10 @@
         if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
         var q = r.q >= 2 ? UAQ_LBL[r.q] : '', old, cin;
         // афіша (карусель): компактний підпис «UA | 1080p» в рядку з рейтингом і роком — однаково у всіх темах
-        if (view.closest && view.closest('.card--lmxhero')) {
-            var meta = view.querySelector('.lmx-hero__kick') || view.querySelector('.lmx-hero__meta');   // Кіно/HBO: у рядку-«титрі» над назвою, решта тем — у рядку з рейтингом
+        var hostK = view.closest ? (view.closest('.card--lmxhero') ? 'h' : (view.closest('.card--lmxhist') ? 'l' : '')) : '';
+        if (hostK) {
+            // афіша: Кіно/HBO — у рядку-«титрі» над назвою, решта тем — у рядку з рейтингом; ряди «Історія»/«Пізніше» — у рядку з роком
+            var meta = hostK === 'l' ? view.querySelector('.lmx-hist__m') : (view.querySelector('.lmx-hero__kick') || view.querySelector('.lmx-hero__meta'));
             old = view.querySelector('.lmx-hero__uaq');
             if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
             if (!old && meta) {
@@ -3395,7 +3398,8 @@
     function uaqGet(q, yr, cb, maxHosts) {
         var key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), now = Date.now(), all = uaqCombos(), order = [], i;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
-        for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000)) order.push(all[i]);
+        // «глибокий» прохід (maxHosts) публічний парсер не навантажує: він шукає вживу по всіх трекерах, тож лишаємо його для першого, головного запиту
+        for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000) && !(maxHosts && all[i].split('|')[0] === UAQ_PUB)) order.push(all[i]);
         var vi = 0, fails = [], emptyTag = '', emptyHosts = 0;
         function urlFor(c) {
             var p = c.split('|'), base = p[0], kk = base === UAQ_PUB ? UAQ_PUB_KEY : key;
@@ -3583,7 +3587,7 @@
                 uaqStep(job, p[0], p[1], j, r);
                 if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
-            }, 2);
+            }, 1);
         }
         go();
     }
@@ -5894,7 +5898,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.455';
+    var VERSION = '10.457';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
