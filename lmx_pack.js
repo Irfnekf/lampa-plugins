@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c4', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c5', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3277,9 +3277,13 @@
         if (n >= 720 || /(^|[^a-z0-9])(720p?|hd)([^a-z0-9]|$)/.test(t)) return 2;
         return n > 0 ? 1 : 0;
     }
+    // укр. озвучка — лише окремі позначки («UKR», «UA», «Дубляж Ukr», «українська озвучка») і поля озвучок/мов; сама назва фільму («Україна», «Укрощение…») не рахується
+    var UAQ_RX1 = /(^|[^a-z0-9])(ukr|ua|ukrainian)([^a-z0-9]|$)|ukr[ _-]?(dub|sub|aud|voice)/i;
+    var UAQ_RX2 = /(^|[^а-яіїєґa-z])укр(\.|[^а-яіїєґ]|$)|(українськ|украинск)\S*\s*(озвуч|дубл|багатоголос|закадров)|(озвуч|дубл|багатоголос|закадров)\S*[^,;]{0,20}(українськ|украинск)/i;
     function uaqUa(it) {
-        var v = it.voices, l = it.languages, t = String(it.title || it.Title || '') + ' ' + (v && v.join ? v.join(' ') : String(v || '')) + ' ' + (l && l.join ? l.join(' ') : String(l || ''));
-        return /(^|[^a-z])(ukr|ukrainian)|укр|(^|[^a-z0-9])ua([^a-z0-9]|$)/i.test(t);
+        var v = it.voices, l = it.languages, vs = (v && v.join ? v.join(' | ') : String(v || '')), ls = (l && l.join ? l.join(' ') : String(l || '')), t = String(it.title || it.Title || '');
+        if (UAQ_RX1.test(t) || UAQ_RX2.test(t) || UAQ_RX1.test(vs) || UAQ_RX2.test(vs)) return true;
+        return /(^|[^a-z])(uk|ukr|ua)([^a-z]|$)/i.test(ls);
     }
     function uaqParse(j, job) {
         var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), wants = [], qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok, m = 0, w;
@@ -3290,13 +3294,14 @@
             if (!it || typeof it !== 'object') continue;
             nm = uaqNorm(it.originalname || it.originalName || ''); var nn = uaqNorm(it.name || '');
             ok = false;
+            y = Number(it.relased || it.released) || 0;
+            var soft = job.type === 'movie' && y && Math.abs(y - job.yr) <= 1;
             for (w = 0; w < wants.length && !ok; w++) {
                 if (!wants[w]) continue;
-                if (nm || nn) ok = nm === wants[w] || nn === wants[w] || (wants[w].length >= 7 && ((nm.length >= 7 && (nm.indexOf(wants[w]) >= 0 || wants[w].indexOf(nm) >= 0)) || (nn.length >= 7 && (nn.indexOf(wants[w]) >= 0 || wants[w].indexOf(nn) >= 0))));
+                if (nm || nn) ok = nm === wants[w] || nn === wants[w] || (soft && wants[w].length >= 7 && ((nm.length >= 7 && (nm.indexOf(wants[w]) >= 0 || wants[w].indexOf(nm) >= 0)) || (nn.length >= 7 && (nn.indexOf(wants[w]) >= 0 || wants[w].indexOf(nn) >= 0))));
                 else { var tt = uaqNorm(it.title || it.Title); ok = tt && tt.indexOf(wants[w]) >= 0; }
             }
             if (!ok) continue;
-            y = Number(it.relased || it.released) || 0;
             if (job.type === 'movie' && y && Math.abs(y - job.yr) > 1) continue;
             m++;
             var q = uaqQual(it), u = uaqUa(it);
@@ -3318,21 +3323,21 @@
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
         return r.width > 0 && r.right > -W * 0.8 && r.left < W * 2.2 && r.bottom > -H * 0.8 && r.top < H * 2;
     }
-    var uaqDbg = { ok: 0, fail: 0, last: '' };
+    var uaqDbg = { ok: 0, fail: 0, last: '' }, uaqDown = { n: 0, until: 0 };
     function uaqBases() { return ['https://jac.red']; }
     // один запит до jac.red; cb(json | null, опис_збою)
     function uaqGet(q, yr, cb) {
         var bases = uaqBases(), key = '', bi = 0;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         function next(why) {
-            if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; return cb(null, why); }
+            if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; if (++uaqDown.n >= 4) { uaqDown.n = 0; uaqDown.until = Date.now() + 120000; } return cb(null, why); }
             var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + (yr ? '&year=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
             function fin(j, bad) {
                 if (done) return; done = true;
                 if (!bad && typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { bad = 'не JSON'; } }
                 if (!bad && !(Array.isArray(j) || (j && (j.Results || j.results)))) bad = 'незнайомий формат';
                 if (bad) return next(base.replace(/^https?:\/\//, '') + ': ' + bad);
-                uaqDbg.ok++; uaqDbg.last = 'ok ' + base.replace(/^https?:\/\//, '');
+                uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + base.replace(/^https?:\/\//, '');
                 cb(j, '', base);
             }
             try {
@@ -3433,7 +3438,7 @@
         });
     }
     function uaqTick() {
-        if (document.hidden || (!uaqQ.length && !uaqDeep.length)) return;
+        if (document.hidden || (!uaqQ.length && !uaqDeep.length) || Date.now() < uaqDown.until) return;
         var keep = [], i, j, nearLeft = 0;
         for (i = 0; i < uaqQ.length; i++) {
             j = uaqQ[i];
@@ -5708,7 +5713,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.430';
+    var VERSION = '10.431';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
