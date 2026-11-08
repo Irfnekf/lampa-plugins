@@ -3533,6 +3533,14 @@
         job.wants = [job.title].concat(job.alt ? [job.alt] : []);
         // серіали: рік у JacRed — це рік сезону, а не початку серіалу, тому спершу шукаємо без року (збіг лише за точною назвою)
         var tv = job.type === 'tv';
+        // назва лише ієрогліфами (аніме, дорами): за нею в роздачах не шукають — одразу йдемо до назв українською / російською / англійською
+        if (!uaqNorm(job.title)) {
+            delete uaqAct[job.key];
+            job.last = { q: 0, u: job.uk ? 1 : 0, t: Date.now(), m: 0 };
+            (job.steps || (job.steps = [])).push('ієрогліфи: пропущено');
+            uaqDeep.push(job);
+            return;
+        }
         uaqGet(job.title, tv ? 0 : job.yr, function (j) {
             delete uaqAct[job.key];
             if (!j) return uaqGiveUp(job);
@@ -3547,8 +3555,9 @@
     function uaqDeepRun(job) {
         uaqAct[job.key] = job.t0 = Date.now();
         var plan = [], trDone = false, wants = job.wants, noYear = job.type === 'tv';
-        if (job.type === 'tv') plan.push([job.title, job.yr]);
-        if (job.alt) plan.push([job.alt, job.yr]);
+        // серіали: рік у JacRed — рік сезону, тому шукаємо без року, лише з точним збігом назви (інакше сервер повертає чужі роздачі)
+        if (job.type === 'tv' && uaqNorm(job.title)) plan.push([job.title, job.yr]);
+        if (job.alt && uaqNorm(job.alt)) plan.push(job.type === 'tv' ? [job.alt, 0, 1] : [job.alt, job.yr]);
         function go() {
             var p = plan.shift();
             if (!p) {
@@ -3556,19 +3565,19 @@
                     trDone = true;
                     return uaqTr(job, function (names) {
                         for (var q = 0; q < names.length; q++) {
-                            if (wants.indexOf(names[q]) >= 0) continue;
+                            if (wants.indexOf(names[q]) >= 0 || !uaqNorm(names[q])) continue;
                             wants.push(names[q]);
                             plan.push(job.type === 'tv' ? [names[q], 0, 1] : [names[q], job.yr]);
                         }
                         go();
                     });
                 }
-                if (!noYear) { noYear = true; plan.push([job.title, 0, 1]); return go(); }
+                if (!noYear) { noYear = true; if (uaqNorm(job.title)) { plan.push([job.title, 0, 1]); return go(); } }
                 delete uaqAct[job.key]; return uaqFinish(job, job.last);
             }
             uaqGet(p[0], p[1], function (j) {
                 if (!j) return go();
-                var r = uaqParseMany(j, job, wants, p[2] || !uaqLong(p[0]));
+                var r = uaqParseMany(j, job, wants, p[2] || job.type === 'tv' || !uaqLong(p[0]));
                 uaqStep(job, p[0], p[1], j, r);
                 if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
@@ -5913,7 +5922,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.450';
+    var VERSION = '10.451';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
