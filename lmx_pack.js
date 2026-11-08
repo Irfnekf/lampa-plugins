@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c6', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c6', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3375,6 +3375,12 @@
         } catch (e) { cb(''); }
     }
     var uaqDeep = [], uaqPend = {};
+    // скільки запитів зараз «в роботі»; запит, що висить понад 30 с, слот не тримає (захист від зависання без відповіді)
+    function uaqBusyN() {
+        var n = 0, k, now = Date.now();
+        for (k in uaqAct) { if (now - uaqAct[k] > 30000) delete uaqAct[k]; else n++; }
+        return n;
+    }
     function uaqFinish(job, r) {
         uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
         delete uaqPend[job.key];
@@ -3384,10 +3390,10 @@
     function uaqGiveUp(job) { delete uaqPend[job.key]; uaqFail[job.key] = Date.now(); }
     // швидкий прохід: один запит (назва + рік). Якщо збігів немає — картка йде в «глибоку» чергу (інші назви, без року)
     function uaqFetch(job) {
-        uaqBusy++;
+        uaqAct[job.key] = job.t0 = Date.now();
         job.wants = [job.title].concat(job.alt ? [job.alt] : []);
         uaqGet(job.title, job.yr, function (j) {
-            uaqBusy--;
+            delete uaqAct[job.key];
             if (!j) return uaqGiveUp(job);
             var r = uaqParseMany(j, job, job.wants);
             if (r.m) return uaqFinish(job, r);
@@ -3397,7 +3403,7 @@
     }
     // глибокий прохід: назва без року, українська, російська й англійська — по одній, лише коли швидкий прохід не завантажений
     function uaqDeepRun(job) {
-        uaqBusy++;
+        uaqAct[job.key] = job.t0 = Date.now();
         var plan = [[job.title, 0]], langs = ['ru', 'en'], wants = job.wants;
         if (job.alt) plan.push([job.alt, job.yr]);
         function go() {
@@ -3409,12 +3415,12 @@
                         go();
                     }, langs.shift());
                 }
-                uaqBusy--; return uaqFinish(job, job.last);
+                delete uaqAct[job.key]; return uaqFinish(job, job.last);
             }
             uaqGet(p[0], p[1], function (j) {
                 if (!j) return go();
                 var r = uaqParseMany(j, job, wants);
-                if (r.m) { uaqBusy--; return uaqFinish(job, r); }
+                if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
             });
         }
@@ -3470,12 +3476,12 @@
             j = uaqQ[i];
             if (!document.documentElement.contains(j.el)) { delete uaqPend[j.key]; continue; }
             if (!uaqNear(j.el)) keep.push(j);
-            else if (uaqBusy < 4) uaqFetch(j);
+            else if (uaqBusyN() < 4) uaqFetch(j);
             else { keep.push(j); nearLeft++; }
         }
         if (keep.length > 400) { for (i = 0; i < keep.length - 400; i++) delete uaqPend[keep[i].key]; keep = keep.slice(keep.length - 400); }
         uaqQ = keep;
-        while (!nearLeft && uaqDeep.length && uaqBusy < 2) {
+        while (!nearLeft && uaqDeep.length && uaqBusyN() < 2) {
             j = uaqDeep.shift();
             if (document.documentElement.contains(j.el)) uaqDeepRun(j); else uaqFinish(j, j.last);
         }
@@ -3491,7 +3497,9 @@
         if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
         var title = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title);
         if (!title) return;
-        if (uaqPend[key]) { uaqPend[key].views.push(view); return; }
+        var pj = uaqPend[key];
+        if (pj && pj.t0 && now - pj.t0 > 45000) { delete uaqPend[key]; delete uaqAct[key]; pj = null; }
+        if (pj) { pj.views.push(view); return; }
         var el = view.closest ? view.closest('.card') : view.parentNode;
         var alt = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
         var job = { id: d.id, key: key, views: [view], el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' };
@@ -5739,7 +5747,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.432';
+    var VERSION = '10.433';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
