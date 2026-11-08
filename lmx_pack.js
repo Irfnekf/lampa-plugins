@@ -5149,7 +5149,7 @@
                 'body.lmx-prem .lmx-nedd__h{text-transform:none;letter-spacing:0;font-size:1.05em;font-weight:800;border-bottom:0;padding:1em 1.2em .5em}body.lmx-prem .lmx-nedd__h span{font-size:.8em}' +
                 'body.lmx-prem .lmx-ne{border-radius:1em;background-color:#12131f}' +
                 'body.lmx-prem .lmx-ne.focus,body.lmx-prem .lmx-ne.hover{box-shadow:0 0 0 .12em rgba(255,255,255,.6),0 .5em 1em rgba(0,0,0,.6)}' +
-                'body.lmx-prem .lmx-ne__n{background:#fff;color:#000;border-radius:99em;padding:.35em .9em}body.lmx-prem .lmx-ne__s b{color:#fff}body.lmx-prem .lmx-nebadge{background:#fff;color:#000}'
+                'body.lmx-prem .lmx-ne__n{background:#fff;color:#000;border-radius:99em;padding:.35em .9em}body.lmx-prem .lmx-ne__s b{color:#fff}body.lmx-prem .lmx-nebadge{background:#fff;color:#000}' +
                 // Скло: матове скло, великі заокруглення, прозорі плашки
                 'body.lmx-apple .lmx-nedd{border-radius:1.4em}body.lmx-apple .lmx-ne{border-radius:1.1em;margin:.5em .7em}' +
                 'body.lmx-apple .lmx-ne.focus,body.lmx-apple .lmx-ne.hover{box-shadow:0 0 0 .18em rgba(255,255,255,.9),0 0 1.4em rgba(255,255,255,.28)}' +
