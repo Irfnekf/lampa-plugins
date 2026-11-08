@@ -3370,7 +3370,7 @@
         var key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), now = Date.now(), all = uaqCombos(), order = [], i;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000)) order.push(all[i]);
-        var vi = 0, fails = [];
+        var vi = 0, fails = [], emptyTag = '';
         function urlFor(c) {
             var p = c.split('|'), base = p[0];
             if (p[1] === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
@@ -3378,6 +3378,7 @@
         }
         function next(why) {
             if (why) fails.push(why);
+            if (vi >= order.length && emptyTag) return cb([], '', emptyTag);   // хтось відповів, але порожньо: «нічого не знайдено», не збій
             if (vi >= order.length) {
                 var w = fails.join('; ') || 'усі адреси недоступні';
                 uaqDbg.fail++; uaqDbg.last = w;
@@ -3399,6 +3400,12 @@
                 if (bad) { uaqBadCombo[c] = Date.now(); return next(tag + ': ' + bad); }
                 delete uaqBadCombo[c];
                 uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + tag;
+                if (!j.length) {   // порожньо: той самий сервер у другому діалекті не питаємо, пробуємо інший сервер (напр. свій парсер із Toloka)
+                    if (!emptyTag) emptyTag = tag;
+                    var hb = c.split('|')[0];
+                    while (vi < order.length && order[vi].split('|')[0] === hb) vi++;
+                    return next('');
+                }
                 if (uaqMode !== c) { uaqMode = c; try { Lampa.Storage.set('lmx_uaq_mode3', c); } catch (e) {} }
                 cb(j, '', tag);
             }
@@ -5881,7 +5888,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.446';
+    var VERSION = '10.447';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
