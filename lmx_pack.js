@@ -3109,7 +3109,10 @@
     }
     function nogapCss() {
         var B = 'body.lmx-nogap ';
-        return B + '.lmx-hero__meta>*+*{margin-left:.8em}' +
+        // картки епізодів («Нещодавні/Найближчі виходи епізодів» у «Серіалах») — завжди з відступом між собою (і щоб рамка фокуса не злипалась із сусідом)
+        return 'html body .items-line .card-episode+.card-episode{margin-left:1.2em !important}' +
+            B + '.mapping--line>*+*{margin-left:1em}' +
+            B + '.lmx-hero__meta>*+*{margin-left:.8em}' +
             B + '.card--lmxhero .lmx-hero__meta>*+*{margin-left:1em}' +
             B + '.lmx-hist__m>*+*{margin-left:1em}' +
             B + '.lmx-hero__acts>*+*{margin-right:.9em}' +
@@ -5384,7 +5387,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.392';
+    var VERSION = '10.393';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
