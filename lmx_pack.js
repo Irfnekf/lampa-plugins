@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c2', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c3', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3361,26 +3361,29 @@
             uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
             safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, uaqMerge(r, job.id)); });
         }
-        var wants = [job.title].concat(job.alt ? [job.alt] : []);
-        uaqGet(job.title, job.type === 'tv' ? 0 : job.yr, function (j) {
-            if (!j) { uaqBusy--; uaqFail[job.key] = Date.now(); return; }
-            var r = uaqParseMany(j, job, wants);
-            if (r.m) return finish(r);
-            function third() {
-                uaqRu(job, function (ru) {
-                    if (!ru || wants.indexOf(ru) >= 0) return finish(r);
-                    wants.push(ru);
-                    uaqGet(ru, job.type === 'tv' ? 0 : job.yr, function (j3) { finish(j3 ? uaqParseMany(j3, job, wants) : r); });
-                });
+        var wants = [job.title].concat(job.alt ? [job.alt] : []), plan = [[job.title, job.yr], [job.title, 0]], last = null, ruDone = false;
+        if (job.alt) plan.push([job.alt, job.yr]);
+        function go() {
+            var p = plan.shift();
+            if (!p) {
+                if (!ruDone) {
+                    ruDone = true;
+                    return uaqRu(job, function (ru) {
+                        if (ru && wants.indexOf(ru) < 0) { wants.push(ru); plan.push([ru, job.yr]); }
+                        go();
+                    });
+                }
+                return last ? finish(last) : (uaqBusy--, uaqFail[job.key] = Date.now());
             }
-            if (job.alt) {
-                uaqGet(job.alt, job.type === 'tv' ? 0 : job.yr, function (j2) {
-                    var r2 = j2 ? uaqParseMany(j2, job, wants) : r;
-                    if (r2.m) return finish(r2);
-                    third();
-                });
-            } else third();
-        });
+            uaqGet(p[0], p[1], function (j) {
+                if (!j) return go();
+                var r = uaqParseMany(j, job, wants);
+                if (r.m) return finish(r);
+                last = r;
+                go();
+            });
+        }
+        go();
     }
     function uaqParseMany(j, job, wants) { return uaqParse(j, { wants: wants, type: job.type, yr: job.yr, uk: job.uk }); }
     // дані LMX Watch: які джерела вже знаходили цей тайтл (7 днів) — укр. джерела дають прапор і якість
@@ -5681,7 +5684,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.427';
+    var VERSION = '10.428';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
