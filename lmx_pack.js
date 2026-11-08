@@ -552,6 +552,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
+        H.trigger('lmx_uaq', false, 'Мітка «UA · якість» на картках', 'Показує на картці «UA 4K» / «UA FHD», якщо цей тайтл уже відкривали в «Онлайн» і там була українська озвучка. Дані беруться з пам’яті LMX Watch — додаткових запитів немає, тож головну не навантажує. Вимкнено за замовчуванням', restyle);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені кнопкою «Переглянуто», не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -2241,6 +2242,10 @@
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
+            '.lmx-uaq{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;align-items:center;font-size:.72em;font-weight:800;line-height:1;padding:.4em .7em .4em .55em;border-radius:99em;background:rgba(10,12,18,.62);border:1px solid rgba(255,255,255,.16);color:#fff;white-space:nowrap}' +
+            '.lmx-uaq i{display:block;width:1.15em;height:.8em;margin-right:.5em;border-radius:.15em;background:linear-gradient(#2f6bff 50%,#ffd43b 50%)}' +
+            '.lmx-uaq b{font-weight:700;opacity:.85}' +
+            '.lmx-has-uaq .lmx-tr{top:2.6em}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -3176,6 +3181,25 @@
         d.innerHTML = html;
         view.appendChild(d);
     }
+    // Мітка «UA · якість»: LMX Watch запам'ятовує, які джерела й якої якості знайшли тайтл (7 днів). Беремо звідти — без жодних запитів
+    var UA_SRC_RX = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|klon|kinostrain|serialno|ufdub|moviestape|[еe]н[еe][їi]д|ukr|filmix|фільмікс|фильмикс/i;
+    var UAQ_LBL = { 4: ' 4K', 3: ' FHD', 2: ' HD', 1: '' };
+    function uaqOf(id) {
+        try {
+            var o = Lampa.Storage.get('lmx_online_qm', {}), m = o && o[String(id)];
+            if (!m || !m.l || Date.now() - (m.t || 0) > 604800000) return null;
+            var ua = false, best = 0, k;
+            for (k in m.l) if (UA_SRC_RX.test(k)) { ua = true; if (m.l[k] > best) best = m.l[k]; }
+            return ua ? { q: best } : null;
+        } catch (e) { return null; }
+    }
+    function addUaq(view, id) {
+        if (!getBool('lmx_uaq', false) || !id || view.querySelector('.lmx-uaq')) return;
+        var u = uaqOf(id);
+        if (!u) return;
+        addTo(view, 'lmx-uaq', '<i></i>UA<b>' + (UAQ_LBL[u.q] || '') + '</b>');
+        view.classList.add('lmx-has-uaq');
+    }
     function addMark(view, m) {
         if (!m || !getBool('lmx_marks', true) || view.querySelector('.lmx-tr')) return;
         addTo(view, 'lmx-tr', '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>');
@@ -3211,6 +3235,7 @@
         hideNativeTv(view);
         cinemaOverlay(view, d, type);
         if (type === 'movie') addMark(view, movieMark(d));
+        addUaq(view, d.id);
     }
 
     // Серіали: значок С3Е24 і мітки «Нова серія»/«Сьогодні»
@@ -5387,7 +5412,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.393';
+    var VERSION = '10.394';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
