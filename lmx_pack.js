@@ -774,7 +774,7 @@
             { t: 'Серіали: кримінал', k: 'tv', q: 'with_origin_country=UA&with_genres=80&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Новий канал', k: 'tv', q: 'with_networks=3510&sort_by=first_air_date.desc&first_air_date.lte={today}', min: 3 },
             { t: 'Українською мовою (фільми)', k: 'movie', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
-            { t: 'Українською мовою (серіали)', k: 'tv', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Українською мовою (серіали)', k: 'tv', q: 'with_original_language=uk&sort_by=popularity.desc', min: 5 },
             { t: 'Класика (до 2000 року)', k: 'movie', q: 'with_origin_country=UA&primary_release_date.lte=1999-12-31&sort_by=vote_average.desc&vote_count.gte=20', min: 5 }
         ] },
         // Західні платформи: каталог «що реально є на платформі» (провайдер TMDB) + власні оригінали й студії окремими рядами
@@ -910,12 +910,6 @@
         if (c.lead && !forHome) c.lead().forEach(function (e) { out.push(e); });
         out.push({ t: 'Нові фільми', k: 'movie', q: c.mf + '&sort_by=primary_release_date.desc&primary_release_date.lte=' + today + '&vote_count.gte=10' });
         out.push({ t: 'Нові серіали', k: 'tv', q: c.tf + '&sort_by=first_air_date.desc&first_air_date.lte=' + today + '&vote_count.gte=' + (key === 'ua' ? 0 : 5) });
-        // Українське: нові тайтли в TMDB мають мало голосів, а часто й неповні поля (немає країни UA чи мови uk) — тож окремі ряди за обома ознаками, без порогу голосів, лише за останні 3 роки
-        if (key === 'ua') {
-            var d3 = dayStr(-1095);
-            out.push({ t: 'Нові українські серіали', k: 'tv', q: 'with_origin_country=UA&first_air_date.gte=' + d3 + '&first_air_date.lte=' + today + '&sort_by=first_air_date.desc' });
-            out.push({ t: 'Нові серіали українською', k: 'tv', q: 'with_original_language=uk&first_air_date.gte=' + d3 + '&first_air_date.lte=' + today + '&sort_by=first_air_date.desc' });
-        }
         // у всіх каталогах, крім аніме: «Популярні фільми» і «Популярні серіали» поруч (порядок важливий: на нього спирається serviceCall)
         out.push({ t: 'Популярні фільми', k: 'movie', q: c.mf + '&sort_by=popularity.desc&vote_count.gte=50' });
         out.push({ t: key === 'anime' ? 'Головні хіти' : 'Популярні серіали', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
@@ -5414,7 +5408,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.404';
+    var VERSION = '10.405';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
