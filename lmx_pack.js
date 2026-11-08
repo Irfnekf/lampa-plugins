@@ -553,7 +553,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
-        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з JacRed із налаштувань парсера Lampa (або jac.red); результат пам\'ятається 3 дні', rebuild);
+        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з jac.red; результат пам\'ятається 3 дні', rebuild);
         H.button('lmx_uaq_test', 'Перевірити мітки якості й UA', 'Очищає пам\'ять міток і показує, чи відповідає JacRed', uaqSelfTest);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
@@ -3266,14 +3266,6 @@
             } catch (e) {}
         }, 4000);
     }
-    function uaqBase() {
-        var u = '';
-        try { u = String(Lampa.Storage.get('jackett_url', '') || ''); } catch (e) {}
-        u = u.replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').replace('jacred.xyz', 'jac.red');
-        if (!u) u = 'jac.red';
-        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-        return u;
-    }
     function uaqNorm(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9Ѐ-ӿ]+/g, ''); }
     function uaqQual(it) {
         var n = Number(it.quality) || 0, t = String(it.title || it.Title || '').toLowerCase();
@@ -3317,12 +3309,8 @@
         return r.width > 0 && r.right > -W * 0.5 && r.left < W * 1.5 && r.bottom > -H * 0.5 && r.top < H * 1.5;
     }
     var uaqDbg = { ok: 0, fail: 0, last: '' };
-    function uaqBases() {
-        var l = [uaqBase()];
-        if (l[0] !== 'https://jac.red') l.push('https://jac.red');
-        return l;
-    }
-    // один запит до JacRed: пробує вказаний у парсері хост, потім jac.red; cb(json | null, опис_збою)
+    function uaqBases() { return ['https://jac.red']; }
+    // один запит до jac.red; cb(json | null, опис_збою)
     function uaqGet(q, yr, cb) {
         var bases = uaqBases(), key = '', bi = 0;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
@@ -5638,7 +5626,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.423';
+    var VERSION = '10.424';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
