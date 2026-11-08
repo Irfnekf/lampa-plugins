@@ -1751,12 +1751,22 @@
         });
         return first.concat(rest);
     }
-    // перші n карток ряду на головній: по черзі від кожного лайка (кращий збіг кожного), щоб усі ваші лайки були на виду; далі — за балом
-    function spreadBySeed(arr, n) {
+    // ряд на головній: по черзі від КОЖНОГО лайка/перегляду (кращий ще не взятий збіг для цього джерела), щоб добірка не складалась з кількох фільмів; підпис = саме той тайтл, для якого картку взято
+    function spreadBySeed(arr, n, seedTitle) {
         var by = {}, order = [], used = {}, out = [];
-        arr.forEach(function (x) { var k = x.bk || '_'; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(x); });
-        for (var r = 0; out.length < n && r < 3; r++) {
-            order.forEach(function (k) { var x = by[k][r]; if (x && out.length < n && !used[x.c.id]) { used[x.c.id] = 1; out.push(x); } });
+        arr.forEach(function (x) { for (var k in x.by) { if (!seedTitle[k]) continue; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(x); } });
+        // джерела з найсильнішим першим збігом — першими
+        order.sort(function (a, b) { return by[b][0].f - by[a][0].f; });
+        var any = true;
+        while (out.length < n && any) {
+            any = false;
+            order.forEach(function (k) {
+                if (out.length >= n) return;
+                var l = by[k];
+                while (l.length && used[l[0].c.id]) l.shift();
+                if (!l.length) return;
+                var x = l.shift(); used[x.c.id] = 1; x.bk = k; x.why = seedTitle[k]; out.push(x); any = true;
+            });
         }
         return out.concat(arr.filter(function (x) { return !used[x.c.id]; }));
     }
@@ -1895,7 +1905,7 @@
             function fin() {
                 if (--left > 0) return;
                 var arr = rankRecs(score, P, seedTitle);
-                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = (fromLikes ? spreadBySeed(arr, 18) : arr).slice(0, ROW_MAX).map(function (x) { return withWhy(x.c, fromLikes ? x.why : ''); });
+                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = (fromLikes ? spreadBySeed(arr, ROW_MAX, seedTitle) : arr).slice(0, ROW_MAX).map(function (x) { return withWhy(x.c, fromLikes ? x.why : ''); });
                 if (!out.length) return call();
                 // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
                 recsAllBy[mode] = full;
@@ -5236,7 +5246,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.378';
+    var VERSION = '10.379';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
