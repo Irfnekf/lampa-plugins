@@ -2729,7 +2729,9 @@
             T + '.card--lmxhero.lmx-cur .lmx-hero__text,' + T + '.card--lmxhero.focus .lmx-hero__text{opacity:1}' +
             // слайд трохи вужчий за екран: з обох боків видно по краєчку сусідніх слайдів (~2em), висота афіші велика, як і була
             '@media (min-width:761px){' + T + '.card--lmxhero{width:calc(100vw - 6em) !important;margin-left:calc(-2.2em - 1px) !important;margin-right:3.2em !important}}' +
-            '@media (min-width:761px){' + T + '.card--lmxhero[data-lmxi="0"]{width:calc(100vw - 8.2em) !important;margin-left:0 !important}}' +
+            '@media (min-width:761px){' + T + '.card--lmxhero[data-lmxi="0"]{width:calc(100vw - 6em) !important;margin-left:0 !important;margin-right:1em !important}}' +
+            // останній слайд: запас справа, щоб стрічка доїхала до кінця й зліва не просвічував попередній слайд
+            '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .card--lmxhero:last-child{margin-right:7em !important}}' +
             // один слайд на екрані: смужку попереднього слайда зліва (~2,2em) обрізаємо; справа сусіда й так не видно
             '@media (min-width:761px){' + T + '.lmx-hero-line:not(.lmx-mini) .scroll{clip-path:inset(0 0 0 2.2em)}}' +
             T + '.lmx-hero-line{position:relative}' +
@@ -5399,7 +5401,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.400';
+    var VERSION = '10.401';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
