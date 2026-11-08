@@ -3282,8 +3282,9 @@
         return /(^|[^a-z])(ukr|ukrainian)|укр|(^|[^a-z0-9])ua([^a-z0-9]|$)/i.test(t);
     }
     function uaqParse(j, job) {
-        var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), wants = [uaqNorm(job.title)], qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok, m = 0, w;
-        if (job.alt) wants.push(uaqNorm(job.alt));
+        var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), wants = [], qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok, m = 0, w;
+        var src = job.wants || [job.title, job.alt];
+        for (i = 0; i < src.length; i++) if (src[i]) wants.push(uaqNorm(src[i]));
         for (i = 0; i < arr.length; i++) {
             it = arr[i];
             if (!it || typeof it !== 'object') continue;
@@ -3315,7 +3316,7 @@
     }
     function uaqNear(el) {
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
-        return r.width > 0 && r.right > -W * 0.5 && r.left < W * 1.5 && r.bottom > -H * 0.5 && r.top < H * 1.5;
+        return r.width > 0 && r.right > -W * 0.8 && r.left < W * 2.2 && r.bottom > -H * 0.8 && r.top < H * 2;
     }
     var uaqDbg = { ok: 0, fail: 0, last: '' };
     function uaqBases() { return ['https://jac.red']; }
@@ -3346,21 +3347,57 @@
         }
         next('');
     }
+    // Назва російською (з TMDB) — для третьої спроби: у JacRed багато роздач названі саме так
+    function uaqRu(job, cb) {
+        try {
+            var kind = job.type === 'tv' ? 'tv' : 'movie';
+            Lampa.Api.sources.tmdb.get(kind + '/' + job.id + '?language=ru', {}, function (j) { cb(j && (j.title || j.name) ? String(j.title || j.name) : ''); }, function () { cb(''); });
+        } catch (e) { cb(''); }
+    }
     function uaqFetch(job) {
         uaqBusy++;
-        uaqGet(job.title, job.yr, function (j, why) {
+        function finish(r) {
             uaqBusy--;
-            if (!j) { uaqFail[job.key] = Date.now(); return; }
-            var r = uaqParse(j, job);
-            function put(rr) {
-                uaqCache()[job.key] = { q: rr.q, u: rr.u, t: rr.t }; uaqSave();
-                safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, rr); });
+            uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
+            safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, uaqMerge(r, job.id)); });
+        }
+        var wants = [job.title].concat(job.alt ? [job.alt] : []);
+        uaqGet(job.title, job.yr, function (j) {
+            if (!j) { uaqBusy--; uaqFail[job.key] = Date.now(); return; }
+            var r = uaqParseMany(j, job, wants);
+            if (r.m) return finish(r);
+            function third() {
+                uaqRu(job, function (ru) {
+                    if (!ru || wants.indexOf(ru) >= 0) return finish(r);
+                    wants.push(ru);
+                    uaqGet(ru, job.yr, function (j3) { finish(j3 ? uaqParseMany(j3, job, wants) : r); });
+                });
             }
-            if (!r.m && job.alt) {
-                uaqBusy++;
-                uaqGet(job.alt, job.yr, function (j2) { uaqBusy--; put(j2 ? uaqParse(j2, job) : r); });
-            } else put(r);
+            if (job.alt) {
+                uaqGet(job.alt, job.yr, function (j2) {
+                    var r2 = j2 ? uaqParseMany(j2, job, wants) : r;
+                    if (r2.m) return finish(r2);
+                    third();
+                });
+            } else third();
         });
+    }
+    function uaqParseMany(j, job, wants) { return uaqParse(j, { wants: wants, type: job.type, yr: job.yr, uk: job.uk }); }
+    // дані LMX Watch: які джерела вже знаходили цей тайтл (7 днів) — укр. джерела дають прапор і якість
+    var UAQ_SRC_RX = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|kinostrain|ufdub|moviestape|[еe]н[еe][їi]д|ukr/i;
+    function uaqWatch(id) {
+        try {
+            var o = Lampa.Storage.get('lmx_online_qm', {}), m = o && o[String(id)];
+            if (!m || !m.l || Date.now() - (m.t || 0) > 604800000) return null;
+            var ua = 0, best = 0, k;
+            for (k in m.l) if (UAQ_SRC_RX.test(k)) { ua = 1; if (m.l[k] > best) best = m.l[k]; }
+            return ua ? { u: 1, q: best } : null;
+        } catch (e) { return null; }
+    }
+    function uaqMerge(r, id) {
+        var w = uaqWatch(id);
+        if (!w) return r;
+        return { u: 1, q: Math.max(r && r.q || 0, w.q), t: r && r.t || 0 };
     }
     // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
     function uaqSelfTest() {
@@ -3383,14 +3420,16 @@
         for (i = 0; i < uaqQ.length; i++) {
             j = uaqQ[i];
             if (!document.documentElement.contains(j.el)) continue;
-            if (uaqBusy < 2 && uaqNear(j.el)) uaqFetch(j); else keep.push(j);
+            if (uaqBusy < 4 && uaqNear(j.el)) uaqFetch(j); else keep.push(j);
         }
         uaqQ = keep.length > 400 ? keep.slice(keep.length - 400) : keep;
     }
     function uaqWant(view, d, type) {
         if (!d || !d.id || !getBool('lmx_uaq', true)) return;
         var key = type + d.id, c = uaqCache()[key], now = Date.now();
-        if (c && now - (c.t || 0) < ((c.u || c.q >= 2) ? 259200000 : 43200000)) { uaqAdd(view, c); return; }
+        var wv = uaqWatch(d.id);
+        if (wv && wv.q >= 3) { uaqAdd(view, wv); return; }
+        if (c && now - (c.t || 0) < ((c.u || c.q >= 2) ? 259200000 : 43200000)) { uaqAdd(view, uaqMerge(c, d.id)); return; }
         if (uaqFail[key] && now - uaqFail[key] < 600000) return;
         var date = String(d.release_date || d.first_air_date || ''), yr = parseInt(date.slice(0, 4), 10);
         if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
@@ -3398,7 +3437,7 @@
         if (!title) return;
         var el = view.closest ? view.closest('.card') : view.parentNode;
         var alt = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
-        uaqQ.push({ key: key, view: view, el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' });
+        uaqQ.push({ id: d.id, key: key, view: view, el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' });
         if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200);
         safe(uaqTick);
     }
@@ -5642,7 +5681,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.425';
+    var VERSION = '10.426';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
