@@ -1392,17 +1392,20 @@
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
     // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
     function heroDecorate(h, m, idx, n, svc) {
-        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(m.backdrop_path, HERO_IMG)).attr('data-lmxi', idx).attr('data-lmxn', n);
+        // на телефоні афіша — портретний постер (як у застосунку Apple TV), на ТБ/ПК — широкий бекдроп
+        var phone = isMobile() && !!m.poster_path;
+        var heroPath = phone ? m.poster_path : m.backdrop_path, heroSize = phone ? 'w780' : HERO_IMG;
+        h.addClass('card--lmxhero').attr('data-lmxu', imgUrl(heroPath, heroSize)).attr('data-lmxi', idx).attr('data-lmxn', n);
         if (h.closest) {
             var hl = h.closest('.items-line').addClass('lmx-hero-line');
             // компактний вигляд: на сторінках «Аніме»/«Дорами» і на головній у стандартній темі (там розмір карток лишається стандартним)
             if (svc) hl.addClass('lmx-mini lmx-mini--svc'); else if (!board()) hl.addClass('lmx-mini lmx-mini--def');
         }
         var view = h.find('.card__view');
-        var heroUrl = imgUrl(m.backdrop_path, HERO_IMG);
+        var heroUrl = imgUrl(heroPath, heroSize);
         heroPreload(heroUrl);
         // велике зображення зверху, мініатюра під ним: поки велике не домалювалось, видно мініатюру, а не чорний екран
-        view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(m.backdrop_path, 'w300') + ')');
+        view.css('background-image', 'url(' + heroUrl + '),url(' + imgUrl(heroPath, phone ? 'w342' : 'w300') + ')');
         view.find('img').css('opacity', 0);
         h.find('.card__title,.card__age,.card__vote').remove();
         var v = Number(m.vote_average) || 0;
@@ -1421,7 +1424,7 @@
             '<span>' + (isTv ? 'Серіал' : 'Фільм') + '</span>' + (year ? '<span>' + year + '</span>' : '') +
             (getStr('lmx_theme', 'default') === 'prem' && GENRES[(m.genre_ids || [])[0]] ? '<span>' + GENRES[(m.genre_ids || [])[0]] + '</span>' : '') +
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
-            (getStr('lmx_theme', 'default') === 'apple' ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
+            ((getStr('lmx_theme', 'default') === 'apple' || (isMobile() && themeBase() === 'default')) ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
                 (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитися</span></div>' : '') + '</div>');
         // «+» у темі «Скло»: додає/прибирає з «Обраного». Фокусу не отримує (листання каруселі не чіпаємо): довге OK на картці або клік/тап по «+»
         safe(function () {
@@ -2318,6 +2321,16 @@
             C + '{width:calc(100vw - 4.5em) !important;margin-left:0 !important;margin-right:.8em !important}' +
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
             V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
+            // телефон: портретна афіша як у Apple TV — високий постер, внизу затемнення, по центру назва, рядок «Фільм · рік», кнопки
+            C + '{width:calc(100vw - 3.4em) !important;margin-right:.7em !important}' +
+            V + '{height:min(calc((100vw - 3.4em) * 1.4),66vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
+            L + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,#000 0%,rgba(0,0,0,.88) 24%,rgba(0,0,0,.35) 46%,rgba(0,0,0,0) 64%) !important}' +
+            L + '.lmx-hero__text' + X + '{left:0 !important;right:0 !important;bottom:1.1em !important;max-width:none !important;padding:0 1em !important;text-align:center !important;align-items:center !important;display:flex !important;flex-direction:column !important}' +
+            L + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:800 !important;line-height:1.08 !important;margin:0 0 .3em !important;text-align:center !important}' +
+            L + '.lmx-hero__meta' + X + '{justify-content:center !important;flex-wrap:wrap !important;font-size:.9em !important;margin:0 !important}' +
+            L + '.lmx-hero__o' + X + '{display:none !important}' +
+            L + '.lmx-hero__acts' + X + '{display:flex !important;justify-content:center !important;align-items:center !important;margin-top:.9em !important}' +
+            L + '.lmx-hero__btn' + X + '{display:inline-flex !important;align-items:center;justify-content:center;min-width:11em;padding:.8em 1.6em;border-radius:99em;background:#f4f4f6 !important;color:#111 !important;font-weight:700;font-size:1.05em}' +
         '}';
     }
     // Блоки під описанням на сторінці фільму: серії, актори, коментарі (однаково для всіх тем, кольори беруться з теми)
@@ -5248,7 +5261,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.384';
+    var VERSION = '10.385';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
