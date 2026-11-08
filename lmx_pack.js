@@ -772,10 +772,6 @@
             { t: 'Серіали: драми', k: 'tv', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Серіали: комедії', k: 'tv', q: 'with_origin_country=UA&with_genres=35&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Серіали: кримінал', k: 'tv', q: 'with_origin_country=UA&with_genres=80&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
-            { t: 'Pronto Film: серіали', k: 'tv', q: 'with_companies=22436&sort_by=first_air_date.desc&first_air_date.lte={today}', min: 3 },
-            { t: 'Pronto Film: фільми', k: 'movie', q: 'with_companies=22436&sort_by=primary_release_date.desc&primary_release_date.lte={today}', min: 3 },
-            { t: '1+1 Україна', k: 'tv', q: 'with_networks=7496&sort_by=first_air_date.desc&first_air_date.lte={today}', min: 3 },
-            { t: 'Новий канал', k: 'tv', q: 'with_networks=3510&sort_by=first_air_date.desc&first_air_date.lte={today}', min: 3 },
             { t: 'Українською мовою (фільми)', k: 'movie', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Українською мовою (серіали)', k: 'tv', q: 'with_original_language=uk&sort_by=popularity.desc', min: 5 },
             { t: 'Класика (до 2000 року)', k: 'movie', q: 'with_origin_country=UA&primary_release_date.lte=1999-12-31&sort_by=vote_average.desc&vote_count.gte=20', min: 5 }
@@ -923,8 +919,17 @@
             var drop = ['Нові серіали', 'Популярні фільми', 'Головні хіти', 'Золота колекція (найвищий рейтинг)'];
             out = out.filter(function (e) { return drop.indexOf(e.t) < 0; });
         }
+        // Українське: у TMDB багато нових українських тайтлів без країни UA — доповнюємо кожен ряд тим самим запитом за мовою оригіналу, мережами (1+1 Україна, Новий канал) і студією Pronto Film; результати зливаються в один ряд
+        if (key === 'ua') {
+            var UA0 = 'with_origin_country=UA';
+            out.forEach(function (e) {
+                if (!e.q || e.q.indexOf(UA0) !== 0) return;
+                var rest = e.q.slice(UA0.length);
+                e.alts = (e.k === 'tv' ? ['with_original_language=uk', 'with_networks=7496' + PIPE + '3510', 'with_companies=22436'] : ['with_original_language=uk', 'with_companies=22436']).map(function (a) { return a + rest; });
+            });
+        }
         var mapped = out.map(function (e) {
-            return { title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
+            return { alts: (e.alts || []).map(function (a) { return (e.search ? 'search/' : 'discover/') + e.k + '?' + a.replace('{today}', today); }), title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
         });
         // «Схоже на те, що вам сподобалось» — лише аніме / лише дорами (будується лише на цих сторінках, на головну не впливає)
         if (!forHome && (key === 'anime' || key === 'dorama')) mapped.splice(1, 0, { title: 'Схоже на те, що вам сподобалось', url: 'lmx://recs/' + key, kind: 'tv', recs: key, min: 6 });
@@ -1146,7 +1151,7 @@
                     if (res[i]) return done();
                     if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
-                    var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, got = [], pend = pages, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
+                    var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, alts = cats[i].alts || [], nu = 1 + alts.length, got = [], pend = pages * nu, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     // запасний запит для збірок Lampa, де дискавер за «мова=ja + жанр=анімація» повертає порожньо: ключове слово TMDB «anime» (210024)
                     var qurl = (altQ && id === 'anime' && cats[i].url.indexOf('with_keywords=') < 0) ? cats[i].url.split('with_original_language=ja&with_genres=16').join('with_keywords=210024') : cats[i].url;
                     var dbg = (window.__lmxDbg = window.__lmxDbg || []);
@@ -1156,22 +1161,30 @@
                         fin = true; clearTimeout(t);
                         var out = [];
                         got.forEach(function (arr) { (arr || []).forEach(function (x) { if (!seenC[x.id]) { seenC[x.id] = 1; out.push(x); } }); });
+                        if (alts.length) {
+                            var qq = cats[i].url, byd = /sort_by=(first_air_date|primary_release_date)\.desc/.test(qq), byv = /sort_by=vote_average\.desc/.test(qq);
+                            out.sort(function (a, b) {
+                                if (byd) return String(b.first_air_date || b.release_date || '').localeCompare(String(a.first_air_date || a.release_date || ''));
+                                if (byv) return (b.vote_average || 0) - (a.vote_average || 0);
+                                return (b.popularity || 0) - (a.popularity || 0);
+                            });
+                        }
                         if (cats[i].f) out.sort(function (a, b) { return String(a.first_air_date || '').localeCompare(String(b.first_air_date || '')); });
                         res[i] = out;
                         dbg.push({ s: id, i: i, t: cats[i].title, n: out.length, ms: Date.now() - t0, err: errs });
                         done();
                     }
                     var t = setTimeout(function () { if (fin) return; fin = true; res[i] = []; dbg.push({ s: id, i: i, t: cats[i].title, n: -1, ms: 15000, url: cats[i].url }); done(); }, 15000);
-                    for (var pg = 1; pg <= pages; pg++) (function (pg) {
-                        var tries = 0;
+                    for (var ui = 0; ui < nu; ui++) for (var pg = 1; pg <= pages; pg++) (function (pg, ui) {
+                        var tries = 0, gi = ui * pages + pg - 1, qx = ui === 0 ? qurl : alts[ui - 1];
                         (function go() {
-                            tgetFb(qurl, { page: pg }, function (j, u) {
-                                if (!empty(j)) cats[i].url2 = u;
-                                got[pg - 1] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
+                            tgetFb(qx, { page: pg }, function (j, u) {
+                                if (!empty(j) && ui === 0) cats[i].url2 = u;
+                                got[gi] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
                                 end();
-                            }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[pg - 1] = []; end(); });
+                            }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[gi] = []; end(); });
                         })();
-                    })(pg);
+                    })(pg, ui);
                 }
                 function loadGroup(emit, finished) {
                     var from = next, to = Math.min(cats.length, from + GROUP), p = from;
@@ -5411,7 +5424,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.407';
+    var VERSION = '10.408';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
