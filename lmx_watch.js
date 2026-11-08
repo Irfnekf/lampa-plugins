@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.37';
+    var VERSION = '3.38';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3015,11 +3015,14 @@
                     safe(function () { afterReload(act); });
                     return true;
                 }
-                if (!cd && (empty || (manual && waited > 20000)) && tryVoice()) return;
+                // джерело після повтору запиту так і мовчить (ні списку, ні «порожньо»): вважаємо порожнім і йдемо до наступного джерела (озвучки вже не перебираємо — це ще +8 с на кожну)
+                var silent = !empty && (act.__lmxNg || 0) >= 1 && waited > 8000;
+                if (silent) empty = true;
+                if (!cd && ((empty && !silent) || (manual && waited > 20000)) && tryVoice()) return;
                 // Після перемикання ДЖЕРЕЛА запит інколи «губиться» (список не приходить ні з відповіддю «порожньо», ні з помилкою), хоча той самий запит
                 // через вибір сезону/озвучки спрацьовує одразу. Тому, якщо за 6 с нічого немає, робимо саме цю дію: повторно обираємо поточний сезон (або озвучку),
-                // а коли це неможливо — повторюємо запит джерела. Не більше двох спроб на джерело (на 6 с і на 16 с)
-                if (!empty && !cd && (act.__lmxNg || 0) < 2 && waited > ((act.__lmxNg || 0) ? 16000 : 6000)) {
+                // а коли це неможливо — повторюємо запит джерела. Одна спроба на джерело (на 6 с); якщо й після неї тиша ще 8 с — автоперемикання на наступне джерело
+                if (!empty && !cd && (act.__lmxNg || 0) < 1 && waited > 6000) {
                     act.__lmxNg = (act.__lmxNg || 0) + 1;
                     heroStatus(act, 'Повторюємо запит до «' + (curKey || 'джерела') + '»…', false, 0.4);
                     var ngG = (S.season && S.season.items && S.season.items.length) ? S.season : (S.voice && S.voice.items && S.voice.items.length ? S.voice : null), ngDone = false;
@@ -3047,7 +3050,7 @@
                         heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true);
                         act.classList.remove('lmx-onl-load'); relayout(); return stop();
                     }
-                    cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
+                    cand = c[0]; cd = Date.now() + (silent ? 1500 : manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
                 if (left > 0) { if (!manual) { heroStatus(act, 'Джерело «' + (curKey || '—') + '» нічого не дало. Пробуємо «' + srcName(cand.title) + '»…', false, 0.2); return; } heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
