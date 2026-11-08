@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.35';
+    var VERSION = '3.36';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -807,7 +807,8 @@
                     try {
                         var n = act.querySelectorAll('.explorer__files-body .selector').length, el = Date.now() - t0;
                         if (n === last) same++; else { same = 0; last = n; }
-                        if (!document.body.contains(act) || (el >= 250 && same >= 2) || el >= 900) {
+                        var raw = act.querySelectorAll('.explorer__files-body .scroll__body > .selector:not(.lmx-onl-item):not(.lmx-onl-wide):not(.lmx-onl-btn):not(.videos__season)').length;
+                        if (!document.body.contains(act) || (el >= 250 && same >= 2 && raw === 0) || el >= 1600) {
                             act.classList.remove('lmx-onl-hold'); act.classList.add('lmx-onl-fadein');
                             var b2 = act.querySelector('.explorer__files-body .scroll__body'); if (b2) b2.classList.remove('notransition');
                             setTimeout(function () { try { act.classList.remove('lmx-onl-fadein'); } catch (e) {} }, 260);
@@ -2513,6 +2514,18 @@
     }
     // Жорсткий запобіжник: «завантаження» не може тривати вічно. Якщо екран понад 75 с у режимі пошуку (джерело мовчить, запит завис, прапорець застряг) —
     // зупиняємо наш пошук і віддаємо екран рідному вигляду плагіна, щоб можна було обрати джерело вручну
+    // панель «Шукаємо / нічого немає» під панеллю фільтрів: повертаємо наявну або створюємо нову
+    function ensureProg(a) {
+        var pr = a.querySelector('.lmx-onl-prog');
+        if (pr) return pr;
+        pr = document.createElement('div'); pr.className = 'lmx-onl-prog'; pr.setAttribute('data-lmx-bg', '1');
+        pr.innerHTML = '<div class="lmx-onl-prog__s"></div><div class="lmx-onl-prog__b"><i></i></div>' + PROG_CARDS;
+        var bar0 = a.querySelector('.lmx-onl-bar'), hero = a.querySelector('.lmx-onl-hero');
+        if (bar0 && bar0.parentNode) bar0.parentNode.insertBefore(pr, bar0.nextSibling);
+        else if (hero && hero.parentNode) hero.parentNode.insertBefore(pr, hero.nextSibling);
+        else return null;
+        return pr;
+    }
     // Порожній екран без жодного пояснення (після зміни сезону/озвучки джерело нічого не віддало, а смужка завантаження вже знята): показуємо
     // або «Завантажуємо…» (поки відповідь ще може прийти), або чесне «нічого немає» з кнопками. Кожна перевірка — раз на 3 с, лише на екрані з джерелами
     function blankGuard(a) {
@@ -3026,7 +3039,14 @@
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
                     var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
-                    if (!c.length) { heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true); [].forEach.call(act.querySelectorAll('.lmx-onl-prog'), function (e) { if (e.parentNode) e.parentNode.removeChild(e); }); act.classList.remove('lmx-onl-load'); act.__lmxProbing = false; relayout(); return stop(); }
+                    if (!c.length) {
+                        // раніше тут усі панелі знімались, і лишався порожній екран з крихітним статусом у шапці. Тепер — видима панель із кнопками «Усі джерела» / «Повторити»
+                        // (а список «порожніх» джерел скидаємо, щоб ручний вибір чи повтор не впирались у нього)
+                        act.__lmxProbing = false; bad.names = [];
+                        safe(function () { ensureProg(act); });
+                        heroStatus(act, 'Нічого не знайдено: жодне джерело не дало результатів', true);
+                        act.classList.remove('lmx-onl-load'); relayout(); return stop();
+                    }
                     cand = c[0]; cd = Date.now() + (manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
