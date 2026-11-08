@@ -2705,6 +2705,7 @@
             T + '.lmx-sel{display:none !important}' +
             T + '.card:not(.card--lmxhero){position:relative}' +
             T + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
+            T + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
             // наші підписи — у стилі HBO: темний градієнт, жирна назва, дрібні метадані
             T + '.lmx-cin{padding:2.4em .7em .6em;border-radius:0 0 1em 1em;background:linear-gradient(to top,rgba(5,6,15,.96) 0%,rgba(5,6,15,.75) 50%,rgba(5,6,15,0) 100%)}' +
             T + '.lmx-cin__t{font-weight:700;letter-spacing:.01em}' +
@@ -3037,7 +3038,6 @@
             // перелистування ряду — як у «Кіно»
             A + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
             A + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
-            T + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -5440,7 +5440,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.417';
+    var VERSION = '10.418';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
