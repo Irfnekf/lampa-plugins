@@ -1782,6 +1782,7 @@
                     safe(function () {
                         var h = htmlOf(self, ex), view = h && h.find('.card__view');
                         if (!view || !view.length || view.find('.lmx-why').length) return;
+                        h.addClass('lmx-nofav');
                         view.append('<div class="lmx-why"><i>&#9829;</i><span>Бо ви лайкнули ' + esc(why) + '</span></div>');
                     });
                 }
@@ -2220,7 +2221,7 @@
                 '.card--lmxhist .lmx-sel,.card--lmxstudio .lmx-sel{border-radius:0}' +
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
                 '.lmx-why{position:absolute;left:50%;top:2.9em;transform:translateX(-50%);max-width:90%;display:flex;align-items:center;gap:.4em;padding:.28em .75em;border-radius:99em;background:rgba(10,12,18,.62);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:.66em;line-height:1.2;font-weight:700;letter-spacing:.01em;pointer-events:none;z-index:3;box-sizing:border-box}' +
-                '.lmx-why{transition:opacity .15s}.card:not(.focus):not(.hover) .lmx-why{opacity:0}.card .card__icons{display:none !important}' +
+                '.lmx-why{transition:opacity .15s}.card:not(.focus):not(.hover) .lmx-why{opacity:0}.card.lmx-nofav .card__icons{display:none !important}' +
                 '.lmx-why i{font-style:normal;color:#ff5d73;font-size:1.05em;flex:0 0 auto}' +
                 '.lmx-why span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}' +
                 '.card--lmxhist{width:23em !important}' +
@@ -5247,7 +5248,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.383';
+    var VERSION = '10.384';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
