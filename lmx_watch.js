@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.40';
+    var VERSION = '3.41';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -347,10 +347,98 @@
             'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent}' +
             'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item [class*="episode-number"]{background:rgba(0,0,0,.7) !important;color:' + GOLD + ' !important}';
     })();
+    // ===== Екран «Торренти» (власне вікно Lampa): одразу наш вигляд, зайва «Сортувати» ховається, кнопка «Сезон», найкращий торент зеленим =====
+    var T0 = 'body.lmx-online .explorer.lmx-tor ';
+    var TOR_CSS = '' +
+        T0 + '.lmx-tor-hide{display:none !important}' +
+        T0 + '.lmx-tor-season{display:inline-flex;align-items:center}' +
+        T0 + '.lmx-tor-season > div{margin-left:.6em;padding:.1em .6em;border-radius:.5em;background:rgba(255,255,255,.22);font-size:.85em}' +
+        T0 + '.torrent-item.lmx-tor-best{background:rgba(52,199,89,.16) !important;box-shadow:inset 0 0 0 .14em rgba(52,199,89,.7)}' +
+        T0 + '.torrent-item.lmx-tor-best.focus{background:rgba(52,199,89,.3) !important;box-shadow:inset 0 0 0 .16em #34c759}' +
+        T0 + '.lmx-tor-badge{display:inline-block;margin-right:.7em;padding:.1em .6em;border-radius:.5em;background:#34c759;color:#06210f;font-size:.8em;font-weight:800;letter-spacing:.02em;vertical-align:middle}';
+    function torOn() { try { var a = Lampa.Activity.active(); return !!(a && a.component === 'torrents'); } catch (e) { return false; } }
+    function torAct() {
+        if (!torOn()) return null;
+        var act = document.querySelector('.activity--active');
+        return act && act.querySelector('.explorer') ? act : null;
+    }
+    // зайва кнопка «Сортувати» (її додає інший онлайн-плагін): лишаємо рідну, що показує обране («Популярне»), решту ховаємо
+    function torDedupeSort(act) {
+        var head = act.querySelector('.explorer__files-head');
+        if (!head) return;
+        var all = [].slice.call(head.querySelectorAll('.selector, .simple-button, .lmx-tor-hide')).filter(function (el) {
+            return /^\s*(сортувати|сортировать|sort)/i.test(el.textContent || '') && !el.querySelector('.selector') && !el.classList.contains('lmx-tor-season');
+        });
+        if (all.length < 2) return;
+        var keep = null, i, sub;
+        for (i = 0; i < all.length && !keep; i++) {
+            sub = all[i].querySelector('div');
+            if (all[i].classList.contains('filter--sort') && sub && (sub.textContent || '').trim() && !sub.classList.contains('hide')) keep = all[i];
+        }
+        if (!keep) keep = all[0];
+        all.forEach(function (el) { if (el !== keep) { el.classList.add('lmx-tor-hide'); el.classList.remove('selector'); } });
+    }
+    // кнопка «Сезон» для серіалів: відкриває сезони у рідному меню «Фільтр»
+    function torSeason(act) {
+        var a = null, m = null;
+        try { a = Lampa.Activity.active(); m = a && (a.movie || a.card); } catch (e) {}
+        if (!m || !(m.number_of_seasons || m.name || (m.first_air_date && !m.release_date))) return;
+        var f = act.querySelector('.explorer__files-head .filter--filter');
+        if (!f || !f.parentNode || f.classList.contains('hide')) return;
+        var b = act.querySelector('.lmx-tor-season');
+        if (!b) {
+            b = document.createElement('div');
+            b.className = 'simple-button simple-button--filter selector lmx-tor-season';
+            b.innerHTML = '<span>Сезон</span><div class="hide"></div>';
+            f.parentNode.insertBefore(b, f.nextSibling);
+            $(b).on('hover:enter click', once(function () { openFilterItem(act, RX_SEASON); }));
+            addNav(b);
+        }
+        var v = chosen(filterText(act), RX_SEASON), d = b.querySelector('div');
+        if (d && d.textContent !== v) { d.textContent = v; d.classList.toggle('hide', !v); }
+    }
+    // найкращий торент: українська озвучка, якість і кількість роздаючих; підсвічуємо зеленим із позначкою
+    function torScore(it) {
+        var t = (it.querySelector('.torrent-item__title') || {}).textContent || '', tg = [].map.call(it.querySelectorAll('.torrent-item__ffprobe > div'), function (x) { return x.textContent || ''; }).join(' '), all = t + ' ' + tg;
+        var sd = it.querySelector('.torrent-item__seeds span'), seeds = sd ? parseInt(sd.textContent, 10) || 0 : 0;
+        var q = /(^|[^a-z0-9])(2160p?|4k|uhd)([^a-z0-9]|$)/i.test(all) ? 3 : /(^|[^a-z0-9])(1080p?|fhd)([^a-z0-9]|$)/i.test(all) ? 2 : /(^|[^a-z0-9])(720p?|hd)([^a-z0-9]|$)/i.test(all) ? 1 : 0;
+        var ua = /(^|[^a-z0-9])(ukr|ua)([^a-z0-9]|$)|укр/i.test(all) ? 1 : 0;
+        return seeds > 0 ? ua * 3 + q * 2 + Math.min(seeds, 50) / 25 : -1;
+    }
+    function torBest(act) {
+        var items = [].slice.call(act.querySelectorAll('.torrent-item'));
+        var sig = items.length + '|' + items.map(function (x) { var s = x.querySelector('.torrent-item__seeds span'); return s ? s.textContent : ''; }).join(',');
+        if (act.__lmxTorSig === sig) return;
+        act.__lmxTorSig = sig;
+        var best = null, bs = -1;
+        items.forEach(function (it) { var sc = torScore(it); if (sc > bs) { bs = sc; best = it; } });
+        items.forEach(function (it) {
+            var on = it === best && items.length > 1;
+            it.classList.toggle('lmx-tor-best', on);
+            var bd = it.querySelector('.lmx-tor-badge'), tt = it.querySelector('.torrent-item__title');
+            if (on && !bd && tt) { bd = document.createElement('span'); bd.className = 'lmx-tor-badge'; bd.textContent = '\u2605 Найкращий'; tt.insertBefore(bd, tt.firstChild); }
+            else if (!on && bd && bd.parentNode) bd.parentNode.removeChild(bd);
+        });
+    }
+    function torTick() {
+        var act = torAct();
+        if (!act) return;
+        var ex = act.querySelector('.explorer');
+        if (ex.classList.contains('lmx-onl')) ex.classList.remove('lmx-onl');
+        if (!ex.classList.contains('lmx-tor')) ex.classList.add('lmx-tor');   // наш вигляд з першого кадру, а не після завантаження списку
+        safe(function () { torDedupeSort(act); });
+        safe(function () { torSeason(act); });
+        safe(function () { torBest(act); });
+    }
+    function torEarly() { [0, 40, 120, 260, 500, 900, 1500].forEach(function (ms) { setTimeout(function () { safe(torTick); }, ms); }); }
+
     function addCss() {
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
-        st.textContent = CSS + THEME_CSS + CARD_CSS + UAK_CSS;
+        // екран «Торренти» отримує клас lmx-tor замість lmx-onl (щоб не вмикати онлайн-логіку: рідне меню «Фільтр», клавіші, автовибір),
+        // а вигляд той самий: усі правила онлайн-екрана повторюємо для .explorer.lmx-tor
+        var base = CSS + THEME_CSS + CARD_CSS;
+        st.textContent = base + base.split('.explorer.lmx-onl').join('.explorer.lmx-tor') + TOR_CSS + UAK_CSS;
     }
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
@@ -3157,7 +3245,10 @@
         if (!list.length) { var ge = genericEps(body); if (ge.length) list = ge; }
         list.forEach(function (e) { e.classList.add('lmx-onl-item'); e.classList.toggle('lmx-onl-dim', isSoon(e) || /disabled|unavailable|not-?avail|soon/i.test(String(e.className))); });   // недоступні серії (нема в джерелі / без цієї озвучки) — темніші
         var ex = act.querySelector('.explorer');
-        if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) ex.classList.add('lmx-onl');
+        if (ex && (list.length || ex.querySelector('.videos__item, [class*="online-prestige"], .torrent-item'))) {
+            if (torOn()) { ex.classList.remove('lmx-onl'); ex.classList.add('lmx-tor'); }   // торенти — не «Онлайн»: окремий клас
+            else ex.classList.add('lmx-onl');
+        }
         if (body.querySelector('.videos__item-imgbox') || (list.length && list[0].querySelector('img'))) body.classList.add('lmx-onl-grid');
         if (list.length && list[0].parentNode && list[0].parentNode !== body && (body.classList.contains('lmx-onl-grid') || list[0].querySelector('img, [style*="background-image"], [class*="img"]'))) list[0].parentNode.classList.add('lmx-onl-grid');
         // рядки-довідки (без картинки), як «Netflix · Сезон 3 · Серія 5»: на всю ширину сітки
@@ -3504,6 +3595,7 @@
             setInterval(function () { if (!document.hidden) safe(loadWatchdog); }, 3000);
             safe(watchInsert);
             setInterval(function () { if (!document.hidden) safe(uakAdapt); }, 600);
+            setInterval(function () { if (!document.hidden) safe(torTick); }, 500);
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
             applyView(curView());
@@ -3521,6 +3613,7 @@
             });
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start') return;
+                safe(torEarly);
                 obsTarget = null; actT0 = Date.now();
                 [30, 150, 400, 800, 1500, 3000, 5000].forEach(function (ms) { setTimeout(function () { if (!document.querySelector('.activity--active .explorer__files-body')) return; safe(arm); safe(buildHero); }, ms); });
                 // страховка від «чорного екрана»: якщо наша шапка так і не з'явилась (інша розмітка, помилка), знімаємо режим завантаження — рідний інтерфейс Lampa знову видно
