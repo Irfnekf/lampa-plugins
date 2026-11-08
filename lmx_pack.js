@@ -2267,6 +2267,7 @@
             '.lmx-uaq{position:absolute;left:0;top:34%;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:800;line-height:1;padding:.7em .4em;border-radius:0 .7em .7em 0;color:#fff;background:rgba(8,9,18,.85);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}' +
             '.lmx-uaq b{font-weight:inherit;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.08em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-bottom:.55em;flex:none;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}' +
             '.lmx-tr>*{flex:none}' +
+            '.lmx-uaqc{display:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -2722,9 +2723,9 @@
             T + '.lmx-cin__g{opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:.62em}' +
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
-            T + '.lmx-uaq{border-radius:0 .3em .3em 0;text-transform:uppercase;letter-spacing:.05em;background:rgba(5,6,15,.84);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
-            T + '.lmx-uaq i{border-radius:.12em;width:.9em;height:1.3em;margin-bottom:.5em}' +
-            T + '.lmx-uaq b{letter-spacing:.1em}' +
+            T + '.lmx-uaq{display:none !important}' +
+            T + '.lmx-uaqc{display:flex;align-items:center;font-size:.64em;font-weight:800;line-height:1;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.45em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
+            T + '.lmx-uaqc em{font-style:normal}.lmx-uaqc em span:first-child{color:#3b8cff}.lmx-uaqc em span:last-child{color:#ffd62e}.lmx-uaqc s{display:block;width:1px;height:.95em;margin:0 .7em;background:rgba(255,255,255,.55)}' +
             T + '.lmx-box .lmx-pill{background:rgba(5,6,15,.78) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
             T + '.lmx-pill.lmx-m-next{background:' + G + ' !important;color:#fff !important}' +
             T + '.lmx-pill.lmx-m-new{background:#fff !important;color:#05060f !important}' +
@@ -3314,12 +3315,26 @@
     }
     function uaqAdd(view, r, force) {
         if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
-        var old = view.querySelector('.lmx-uaq');
-        if (old) { if (!force) return; if (old.parentNode) old.parentNode.removeChild(old); }
-        var sp = document.createElement('div');
-        sp.className = 'lmx-uaq';
-        sp.innerHTML = (r.u ? '<i></i>' : '') + '<b>' + (r.q >= 2 ? UAQ_LBL[r.q] : '') + '</b>';
-        view.appendChild(sp);
+        var q = r.q >= 2 ? UAQ_LBL[r.q] : '', old, cin;
+        // закладка на лівому краї (теми Скло та ін.)
+        old = view.querySelector('.lmx-uaq');
+        if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
+        if (!old) {
+            var sp = document.createElement('div');
+            sp.className = 'lmx-uaq';
+            sp.innerHTML = (r.u ? '<i></i>' : '') + '<b>' + q + '</b>';
+            view.appendChild(sp);
+        }
+        // «титри» над жанром (тема Кіно): UA кольорами прапора | якість
+        old = view.querySelector('.lmx-uaqc');
+        if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
+        cin = view.querySelector('.lmx-cin');
+        if (!old && cin) {
+            var cr = document.createElement('div');
+            cr.className = 'lmx-uaqc';
+            cr.innerHTML = (r.u ? '<em><span>U</span><span>A</span></em>' : '') + (r.u && q ? '<s></s>' : '') + (q ? '<b>' + q + '</b>' : '');
+            cin.insertBefore(cr, cin.firstChild);
+        }
     }
     function uaqNear(el) {
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
@@ -5866,7 +5881,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.443';
+    var VERSION = '10.444';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
