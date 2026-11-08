@@ -5138,16 +5138,18 @@
                 '.lmx-nebell.lmx-has .lmx-nebadge{display:block}' +
                 '.lmx-nedd{position:fixed;z-index:9999;width:29em;max-width:92vw;max-height:70vh;overflow:hidden auto;background:#1c1f27;border:1px solid rgba(255,255,255,.1);border-radius:.9em;box-shadow:0 1em 3em rgba(0,0,0,.65);color:#fff;font-size:1em}' +
                 'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
-                '.lmx-nedd__h{display:flex;justify-content:space-between;padding:.9em 1.1em .7em;font-size:.8em;font-weight:800;letter-spacing:.14em;border-bottom:1px solid rgba(255,255,255,.1)}.lmx-nedd__h span{opacity:.55;font-weight:500;letter-spacing:0}' +
+                '.lmx-nedd__h{text-transform:uppercase;display:flex;justify-content:space-between;padding:.9em 1.1em .7em;font-size:.8em;font-weight:800;letter-spacing:.14em;border-bottom:1px solid rgba(255,255,255,.1)}.lmx-nedd__h span{opacity:.55;font-weight:500;letter-spacing:0}' +
                 '.lmx-ne{position:relative;display:block;height:7.2em;margin:.5em .6em;border-radius:.7em;overflow:hidden;background:#2a2d36 center/cover no-repeat}' +
                 '.lmx-ne::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.1) 85%)}' +
                 '.lmx-ne.focus,.lmx-ne.hover{box-shadow:0 0 0 .22em #fff}' +
                 '.lmx-ne__x{position:absolute;left:1em;bottom:.8em;right:1em}.lmx-ne__t{font-size:1.1em;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s{font-size:.88em;margin-top:.25em;text-shadow:0 1px 6px rgba(0,0,0,.6)}.lmx-ne__s b{font-weight:700}' +
                 '.lmx-ne__n{position:absolute;right:.7em;top:.7em;font-size:.6em;font-weight:800;letter-spacing:.08em;padding:.35em .7em;border-radius:.4em;color:#fff}' +
-                // Кіно: прямі кути, темно-синій фон, білі акценти
-                'body.lmx-prem .lmx-nedd{background:linear-gradient(145deg,#1d2040,#0c0d22);border-radius:0;border-color:rgba(255,255,255,.1)}' +
-                'body.lmx-prem .lmx-nedd__h{letter-spacing:.22em}body.lmx-prem .lmx-ne{border-radius:0}body.lmx-prem .lmx-ne.focus,body.lmx-prem .lmx-ne.hover{box-shadow:0 0 0 .2em #fff}' +
-                'body.lmx-prem .lmx-ne__n{background:#fff;color:#000;border-radius:0}body.lmx-prem .lmx-ne__s b{color:#fff}body.lmx-prem .lmx-nebadge{background:#fff;color:#000}' +
+                // Кіно: як картки теми — майже чорний фон, заокруглення 1em, білий контур у фокусі, «таблетки» замість прямих кутів
+                'body.lmx-prem .lmx-nedd{background:rgba(14,15,24,.97);border:1px solid rgba(255,255,255,.08);border-radius:1.2em;box-shadow:0 1em 3em rgba(0,0,0,.7);padding-bottom:.3em}' +
+                'body.lmx-prem .lmx-nedd__h{text-transform:none;letter-spacing:0;font-size:1.05em;font-weight:800;border-bottom:0;padding:1em 1.2em .5em}body.lmx-prem .lmx-nedd__h span{font-size:.8em}' +
+                'body.lmx-prem .lmx-ne{border-radius:1em;background-color:#12131f}' +
+                'body.lmx-prem .lmx-ne.focus,body.lmx-prem .lmx-ne.hover{box-shadow:0 0 0 .12em rgba(255,255,255,.6),0 .5em 1em rgba(0,0,0,.6)}' +
+                'body.lmx-prem .lmx-ne__n{background:#fff;color:#000;border-radius:99em;padding:.35em .9em}body.lmx-prem .lmx-ne__s b{color:#fff}body.lmx-prem .lmx-nebadge{background:#fff;color:#000}'
                 // Скло: матове скло, великі заокруглення, прозорі плашки
                 'body.lmx-apple .lmx-nedd{border-radius:1.4em}body.lmx-apple .lmx-ne{border-radius:1.1em;margin:.5em .7em}' +
                 'body.lmx-apple .lmx-ne.focus,body.lmx-apple .lmx-ne.hover{box-shadow:0 0 0 .18em rgba(255,255,255,.9),0 0 1.4em rgba(255,255,255,.28)}' +
@@ -5196,7 +5198,7 @@
                 if (!arr.length) { if (Lampa.Noty) Lampa.Noty.show('Нових серій за останні 2 тижні немає'); return; }
                 var c = color();
                 dd = $('<div class="lmx-nedd"></div>');
-                dd.append($('<div class="lmx-nedd__h">НОВІ СЕРІЇ</div>').append($('<span></span>').text(nFresh ? nFresh + ' ' + plural(nFresh, 'непереглянута', 'непереглянуті', 'непереглянутих') : 'усе переглянуто')));
+                dd.append($('<div class="lmx-nedd__h">Нові серії</div>').append($('<span></span>').text(nFresh ? nFresh + ' ' + plural(nFresh, 'непереглянута', 'непереглянуті', 'непереглянутих') : 'усе переглянуто')));
                 var els = [];
                 arr.forEach(function (e) {
                     var el = $('<div class="selector lmx-ne"></div>');
@@ -5427,7 +5429,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.410';
+    var VERSION = '10.411';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
