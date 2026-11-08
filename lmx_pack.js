@@ -772,6 +772,7 @@
             { t: 'Серіали: драми', k: 'tv', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Серіали: комедії', k: 'tv', q: 'with_origin_country=UA&with_genres=35&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Серіали: кримінал', k: 'tv', q: 'with_origin_country=UA&with_genres=80&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Новий канал', k: 'tv', q: 'with_networks=3510&sort_by=first_air_date.desc&first_air_date.lte={today}', min: 3 },
             { t: 'Українською мовою (фільми)', k: 'movie', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Українською мовою (серіали)', k: 'tv', q: 'with_original_language=uk&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
             { t: 'Класика (до 2000 року)', k: 'movie', q: 'with_origin_country=UA&primary_release_date.lte=1999-12-31&sort_by=vote_average.desc&vote_count.gte=20', min: 5 }
@@ -5413,7 +5414,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.403';
+    var VERSION = '10.404';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
