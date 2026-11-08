@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c7', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c8', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3339,12 +3339,27 @@
         for (k in j) if (Array.isArray(j[k])) return j[k];
         return null;
     }
+    // Два діалекти JacRed: v1 (/api/v1.0/torrents — як у marks.js) і Jackett-сумісний v2 (/api/v2.0/indexers/all/results — його ж використовує сама Lampa).
+    // Якщо один не відповідає, пробуємо інший; той, що спрацював, запам'ятовуємо
+    var uaqMode = '';
     function uaqGet(q, yr, cb) {
-        var bases = uaqBases(), key = '', bi = 0;
-        try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
+        var base = uaqBases()[0], key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), order;
+        try { key = String(Lampa.Storage.get('jackett_key', '') || ''); if (!uaqMode) uaqMode = String(Lampa.Storage.get('lmx_uaq_mode', '') || ''); } catch (e) {}
+        order = uaqMode === 'v2' ? ['v2', 'v1'] : ['v1', 'v2'];
+        var vi = 0, fails = [];
+        function urlFor(v) {
+            if (v === 'v2') return base + '/api/v2.0/indexers/all/results?apikey=' + encodeURIComponent(key) + '&Query=' + encodeURIComponent(qq) + (yr ? '&year=' + yr : '');
+            return base + '/api/v1.0/torrents?search=' + encodeURIComponent(qq) + (yr ? '&relased=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : '');
+        }
         function next(why) {
-            if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; if (++uaqDown.n >= 4) { uaqDown.n = 0; uaqDown.until = Date.now() + 120000; } return cb(null, why); }
-            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(String(q).toLowerCase().replace(/^\s+|\s+$/g, '')) + (yr ? '&relased=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
+            if (why) fails.push(why);
+            if (vi >= order.length) {
+                var w = fails.join('; ');
+                uaqDbg.fail++; uaqDbg.last = w;
+                if (++uaqDown.n >= 4) { uaqDown.n = 0; uaqDown.until = Date.now() + 120000; }
+                return cb(null, w);
+            }
+            var v = order[vi++], url = urlFor(v), done = false;
             function fin(j, bad) {
                 if (done) return; done = true;
                 if (!bad && typeof j === 'string' && !/\S/.test(j)) j = [];
@@ -3353,14 +3368,15 @@
                     var arr = uaqItems(j);
                     if (arr) j = arr;
                     else if (j === null || j === undefined || j === '' || (typeof j === 'object' && !Object.keys(j).length)) j = [];   // порожня відповідь = нічого не знайдено, не збій
-                    else { j = []; uaqDbg.fmt = (uaqDbg.fmt || 0) + 1; }
+                    else bad = 'незнайомий формат';
                 }
-                if (bad) return next(base.replace(/^https?:\/\//, '') + ': ' + bad);
-                uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + base.replace(/^https?:\/\//, '');
-                cb(j, '', base);
+                if (bad) return next(v + ': ' + bad);
+                uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + v;
+                if (uaqMode !== v) { uaqMode = v; try { Lampa.Storage.set('lmx_uaq_mode', v); } catch (e) {} }
+                cb(j, '', v);
             }
             try {
-                if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function () { fin(null, 'немає відповіді'); }); }
+                if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function (e) { fin(null, 'немає відповіді' + (e && e.status ? ' ' + e.status : '')); }); }
                 else {
                     var x = new XMLHttpRequest(); x.open('GET', url, true); x.timeout = 9000;
                     x.onload = function () { if (x.status === 200) fin(x.responseText); else fin(null, 'HTTP ' + x.status); };
@@ -3506,7 +3522,7 @@
                 if (!j) lines.push(t[0] + ': НЕМАЄ ВІДПОВІДІ (' + why + ')');
                 else {
                     var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: !uaqLong(t[0]) }), f = arr[0] || {};
-                    lines.push(t[0] + ': роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
+                    lines.push(t[0] + ' [' + uaqMode + ']: роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
                 }
                 one();
             });
@@ -5802,7 +5818,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.435';
+    var VERSION = '10.436';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
