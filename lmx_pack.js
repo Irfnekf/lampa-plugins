@@ -1391,6 +1391,53 @@
 
     // слайди афіші з готового списку (спільне для головної та сторінки «Аніме»)
     // оформлення картки як слайда афіші (спільне для головної й сторінки «Аніме»/«Дорами»)
+    // телефон: слайди лежать стопкою й плавно розчиняються один в одного (як у застосунку Apple TV); автопрокрутка + свайп
+    function initPhoneHero() {
+        if (window.__lmxPH) return;
+        window.__lmxPH = true;
+        var touchT = 0, sx = 0, sy = 0;
+        function lineEl() {
+            var ls = document.querySelectorAll('.items-line.lmx-hero-line');
+            for (var i = 0; i < ls.length; i++) if (ls[i].offsetParent !== null) return ls[i];
+            return null;
+        }
+        function step(dir) {
+            var line = lineEl();
+            if (!line) return;
+            var cs = line.querySelectorAll('.card--lmxhero');
+            if (cs.length < 2) return;
+            var cur = 0, i;
+            for (i = 0; i < cs.length; i++) if (cs[i].classList.contains('lmx-pcur')) cur = i;
+            var nx = (cur + dir + cs.length) % cs.length;
+            cs[cur].classList.remove('lmx-pcur');
+            cs[nx].classList.add('lmx-pcur');
+            // перезапуск смужки прогресу на крапці
+            var d = cs[nx].querySelector('.lmx-pdots i.on');
+            if (d) { d.style.animation = 'none'; void d.offsetWidth; d.style.animation = ''; }
+        }
+        setInterval(function () {
+            safe(function () {
+                if (!isMobile() || document.hidden || Date.now() - touchT < 6000) return;
+                var line = lineEl();
+                if (!line) return;
+                var r = line.getBoundingClientRect();
+                if (r.bottom < 80 || r.top > (window.innerHeight || 800) - 80) return;
+                step(1);
+            });
+        }, 4500);
+        document.addEventListener('touchstart', function (e) {
+            var t = e.touches && e.touches[0];
+            if (!t || !e.target.closest || !e.target.closest('.card--lmxhero')) { sx = 0; return; }
+            sx = t.clientX; sy = t.clientY;
+        }, { passive: true, capture: true });
+        document.addEventListener('touchend', function (e) {
+            if (!sx) return;
+            var t = e.changedTouches && e.changedTouches[0], x0 = sx; sx = 0;
+            if (!t) return;
+            var dx = t.clientX - x0, dy = t.clientY - sy;
+            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) { touchT = Date.now(); safe(function () { step(dx < 0 ? 1 : -1); }); }
+        }, { passive: true, capture: true });
+    }
     function heroDecorate(h, m, idx, n, svc) {
         // на телефоні афіша — портретний постер (як у застосунку Apple TV), на ТБ/ПК — широкий бекдроп
         var phone = isMobile() && !!m.poster_path;
@@ -1426,6 +1473,12 @@
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             ((getStr('lmx_theme', 'default') === 'apple' || (isMobile() && themeBase() === 'default')) ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
                 (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитися</span></div>' : '') + '</div>');
+        if (phone) {
+            var dh = '<div class="lmx-pdots">'; for (var di = 0; di < n; di++) dh += '<i' + (di === idx ? ' class="on"' : '') + '></i>'; dh += '</div>';
+            view.find('.lmx-hero__text').append(dh);
+            if (idx === 0) h.addClass('lmx-pcur');
+            safe(initPhoneHero);
+        }
         // «+» у темі «Скло»: додає/прибирає з «Обраного». Фокусу не отримує (листання каруселі не чіпаємо): довге OK на картці або клік/тап по «+»
         safe(function () {
             var circ = h.find('.lmx-hero__circ');
@@ -2322,14 +2375,22 @@
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
             V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
             // телефон: портретна афіша як у Apple TV — високий постер, внизу затемнення, по центру назва, рядок «Фільм · рік», кнопки
-            C + '{width:calc(100vw - 3.4em) !important;margin-right:.7em !important}' +
-            V + '{height:min(calc((100vw - 3.4em) * 1.4),66vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
+            L + '.scroll__body' + X + '{display:grid !important;transform:none !important;transition:none !important;width:100% !important}' +
+            C + '{width:100% !important;margin:0 !important;grid-area:1/1;opacity:0;transition:opacity .9s ease;pointer-events:none;will-change:opacity}' +
+            L + '.card--lmxhero.lmx-pcur' + X + '{opacity:1 !important;pointer-events:auto;z-index:2}' +
+            V + '{height:min(calc((100vw - 3em) * 1.4),66vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
             L + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,#000 0%,rgba(0,0,0,.88) 24%,rgba(0,0,0,.35) 46%,rgba(0,0,0,0) 64%) !important}' +
             L + '.lmx-hero__text' + X + '{left:0 !important;right:0 !important;bottom:1.1em !important;max-width:none !important;padding:0 1em !important;text-align:center !important;align-items:center !important;display:flex !important;flex-direction:column !important}' +
             L + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:800 !important;line-height:1.08 !important;margin:0 0 .3em !important;text-align:center !important}' +
             L + '.lmx-hero__meta' + X + '{justify-content:center !important;flex-wrap:wrap !important;font-size:.9em !important;margin:0 !important}' +
             L + '.lmx-hero__o' + X + '{display:none !important}' +
             L + '.lmx-hero__acts' + X + '{display:flex !important;justify-content:center !important;align-items:center !important;margin-top:.9em !important}' +
+            L + '.lmx-pdots' + X + '{display:flex;gap:.5em;align-items:center;justify-content:center;margin-top:1em}' +
+            L + '.lmx-pdots i' + X + '{display:block;position:relative;overflow:hidden;width:.42em;height:.42em;border-radius:99em;background:rgba(255,255,255,.4)}' +
+            L + '.lmx-pdots i.on' + X + '{width:2em;background:rgba(255,255,255,.3)}' +
+            L + '.lmx-pdots i.on::after' + X + '{content:"";position:absolute;left:0;top:0;bottom:0;right:0;background:#fff;transform-origin:left center;transform:scaleX(0)}' +
+            L + '.card--lmxhero.lmx-pcur .lmx-pdots i.on::after' + X + '{animation:lmxpfill 4.5s linear forwards}' +
+            '@keyframes lmxpfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}' +
             L + '.lmx-hero__btn' + X + '{display:inline-flex !important;align-items:center;justify-content:center;min-width:11em;padding:.8em 1.6em;border-radius:99em;background:#f4f4f6 !important;color:#111 !important;font-weight:700;font-size:1.05em}' +
         '}';
     }
@@ -5261,7 +5322,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.385';
+    var VERSION = '10.386';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
