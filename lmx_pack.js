@@ -3035,6 +3035,7 @@
             A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.3em !important}' +
             // перелистування ряду — як у «Кіно»
             A + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
+            A + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -3362,8 +3363,20 @@
             if (pv && pv.classList && pv.classList.contains('card-episode') && !e.__lmxGap) { e.__lmxGap = 1; e.style.setProperty('margin-left', '1.2em', 'important'); }
         }
     }
+    // Головна сторінка Lampa стоїть у вертикальній прокрутці з маскою (плавне згасання угорі й унизу): маска на всю сторінку змушує ТБ
+    // малювати її окремим буфером на кожному кадрі прокрутки. У «Склі» (де багато напівпрозорого) це помітно гальмує — маску знімаємо
+    function dropPageMask() {
+        var ls = document.querySelectorAll('.items-line');
+        for (var i = 0; i < ls.length; i++) {
+            if (ls[i].__lmxPM) continue;
+            ls[i].__lmxPM = 1;
+            var sc = ls[i].closest ? ls[i].closest('.scroll--mask') : null;
+            if (sc && !sc.classList.contains('lmx-nomask')) sc.classList.add('lmx-nomask');
+        }
+    }
     function scan() {
         safe(fixEpisodeGaps);
+        safe(dropPageMask);
         var cards = document.querySelectorAll('.card:not([data-lmx])');
         cards.forEach(function (el) {
             el.setAttribute('data-lmx', '1');
@@ -5425,7 +5438,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.414';
+    var VERSION = '10.415';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
