@@ -2387,7 +2387,7 @@
         return K + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:2.6em;height:2.6em;margin:0 0 0 .8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500;line-height:1}' +
             L + '.lmx-hero__acts' + X + ':has(.lmx-hero__circ){flex-direction:row !important;justify-content:flex-start !important;align-items:center}' +
             '@media (max-width:760px){' +
-            L + '.scroll__content' + X + '{padding-left:1.5em !important;padding-right:1.5em !important}' +
+            L + '.scroll__content' + X + '{padding-left:1em !important;padding-right:1em !important}' +
             C + '{width:calc(100vw - 4.5em) !important;margin-left:0 !important;margin-right:.8em !important}' +
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
             V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
@@ -2397,7 +2397,7 @@
             C + '{width:100% !important;margin:0 !important;grid-area:1/1;opacity:0 !important;transition:opacity .35s ease-in-out !important;pointer-events:none;will-change:opacity;z-index:1}' +
             L + '.card--lmxhero.lmx-pcur' + X + ',' + L + '.card--lmxhero.lmx-pcur.focus' + X + ',' + L + '.card--lmxhero.lmx-pcur.hover' + X + '{opacity:1 !important;transition:opacity .35s ease-in-out !important;pointer-events:auto;z-index:2}' +
             L + '.lmx-hero__text' + X + '{opacity:1 !important;transition:none !important}' +
-            V + '{height:min(calc((100vw - 3em) * 1.4),66vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
+            V + '{height:min(calc((100vw - 2em) * 1.58),74vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
             L + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,#000 0%,rgba(0,0,0,.88) 24%,rgba(0,0,0,.35) 46%,rgba(0,0,0,0) 64%) !important}' +
             L + '.lmx-hero__text' + X + '{left:0 !important;right:0 !important;bottom:1.1em !important;max-width:none !important;padding:0 1em !important;text-align:center !important;align-items:center !important;display:flex !important;flex-direction:column !important}' +
             L + '.lmx-hero__title' + X + '{font-size:1.9em !important;font-weight:800 !important;line-height:1.08 !important;margin:0 0 .3em !important;text-align:center !important}' +
@@ -5341,7 +5341,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.388';
+    var VERSION = '10.389';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
