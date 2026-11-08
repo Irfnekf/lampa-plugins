@@ -5054,6 +5054,36 @@
     }
 
 
+    // Перший скрол униз після запуску гальмує: картки рядів (особливо «Каталоги») уже мають картинки, але ТБ розкодовує їх лише тоді, коли ряд
+    // вперше потрапляє в кадр. Тому у спокої (без натискань пульта) заздалегідь, по одній із паузою, просимо розкодувати картинки перших рядів
+    function initRowsWarm() {
+        if (window.__lmxRW) return;
+        window.__lmxRW = 1;
+        var lastKey = Date.now(), seen = 0;
+        ['keydown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastKey = Date.now(); }, true); });
+        function pass() {
+            if (!board() || isMobile() || document.hidden || Date.now() - lastKey < 2500) return;
+            var act = document.querySelector('.activity--active');
+            if (!act || !act.querySelector('.items-line')) return;
+            var all = act.querySelectorAll('.items-line:not(.lmx-hero-line) img'), list = [], i, im;
+            for (i = 0; i < all.length && list.length < 80; i++) {
+                im = all[i];
+                if (!im.__lmxDec && im.decode && im.complete && im.naturalWidth > 0) list.push(im);
+            }
+            if (!list.length) return;
+            var t0 = Date.now(), k = 0;
+            (function next() {
+                if (lastKey > t0 || document.hidden || k >= list.length) return;
+                var e = list[k++];
+                e.__lmxDec = 1;
+                try { e.decode().then(function () {}, function () {}); } catch (x) {}
+                setTimeout(next, 70);
+            })();
+        }
+        var iv = setInterval(function () { safe(pass); if (++seen > 60) clearInterval(iv); }, 3000);
+        if (iv && iv.unref) iv.unref();
+    }
+
     // ===== Кнопка теми в шапці (біля пошуку, дзвіночка й налаштувань) =====
     function initThemeBtn() {
         if (!window.$) return;
@@ -5440,7 +5470,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.418';
+    var VERSION = '10.419';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -5537,6 +5567,7 @@
             safe(initNewEpBell);
             safe(initCinema);
             safe(initBtnRowsNav);
+            safe(initRowsWarm);
         });
     }
 
