@@ -1527,6 +1527,7 @@
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             ((getStr('lmx_theme', 'default') === 'apple' || (isMobile() && themeBase() === 'default')) ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
                 (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитися</span></div>' : '') + '</div>');
+        safe(function () { if (m && m.id && view[0]) uaqWant(view[0], m, isTv ? 'tv' : 'movie'); });
         if (phone) {
             var dh = '<div class="lmx-pdots">'; for (var di = 0; di < n; di++) dh += '<i' + (di === idx ? ' class="on"' : '') + '></i>'; dh += '</div>';
             view.find('.lmx-hero__text').append(dh);
@@ -2268,6 +2269,9 @@
             '.lmx-uaq b{font-weight:inherit;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.08em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-bottom:.55em;flex:none;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}' +
             '.lmx-tr>*{flex:none}' +
             '.lmx-uaqc{display:none}' +
+            '.lmx-hero__uaq{display:inline-flex;align-items:center;font-size:.92em;font-weight:800;line-height:1;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);white-space:nowrap}' +
+            '.lmx-hero__uaq em{font-style:normal;display:inline-flex}.lmx-hero__uaq em span:first-child{color:#3b8cff}.lmx-hero__uaq em span:last-child{color:#ffd62e}' +
+            '.lmx-hero__uaq s{width:1px;height:.95em;margin:0 .5em;background:rgba(255,255,255,.55)}.lmx-hero__uaq b{font-weight:800}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -3323,6 +3327,19 @@
     function uaqAdd(view, r, force) {
         if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
         var q = r.q >= 2 ? UAQ_LBL[r.q] : '', old, cin;
+        // афіша (карусель): компактний підпис «UA | 1080p» в рядку з рейтингом і роком — однаково у всіх темах
+        if (view.closest && view.closest('.card--lmxhero')) {
+            var meta = view.querySelector('.lmx-hero__meta');
+            old = view.querySelector('.lmx-hero__uaq');
+            if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
+            if (!old && meta) {
+                var hs = document.createElement('span');
+                hs.className = 'lmx-hero__uaq';
+                hs.innerHTML = (r.u ? '<em><span>U</span><span>A</span></em>' : '') + (r.u && q ? '<s></s>' : '') + (q ? '<b>' + q + '</b>' : '');
+                meta.appendChild(hs);
+            }
+            return;
+        }
         // закладка на лівому краї (теми Скло та ін.)
         old = view.querySelector('.lmx-uaq');
         if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
@@ -5896,7 +5913,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.449';
+    var VERSION = '10.450';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
