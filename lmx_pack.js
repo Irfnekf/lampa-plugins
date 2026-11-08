@@ -5054,17 +5054,20 @@
     }
 
 
-    // Перший скрол униз після запуску гальмує: картки рядів (особливо «Каталоги») уже мають картинки, але ТБ розкодовує їх лише тоді, коли ряд
+    // Перший скрол униз після запуску (і після кожного оновлення головної) гальмує: картки рядів (особливо «Каталоги») уже мають картинки, але ТБ розкодовує їх лише тоді, коли ряд
     // вперше потрапляє в кадр. Тому у спокої (без натискань пульта) заздалегідь, по одній із паузою, просимо розкодувати картинки перших рядів
     function initRowsWarm() {
         if (window.__lmxRW) return;
         window.__lmxRW = 1;
-        var lastKey = Date.now(), seen = 0;
+        var lastKey = Date.now();
         ['keydown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastKey = Date.now(); }, true); });
         function pass() {
-            if (!board() || isMobile() || document.hidden || Date.now() - lastKey < 2500) return;
+            if (!board() || isMobile() || document.hidden || Date.now() - lastKey < 1500) return;
             var act = document.querySelector('.activity--active');
             if (!act || !act.querySelector('.items-line')) return;
+            // афіша: після кожного оновлення головної заздалегідь розкодовуємо сусідній слайд, щоб перше перегортання не гальмувало
+            var hl = act.querySelector('.items-line.lmx-hero-line'), h0 = hl && (hl.querySelector('.card--lmxhero.lmx-cur') || hl.querySelector('.card--lmxhero'));
+            if (h0 && !hl.__lmxHW) { hl.__lmxHW = 1; try { heroTouch(h0, hl); } catch (x) {} }
             var all = act.querySelectorAll('.items-line:not(.lmx-hero-line) img'), list = [], i, im;
             for (i = 0; i < all.length && list.length < 80; i++) {
                 im = all[i];
@@ -5080,7 +5083,7 @@
                 setTimeout(next, 70);
             })();
         }
-        var iv = setInterval(function () { safe(pass); if (++seen > 60) clearInterval(iv); }, 3000);
+        var iv = setInterval(function () { safe(pass); }, 3000);
         if (iv && iv.unref) iv.unref();
     }
 
@@ -5470,7 +5473,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.419';
+    var VERSION = '10.420';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
