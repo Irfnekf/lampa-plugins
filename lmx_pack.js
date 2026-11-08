@@ -554,6 +554,7 @@
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
         H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з JacRed із налаштувань парсера Lampa (або jac.red); результат пам\'ятається 3 дні', rebuild);
+        H.button('lmx_uaq_test', 'Перевірити мітки якості й UA', 'Очищає пам\'ять міток і показує, чи відповідає JacRed', uaqSelfTest);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -3315,29 +3316,63 @@
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
         return r.width > 0 && r.right > -W * 0.5 && r.left < W * 1.5 && r.bottom > -H * 0.5 && r.top < H * 1.5;
     }
-    function uaqFetch(job) {
-        var url = uaqBase() + '/api/v1.0/torrents?search=' + encodeURIComponent(job.title) + '&year=' + job.yr, key = '';
+    var uaqDbg = { ok: 0, fail: 0, last: '' };
+    function uaqBases() {
+        var l = [uaqBase()];
+        if (l[0] !== 'https://jac.red') l.push('https://jac.red');
+        return l;
+    }
+    // один запит до JacRed: пробує вказаний у парсері хост, потім jac.red; cb(json | null, опис_збою)
+    function uaqGet(q, yr, cb) {
+        var bases = uaqBases(), key = '', bi = 0;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
-        if (key) url += '&apikey=' + encodeURIComponent(key);
-        var done = false;
-        function fin(j, bad) {
-            if (done) return; done = true; uaqBusy--;
-            if (bad) { uaqFail[job.key] = Date.now(); return; }
-            if (typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { uaqFail[job.key] = Date.now(); return; } }
+        function next(why) {
+            if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; return cb(null, why); }
+            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + '&year=' + yr + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
+            function fin(j, bad) {
+                if (done) return; done = true;
+                if (!bad && typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { bad = 'не JSON'; } }
+                if (!bad && !(Array.isArray(j) || (j && (j.Results || j.results)))) bad = 'незнайомий формат';
+                if (bad) return next(base.replace(/^https?:\/\//, '') + ': ' + bad);
+                uaqDbg.ok++; uaqDbg.last = 'ok ' + base.replace(/^https?:\/\//, '');
+                cb(j, '', base);
+            }
+            try {
+                if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function () { fin(null, 'немає відповіді'); }); }
+                else {
+                    var x = new XMLHttpRequest(); x.open('GET', url, true); x.timeout = 9000;
+                    x.onload = function () { if (x.status === 200) fin(x.responseText); else fin(null, 'HTTP ' + x.status); };
+                    x.onerror = x.ontimeout = function () { fin(null, 'немає відповіді'); };
+                    x.send();
+                }
+            } catch (e) { fin(null, 'помилка запиту'); }
+        }
+        next('');
+    }
+    function uaqFetch(job) {
+        uaqBusy++;
+        uaqGet(job.title, job.yr, function (j, why) {
+            uaqBusy--;
+            if (!j) { uaqFail[job.key] = Date.now(); return; }
             var r = uaqParse(j, job);
             uaqCache()[job.key] = r; uaqSave();
             safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, r); });
-        }
-        uaqBusy++;
-        try {
-            if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function () { fin(null, true); }); }
+        });
+    }
+    // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
+    function uaqSelfTest() {
+        uaqC = {}; try { Lampa.Storage.set(UAQ_KEY, {}); } catch (e) {}
+        uaqFail = {};
+        if (Lampa.Noty) Lampa.Noty.show('Перевіряю JacRed…');
+        uaqGet('Dune: Part Two', 2024, function (j, why) {
+            var msg;
+            if (!j) msg = 'JacRed не відповів (' + why + '). Мітки з’являтись не будуть';
             else {
-                var x = new XMLHttpRequest(); x.open('GET', url, true); x.timeout = 9000;
-                x.onload = function () { if (x.status === 200) fin(x.responseText); else fin(null, true); };
-                x.onerror = x.ontimeout = function () { fin(null, true); };
-                x.send();
+                var arr = Array.isArray(j) ? j : (j.Results || j.results || []), job = { title: 'Dune: Part Two', type: 'movie', yr: 2024, uk: false }, r = uaqParse(j, job);
+                msg = 'JacRed працює: роздач ' + arr.length + ', знайдено UA: ' + (r.u ? 'так' : 'ні') + ', якість: ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · поля: ' + Object.keys(arr[0]).slice(0, 8).join(',') : '');
             }
-        } catch (e) { fin(null, true); }
+            if (Lampa.Noty) Lampa.Noty.show(msg, { time: 9000 });
+        });
     }
     function uaqTick() {
         if (document.hidden || !uaqQ.length) return;
@@ -5603,7 +5638,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.422';
+    var VERSION = '10.423';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
