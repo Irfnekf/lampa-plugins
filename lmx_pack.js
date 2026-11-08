@@ -2791,7 +2791,7 @@
             T + '.settings__content,' + T + '.selectbox__content,' + T + '.modal__content,' + T + '.menu,' + T + '.wrap__left{background:#0e0e12 !important}' +
             T + '.modal__content{background:#121216}' +
             // ===== сторінка фільму =====
-            F + '.full-start__background{filter:brightness(.78)}' +
+            F + '.full-start__background{opacity:.78 !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:30vw;max-height:20vh;margin-bottom:1.6vh}' +
             F + '.full-start-new__tagline{display:none}' +
@@ -2895,7 +2895,7 @@
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.06) !important;background:#1c1f2c !important;border-color:transparent !important;box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.55) !important}' +
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка (B2): вордмарк, рубрика, мета з бейджами, біла «Дивитись» + скляні кнопки, епізоди-картки
-            F + '.full-start__background{filter:brightness(.85)}' +
+            F + '.full-start__background{opacity:.85 !important}' +
             F + '.full-start-new__right{max-width:50%}' +
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:1;font-size:4.2em;margin-bottom:.25em}' +
             // є логотип — текстової назви немає (інакше вона дублюється); немає — лишається назва
@@ -3037,6 +3037,7 @@
             // перелистування ряду — як у «Кіно»
             A + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
             A + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
+            T + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
             A + '.lmx-hero__acts{display:flex;align-items:center;margin-top:1.1em}' +
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
@@ -5439,7 +5440,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.416';
+    var VERSION = '10.417';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
