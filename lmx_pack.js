@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c6', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c7', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3269,6 +3269,8 @@
             } catch (e) {}
         }, 4000);
     }
+    // коротка назва («It», «Up») без перевірки збігу дала б чужі роздачі — для таких фільтр за назвою лишається
+    function uaqLong(t) { return String(t || '').replace(/[^a-z0-9\u0400-\u04ff]+/gi, '').length >= 5; }
     function uaqNorm(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9Ѐ-ӿ]+/g, ''); }
     function uaqQual(it) {
         var n = Number(it.quality) || 0, t = String(it.title || it.Title || '').toLowerCase();
@@ -3293,7 +3295,7 @@
             it = arr[i];
             if (!it || typeof it !== 'object') continue;
             nm = uaqNorm(it.originalname || it.originalName || ''); var nn = uaqNorm(it.name || '');
-            ok = false;
+            ok = !job.strict;
             y = Number(it.relased || it.released) || 0;
             var soft = job.type === 'movie' && y && Math.abs(y - job.yr) <= 1;
             for (w = 0; w < wants.length && !ok; w++) {
@@ -3310,8 +3312,10 @@
         }
         return { q: ua && qUa ? qUa : qAll, u: ua ? 1 : 0, t: Date.now(), m: m };
     }
-    function uaqAdd(view, r) {
-        if (!r || !view || view.querySelector('.lmx-uaq') || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
+    function uaqAdd(view, r, force) {
+        if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
+        var old = view.querySelector('.lmx-uaq');
+        if (old) { if (!force) return; if (old.parentNode) old.parentNode.removeChild(old); }
         var tr = view.querySelector('.lmx-tr');
         if (!tr) { tr = document.createElement('div'); tr.className = 'lmx-tr'; view.appendChild(tr); }
         var sp = document.createElement('span');
@@ -3340,7 +3344,7 @@
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         function next(why) {
             if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; if (++uaqDown.n >= 4) { uaqDown.n = 0; uaqDown.until = Date.now() + 120000; } return cb(null, why); }
-            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + (yr ? '&year=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
+            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(String(q).toLowerCase().replace(/^\s+|\s+$/g, '')) + (yr ? '&relased=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
             function fin(j, bad) {
                 if (done) return; done = true;
                 if (!bad && typeof j === 'string' && !/\S/.test(j)) j = [];
@@ -3381,9 +3385,48 @@
         for (k in uaqAct) { if (now - uaqAct[k] > 30000) delete uaqAct[k]; else n++; }
         return n;
     }
+    // UAFlix: чи є тайтл із українською озвучкою/субтитрами (той самий сервіс, що й у marks.js kinohub); перевіряємо, коли в роздачах укр. не знайдено
+    var uaqUaf = [], uaqUafPend = {};
+    function uaqUafQueue(job, r) {
+        if (!job || !r || r.u || r.f || uaqUafPend[job.key]) return;
+        uaqUafPend[job.key] = 1;
+        uaqUaf.push(job);
+    }
+    function uaqUaflix(job, cb) {
+        var url = 'https://banderabackend.lampame.v6.rocks/api/v2/search?source=uaflix&original_title=' + encodeURIComponent(job.title) + (job.alt ? '&title=' + encodeURIComponent(job.alt) : '') + '&type=' + (job.type === 'tv' ? 'series' : 'movie'), done = false;
+        function fin(j, bad) {
+            if (done) return; done = true;
+            if (bad) return cb(null);
+            if (typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { return cb(null); } }
+            cb(!!(j && j.ok && j.items && j.items.length > 0));
+        }
+        try {
+            if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(6000); n.native(url, function (j) { fin(j); }, function () { fin(null, 1); }); }
+            else {
+                var x = new XMLHttpRequest(); x.open('GET', url, true); x.timeout = 6000;
+                x.onload = function () { if (x.status === 200) fin(x.responseText); else fin(null, 1); };
+                x.onerror = x.ontimeout = function () { fin(null, 1); };
+                x.send();
+            }
+        } catch (e) { fin(null, 1); }
+    }
+    function uaqUafRun(job) {
+        uaqAct[job.key] = job.t0 = Date.now();
+        uaqUaflix(job, function (ok) {
+            delete uaqAct[job.key]; delete uaqUafPend[job.key];
+            if (ok === null) return;
+            var c = uaqCache()[job.key] || { q: job.q || 0, u: 0, t: Date.now() };
+            c.f = 1; if (ok) c.u = 1;
+            uaqCache()[job.key] = c; uaqSave();
+            if (!ok) return;
+            var m = uaqMerge(c, job.id), i;
+            for (i = 0; i < job.views.length; i++) { var v = job.views[i]; safe(function () { if (v && v.isConnected !== false) uaqAdd(v, m, true); }); }
+        });
+    }
     function uaqFinish(job, r) {
         uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
         delete uaqPend[job.key];
+        uaqUafQueue(job, r);
         var m = uaqMerge(r, job.id), i;
         for (i = 0; i < job.views.length; i++) { var v = job.views[i]; safe(function () { if (v && v.isConnected !== false) uaqAdd(v, m); }); }
     }
@@ -3395,7 +3438,7 @@
         uaqGet(job.title, job.yr, function (j) {
             delete uaqAct[job.key];
             if (!j) return uaqGiveUp(job);
-            var r = uaqParseMany(j, job, job.wants);
+            var r = uaqParseMany(j, job, job.wants, !uaqLong(job.title));
             if (r.m) return uaqFinish(job, r);
             job.last = r;
             uaqDeep.push(job);
@@ -3404,7 +3447,7 @@
     // глибокий прохід: назва без року, українська, російська й англійська — по одній, лише коли швидкий прохід не завантажений
     function uaqDeepRun(job) {
         uaqAct[job.key] = job.t0 = Date.now();
-        var plan = [[job.title, 0]], langs = ['ru', 'en'], wants = job.wants;
+        var plan = [], langs = ['ru', 'en'], wants = job.wants, noYear = false;
         if (job.alt) plan.push([job.alt, job.yr]);
         function go() {
             var p = plan.shift();
@@ -3415,18 +3458,19 @@
                         go();
                     }, langs.shift());
                 }
+                if (!noYear) { noYear = true; plan.push([job.title, 0, 1]); return go(); }
                 delete uaqAct[job.key]; return uaqFinish(job, job.last);
             }
             uaqGet(p[0], p[1], function (j) {
                 if (!j) return go();
-                var r = uaqParseMany(j, job, wants);
+                var r = uaqParseMany(j, job, wants, p[2] || !uaqLong(p[0]));
                 if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
             });
         }
         go();
     }
-    function uaqParseMany(j, job, wants) { return uaqParse(j, { wants: wants, type: job.type, yr: job.yr, uk: job.uk }); }
+    function uaqParseMany(j, job, wants, strict) { return uaqParse(j, { wants: wants, type: job.type, yr: job.yr, uk: job.uk, strict: !!strict }); }
     // дані LMX Watch: які джерела вже знаходили цей тайтл (7 днів) — укр. джерела дають прапор і якість
     var UAQ_SRC_RX = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|kinostrain|ufdub|moviestape|[еe]н[еe][їi]д|ukr/i;
     function uaqWatch(id) {
@@ -3461,7 +3505,7 @@
             uaqGet(t[0], t[1], function (j, why) {
                 if (!j) lines.push(t[0] + ': НЕМАЄ ВІДПОВІДІ (' + why + ')');
                 else {
-                    var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false }), f = arr[0] || {};
+                    var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: !uaqLong(t[0]) }), f = arr[0] || {};
                     lines.push(t[0] + ': роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
                 }
                 one();
@@ -3470,7 +3514,7 @@
         one();
     }
     function uaqTick() {
-        if (document.hidden || (!uaqQ.length && !uaqDeep.length) || Date.now() < uaqDown.until) return;
+        if (document.hidden || (!uaqQ.length && !uaqDeep.length && !uaqUaf.length) || Date.now() < uaqDown.until) return;
         var keep = [], i, j, nearLeft = 0;
         for (i = 0; i < uaqQ.length; i++) {
             j = uaqQ[i];
@@ -3485,13 +3529,24 @@
             j = uaqDeep.shift();
             if (document.documentElement.contains(j.el)) uaqDeepRun(j); else uaqFinish(j, j.last);
         }
+        while (!nearLeft && !uaqDeep.length && uaqUaf.length && uaqBusyN() < 2) {
+            j = uaqUaf.shift();
+            if (document.documentElement.contains(j.el)) uaqUafRun(j); else delete uaqUafPend[j.key];
+        }
     }
     function uaqWant(view, d, type) {
         if (!d || !d.id || !getBool('lmx_uaq', true)) return;
         var key = type + d.id, c = uaqCache()[key], now = Date.now();
         var wv = uaqWatch(d.id);
         if (wv && wv.q >= 3) { uaqAdd(view, wv); return; }
-        if (c && now - (c.t || 0) < ((c.u || c.q >= 2) ? 259200000 : 43200000)) { uaqAdd(view, uaqMerge(c, d.id)); return; }
+        if (c && now - (c.t || 0) < ((c.u || c.q >= 2) ? 259200000 : 43200000)) {
+            uaqAdd(view, uaqMerge(c, d.id));
+            if (!c.u && !c.f && !uaqUafPend[key]) {
+                var ty = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title), al = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
+                if (ty) { uaqUafQueue({ id: d.id, key: key, views: [view], el: view.closest ? (view.closest('.card') || view) : view, type: type, title: String(ty), alt: al && String(al) !== String(ty) ? String(al) : '', q: c.q }, c); if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200); }
+            }
+            return;
+        }
         if (uaqFail[key] && now - uaqFail[key] < 600000) return;
         var date = String(d.release_date || d.first_air_date || ''), yr = parseInt(date.slice(0, 4), 10);
         if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
@@ -5747,7 +5802,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.433';
+    var VERSION = '10.435';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
