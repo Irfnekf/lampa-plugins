@@ -3255,6 +3255,13 @@
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
+        // після зміни способу пошуку (v10.448) один раз скидаємо лише «порожні» записи: знайдені мітки лишаються, а картки без міток перевіряться заново
+        try {
+            if (Lampa.Storage.get('lmx_uaq_rv', '') !== 'e2') {
+                for (var k in uaqC) if (!(uaqC[k].u || uaqC[k].q >= 2)) delete uaqC[k];
+                Lampa.Storage.set('lmx_uaq_rv', 'e2'); Lampa.Storage.set(UAQ_KEY, uaqC);
+            }
+        } catch (e) {}
         return uaqC;
     }
     function uaqSave() {
@@ -5888,7 +5895,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.447';
+    var VERSION = '10.448';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
