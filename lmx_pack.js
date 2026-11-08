@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c2', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3292,7 +3292,7 @@
             ok = false;
             for (w = 0; w < wants.length && !ok; w++) {
                 if (!wants[w]) continue;
-                if (nm || nn) ok = nm === wants[w] || nn === wants[w];
+                if (nm || nn) ok = nm === wants[w] || nn === wants[w] || (wants[w].length >= 7 && ((nm.length >= 7 && (nm.indexOf(wants[w]) >= 0 || wants[w].indexOf(nm) >= 0)) || (nn.length >= 7 && (nn.indexOf(wants[w]) >= 0 || wants[w].indexOf(nn) >= 0))));
                 else { var tt = uaqNorm(it.title || it.Title); ok = tt && tt.indexOf(wants[w]) >= 0; }
             }
             if (!ok) continue;
@@ -3326,7 +3326,7 @@
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         function next(why) {
             if (bi >= bases.length) { uaqDbg.fail++; uaqDbg.last = why; return cb(null, why); }
-            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + '&year=' + yr + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
+            var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + (yr ? '&year=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
             function fin(j, bad) {
                 if (done) return; done = true;
                 if (!bad && typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { bad = 'не JSON'; } }
@@ -3362,7 +3362,7 @@
             safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, uaqMerge(r, job.id)); });
         }
         var wants = [job.title].concat(job.alt ? [job.alt] : []);
-        uaqGet(job.title, job.yr, function (j) {
+        uaqGet(job.title, job.type === 'tv' ? 0 : job.yr, function (j) {
             if (!j) { uaqBusy--; uaqFail[job.key] = Date.now(); return; }
             var r = uaqParseMany(j, job, wants);
             if (r.m) return finish(r);
@@ -3370,11 +3370,11 @@
                 uaqRu(job, function (ru) {
                     if (!ru || wants.indexOf(ru) >= 0) return finish(r);
                     wants.push(ru);
-                    uaqGet(ru, job.yr, function (j3) { finish(j3 ? uaqParseMany(j3, job, wants) : r); });
+                    uaqGet(ru, job.type === 'tv' ? 0 : job.yr, function (j3) { finish(j3 ? uaqParseMany(j3, job, wants) : r); });
                 });
             }
             if (job.alt) {
-                uaqGet(job.alt, job.yr, function (j2) {
+                uaqGet(job.alt, job.type === 'tv' ? 0 : job.yr, function (j2) {
                     var r2 = j2 ? uaqParseMany(j2, job, wants) : r;
                     if (r2.m) return finish(r2);
                     third();
@@ -5681,7 +5681,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.426';
+    var VERSION = '10.427';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
