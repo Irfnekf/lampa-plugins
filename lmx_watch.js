@@ -3,7 +3,7 @@
  *  • Шапка з банером, логотипом і кнопками «Дивитись / Перша непереглянута / Продовжити»
  *  • Один суцільний екран без «стандартного» інтерфейсу Lampa, швидка перевірка джерел у фоні, перемикання джерела без перезавантаження
  *  • Серії широкими картками, ряд вибору (сортування, джерело, сезон, озвучка), «Спробувати інше джерело», «Повторити», «Уточнити пошук»
- *  • Налаштування: Lampa → Налаштування → LMX Watch, а також кнопка ⚙ біля банера
+ *  • Налаштування: кнопка ⚙ біля «Озвучка» на екрані «Онлайн»
  *  Працює незалежно від LMX Pack: підключіть окремим плагіном.
  */
 // ===== LMX Watch: оформлення екрана «Онлайн» для будь-яких джерел =====
@@ -13,13 +13,14 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.39';
+    var VERSION = '3.40';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
     // заглушка «Завантаження» в фільтрі джерела (напр. films.aartzz): справжніх джерел ще немає, це не джерело
     function isStub(t) { return /^\s*(завантаження|загрузка|loading)\s*\.{0,3}\s*$/i.test(String(t || '')); }
-    function isOn() { var v = Lampa.Storage.get('lmx_online', 'true'); return v === true || v === 'true'; }
+    // оформлення завжди увімкнене: вимикач жив у меню Lampa, якого більше немає (без ⚙ екран не відкрити)
+    function isOn() { return true; }
     function img(path, size) {
         try { if (Lampa.TMDB && Lampa.TMDB.image) return Lampa.TMDB.image('t/p/' + size + path); } catch (e) {}
         return 'https://image.tmdb.org/t/p/' + size + path;
@@ -1120,7 +1121,9 @@
                 { title: 'Вигляд серій', subtitle: VIEWS[curView()], k: 'view' },
                 { title: 'Автоперемикання джерел', subtitle: autoOn() ? 'Увімкнено' : 'Вимкнено', k: 'auto' },
                 { title: 'Підбирати найкраще джерело', subtitle: probeOn() ? 'Увімкнено' : 'Вимкнено', k: 'probe' },
-                { title: 'Бажана якість', subtitle: QPREF[qPref()], k: 'q' }
+                { title: 'Бажана якість', subtitle: QPREF[qPref()], k: 'q' },
+                { title: 'Підвантажувати наступну серію', subtitle: prefetchOn() ? 'Увімкнено' : 'Вимкнено', k: 'pre' },
+                { title: 'Здоров\u2019я джерел', subtitle: 'Статистика відповідей джерел', k: 'health' }
             ].concat(Object.keys(OPTS).map(function (k) { var o = OPTS[k]; return { title: o[0], subtitle: o[2][opt(o[3], o[1])] || o[2][o[1]], k: 'o:' + k }; })).map(function (it) { if (sel && it.k === sel) it.selected = true; return it; }),
             onBack: back,
             onSelect: function (a) {
@@ -1133,6 +1136,12 @@
                     });
                     return;
                 }
+                if (a.k === 'pre') {
+                    try { Lampa.Storage.set('lmx_online_prefetch', prefetchOn() ? 'false' : 'true'); } catch (e) {}
+                    openCfg(act, 'pre', enabled);
+                    return;
+                }
+                if (a.k === 'health') { safe(showHealth); return; }
                 if (a.k === 'probe') {
                     try { Lampa.Storage.set('lmx_online_probe', probeOn() ? 'false' : 'true'); } catch (e) {}
                     openCfg(act, 'probe', enabled);
@@ -3479,13 +3488,6 @@
             // Дотик/колесо: на телефоні фокусу немає, і наші «рятувальні» цикли (viewGuard, recover, resync) щоразу ставили фокус на кнопку шапки —
             // список прокручувався нагору просто під пальцем. Тепер вони стають осторонь, поки користувач сам гортає
             if (!window.__lmxTouchHook) { window.__lmxTouchHook = 1; window.__lmxTouchT = 0; ['touchstart', 'touchmove', 'touchend', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { window.__lmxTouchT = Date.now(); }, { capture: true, passive: true }); }); }
-            var S2 = Lampa.SettingsApi;
-            if (S2 && S2.addComponent) S2.addComponent({ component: 'lmx_watch', name: 'LMX Watch', icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5l5 2.5-5 2.5z" fill="currentColor"/><path d="M8 21h8"/></svg>' });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online', type: 'trigger', default: true },
-                field: { name: 'Оформлення екрана «Онлайн»', description: 'Шапка з кнопками «Продовжити» і «Наступна», серії широкими картками, чіпи озвучок. Для всіх джерел. Якщо екран джерела виглядає зламаним — вимкніть' },
-                onChange: function () { setTimeout(function () { document.body.classList.toggle('lmx-online', isOn()); }, 50); }
-            });
             safe(hookFilter);
             safe(hookSelect);
             safe(hookRequest);
@@ -3505,31 +3507,6 @@
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
             applyView(curView());
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_auto', type: 'trigger', default: true },
-                field: { name: 'Автоперемикання джерел', description: 'Відкриває джерело, що спрацювало раніше; якщо воно порожнє — пробує наступне (до 6 спроб) і запам\'ятовує результат' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_vauto', type: 'select', values: { on: 'Увімкнено', off: 'Вимкнено' }, default: 'on' },
-                field: { name: 'Авто-вибір української озвучки', description: 'Поки йде завантаження, обирає українську озвучку (або ту, яку ви вже обирали для цього серіалу) — екран не перезавантажується на очах. Якщо з нею серій немає, повертає попередню' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_q', type: 'select', values: QPREF, default: 'auto' },
-                field: { name: 'Бажана якість джерела', description: 'Підбір шукатиме джерело з такою якістю або кращою; якщо такого немає — візьме найкраще з наявних' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_online_prefetch', type: 'trigger', default: true },
-                field: { name: 'Підвантажувати наступну серію', description: 'Під час перегляду один раз «будить» посилання наступної серії, щоб перемикання в плеєрі було швидшим' }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_watch_health', type: 'button' },
-                field: { name: 'Здоров\u2019я джерел', description: 'Які джерела відповідають швидко й стабільно, а які часто підводять — за вашим досвідом. Тут же можна скинути статистику' },
-                onChange: function () { safe(showHealth); }
-            });
-            if (S2 && S2.addParam) S2.addParam({
-                component: 'lmx_watch', param: { name: 'lmx_watch_ver', type: 'title', default: '' },
-                field: { name: 'LMX Watch · версія ' + VERSION }
-            });
             // Логотип назви вантажимо наперед, ще на картці фільму: на «Онлайн» він уже в кеші й з'являється одразу, без підміни тексту
             Lampa.Listener.follow('full', function (e) {
                 safe(function () {
