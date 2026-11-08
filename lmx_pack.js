@@ -1751,6 +1751,15 @@
         });
         return first.concat(rest);
     }
+    // перші n карток ряду на головній: по черзі від кожного лайка (кращий збіг кожного), щоб усі ваші лайки були на виду; далі — за балом
+    function spreadBySeed(arr, n) {
+        var by = {}, order = [], used = {}, out = [];
+        arr.forEach(function (x) { var k = x.bk || '_'; if (!by[k]) { by[k] = []; order.push(k); } by[k].push(x); });
+        for (var r = 0; out.length < n && r < 3; r++) {
+            order.forEach(function (k) { var x = by[k][r]; if (x && out.length < n && !used[x.c.id]) { used[x.c.id] = 1; out.push(x); } });
+        }
+        return out.concat(arr.filter(function (x) { return !used[x.c.id]; }));
+    }
     // картка з маленькою причиною знизу («Бо ви лайкнули X»); решта — стандартна картка
     function withWhy(c, why) {
         if (!why) return c;
@@ -1886,7 +1895,7 @@
             function fin() {
                 if (--left > 0) return;
                 var arr = rankRecs(score, P, seedTitle);
-                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = arr.slice(0, ROW_MAX).map(function (x) { return withWhy(x.c, fromLikes ? x.why : ''); });
+                var full = arr.map(function (x) { return x.c; }).slice(0, 150), out = (fromLikes ? spreadBySeed(arr, 18) : arr).slice(0, ROW_MAX).map(function (x) { return withWhy(x.c, fromLikes ? x.why : ''); });
                 if (!out.length) return call();
                 // кнопка «Ще» відкриває повний список (до 100) з нашої підбірки: сторінки віддає перехоплений tmdb.list
                 recsAllBy[mode] = full;
@@ -2201,6 +2210,8 @@
                 '.card--lmxhist .lmx-sel,.card--lmxstudio .lmx-sel{border-radius:0}' +
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
                 '.lmx-why{position:absolute;left:50%;top:4.6em;transform:translateX(-50%);max-width:80%;display:flex;align-items:center;gap:.4em;padding:.28em .75em;border-radius:99em;background:rgba(10,12,18,.62);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:.66em;line-height:1.2;font-weight:700;letter-spacing:.01em;pointer-events:none;z-index:3;box-sizing:border-box}' +
+                '.card:not(.focus) .lmx-why{left:auto;right:.7em;top:.7em;transform:none;max-width:none;padding:.3em .5em;background:rgba(10,12,18,.5)}' +
+                '.card:not(.focus) .lmx-why span{display:none}' +
                 '.lmx-why i{font-style:normal;color:#ff5d73;font-size:1.05em;flex:0 0 auto}' +
                 '.lmx-why span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}' +
                 '.card--lmxhist{width:23em !important}' +
@@ -5227,7 +5238,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.376';
+    var VERSION = '10.377';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
