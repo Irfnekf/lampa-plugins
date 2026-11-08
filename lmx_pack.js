@@ -2243,6 +2243,8 @@
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-uaq{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;align-items:center;font-size:.72em;font-weight:800;line-height:1;padding:.4em .7em .4em .55em;border-radius:99em;background:rgba(10,12,18,.62);border:1px solid rgba(255,255,255,.16);color:#fff;white-space:nowrap}' +
+            '.lmx-cin__r .lmx-uaq{position:static;display:inline-flex;font-size:.82em;padding:.28em .6em .28em .5em}' +
+            '.lmx-cin__r .lmx-uaq i{width:1em;height:.7em;margin-right:.4em}' +
             '.lmx-uaq i{display:block;width:1.15em;height:.8em;margin-right:.5em;border-radius:.15em;background:linear-gradient(#2f6bff 50%,#ffd43b 50%)}' +
             '.lmx-uaq b{font-weight:700;opacity:.85}' +
             '.lmx-has-uaq .lmx-tr{top:2.6em}' +
@@ -3200,7 +3202,16 @@
         if (!getBool('lmx_uaq', false) || !id || view.querySelector('.lmx-uaq')) return;
         var u = uaqOf(id);
         if (!u) return;
-        addTo(view, 'lmx-uaq', '<i></i>UA<b>' + (UAQ_LBL[u.q] || '') + '</b>');
+        var html = '<i></i>UA<b>' + (UAQ_LBL[u.q] || '') + '</b>', row = view.querySelector('.lmx-cin__r');
+        // основне місце — рядок «рейтинг · UA 4K · рік» внизу картки: угорі справа вже стоять мітки «Нова серія», «Сьогодні», «Новинка»
+        if (row && row.lastElementChild) {
+            var sp = document.createElement('span');
+            sp.className = 'lmx-uaq';
+            sp.innerHTML = html;
+            row.insertBefore(sp, row.lastElementChild);
+            return;
+        }
+        addTo(view, 'lmx-uaq', html);
         view.classList.add('lmx-has-uaq');
     }
     function addMark(view, m) {
@@ -5415,7 +5426,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.395';
+    var VERSION = '10.396';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
