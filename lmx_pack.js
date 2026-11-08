@@ -4250,6 +4250,11 @@
         all.forEach(function (t) { if (out.indexOf(t) < 0) out.push(t); });
         return out;
     }
+    // Коли «Показувати всі кнопки» вимкнено: перша кнопка (закріплена довгим натисканням) завжди першою й не рухається, решту можна міняти місцями
+    function btnTokensFixed(m, ids) {
+        if (!ids.length) return btnTokens(m, ids);
+        return [ids[0]].concat(btnTokens(m, ids.slice(1)));
+    }
     function paint(el, col) {
         if (col) { el.style.setProperty('--lmx-bc', col); el.classList.add('lmx-ic'); }
         else { el.style.removeProperty('--lmx-bc'); el.classList.remove('lmx-ic'); }
@@ -4520,9 +4525,9 @@
         // Увімкнено: порядок і розмір — наші. Порядок задаємо властивістю order (DOM не чіпаємо, щоб не воювати з плагінами).
         // Перша на екрані кнопка завжди у стилі теми, цифри 1/2/3 на неї не діють
         var allOn = getBool('lmx_btn_all', false);
-        var reorder = allOn && (m.order.length > 0 || m.folders.length > 0);
+        var reorder = (m.order.length > 0 || m.folders.length > 0);
         var ids = list.map(function (b) { return b.id; });
-        var toks = allOn ? btnTokens(m, ids) : ids;
+        var toks = allOn ? btnTokens(m, ids) : btnTokensFixed(m, ids);
         var shown = function (t) {
             if (m.hidden.indexOf(t) >= 0 || inFolder[t]) return false;
             if (t.indexOf('f:') === 0) {
@@ -4544,8 +4549,8 @@
         var fEls = btnFolders(cont, c);
 
         Object.keys(fEls).forEach(function (t) { cont.append(fEls[t]); });
-        var allToks = allOn ? toks.slice() : ids.concat(Object.keys(fEls));
-        if (allOn) m.folders.forEach(function (f) { if (allToks.indexOf('f:' + f.id) < 0) allToks.push('f:' + f.id); });
+        var allToks = (allOn || reorder) ? toks.slice() : ids.concat(Object.keys(fEls));
+        if (allOn || reorder) m.folders.forEach(function (f) { if (allToks.indexOf('f:' + f.id) < 0) allToks.push('f:' + f.id); });
         allToks.forEach(function (t, i) {
             var el = map[t] || fEls[t];
             if (!el) return;
@@ -4866,7 +4871,8 @@
         }
         function move(t, d, btnEl) {
             var row = rowOf(t), sib = d < 0 ? row.prev() : row.next();
-            if (!getBool('lmx_btn_all', false)) { if (Lampa.Noty) Lampa.Noty.show('Порядок налаштовується, коли ввімкнено «Показувати всі кнопки». Поки вимкнено — довге натискання на кнопку в меню «Дивитись» виносить її першою'); return; }
+            // перша (закріплена) кнопка завжди на місці: ні її рухати, ні ставити щось перед нею не можна
+            if (!getBool('lmx_btn_all', false) && (row.attr('data-lock') || (sib.length && sib.attr('data-lock')))) { if (Lampa.Noty) Lampa.Noty.show('Перша кнопка закріплена довгим натисканням — вона завжди першою'); return; }
             if (!sib.length) return;
             if (d < 0) row.insertBefore(sib); else row.insertAfter(sib);
             saveOrderFromDom();
@@ -5026,7 +5032,7 @@
         bind(done, close);
         bottom.append(reset, done);
 
-        var toks = getBool('lmx_btn_all', false) ? btnTokens(m, ids) : ids.concat(m.folders.map(function (f) { return 'f:' + f.id; }));
+        var toks = getBool('lmx_btn_all', false) ? btnTokens(m, ids) : btnTokensFixed(m, ids);
         toks.forEach(function (tk) { listEl.append(rowFor(tk)); });
         refreshAll();
         Lampa.Modal.open({ title: 'Порядок кнопок', html: wrap, size: 'medium', mask: true, onBack: close });
@@ -5419,7 +5425,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.413';
+    var VERSION = '10.414';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
