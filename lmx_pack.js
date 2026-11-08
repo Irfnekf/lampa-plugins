@@ -2393,9 +2393,9 @@
             V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
             // телефон: портретна афіша як у Apple TV — високий постер, внизу затемнення, по центру назва, рядок «Фільм · рік», кнопки
             L + '.scroll__body' + X + '{display:grid !important;transform:none !important;transition:none !important;width:100% !important}' +
-            // слайд, що йде, лишається повністю видимим, поки новий (поверх нього) розчиняється, і зникає вже під ним — без «провалу» в чорне
-            C + '{width:100% !important;margin:0 !important;grid-area:1/1;opacity:0 !important;transition:opacity 0s linear 1.1s !important;pointer-events:none;will-change:opacity;z-index:1}' +
-            L + '.card--lmxhero.lmx-pcur' + X + ',' + L + '.card--lmxhero.lmx-pcur.focus' + X + ',' + L + '.card--lmxhero.lmx-pcur.hover' + X + '{opacity:1 !important;transition:opacity 1s cubic-bezier(.4,0,.2,1) !important;pointer-events:auto;z-index:2}' +
+            // як в Apple TV: швидке (~0,35 с) одночасне розчинення старого слайда в новий, разом із текстом і кнопками
+            C + '{width:100% !important;margin:0 !important;grid-area:1/1;opacity:0 !important;transition:opacity .35s ease-in-out !important;pointer-events:none;will-change:opacity;z-index:1}' +
+            L + '.card--lmxhero.lmx-pcur' + X + ',' + L + '.card--lmxhero.lmx-pcur.focus' + X + ',' + L + '.card--lmxhero.lmx-pcur.hover' + X + '{opacity:1 !important;transition:opacity .35s ease-in-out !important;pointer-events:auto;z-index:2}' +
             L + '.lmx-hero__text' + X + '{opacity:1 !important;transition:none !important}' +
             V + '{height:min(calc((100vw - 3em) * 1.4),66vh) !important;border-radius:1.3em !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important}' +
             L + '.lmx-hero__shade' + X + '{height:100% !important;background:linear-gradient(to top,#000 0%,rgba(0,0,0,.88) 24%,rgba(0,0,0,.35) 46%,rgba(0,0,0,0) 64%) !important}' +
@@ -5341,7 +5341,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.387';
+    var VERSION = '10.388';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
