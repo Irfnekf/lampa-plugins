@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c5', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c6', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3326,6 +3326,15 @@
     var uaqDbg = { ok: 0, fail: 0, last: '' }, uaqDown = { n: 0, until: 0 };
     function uaqBases() { return ['https://jac.red']; }
     // один запит до jac.red; cb(json | null, опис_збою)
+    // масив роздач з відповіді (JacRed: масив; Jackett-стиль: Results; запасні назви полів)
+    function uaqItems(j) {
+        if (Array.isArray(j)) return j;
+        if (!j || typeof j !== 'object') return null;
+        var k, ks = ['Results', 'results', 'data', 'items', 'torrents'];
+        for (k = 0; k < ks.length; k++) if (Array.isArray(j[ks[k]])) return j[ks[k]];
+        for (k in j) if (Array.isArray(j[k])) return j[k];
+        return null;
+    }
     function uaqGet(q, yr, cb) {
         var bases = uaqBases(), key = '', bi = 0;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
@@ -3334,8 +3343,14 @@
             var base = bases[bi++], url = base + '/api/v1.0/torrents?search=' + encodeURIComponent(q) + (yr ? '&year=' + yr : '') + (key ? '&apikey=' + encodeURIComponent(key) : ''), done = false;
             function fin(j, bad) {
                 if (done) return; done = true;
+                if (!bad && typeof j === 'string' && !/\S/.test(j)) j = [];
                 if (!bad && typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { bad = 'не JSON'; } }
-                if (!bad && !(Array.isArray(j) || (j && (j.Results || j.results)))) bad = 'незнайомий формат';
+                if (!bad) {
+                    var arr = uaqItems(j);
+                    if (arr) j = arr;
+                    else if (j === null || j === undefined || j === '' || (typeof j === 'object' && !Object.keys(j).length)) j = [];   // порожня відповідь = нічого не знайдено, не збій
+                    else { j = []; uaqDbg.fmt = (uaqDbg.fmt || 0) + 1; }
+                }
                 if (bad) return next(base.replace(/^https?:\/\//, '') + ': ' + bad);
                 uaqDown.n = 0; uaqDbg.ok++; uaqDbg.last = 'ok ' + base.replace(/^https?:\/\//, '');
                 cb(j, '', base);
@@ -3425,17 +3440,28 @@
     // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
     function uaqSelfTest() {
         uaqC = {}; try { Lampa.Storage.set(UAQ_KEY, {}); } catch (e) {}
-        uaqFail = {};
+        uaqFail = {}; uaqDown.until = 0; uaqDown.n = 0;
+        var en = ''; try { en = Lampa.Controller.enabled().name; } catch (e) {}
         if (Lampa.Noty) Lampa.Noty.show('Перевіряю JacRed…');
-        uaqGet('Dune: Part Two', 2024, function (j, why) {
-            var msg;
-            if (!j) msg = 'JacRed не відповів (' + why + '). Мітки з’являтись не будуть';
-            else {
-                var arr = Array.isArray(j) ? j : (j.Results || j.results || []), job = { title: 'Dune: Part Two', type: 'movie', yr: 2024, uk: false }, r = uaqParse(j, job);
-                msg = 'JacRed працює: роздач ' + arr.length + ', знайдено UA: ' + (r.u ? 'так' : 'ні') + ', якість: ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · поля: ' + Object.keys(arr[0]).slice(0, 8).join(',') : '');
-            }
-            if (Lampa.Noty) Lampa.Noty.show(msg, { time: 9000 });
-        });
+        var tests = [['Dune: Part Two', 2024, 'movie'], ['The Last of Us', 2023, 'tv'], ['Кіборги', 2017, 'movie']], lines = [], i = 0;
+        function show() {
+            function back() { try { Lampa.Controller.toggle(en); } catch (e) {} }
+            try { Lampa.Select.show({ title: 'Мітки: перевірка jac.red', items: lines.map(function (l) { return { title: l }; }), onBack: back, onSelect: back }); }
+            catch (e) { if (Lampa.Noty) Lampa.Noty.show(lines.join(' | '), { time: 12000 }); }
+        }
+        function one() {
+            var t = tests[i++];
+            if (!t) return show();
+            uaqGet(t[0], t[1], function (j, why) {
+                if (!j) lines.push(t[0] + ': НЕМАЄ ВІДПОВІДІ (' + why + ')');
+                else {
+                    var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false }), f = arr[0] || {};
+                    lines.push(t[0] + ': роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
+                }
+                one();
+            });
+        }
+        one();
     }
     function uaqTick() {
         if (document.hidden || (!uaqQ.length && !uaqDeep.length) || Date.now() < uaqDown.until) return;
@@ -5713,7 +5739,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.431';
+    var VERSION = '10.432';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
