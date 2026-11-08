@@ -86,7 +86,8 @@
     // Максимум карток у ряду (головна й каталоги): решта — у «Ще». Менше карток — легше ТВ
     var ROW_MAX = 24;
     // Слайдів у афіші (головна й каталоги): 12; кожен тримає велику картинку в пам'яті ТВ
-    var HERO_MAX = 12;
+    // кількість слайдів афіші: у «Склі» 7 (легше для ТБ), в інших темах 12
+    function heroMax() { return getStr('lmx_theme', 'default') === 'apple' ? 7 : 12; }
 
     // Стрімінги (id провайдерів TMDB) і підбірки «під настрій»
     var SERVICES = [
@@ -954,11 +955,11 @@
             function take(list, kind, max) {
                 var n = 0;
                 list.filter(uaOk).sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).forEach(function (m) {
-                    if (n >= max || out.length >= HERO_MAX || seen[kind + m.id]) return;
+                    if (n >= max || out.length >= heroMax() || seen[kind + m.id]) return;
                     seen[kind + m.id] = 1; m.media_type = kind; m.__trend = 1; out.push(m); n++;
                 });
             }
-            // спершу свіже (4 фільми й 4 серіали), потім найпопулярніше за весь час, поки не наберемо HERO_MAX
+            // спершу свіже (4 фільми й 4 серіали), потім найпопулярніше за весь час, поки не наберемо heroMax()
             take(recMv, 'movie', 4); take(recTv, 'tv', 4);
             take(topTv, 'tv', 4); take(topMv, 'movie', 4);
             take(topTv, 'tv', 12); take(topMv, 'movie', 12);
@@ -988,11 +989,11 @@
         function fin() {
             if (--left > 0) return;
             var seen = {}, out = [];
-            // до 4 «скоро»; решту до HERO_MAX слайдів: спершу те, що виходить зараз, далі найпопулярніше за весь час
+            // до 4 «скоро»; решту до heroMax() слайдів: спершу те, що виходить зараз, далі найпопулярніше за весь час
             var soon = soonTv.concat(soonMv).filter(uaOk)
                 .sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
             soon.forEach(function (m) { seen[m.id] = 1; });
-            var room = HERO_MAX - soon.length;
+            var room = heroMax() - soon.length;
             recent.filter(function (m) { return uaOk(m) && !seen[m.id]; }).forEach(function (m) {
                 if (out.length >= room) return;
                 seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m);
@@ -1685,7 +1686,7 @@
                 });
                 list.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
                 // «гучні» прем'єри (особливо «скоро») не мають вилітати через ліміт — беремо їх першими, решту добираємо за популярністю
-                var lim = HERO_MAX;
+                var lim = heroMax();
                 var tg = list.filter(function (m) { return m.__tag === 'soon'; }).concat(list.filter(function (m) { return m.__tag === 'new'; })).slice(0, lim - 2);
                 var rest = list.filter(function (m) { return !m.__tag; });
                 list = tg.concat(rest.slice(0, lim - tg.length));
@@ -5438,7 +5439,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.415';
+    var VERSION = '10.416';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
