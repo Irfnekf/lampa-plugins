@@ -2273,6 +2273,7 @@
             '.lmx-hero__uaq em{font-style:normal;display:inline-flex;font-weight:800}.lmx-hero__uaq em span:first-child{color:#3b8cff}.lmx-hero__uaq em span:last-child{color:#ffd62e}' +
             '.lmx-hero__uaq s{width:1px;height:.95em;margin:0 .5em;background:currentColor;opacity:.45}.lmx-hero__uaq b{font-weight:inherit}' +
             '.lmx-hero__kick .lmx-hero__uaq{margin-left:.9em;padding-left:.9em;border-left:1px solid rgba(255,255,255,.4);color:#fff;letter-spacing:.18em;text-transform:uppercase;vertical-align:baseline}' +
+            '.lmx-hist__uaq{position:absolute;right:0;top:.12em;font-size:.82em;text-shadow:0 1px 3px rgba(0,0,0,.7)}.lmx-hasuaq .lmx-hist__t{padding-right:6.5em}' +
             '.lmx-hero__kick .lmx-hero__uaq s{display:none}.lmx-hero__kick .lmx-hero__uaq b{margin-left:.55em}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
@@ -3333,12 +3334,13 @@
         var hostK = view.closest ? (view.closest('.card--lmxhero') ? 'h' : (view.closest('.card--lmxhist') ? 'l' : '')) : '';
         if (hostK) {
             // афіша: Кіно/HBO — у рядку-«титрі» над назвою, решта тем — у рядку з рейтингом; ряди «Історія»/«Пізніше» — у рядку з роком
-            var meta = hostK === 'l' ? view.querySelector('.lmx-hist__m') : (view.querySelector('.lmx-hero__kick') || view.querySelector('.lmx-hero__meta'));
+            var meta = hostK === 'l' ? view.querySelector('.lmx-hist__text') : (view.querySelector('.lmx-hero__kick') || view.querySelector('.lmx-hero__meta'));
             old = view.querySelector('.lmx-hero__uaq');
             if (old && force) { if (old.parentNode) old.parentNode.removeChild(old); old = null; }
             if (!old && meta) {
                 var hs = document.createElement('span');
-                hs.className = 'lmx-hero__uaq';
+                hs.className = 'lmx-hero__uaq' + (hostK === 'l' ? ' lmx-hist__uaq' : '');
+                if (hostK === 'l' && meta.classList) meta.classList.add('lmx-hasuaq');
                 hs.innerHTML = (r.u ? '<em><span>U</span><span>A</span></em>' : '') + (r.u && q ? '<s></s>' : '') + (q ? '<b>' + q + '</b>' : '');
                 meta.appendChild(hs);
             }
@@ -5898,7 +5900,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.457';
+    var VERSION = '10.458';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
