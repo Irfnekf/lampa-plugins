@@ -922,10 +922,12 @@
         // Українське: у TMDB багато нових українських тайтлів без країни UA — доповнюємо кожен ряд тим самим запитом за мовою оригіналу, мережами (1+1 Україна, Новий канал) і студією Pronto Film; результати зливаються в один ряд
         if (key === 'ua') {
             var UA0 = 'with_origin_country=UA';
+            // мережі TMDB: 1+1, 1+1 Україна, Новий канал, ICTV, ICTV2, СТБ, ТЕТ, 2+2, Київстар ТБ
+            var UA_NET = [1254, 7496, 3510, 1166, 9338, 1206, 1326, 5947, 8582];
             out.forEach(function (e) {
                 if (!e.q || e.q.indexOf(UA0) !== 0) return;
                 var rest = e.q.slice(UA0.length);
-                e.alts = (e.k === 'tv' ? ['with_original_language=uk', 'with_networks=7496' + PIPE + '3510', 'with_companies=22436'] : ['with_original_language=uk', 'with_companies=22436']).map(function (a) { return a + rest; });
+                e.alts = (e.k === 'tv' ? ['with_original_language=uk', 'with_networks=' + UA_NET.join(PIPE), 'with_companies=22436'] : ['with_original_language=uk', 'with_companies=22436']).map(function (a) { return a + rest; });
             });
         }
         var mapped = out.map(function (e) {
@@ -5424,7 +5426,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.408';
+    var VERSION = '10.409';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
