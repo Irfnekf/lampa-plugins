@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.28';
+    var VERSION = '1.29';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Sync', description: 'Синхронізація закладок, історії та позицій перегляду між пристроями', author: 'Irfnekf' }; } catch (e) {}
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
@@ -102,6 +102,8 @@
         return s;
     }
     function syncActive() {
+        // за замовчуванням працюємо й тоді, коли ввімкнена синхронізація CUB; перемикач у налаштуваннях повертає стару поведінку (поступатися CUB)
+        if (sget('lmx_sync_force', true) !== false && sget('lmx_sync_force', true) !== 'false') return true;
         try { if (Lampa.Account && Lampa.Account.Permit && Lampa.Account.Permit.sync) return false; } catch (e) {}
         return true;
     }
@@ -755,6 +757,7 @@
             sset('lmx_sync_hold', '');
             noty('Код забуто. Синхронізацію вимкнено');
         });
+        S.addParam({ component: 'lmx_sync', param: { name: 'lmx_sync_force', type: 'trigger', default: true }, field: { name: 'Працювати разом із синхронізацією CUB', description: 'Увімкнено: LMX Sync синхронізує навіть тоді, коли в акаунті ввімкнена синхронізація CUB. Вимкнено: поступається CUB, щоб дві синхронізації не перезаписували одна одну' } });
         S.addParam({ component: 'lmx_sync', param: { name: 'lmx_sync_v', type: 'title', default: '' }, field: { name: 'LMX Sync v' + VERSION + ' · дані не зашифровані, не діліться кодом' } });
     }
 
