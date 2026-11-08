@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.36';
+    var VERSION = '3.37';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3017,9 +3017,9 @@
                 }
                 if (!cd && (empty || (manual && waited > 20000)) && tryVoice()) return;
                 // Після перемикання ДЖЕРЕЛА запит інколи «губиться» (список не приходить ні з відповіддю «порожньо», ні з помилкою), хоча той самий запит
-                // через вибір сезону/озвучки спрацьовує одразу. Тому, якщо за 8 с нічого немає, робимо саме цю дію: повторно обираємо поточний сезон (або озвучку),
-                // а коли це неможливо — повторюємо запит джерела. Не більше двох спроб на джерело (на 8 с і на 20 с)
-                if (!empty && !cd && (act.__lmxNg || 0) < 2 && waited > ((act.__lmxNg || 0) ? 20000 : 8000)) {
+                // через вибір сезону/озвучки спрацьовує одразу. Тому, якщо за 6 с нічого немає, робимо саме цю дію: повторно обираємо поточний сезон (або озвучку),
+                // а коли це неможливо — повторюємо запит джерела. Не більше двох спроб на джерело (на 6 с і на 16 с)
+                if (!empty && !cd && (act.__lmxNg || 0) < 2 && waited > ((act.__lmxNg || 0) ? 16000 : 6000)) {
                     act.__lmxNg = (act.__lmxNg || 0) + 1;
                     heroStatus(act, 'Повторюємо запит до «' + (curKey || 'джерела') + '»…', false, 0.4);
                     var ngG = (S.season && S.season.items && S.season.items.length) ? S.season : (S.voice && S.voice.items && S.voice.items.length ? S.voice : null), ngDone = false;
@@ -3030,7 +3030,7 @@
                     safe(function () { afterReload(act); });
                     return;
                 }
-                if (!empty) { heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' + (waited > 9000 ? ' · джерело відповідає повільно, можна обрати інше кнопкою «Джерело»' : '') : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
+                if (!empty) { safe(function () { if (!freshEps(body).length) ensureProg(act); }); heroStatus(act, manual ? 'Шукаємо на «' + srcName(curIt && curIt.title) + '»… ' + Math.round(waited / 1000) + ' с' + (waited > 9000 ? ' · джерело відповідає повільно, можна обрати інше кнопкою «Джерело»' : '') : (profileOf(window.__lmxProbe).label || 'Перевіряємо джерела…'), false, 0.15 + Math.min(0.6, waited / 16000)); return; }
                 if (!cd) {
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
