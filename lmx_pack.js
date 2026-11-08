@@ -553,6 +553,7 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
+        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з JacRed із налаштувань парсера Lampa (або jac.red); результат пам\'ятається 3 дні', rebuild);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -2261,7 +2262,10 @@
 
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
-            '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none}' +
+            '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end}' +
+            '.lmx-uaq{display:inline-flex;align-items:center;font-size:' + (0.85 * fs).toFixed(2) + 'em;font-weight:800;line-height:1;padding:.32em .7em .32em .36em;border-radius:99em;color:#fff;white-space:nowrap;background:rgba(8,9,18,.86);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
+            '.lmx-uaq--nf{padding:.32em .7em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-right:.4em;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}.lmx-uaq--nf i{display:none}' +
+            '.lmx-mark+.lmx-uaq{margin-top:.35em}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
             '.lmx-ord__row{display:flex;align-items:center;padding:.45em .7em;border-radius:.5em}' +
@@ -2717,6 +2721,8 @@
             T + '.lmx-cin__g{opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:.62em}' +
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
+            T + '.lmx-uaq{border-radius:.25em;background:rgba(5,6,15,.88);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
+            T + '.lmx-uaq i{border-radius:.15em;width:1.25em;height:.9em}' +
             T + '.lmx-box .lmx-pill{background:rgba(5,6,15,.78) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
             T + '.lmx-pill.lmx-m-next{background:' + G + ' !important;color:#fff !important}' +
             T + '.lmx-pill.lmx-m-new{background:#fff !important;color:#05060f !important}' +
@@ -3208,8 +3214,9 @@
         view.appendChild(d);
     }
     function addMark(view, m) {
-        if (!m || !getBool('lmx_marks', true) || view.querySelector('.lmx-tr')) return;
-        addTo(view, 'lmx-tr', '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>');
+        if (!m || !getBool('lmx_marks', true) || view.querySelector('.lmx-mark')) return;
+        var mh = '<span class="lmx-pill lmx-mark lmx-m-' + m.c + '">' + m.t + '</span>', tr = view.querySelector('.lmx-tr');
+        if (tr) tr.insertAdjacentHTML('afterbegin', mh); else addTo(view, 'lmx-tr', mh);
     }
     var GENRES = { 28: 'Бойовик', 12: 'Пригоди', 16: 'Мультфільм', 35: 'Комедія', 80: 'Кримінал', 99: 'Документальний', 18: 'Драма', 10751: 'Сімейний',
         14: 'Фентезі', 36: 'Історія', 27: 'Жахи', 10402: 'Музика', 9648: 'Детектив', 10749: 'Мелодрама', 878: 'Фантастика', 10770: 'ТВ-фільм',
@@ -3235,6 +3242,128 @@
         addTo(view, 'lmx-cin', html);
     }
 
+
+    // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
+    // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
+    // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
+    var UAQ_KEY = 'lmx_uaq_c', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqBusy = 0, uaqFail = {}, uaqTimer = 0;
+    function uaqCache() {
+        if (uaqC) return uaqC;
+        try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
+        return uaqC;
+    }
+    function uaqSave() {
+        clearTimeout(uaqSaveT);
+        uaqSaveT = setTimeout(function () {
+            try {
+                var k = Object.keys(uaqC || {}), i;
+                if (k.length > 900) {
+                    k.sort(function (a, b) { return (uaqC[a].t || 0) - (uaqC[b].t || 0); });
+                    for (i = 0; i < k.length - 650; i++) delete uaqC[k[i]];
+                }
+                Lampa.Storage.set(UAQ_KEY, uaqC);
+            } catch (e) {}
+        }, 4000);
+    }
+    function uaqBase() {
+        var u = '';
+        try { u = String(Lampa.Storage.get('jackett_url', '') || ''); } catch (e) {}
+        u = u.replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').replace('jacred.xyz', 'jac.red');
+        if (!u) u = 'jac.red';
+        if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+        return u;
+    }
+    function uaqNorm(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9Ѐ-ӿ]+/g, ''); }
+    function uaqQual(it) {
+        var n = Number(it.quality) || 0, t = String(it.title || it.Title || '').toLowerCase();
+        if (n >= 2160 || /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/.test(t)) return 4;
+        if (n >= 1080 || /(^|[^a-z0-9])(1080p?|fhd)([^a-z0-9]|$)/.test(t)) return 3;
+        if (n >= 720 || /(^|[^a-z0-9])(720p?|hd)([^a-z0-9]|$)/.test(t)) return 2;
+        return n > 0 ? 1 : 0;
+    }
+    function uaqUa(it) {
+        var v = it.voices, l = it.languages, t = String(it.title || it.Title || '') + ' ' + (v && v.join ? v.join(' ') : String(v || '')) + ' ' + (l && l.join ? l.join(' ') : String(l || ''));
+        return /(^|[^a-z])(ukr|ukrainian)|укр|(^|[^a-z0-9])ua([^a-z0-9]|$)/i.test(t);
+    }
+    function uaqParse(j, job) {
+        var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), want = uaqNorm(job.title), qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok;
+        for (i = 0; i < arr.length; i++) {
+            it = arr[i];
+            if (!it || typeof it !== 'object') continue;
+            nm = uaqNorm(it.originalname || it.originalName || ''); var nn = uaqNorm(it.name || '');
+            if (nm || nn) ok = (nm && nm === want) || (nn && nn === want);
+            else { var tt = uaqNorm(it.title || it.Title); ok = tt && tt.indexOf(want) >= 0; }
+            if (!ok) continue;
+            y = Number(it.relased || it.released) || 0;
+            if (job.type === 'movie' && y && Math.abs(y - job.yr) > 1) continue;
+            var q = uaqQual(it), u = uaqUa(it);
+            if (q > qAll) qAll = q;
+            if (u) { ua = 1; if (q > qUa) qUa = q; }
+        }
+        return { q: ua && qUa ? qUa : qAll, u: ua ? 1 : 0, t: Date.now() };
+    }
+    function uaqAdd(view, r) {
+        if (!r || !view || view.querySelector('.lmx-uaq') || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
+        var tr = view.querySelector('.lmx-tr');
+        if (!tr) { tr = document.createElement('div'); tr.className = 'lmx-tr'; view.appendChild(tr); }
+        var sp = document.createElement('span');
+        sp.className = 'lmx-uaq' + (r.u ? '' : ' lmx-uaq--nf');
+        sp.innerHTML = (r.u ? '<i></i>' : '') + (r.q >= 2 ? UAQ_LBL[r.q] : '');
+        tr.appendChild(sp);
+    }
+    function uaqNear(el) {
+        var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
+        return r.width > 0 && r.right > -W * 0.5 && r.left < W * 1.5 && r.bottom > -H * 0.5 && r.top < H * 1.5;
+    }
+    function uaqFetch(job) {
+        var url = uaqBase() + '/api/v1.0/torrents?search=' + encodeURIComponent(job.title) + '&year=' + job.yr, key = '';
+        try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
+        if (key) url += '&apikey=' + encodeURIComponent(key);
+        var done = false;
+        function fin(j, bad) {
+            if (done) return; done = true; uaqBusy--;
+            if (bad) { uaqFail[job.key] = Date.now(); return; }
+            if (typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { uaqFail[job.key] = Date.now(); return; } }
+            var r = uaqParse(j, job);
+            uaqCache()[job.key] = r; uaqSave();
+            safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, r); });
+        }
+        uaqBusy++;
+        try {
+            if (Lampa.Reguest) { var n = new Lampa.Reguest(); n.timeout(9000); n.native(url, function (j) { fin(j); }, function () { fin(null, true); }); }
+            else {
+                var x = new XMLHttpRequest(); x.open('GET', url, true); x.timeout = 9000;
+                x.onload = function () { if (x.status === 200) fin(x.responseText); else fin(null, true); };
+                x.onerror = x.ontimeout = function () { fin(null, true); };
+                x.send();
+            }
+        } catch (e) { fin(null, true); }
+    }
+    function uaqTick() {
+        if (document.hidden || !uaqQ.length) return;
+        var keep = [], i, j;
+        for (i = 0; i < uaqQ.length; i++) {
+            j = uaqQ[i];
+            if (!document.documentElement.contains(j.el)) continue;
+            if (uaqBusy < 2 && uaqNear(j.el)) uaqFetch(j); else keep.push(j);
+        }
+        uaqQ = keep.length > 400 ? keep.slice(keep.length - 400) : keep;
+    }
+    function uaqWant(view, d, type) {
+        if (!d || !d.id || !getBool('lmx_uaq', true)) return;
+        var key = type + d.id, c = uaqCache()[key], now = Date.now();
+        if (c && now - (c.t || 0) < ((c.u || c.q >= 2) ? 259200000 : 43200000)) { uaqAdd(view, c); return; }
+        if (uaqFail[key] && now - uaqFail[key] < 600000) return;
+        var date = String(d.release_date || d.first_air_date || ''), yr = parseInt(date.slice(0, 4), 10);
+        if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
+        var title = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title);
+        if (!title) return;
+        var el = view.closest ? view.closest('.card') : view.parentNode;
+        uaqQ.push({ key: key, view: view, el: el || view, type: type, title: String(title), yr: yr, uk: d.original_language === 'uk' });
+        if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200);
+        safe(uaqTick);
+    }
+
     // Картка: «кіно»-підпис (жанр, назва, рейтинг, рік) і мітка «Новинка/Скоро» для фільмів
     function extras(el, d, type) {
         var view = el.querySelector('.card__view');
@@ -3242,6 +3371,7 @@
         hideNativeTv(view);
         cinemaOverlay(view, d, type);
         if (type === 'movie') addMark(view, movieMark(d));
+        safe(function () { uaqWant(view, d, type); });
     }
 
     // Серіали: значок С3Е24 і мітки «Нова серія»/«Сьогодні»
@@ -5473,7 +5603,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.421';
+    var VERSION = '10.422';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
