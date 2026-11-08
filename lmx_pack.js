@@ -2724,8 +2724,8 @@
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
             T + '.lmx-uaq{display:none !important}' +
-            T + '.lmx-uaqc{display:flex;align-items:center;font-size:.64em;font-weight:800;line-height:1;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.45em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
-            T + '.lmx-uaqc em{font-style:normal}.lmx-uaqc em span:first-child{color:#3b8cff}.lmx-uaqc em span:last-child{color:#ffd62e}.lmx-uaqc s{display:block;width:1px;height:.95em;margin:0 .7em;background:rgba(255,255,255,.55)}' +
+            T + '.lmx-uaqc{display:flex;align-items:center;font-size:.86em;font-weight:800;line-height:1;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.45em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}' +
+            T + '.lmx-uaqc em{font-style:normal}.lmx-uaqc em span:first-child{color:#3b8cff}.lmx-uaqc em span:last-child{color:#ffd62e}.lmx-uaqc s{display:block;width:1px;height:.95em;margin:0 .6em;background:rgba(255,255,255,.55)}' +
             T + '.lmx-box .lmx-pill{background:rgba(5,6,15,.78) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
             T + '.lmx-pill.lmx-m-next{background:' + G + ' !important;color:#fff !important}' +
             T + '.lmx-pill.lmx-m-new{background:#fff !important;color:#05060f !important}' +
@@ -5881,7 +5881,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.444';
+    var VERSION = '10.445';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
