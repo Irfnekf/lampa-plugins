@@ -3250,7 +3250,7 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
-    var UAQ_KEY = 'lmx_uaq_c10', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
+    var UAQ_KEY = 'lmx_uaq_c11', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
         try { var o = Lampa.Storage.get(UAQ_KEY, {}); uaqC = (o && typeof o === 'object' && !o.length) ? o : {}; } catch (e) { uaqC = {}; }
@@ -3465,10 +3465,12 @@
     function uaqFetch(job) {
         uaqAct[job.key] = job.t0 = Date.now();
         job.wants = [job.title].concat(job.alt ? [job.alt] : []);
-        uaqGet(job.title, job.yr, function (j) {
+        // серіали: рік у JacRed — це рік сезону, а не початку серіалу, тому спершу шукаємо без року (збіг лише за точною назвою)
+        var tv = job.type === 'tv';
+        uaqGet(job.title, tv ? 0 : job.yr, function (j) {
             delete uaqAct[job.key];
             if (!j) return uaqGiveUp(job);
-            var r = uaqParseMany(j, job, job.wants, !uaqLong(job.title));
+            var r = uaqParseMany(j, job, job.wants, tv || !uaqLong(job.title));
             if (r.m) return uaqFinish(job, r);
             job.last = r;
             uaqDeep.push(job);
@@ -3477,7 +3479,8 @@
     // глибокий прохід: назва без року, українська, російська й англійська — по одній, лише коли швидкий прохід не завантажений
     function uaqDeepRun(job) {
         uaqAct[job.key] = job.t0 = Date.now();
-        var plan = [], langs = ['ru', 'en'], wants = job.wants, noYear = false;
+        var plan = [], langs = ['ru', 'en'], wants = job.wants, noYear = job.type === 'tv';
+        if (job.type === 'tv') plan.push([job.title, job.yr]);
         if (job.alt) plan.push([job.alt, job.yr]);
         function go() {
             var p = plan.shift();
@@ -3520,25 +3523,30 @@
     // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
     function uaqSelfTest() {
         uaqC = {}; try { Lampa.Storage.set(UAQ_KEY, {}); } catch (e) {}
-        uaqFail = {}; uaqDown.until = 0; uaqDown.n = 0;
+        uaqFail = {}; uaqBadCombo = {}; uaqDown.until = 0; uaqDown.n = 0;
         var en = ''; try { en = Lampa.Controller.enabled().name; } catch (e) {}
-        if (Lampa.Noty) Lampa.Noty.show('Перевіряю JacRed…');
-        var tests = [['Dune: Part Two', 2024, 'movie'], ['The Last of Us', 2023, 'tv'], ['Кіборги', 2017, 'movie']], lines = [], i = 0;
+        if (Lampa.Noty) Lampa.Noty.show('Перевіряю мітки…');
+        var tests = [['The Lord of the Rings: The Fellowship of the Ring', 2001, 'movie'], ['The Mentalist', 2008, 'tv'], ['Dune: Part Two', 2024, 'movie']], lines = [], i = 0;
         function show() {
             function back() { try { Lampa.Controller.toggle(en); } catch (e) {} }
-            try { Lampa.Select.show({ title: 'Мітки: перевірка jac.red', items: lines.map(function (l) { return { title: l }; }), onBack: back, onSelect: back }); }
+            try { Lampa.Select.show({ title: 'Мітки: перевірка ' + VERSION, items: lines.map(function (l) { return { title: l }; }), onBack: back, onSelect: back }); }
             catch (e) { if (Lampa.Noty) Lampa.Noty.show(lines.join(' | '), { time: 12000 }); }
+        }
+        function sum(j, t, y) {
+            var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: t[2] === 'tv' || !uaqLong(t[0]) });
+            return arr.length + ' роздач/' + r.m + ' збігів, UA ' + (r.u ? 'так' : 'ні') + ', ' + (UAQ_LBL[r.q] || '—');
         }
         function one() {
             var t = tests[i++];
             if (!t) return show();
-            uaqGet(t[0], t[1], function (j, why) {
-                if (!j) lines.push(t[0] + ': НЕМАЄ ВІДПОВІДІ (' + why + ')');
-                else {
-                    var arr = uaqItems(j) || [], r = uaqParse(arr, { title: t[0], type: t[2], yr: t[1], uk: false, strict: !uaqLong(t[0]) }), f = arr[0] || {};
-                    lines.push(t[0] + ' [' + String(uaqMode).replace(/^https?:\/\//, '') + ']: роздач ' + arr.length + ', збігів ' + r.m + ', UA ' + (r.u ? 'так' : 'ні') + ', якість ' + (UAQ_LBL[r.q] || '—') + (arr[0] ? ' · ' + (f.originalname || f.name || f.title || f.Title || '').toString().slice(0, 40) + ' [' + (f.relased || '') + '] полів:' + Object.keys(f).length : ''));
-                }
-                one();
+            var short = t[0].slice(0, 22);
+            uaqGet(t[0], t[1], function (j1, why, host) {
+                if (!j1) { lines.push(short + ': НЕМАЄ ВІДПОВІДІ (' + why + ')'); return one(); }
+                var f = (uaqItems(j1) || [])[0] || {};
+                uaqGet(t[0], 0, function (j2) {
+                    lines.push(short + ' @' + host + ' | з роком: ' + sum(j1, t) + ' | без року: ' + (j2 ? sum(j2, t) : 'збій') + (f.originalname || f.title || f.Title ? ' | напр.: ' + String(f.originalname || f.title || f.Title).slice(0, 30) + ' [' + (f.relased || '?') + ']' : ''));
+                    one();
+                });
             });
         }
         one();
@@ -5832,7 +5840,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.438';
+    var VERSION = '10.439';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
