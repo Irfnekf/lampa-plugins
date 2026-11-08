@@ -2264,8 +2264,8 @@
         return '' +
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end}' +
-            '.lmx-uaq{display:inline-flex;align-items:center;font-size:' + (0.85 * fs).toFixed(2) + 'em;font-weight:800;line-height:1;padding:.32em .7em .32em .36em;border-radius:99em;color:#fff;white-space:nowrap;background:rgba(8,9,18,.86);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
-            '.lmx-uaq--nf{padding:.32em .7em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-right:.4em;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}.lmx-uaq--nf i{display:none}' +
+            '.lmx-uaq{display:inline-flex;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:700;line-height:1;padding:.28em .6em .28em .34em;border-radius:99em;color:#fff;white-space:nowrap;background:rgba(30,32,60,.62);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}' +
+            '.lmx-uaq--nf{padding:.28em .6em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-right:.4em;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}.lmx-uaq--nf i{display:none}' +
             '.lmx-mark+.lmx-uaq{margin-top:.35em}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
@@ -2722,8 +2722,9 @@
             T + '.lmx-cin__g{opacity:.7;text-transform:uppercase;letter-spacing:.05em;font-size:.62em}' +
             // мітки як «рідні» плашки HBO: маленькі, капсом, без обводки
             T + '.lmx-pill{border:0 !important;border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em}' +
-            T + '.lmx-uaq{border-radius:.25em;background:rgba(5,6,15,.88);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
-            T + '.lmx-uaq i{border-radius:.15em;width:1.25em;height:.9em}' +
+            T + '.lmx-uaq{border-radius:.25em;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:.28em .6em .28em .34em;background:rgba(5,6,15,.78);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
+            T + '.lmx-uaq--nf{padding:.28em .6em}' +
+            T + '.lmx-uaq i{border-radius:.12em;width:1.3em;height:.9em}' +
             T + '.lmx-box .lmx-pill{background:rgba(5,6,15,.78) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
             T + '.lmx-pill.lmx-m-next{background:' + G + ' !important;color:#fff !important}' +
             T + '.lmx-pill.lmx-m-new{background:#fff !important;color:#05060f !important}' +
@@ -2988,6 +2989,8 @@
             A + '.lmx-cin__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
             A + '.lmx-cin__y{opacity:.7;font-weight:500}' +
             // мітки — капсули
+            A + '.lmx-uaq{font-weight:600;letter-spacing:.02em;padding:.34em .8em .34em .4em}' +
+            A + '.lmx-uaq--nf{padding:.34em .9em}' +
             A + '.lmx-pill{border:0 !important;border-radius:99em;font-weight:600;letter-spacing:.02em;padding:.34em .9em}' +
             A + '.lmx-box .lmx-pill{background:rgba(30,32,60,.62) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#fff !important}' +
             A + '.lmx-pill.lmx-m-next{background:#0a84ff !important;color:#fff !important}' +
@@ -3279,21 +3282,27 @@
         return /(^|[^a-z])(ukr|ukrainian)|укр|(^|[^a-z0-9])ua([^a-z0-9]|$)/i.test(t);
     }
     function uaqParse(j, job) {
-        var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), want = uaqNorm(job.title), qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok;
+        var arr = Array.isArray(j) ? j : ((j && (j.Results || j.results)) || []), wants = [uaqNorm(job.title)], qAll = 0, qUa = 0, ua = job.uk ? 1 : 0, i, it, nm, y, ok, m = 0, w;
+        if (job.alt) wants.push(uaqNorm(job.alt));
         for (i = 0; i < arr.length; i++) {
             it = arr[i];
             if (!it || typeof it !== 'object') continue;
             nm = uaqNorm(it.originalname || it.originalName || ''); var nn = uaqNorm(it.name || '');
-            if (nm || nn) ok = (nm && nm === want) || (nn && nn === want);
-            else { var tt = uaqNorm(it.title || it.Title); ok = tt && tt.indexOf(want) >= 0; }
+            ok = false;
+            for (w = 0; w < wants.length && !ok; w++) {
+                if (!wants[w]) continue;
+                if (nm || nn) ok = nm === wants[w] || nn === wants[w];
+                else { var tt = uaqNorm(it.title || it.Title); ok = tt && tt.indexOf(wants[w]) >= 0; }
+            }
             if (!ok) continue;
             y = Number(it.relased || it.released) || 0;
             if (job.type === 'movie' && y && Math.abs(y - job.yr) > 1) continue;
+            m++;
             var q = uaqQual(it), u = uaqUa(it);
             if (q > qAll) qAll = q;
             if (u) { ua = 1; if (q > qUa) qUa = q; }
         }
-        return { q: ua && qUa ? qUa : qAll, u: ua ? 1 : 0, t: Date.now() };
+        return { q: ua && qUa ? qUa : qAll, u: ua ? 1 : 0, t: Date.now(), m: m };
     }
     function uaqAdd(view, r) {
         if (!r || !view || view.querySelector('.lmx-uaq') || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
@@ -3343,8 +3352,14 @@
             uaqBusy--;
             if (!j) { uaqFail[job.key] = Date.now(); return; }
             var r = uaqParse(j, job);
-            uaqCache()[job.key] = r; uaqSave();
-            safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, r); });
+            function put(rr) {
+                uaqCache()[job.key] = { q: rr.q, u: rr.u, t: rr.t }; uaqSave();
+                safe(function () { if (job.view && job.view.isConnected !== false) uaqAdd(job.view, rr); });
+            }
+            if (!r.m && job.alt) {
+                uaqBusy++;
+                uaqGet(job.alt, job.yr, function (j2) { uaqBusy--; put(j2 ? uaqParse(j2, job) : r); });
+            } else put(r);
         });
     }
     // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
@@ -3382,7 +3397,8 @@
         var title = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title);
         if (!title) return;
         var el = view.closest ? view.closest('.card') : view.parentNode;
-        uaqQ.push({ key: key, view: view, el: el || view, type: type, title: String(title), yr: yr, uk: d.original_language === 'uk' });
+        var alt = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
+        uaqQ.push({ key: key, view: view, el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' });
         if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200);
         safe(uaqTick);
     }
@@ -5626,7 +5642,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.424';
+    var VERSION = '10.425';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
