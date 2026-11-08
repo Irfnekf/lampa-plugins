@@ -3418,7 +3418,11 @@
             }, function () { cb([]); });
         } catch (e) { cb([]); }
     }
-    var uaqDeep = [], uaqPend = {};
+    var uaqDeep = [], uaqPend = {}, uaqNoMark = [];
+    // журнал для кнопки перевірки: що саме питали й скільки роздач/збігів прийшло по картках, де мітки не знайшлось
+    function uaqStep(job, q, y, j, r) {
+        (job.steps || (job.steps = [])).push(String(q).slice(0, 24) + (y ? ' ' + y : '') + ': ' + (j ? ((uaqItems(j) || []).length + '/' + (r ? r.m : 0)) : 'збій'));
+    }
     // скільки запитів зараз «в роботі»; запит, що висить понад 30 с, слот не тримає (захист від зависання без відповіді)
     function uaqBusyN() {
         var n = 0, k, now = Date.now();
@@ -3465,6 +3469,7 @@
     }
     function uaqFinish(job, r) {
         uaqCache()[job.key] = { q: r.q, u: r.u, t: r.t }; uaqSave();
+        if (!(r.u || r.q >= 2)) { uaqNoMark.push(job.title.slice(0, 26) + ' [' + job.yr + ' ' + job.type + '] ' + (job.steps || []).join(' | ')); if (uaqNoMark.length > 12) uaqNoMark.shift(); }
         delete uaqPend[job.key];
         uaqUafQueue(job, r);
         var m = uaqMerge(r, job.id), i;
@@ -3475,6 +3480,7 @@
         job.tries = (job.tries || 0) + 1;
         if (job.tries <= 3) { job.after = Date.now() + 15000 * job.tries; uaqQ.push(job); return; }
         delete uaqPend[job.key]; uaqFail[job.key] = Date.now();
+        uaqNoMark.push(job.title.slice(0, 26) + ' [' + job.yr + ' ' + job.type + '] ЗБІЙ МЕРЕЖІ ' + (job.steps || []).join(' | ')); if (uaqNoMark.length > 12) uaqNoMark.shift();
     }
     // швидкий прохід: один запит (назва + рік). Якщо збігів немає — картка йде в «глибоку» чергу (інші назви, без року)
     function uaqFetch(job) {
@@ -3486,6 +3492,7 @@
             delete uaqAct[job.key];
             if (!j) return uaqGiveUp(job);
             var r = uaqParseMany(j, job, job.wants, tv || !uaqLong(job.title));
+            uaqStep(job, job.title, tv ? 0 : job.yr, j, r);
             if (r.m) return uaqFinish(job, r);
             job.last = r;
             uaqDeep.push(job);
@@ -3517,6 +3524,7 @@
             uaqGet(p[0], p[1], function (j) {
                 if (!j) return go();
                 var r = uaqParseMany(j, job, wants, p[2] || !uaqLong(p[0]));
+                uaqStep(job, p[0], p[1], j, r);
                 if (r.m) { delete uaqAct[job.key]; return uaqFinish(job, r); }
                 go();
             });
@@ -3542,11 +3550,10 @@
     }
     // кнопка в налаштуваннях: чистить пам'ять міток і показує, що відповів JacRed на тестовий запит
     function uaqSelfTest() {
-        uaqC = {}; try { Lampa.Storage.set(UAQ_KEY, {}); } catch (e) {}
         uaqFail = {}; uaqBadCombo = {}; uaqDown.until = 0; uaqDown.n = 0;
         var en = ''; try { en = Lampa.Controller.enabled().name; } catch (e) {}
         if (Lampa.Noty) Lampa.Noty.show('Перевіряю мітки…');
-        var tests = [['The Lord of the Rings: The Fellowship of the Ring', 2001, 'movie'], ['The Mentalist', 2008, 'tv'], ['Dune: Part Two', 2024, 'movie']], lines = [], i = 0;
+        var tests = [['Dune: Part Two', 2024, 'movie']], lines = ['Без мітки (' + uaqNoMark.length + ', формат «запит рік: роздач/збігів»):'].concat(uaqNoMark.slice(-8).reverse()), i = 0;
         function show() {
             function back() { try { Lampa.Controller.toggle(en); } catch (e) {} }
             try { Lampa.Select.show({ title: 'Мітки: перевірка ' + VERSION, items: lines.map(function (l) { return { title: l }; }), onBack: back, onSelect: back }); }
@@ -5861,7 +5868,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.440';
+    var VERSION = '10.441';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
