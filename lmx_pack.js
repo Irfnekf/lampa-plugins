@@ -1455,6 +1455,20 @@
             if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) { touchT = Date.now(); safe(function () { step(dx < 0 ? 1 : -1); }); }
         }, { passive: true, capture: true });
     }
+    // назва в кнопці «Каталоги» ніколи не обрізається: шрифт стискається під ширину кнопки
+    function fitStudioNames(root) {
+        var ns = (root || document).querySelectorAll('.lmx-studio__name');
+        for (var i = 0; i < ns.length; i++) {
+            var n = ns[i], v = n.closest && n.closest('.card__view');
+            if (!v || !v.clientWidth) continue;
+            n.style.whiteSpace = 'nowrap'; n.style.fontSize = '';
+            var pad = 0, cs = getComputedStyle(v);
+            pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+            var avail = v.clientWidth - pad - v.clientWidth * 0.1, sw = n.scrollWidth, fs = parseFloat(getComputedStyle(n).fontSize) || 16;
+            if (sw > avail && avail > 0) n.style.fontSize = Math.max(8, fs * avail / sw) + 'px';
+        }
+    }
+    window.addEventListener('resize', function () { safe(function () { fitStudioNames(); }); });
     function heroDecorate(h, m, idx, n, svc) {
         // на телефоні афіша — портретний постер (як у застосунку Apple TV), на ТБ/ПК — широкий бекдроп
         var phone = isMobile() && !!m.poster_path;
@@ -1706,6 +1720,8 @@
                                         }
                                         view.append(lg && getStr('lmx_theme', 'default') !== 'prem' ? '<img class="lmx-studio__logo" src="' + imgUrl(lg, 'w154') + '">' :
                                             '<div class="lmx-studio__name" style="color:' + (PROV_TEXT[x[2]] || '#fff') + '">' + esc(x[1]) + '</div>');
+                                        // довгі назви (PARAMOUNT+, SKYSHOWTIME) мають вміщатись у кнопку: зменшуємо шрифт, коли картка вже має розмір (і ще раз — коли підвантажиться шрифт)
+                                        [0, 400, 1500, 4000].forEach(function (d) { setTimeout(function () { safe(function () { fitStudioNames(h[0]); }); }, d); });
                                     });
                                 },
                                 onlyEnter: function () { openService(x); }
@@ -5341,7 +5357,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.390';
+    var VERSION = '10.391';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
