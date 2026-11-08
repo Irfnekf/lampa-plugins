@@ -1686,6 +1686,12 @@
     }
 
     // ---- Якість добірки «Схоже на те, що вам сподобалось»: профіль смаку, поріг якості, різноманітність, без продовжень однієї франшизи, причина на картці ----
+    // в добірці лише ті, що мають український опис: кирилиця без суто російських літер (ы э ъ ё), інакше це російський або англійський запасний текст
+    function hasUaText(r) {
+        var t = String(r && r.overview || '').trim();
+        if (!/[\u0400-\u04FF]/.test(t)) return false;
+        return /[\u0456\u0457\u0454\u0491\u0406\u0407\u0404\u0490]/.test(t) || !/[\u044B\u044D\u044A\u0451\u042B\u042D\u042A\u0401]/.test(t);
+    }
     function yearOf(c) { var y = parseInt(String(c.release_date || c.first_air_date || '').slice(0, 4), 10); return y || 0; }
     function kindOf(c) { return (c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons) ? 'tv' : 'movie'; }
     function norm1(m) { var mx = 0, k, o = {}; for (k in m) if (m[k] > mx) mx = m[k]; for (k in m) o[k] = mx ? m[k] / mx : 0; return o; }
@@ -1757,7 +1763,7 @@
                     safe(function () {
                         var h = htmlOf(self, ex), view = h && h.find('.card__view');
                         if (!view || !view.length || view.find('.lmx-why').length) return;
-                        view.append('<div class="lmx-why">Бо ви лайкнули ' + esc(why) + '</div>');
+                        view.append('<div class="lmx-why"><i>&#9829;</i><span>Бо ви лайкнули ' + esc(why) + '</span></div>');
                     });
                 }
             }
@@ -1793,7 +1799,7 @@
         jobs.forEach(function (j) {
             tget(j.url, { page: j.page }, function (res) {
                 cleanResults(res && res.results, false).forEach(function (r) {
-                    if (!r.poster_path || skip[r.id] || !qualityOk(r)) return;
+                    if (!r.poster_path || skip[r.id] || !qualityOk(r) || !hasUaText(r)) return;
                     var yr = yearOf(r); if (yr && yr < 2000) return;
                     if (isAnimeC(r)) return;
                     r.media_type = kind;
@@ -1896,7 +1902,7 @@
                 var j = jobs[qi++];
                 tget(j.url, { page: j.page }, function (res) {
                     cleanResults(res && res.results, false).forEach(function (r) {
-                        if (!r.poster_path || skip[r.id] || !qualityOk(r)) return;
+                        if (!r.poster_path || skip[r.id] || !qualityOk(r) || !hasUaText(r)) return;
                         // дуже старі (до 2000) у «Схоже на те, що вам сподобалось» не беремо
                         var yr = parseInt(String(r.release_date || r.first_air_date || '').slice(0, 4), 10);
                         if (yr && yr < 2000) return;
@@ -2194,7 +2200,9 @@
                 '.lmx-sel.on{opacity:1}' +
                 '.card--lmxhist .lmx-sel,.card--lmxstudio .lmx-sel{border-radius:0}' +
                 // широкі картки історії («Продовжити перегляд») — у всіх темах; теми лише міняють заокруглення й розміри
-                '.lmx-why{position:absolute;left:0;right:0;bottom:0;padding:1.4em .6em .45em;font-size:.72em;line-height:1.2;font-weight:600;color:#fff;background:linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,0));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:3;border-radius:0 0 1em 1em}' +
+                '.lmx-why{position:absolute;left:50%;top:.6em;transform:translateX(-50%);max-width:74%;display:flex;align-items:center;gap:.4em;padding:.28em .75em;border-radius:99em;background:rgba(10,12,18,.62);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:.66em;line-height:1.2;font-weight:700;letter-spacing:.01em;pointer-events:none;z-index:3;box-sizing:border-box}' +
+                '.lmx-why i{font-style:normal;color:#ff5d73;font-size:1.05em;flex:0 0 auto}' +
+                '.lmx-why span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}' +
                 '.card--lmxhist{width:23em !important}' +
                 '.card--lmxhist .card__view{height:12.9em !important;padding-bottom:0 !important;border-radius:1em;overflow:hidden;position:relative;background-repeat:no-repeat !important;background-size:cover !important;background-position:center !important}' +
                 '.card--lmxhist > *:not(.card__view):not(.lmx-sel),.card--lmxhist .card__view > *:not(.lmx-hist__shade):not(.lmx-hist__text):not(.lmx-hist__bar):not(.lmx-tr):not(.lmx-box){display:none !important}' +
@@ -5219,7 +5227,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.374';
+    var VERSION = '10.375';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
