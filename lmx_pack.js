@@ -767,6 +767,10 @@
             { t: 'Драми (фільми)', k: 'movie', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Бойовики', k: 'movie', q: 'with_origin_country=UA&with_genres=28&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Військові', k: 'movie', q: 'with_origin_country=UA&with_genres=10752&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Історичні фільми', k: 'movie', q: 'with_origin_country=UA&with_genres=36&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
+            { t: 'Серіали: війна й політика', k: 'tv', q: 'with_origin_country=UA&with_genres=10768&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
+            { t: 'Українське кіно 2010-х', k: 'movie', q: 'with_origin_country=UA&primary_release_date.gte=2010-01-01&primary_release_date.lte=2019-12-31&sort_by=vote_count.desc&vote_count.gte=5', min: 5 },
+            { t: 'Українське кіно 2000-х', k: 'movie', q: 'with_origin_country=UA&primary_release_date.gte=2000-01-01&primary_release_date.lte=2009-12-31&sort_by=vote_count.desc&vote_count.gte=5', min: 5 },
             { t: 'Мультфільми', k: 'movie', q: 'with_origin_country=UA&with_genres=16&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Документальні фільми', k: 'movie', q: 'with_origin_country=UA&with_genres=99&sort_by=popularity.desc&vote_count.gte=3', min: 5 },
             { t: 'Серіали: драми', k: 'tv', q: 'with_origin_country=UA&with_genres=18&sort_by=popularity.desc&vote_count.gte=2', min: 5 },
@@ -5426,7 +5430,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.409';
+    var VERSION = '10.410';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
