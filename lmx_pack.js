@@ -2265,7 +2265,7 @@
             '.lmx-box{position:absolute;left:.4em;top:.4em;z-index:3;pointer-events:none}' +
             '.lmx-tr{position:absolute;right:.4em;top:.4em;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end}' +
             '.lmx-uaq{position:absolute;left:0;top:34%;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:center;font-size:' + (0.72 * fs).toFixed(2) + 'em;font-weight:800;line-height:1;padding:.7em .4em;border-radius:0 .7em .7em 0;color:#fff;background:rgba(8,9,18,.85);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}' +
-            '.lmx-uaq b{font-weight:inherit;writing-mode:vertical-rl;letter-spacing:.08em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-bottom:.55em;flex:none;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}' +
+            '.lmx-uaq b{font-weight:inherit;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.08em}.lmx-uaq i{display:block;width:1.1em;height:1.1em;border-radius:50%;margin-bottom:.55em;flex:none;background:linear-gradient(180deg,#2f6fd6 50%,#f2c200 50%)}' +
             '.lmx-tr>*{flex:none}' +
             '.lmx-pill{display:inline-block;font-size:' + fs + 'em;line-height:1;padding:.32em .6em;border-radius:.6em;color:#fff;font-weight:600;white-space:nowrap;background:rgba(0,0,0,.62)}' +
             markCss('next', nNext) + markCss('new', 'gray') + markCss('soon', nSoon) +
@@ -5866,7 +5866,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.442';
+    var VERSION = '10.443';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
