@@ -1244,35 +1244,8 @@
                     moreSoon();
                     if (heroL && heroL.length) heroAttach(heroTitle, heroL);
                     startLazy();
-                    startMoreWatch();
                 }
                 function moreSoon() {}
-                // Lampa (старий рядок) показує вгорі «Ще», але плитку «Ще» в кінці ряду будує лише для 20+ карток і лише після прокрутки; кнопка вгорі пультом недосяжна.
-                // Коли фокус заходить у ряд із «Ще» вгорі — дорендерюємо його картки й додаємо плитку в кінці
-                var lineList = [];
-                self.onAppend = function (item, element) { item.__lmxD = element; lineList.push(item); };
-                function fillRow(it) {
-                    var d = it && it.__lmxD;
-                    if (!d || it.__lmxFilled || d.nomore || !d.results || !(d.more || d.total_pages > 1)) return;
-                    var root = it.render(true);
-                    if (!root || !root.querySelector('.items-line__more')) return;
-                    it.__lmxFilled = true;
-                    if (root.querySelector('.card-more')) return;
-                    d.results.forEach(function (e) { it.append(e); });
-                    it.attach();
-                    if (!root.querySelector('.card-more')) { var m = it.more(); try { if (Lampa.Controller.own(it)) Lampa.Controller.collectionAppend(m); } catch (e) {} }
-                }
-                function startMoreWatch() {
-                    var el = self.render(), last = null;
-                    var iv = setInterval(function () {
-                        var root = el && el[0];
-                        if (!root || !document.body.contains(root)) return clearInterval(iv);
-                        var fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line');
-                        if (!fl || fl === last) return;
-                        last = fl;
-                        safe(function () { lineList.forEach(function (it) { if (it.render && it.render(true) === fl) fillRow(it); }); });
-                    }, 300);
-                }
                 function put(r) {
                     if (built) { try { self.append(r); moreSoon(); } catch (e) { next = cats.length; } } else firstRows.push(r);
                 }
@@ -5934,7 +5907,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.461';
+    var VERSION = '10.462';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -5949,6 +5922,37 @@
             if (document.body) document.body.classList.add('no--mask');
         }
     });
+    // Глобально для всіх рядів Lampa (головна, каталоги, пошук, актори…): старий рядок показує вгорі «Ще» (пультом недосяжне),
+    // а плитку «Ще» в кінці будує лише для 20+ карток. Коли фокус заходить у короткий ряд із «Ще» вгорі — дорендерюємо картки й додаємо плитку
+    safe(function () {
+        if (!Lampa.Listener || window.__lmxMoreFix) return;
+        window.__lmxMoreFix = 1;
+        var lines = [];
+        Lampa.Listener.follow('line', function (e) {
+            if (e && e.type === 'visible' && e.line && e.data && lines.indexOf(e.line) < 0) { e.line.__lmxD = e.data; lines.push(e.line); if (lines.length > 200) lines.shift(); }
+        });
+        function fill(it) {
+            var d = it.__lmxD;
+            if (!d || it.__lmxFilled || d.nomore || !d.results || d.results.length >= 20 || d.results.length < 2 || typeof it.more !== 'function' || typeof it.attach !== 'function') return;
+            var root = it.render && it.render(true);
+            if (!root || !root.querySelector || !root.querySelector('.items-line__more')) return;
+            it.__lmxFilled = true;
+            if (root.querySelector('.card-more')) return;
+            d.results.forEach(function (x) { it.append(x); });
+            if (!root.querySelector('.card-more')) { var m = it.more(); try { if (Lampa.Controller.own(it)) Lampa.Controller.collectionAppend(m); } catch (er) {} }
+        }
+        var last = null;
+        setInterval(function () {
+            safe(function () {
+                var fo = document.querySelector('.items-line .focus'), fl = fo && fo.closest('.items-line');
+                if (!fl || fl === last) return;
+                last = fl;
+                lines = lines.filter(function (it) { return it.render && document.body.contains(it.render(true)); });
+                lines.forEach(function (it) { if (it.render(true) === fl) fill(it); });
+            });
+        }, 300);
+    });
+
     safe(patchContentRows);
 
     // Довге натискання на кнопку в меню «Дивитись» зберігає хеш її HTML. Наш плагін додає кнопкам класи/стилі/іконки,
