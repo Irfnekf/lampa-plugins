@@ -553,7 +553,8 @@
         // ---- Мітки ----
         H.title('lmx_t_marks', 'Мітки на картках');
         H.trigger('lmx_marks', true, 'Показувати мітки', '«Нова серія» і «Сьогодні» — для серіалів, «Новинка» — для фільмів за останній місяць, «Скоро» — для того, що ще не вийшло', rebuild);
-        H.trigger('lmx_uaq', true, 'Мітка якості й UA на картках', 'Прапор — є українська озвучка, текст — якість найкращої роздачі (4K / 1080p / 720p). Дані з торрент-індексів (JacRed і твій парсер); результат пам\'ятається 3 дні', rebuild);
+        H.trigger('lmx_uaq', true, 'Мітка «UA» (українська озвучка)', 'Прапорець на картці, якщо в торрент-індексах (JacRed і твій парсер) є роздача з українською озвучкою. Результат пам\'ятається 3 дні', rebuild);
+        H.trigger('lmx_uaq_q', true, 'Мітка якості (4K / 1080p / 720p)', 'Якість найкращої роздачі. Можна лишити лише UA, лише якість, обидві мітки або вимкнути обидві', rebuild);
         H.trigger('lmx_timetable', true, 'Стилізація «Розкладу»', 'Стандартний екран «Розклад» Lampa (календар виходу серій): скляні клітинки, день із серіями тепліший, «сьогодні» з позначкою', applyStyle);
         H.trigger('lmx_hide_viewed', true, 'Ховати переглянуте в каталогах', 'Фільми й серіали, позначені як «Переглянуто» (у «Закладках»), не показуються в рядах головної та в каталогах (у «Історії» й «Пізніше» лишаються за своїми правилами)', null);
         H.select('lmx_c_next', COLOR_NAMES, 'orange', 'Колір: нова серія і «Сьогодні»', 'Лише в темі «Полегшена», у темах «Кіно» і «Скло» кольори вбудовані', restyle);
@@ -3279,6 +3280,8 @@
     // ===== Мітка «прапор + якість» (UA-озвучка і якість найкращої роздачі) =====
     // Дані — з JacRed, вказаного в налаштуваннях парсера Lampa (або jac.red). Запити — по 2 одночасно, лише для карток біля екрана;
     // результат пам'ятаємо: знайдене на 3 дні, порожнє на 12 годин, помилку мережі не кешуємо (повтор через 10 хв)
+    // раніше була одна перемикалка: якщо мітки були вимкнені — лишаємо вимкненими й якість
+    try { if (!Lampa.Storage.get('lmx_uaq_mig', '')) { Lampa.Storage.set('lmx_uaq_mig', '1'); var u0 = Lampa.Storage.get('lmx_uaq', true); if (u0 === false || u0 === 'false') Lampa.Storage.set('lmx_uaq_q', false); } } catch (e) {}
     var UAQ_KEY = 'lmx_uaq_c12', UAQ_LBL = { 4: '4K', 3: '1080p', 2: '720p' }, uaqC = null, uaqSaveT = 0, uaqQ = [], uaqAct = {}, uaqFail = {}, uaqTimer = 0;
     function uaqCache() {
         if (uaqC) return uaqC;
@@ -3349,7 +3352,10 @@
         return { q: ua && qUa ? qUa : qAll, u: ua ? 1 : 0, t: Date.now(), m: m };
     }
     function uaqAdd(view, r, force) {
-        if (!r || !view || !(r.u || r.q >= 2) || !getBool('lmx_uaq', true)) return;
+        if (!r || !view) return;
+        var offUa = !getBool('lmx_uaq', true), offQ = !getBool('lmx_uaq_q', true);
+        if (offUa || offQ) r = { u: offUa ? 0 : r.u, q: offQ ? 0 : r.q };
+        if (!(r.u || r.q >= 2)) return;
         var q = r.q >= 2 ? UAQ_LBL[r.q] : '', old, cin;
         // афіша (карусель): компактний підпис «UA | 1080p» в рядку з рейтингом і роком — однаково у всіх темах
         var hostK = view.closest ? (view.closest('.card--lmxhero') ? 'h' : (view.closest('.card--lmxhist') ? 'l' : '')) : '';
@@ -3654,7 +3660,7 @@
         }
     }
     function uaqWant(view, d, type) {
-        if (!d || !d.id || !getBool('lmx_uaq', true)) return;
+        if (!d || !d.id || (!getBool('lmx_uaq', true) && !getBool('lmx_uaq_q', true))) return;
         var key = type + d.id, c = uaqCache()[key], now = Date.now();
         var wv = uaqWatch(d.id);
         if (wv && wv.q >= 3) { uaqAdd(view, wv); return; }
@@ -5921,7 +5927,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.463';
+    var VERSION = '10.464';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
