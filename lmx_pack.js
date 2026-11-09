@@ -1462,18 +1462,31 @@
                 step(1);
             });
         }, 4500);
+        var fired = false;
+        function swipeAt(t) {
+            var dx = t.clientX - sx, dy = t.clientY - sy;
+            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) { touchT = Date.now(); fired = true; safe(function () { step(dx < 0 ? 1 : -1); }); return true; }
+            return false;
+        }
+        // дотик починається будь-де на афіші (не лише на самій картці: на сторінках каталогів слайд може бути вужчим за ряд)
         document.addEventListener('touchstart', function (e) {
             var t = e.touches && e.touches[0];
-            if (!t || !e.target.closest || !e.target.closest('.card--lmxhero')) { sx = 0; return; }
+            fired = false;
+            if (!t || !e.target.closest || !e.target.closest('.lmx-hero-line .scroll, .card--lmxhero')) { sx = 0; return; }
             sx = t.clientX; sy = t.clientY;
         }, { passive: true, capture: true });
-        document.addEventListener('touchend', function (e) {
-            if (!sx) return;
-            var t = e.changedTouches && e.changedTouches[0], x0 = sx; sx = 0;
-            if (!t) return;
-            var dx = t.clientX - x0, dy = t.clientY - sy;
-            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) { touchT = Date.now(); safe(function () { step(dx < 0 ? 1 : -1); }); }
+        // гортаємо вже під час руху: коли браузер забирає жест собі (рідна прокрутка ряду), touchend може не прийти взагалі
+        document.addEventListener('touchmove', function (e) {
+            if (!sx || fired) return;
+            var t = e.touches && e.touches[0];
+            if (t) swipeAt(t);
         }, { passive: true, capture: true });
+        document.addEventListener('touchend', function (e) {
+            var t = e.changedTouches && e.changedTouches[0], was = fired;
+            if (sx && !was && t) swipeAt(t);
+            sx = 0; fired = false;
+        }, { passive: true, capture: true });
+        document.addEventListener('touchcancel', function () { sx = 0; fired = false; }, { passive: true, capture: true });
     }
     // назва в кнопці «Каталоги» ніколи не обрізається: шрифт стискається під ширину кнопки
     function fitStudioNames(root) {
@@ -2449,6 +2462,7 @@
             L + '.card--lmxhero:last-child' + X + '{margin-right:0 !important}' +
             V + '{height:calc((100vw - 4.5em) * .5625) !important;border-radius:1em !important}' +
             // телефон: портретна афіша як у Apple TV — високий постер, внизу затемнення, по центру назва, рядок «Фільм · рік», кнопки
+            L + '.scroll,' + L + '.scroll__content,' + L + '.scroll__body' + X + '{touch-action:pan-y !important}' +
             L + '.scroll__body' + X + '{display:grid !important;transform:none !important;transition:none !important;width:100% !important}' +
             // як в Apple TV: швидке (~0,35 с) одночасне розчинення старого слайда в новий, разом із текстом і кнопками
             C + '{width:100% !important;margin:0 !important;grid-area:1/1;opacity:0 !important;visibility:visible !important;transition:opacity .35s ease-in-out !important;pointer-events:none;will-change:opacity;z-index:1}' +
@@ -5907,7 +5921,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.462';
+    var VERSION = '10.463';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
