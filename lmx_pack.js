@@ -692,11 +692,14 @@
         return function (call) {
             var list = [];
             try { list = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
-            list = list.filter(function (c) { return c && c.id; }).slice(0, ROW_MAX);
+            list = list.filter(function (c) { return c && c.id; });
+            var moreH = list.length > ROW_MAX, totH = list.length;
+            list = list.slice(0, ROW_MAX);
             if (!list.length) return call();
+            recsListHook();
             // порядок — як в історії Lampa: останній переглянутий першим (раніше недосмотрені піднімались нагору, і початок ряду був «не з останнього»)
             list = list.map(function (c) { return histItem(c, watchProgress(c)); });
-            call({ title: 'Історія перегляду', results: list, source: 'tmdb' });
+            call({ title: 'Історія перегляду', results: list, source: 'tmdb', url: 'lmx://fav/history', page: 1, more: moreH, total_pages: moreH ? Math.ceil(totH / 20) : 1 });
         };
     }
 
@@ -705,9 +708,12 @@
         return function (call) {
             var list = [], seen = {};
             try { seen = favIds('viewed'); list = Lampa.Favorite.get({ type: 'wath' }) || []; } catch (e) {}
-            list = list.filter(function (c) { return c && c.id && !seen[c.id]; }).slice(0, ROW_MAX);
+            list = list.filter(function (c) { return c && c.id && !seen[c.id]; });
+            var moreW = list.length > ROW_MAX, totW = list.length;
+            list = list.slice(0, ROW_MAX);
             if (!list.length) return call();
-            call({ title: 'Переглянути пізніше', results: list.map(function (c) { return histItem(c, null, 'wath'); }), source: 'tmdb' });
+            recsListHook();
+            call({ title: 'Переглянути пізніше', results: list.map(function (c) { return histItem(c, null, 'wath'); }), source: 'tmdb', url: 'lmx://fav/wath', page: 1, more: moreW, total_pages: moreW ? Math.ceil(totW / 20) : 1 });
         };
     }
 
@@ -1144,19 +1150,22 @@
                 var cache = svcCache[id];
                 if (!cache || Date.now() - cache.t > 300000) cache = svcCache[id] = { t: Date.now(), res: [] };
                 var res = cache.res; res.forEach(function (r, i) { if (!r || !r.length) delete res[i]; });
+                var meta = cache.meta = cache.meta || {};   // адреса й кількість сторінок рядів-підбірок (recs), щоб працювало «Ще»
                 var GROUP = 6, next = 0, built = false, firstRows = [], firstReady = false, tries2 = 0, relaxed = false, altQ = false;
                 if (!cats.length) { self.activity.loader(false); self.empty(); return this.render(); }
                 // Ряди вантажимо порціями по 6: перша будує сторінку, наступні підтягуються, коли фокус наближається до кінця (як на головній).
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
-                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: cats[i].url2 || cats[i].url, source: 'tmdb', page: 1, more: res[i].length >= 18 && !cats[i].newep, total_pages: cats[i].newep ? 1 : 20 };
+                    // «Ще» є в кожного ряду з адресою (раніше — лише коли після фільтрів лишалось ≥18 карток, тож у багатьох рядів кнопки не було)
+                    var mt = meta[i], url = mt ? mt.url : (cats[i].url2 || cats[i].url), more = !!url && !cats[i].newep;
+                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: url, source: 'tmdb', page: 1, more: more, total_pages: more ? ((mt && mt.tp) || 20) : 1 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
                 function fetchRow(i, done) {
                     if (res[i]) return done();
                     if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
-                    if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; done(); }); return; }
+                    if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; if (d && d.url) meta[i] = { url: d.url, tp: d.total_pages }; done(); }); return; }
                     var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, alts = cats[i].alts || [], nu = 1 + alts.length, got = [], pend = pages * nu, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     // запасний запит для збірок Lampa, де дискавер за «мова=ja + жанр=анімація» повертає порожньо: ключове слово TMDB «anime» (210024)
                     var qurl = (altQ && id === 'anime' && cats[i].url.indexOf('with_keywords=') < 0) ? cats[i].url.split('with_original_language=ja&with_genres=16').join('with_keywords=210024') : cats[i].url;
@@ -1788,6 +1797,14 @@
         T.__lmxRecs = true;
         var orig = T.list;
         T.list = function (params, ok, fail) {
+            // «Ще» у рядах «Історія перегляду» / «Переглянути пізніше»: повний список зі сховища Lampa порціями по 20
+            if (params && typeof params.url === 'string' && params.url.indexOf('lmx://fav/') === 0) {
+                var ty = params.url.slice(10), arr = [], seenF = {};
+                try { arr = Lampa.Favorite.get({ type: ty }) || []; if (ty === 'wath') seenF = favIds('viewed'); } catch (e) {}
+                arr = arr.filter(function (c) { return c && c.id && !seenF[c.id]; });
+                var pf = params.page || 1, perF = 20;
+                return ok({ results: arr.slice((pf - 1) * perF, pf * perF).map(function (c) { var x = {}, q; for (q in c) x[q] = c[q]; return x; }), page: pf, total_pages: Math.max(1, Math.ceil(arr.length / perF)), total_results: arr.length, source: 'tmdb' });
+            }
             if (params && typeof params.url === 'string' && params.url.indexOf('lmx://recs/') === 0) {
                 var recsAll = recsAllBy[params.url.slice(11)] || [];
                 var p = params.page || 1, per = 20;
@@ -1923,9 +1940,11 @@
         st[seed.id] = seed.title || seed.name || '';
         function fin() {
             if (--left > 0) return;
-            var out = rankRecs(score, P, st).slice(0, ROW_MAX).map(function (x) { return x.c; });
+            var ranked = rankRecs(score, P, st).map(function (x) { return x.c; }), out = ranked.slice(0, ROW_MAX);
             if (out.length < 6) return call();
-            var data = { title: 'Бо ви лайкнули «' + st[seed.id] + '»', results: out, source: 'tmdb', page: 1, more: false };
+            var fullL = ranked.slice(0, 100), moreL = fullL.length > out.length;
+            recsAllBy['seed' + seed.id] = fullL; recsListHook();
+            var data = { title: 'Бо ви лайкнули «' + st[seed.id] + '»', results: out, source: 'tmdb', url: 'lmx://recs/seed' + seed.id, page: 1, more: moreL, total_pages: moreL ? Math.ceil(fullL.length / 20) : 1 };
             recsByCaches[idx] = { key: key, t: Date.now(), data: data };
             call(data);
         }
@@ -5900,7 +5919,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.458';
+    var VERSION = '10.459';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
