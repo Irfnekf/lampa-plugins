@@ -1244,6 +1244,7 @@
                     moreSoon();
                     if (heroL && heroL.length) heroAttach(heroTitle, heroL);
                     startLazy();
+                    startMoreWatch();
                 }
                 // Плитка «Ще» в кінці ряду з'являється лише після прокрутки; у коротких рядах (усі картки вже на екрані) прокрутки нема, і лишалась тільки маленька кнопка вгорі.
                 // Після побудови (і після кожного дописаного ряду) один раз «будимо» такі ряди, щоб плитка з'явилась
@@ -1257,6 +1258,26 @@
                             });
                         } catch (e) {}
                     }, 800);
+                }
+                // кнопка «Ще» вгорі ряду недосяжна пультом (вона поза списком карток), а плитка в кінці з'являється, лише коли дорендерені всі картки;
+                // тому коли фокус заходить у ряд, дорендерюємо решту його карток — і плитка «Ще» з'являється в кінці
+                function fillRow(it) {
+                    if (!it || it.more || !it.emit || !it.data || !it.data.results || !it.items || !(it.data.total_pages > 1)) return;
+                    var rest = it.data.results.slice(it.items.length);
+                    if (rest.length > 40) return;
+                    rest.forEach(function (e) { it.emit('createAndAppend', e); });
+                    it.emit('scroll');
+                }
+                function startMoreWatch() {
+                    var el = self.render(), last = null;
+                    var iv = setInterval(function () {
+                        var root = el && el[0];
+                        if (!root || !document.body.contains(root)) return clearInterval(iv);
+                        var fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line');
+                        if (!fl || fl === last) return;
+                        last = fl;
+                        safe(function () { (self.items || []).forEach(function (it) { if (it && it.render && it.render(true) === fl) fillRow(it); }); });
+                    }, 400);
                 }
                 function put(r) {
                     if (built) { try { self.append(r); moreSoon(); } catch (e) { next = cats.length; } } else firstRows.push(r);
@@ -5919,7 +5940,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.459';
+    var VERSION = '10.460';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
