@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.42';
+    var VERSION = '3.43';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -350,12 +350,70 @@
     // ===== Екран «Торренти» (власне вікно Lampa): одразу наш вигляд, зайва «Сортувати» ховається, кнопка «Сезон», найкращий торент зеленим =====
     var T0 = 'body.lmx-online .explorer.lmx-tor ';
     var TOR_CSS = '' +
+        // ===== основа (тема «Полегшена») =====
+        'body.lmx-online .explorer.lmx-tor{--ac:#8a8fa0;--cardbg:rgba(255,255,255,.065);--cardbd:rgba(255,255,255,.07);--rad:1em;--plate:rgba(0,0,0,.26);--fbg:rgba(255,255,255,.17);--fbd:#fff;--best:52,199,89}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item{position:relative;display:grid;grid-template-columns:5em 1fr auto;grid-template-areas:"q t s" "q c s" "q f s" "q d s";column-gap:1.1em;align-items:center;margin:0 0 .6em;padding:.8em 1.2em .8em .8em;border-radius:var(--rad);background:var(--cardbg);box-shadow:inset 0 0 0 1px var(--cardbd);overflow:hidden}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.3em;background:var(--ac)}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-q4{--ac:#f5c451}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-q3{--ac:#34c759}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-q2{--ac:#4c9bff}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-q1{--ac:#8a8fa0}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tq{grid-area:q;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;height:3.9em;border-radius:.8em;background:var(--plate);color:var(--ac);line-height:1}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tq b{font-size:1.3em;font-weight:800}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tq i{font-style:normal;font-size:.58em;font-weight:700;letter-spacing:.12em;opacity:.8}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item__title{grid-area:t;font-size:1em;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tchips{grid-area:c;display:flex;flex-wrap:wrap;gap:.35em;margin-top:.35em}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tchips:empty{display:none}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tchips > span{padding:.1em .55em;border-radius:99em;background:rgba(255,255,255,.1);font-size:.74em;font-weight:700}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tchips > .lmx-chip-ua{background:linear-gradient(90deg,#2b6fe0 50%,#f2c230 50%) !important;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55);font-weight:800}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tchips > .lmx-chip-hdr{background:rgba(245,196,81,.22) !important;color:#f5c451}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item__ffprobe:not(.hide){grid-area:f;margin:.3em 0 0}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item__details{grid-area:d;display:flex;flex-wrap:wrap;gap:.1em 1.1em;margin:.35em 0 0;font-size:.8em;opacity:.68}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item__details .torrent-item__tracker{font-weight:700;opacity:.95}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item__details .torrent-item__seeds,body.lmx-online .explorer.lmx-tor .torrent-item__details .torrent-item__grabs{display:none}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts{grid-area:s;display:flex;flex-direction:column;align-items:flex-end;min-width:5em;gap:.3em}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts b{font-size:1.4em;line-height:1;color:#34c759}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts b::before{content:"\\25B2 ";font-size:.55em;vertical-align:.18em}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts i{font-style:normal;font-size:.7em;opacity:.65}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts s{display:block;width:5em;height:.26em;border-radius:99em;background:rgba(255,255,255,.12);overflow:hidden;text-decoration:none}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-ts s::after{content:"";display:block;height:100%;width:var(--w,50%);background:#34c759;border-radius:99em}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-low .lmx-ts b{color:#f5a623}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-low .lmx-ts s::after{background:#f5a623}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-dead{opacity:.5}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-dead .lmx-ts b{color:#ff5c5c}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-dead .lmx-ts s::after{background:#ff5c5c}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.focus{background:var(--fbg);box-shadow:inset 0 0 0 .15em var(--fbd)}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-tor-best{background:rgba(var(--best),.15);box-shadow:inset 0 0 0 .13em rgba(var(--best),.7)}' +
+        'body.lmx-online .explorer.lmx-tor .torrent-item.lmx-tor-best.focus{background:rgba(var(--best),.3);box-shadow:inset 0 0 0 .16em rgb(var(--best))}' +
+        'body.lmx-online .explorer.lmx-tor .lmx-tor-badge{display:inline-flex;align-items:center;margin-right:.6em;padding:.1em .6em;border-radius:99em;background:rgb(var(--best));color:#06210f;font-size:.74em;font-weight:800;vertical-align:.12em}' +
+        'body.lmx-online .explorer.lmx-tor .explorer__files-head .simple-button{border-radius:99em}' +
+        // ===== «Кіно»: темні рівні картки без заливки, тонка кольорова смужка, вузькі цифри, акцент — бурштин/фіалка =====
+        'body.lmx-online.lmx-prem .explorer.lmx-tor{--cardbg:rgba(255,255,255,.035);--cardbd:rgba(255,255,255,.05);--rad:.35em;--plate:transparent;--fbg:rgba(255,255,255,.09);--fbd:var(--acc)}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor{--acc:#e9a24a}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .lmx-tq b,body.lmx-online.lmx-prem .explorer.lmx-tor .lmx-ts b{font-family:"Oswald","Inter","Helvetica Neue",Arial,sans-serif;font-weight:600;letter-spacing:.02em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .lmx-tq i{letter-spacing:.2em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .torrent-item__details{text-transform:uppercase;letter-spacing:.08em;font-size:.7em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .torrent-item::before{width:.18em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .lmx-tchips > span{border-radius:.2em;background:rgba(255,255,255,.08);letter-spacing:.06em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .torrent-item.focus{box-shadow:inset 0 0 0 1px var(--acc),inset .3em 0 0 var(--acc)}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .torrent-item.focus::before{background:var(--acc)}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .lmx-tor-badge{border-radius:.2em;letter-spacing:.1em;text-transform:uppercase;font-size:.66em}' +
+        'body.lmx-online.lmx-prem .explorer.lmx-tor .explorer__files-head .simple-button{border-radius:.3em;text-transform:uppercase;letter-spacing:.08em;font-size:.82em}' +
+        // ===== «Скло»: напівпрозорі панелі з світлою гранню зверху, великі заокруглення, біле сяйво у фокусі =====
+        'body.lmx-online.lmx-apple .explorer.lmx-tor{--cardbg:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.08));--cardbd:rgba(255,255,255,.16);--rad:1.4em;--plate:rgba(255,255,255,.12);--fbg:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.18));--fbd:rgba(255,255,255,.75)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .torrent-item{box-shadow:inset 0 0 0 1px var(--cardbd),inset 0 1px 0 rgba(255,255,255,.3)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .torrent-item::before{display:none}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .lmx-tq{border-radius:1em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .torrent-item.focus{box-shadow:inset 0 0 0 1.5px var(--fbd),0 .5em 2em rgba(255,255,255,.14)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .torrent-item.lmx-tor-best{box-shadow:inset 0 0 0 1.5px rgba(var(--best),.8),0 .4em 1.6em rgba(var(--best),.2)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .lmx-tchips > span{background:rgba(255,255,255,.16)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .explorer__files-head .simple-button{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}' +
+        'body.lmx-online.lmx-apple .explorer.lmx-tor .explorer__files-head .simple-button.focus{background:rgba(255,255,255,.9);color:#111}' +
+        // вузький екран: без шкали, компактніше
+        '@media (max-width:760px){body.lmx-online .explorer.lmx-tor .torrent-item{grid-template-columns:3.6em 1fr auto;column-gap:.8em;padding:.7em .8em .7em .6em}body.lmx-online .explorer.lmx-tor .lmx-tq{height:3.1em}body.lmx-online .explorer.lmx-tor .lmx-tq b{font-size:1.05em}body.lmx-online .explorer.lmx-tor .lmx-ts s{display:none}body.lmx-online .explorer.lmx-tor .lmx-ts{min-width:3em}}' +
         T0 + '.lmx-tor-hide{display:none !important}' +
         T0 + '.lmx-tor-season{display:inline-flex;align-items:center}' +
-        T0 + '.lmx-tor-season > div{margin-left:.6em;padding:.1em .6em;border-radius:.5em;background:rgba(255,255,255,.22);font-size:.85em}' +
-        T0 + '.torrent-item.lmx-tor-best{background:rgba(52,199,89,.16) !important;box-shadow:inset 0 0 0 .14em rgba(52,199,89,.7)}' +
-        T0 + '.torrent-item.lmx-tor-best.focus{background:rgba(52,199,89,.3) !important;box-shadow:inset 0 0 0 .16em #34c759}' +
-        T0 + '.lmx-tor-badge{display:inline-block;margin-right:.7em;padding:.1em .6em;border-radius:.5em;background:#34c759;color:#06210f;font-size:.8em;font-weight:800;letter-spacing:.02em;vertical-align:middle}';
+        T0 + '.lmx-tor-season > div{margin-left:.6em;padding:.1em .6em;border-radius:.5em;background:rgba(255,255,255,.22);font-size:.85em}';
     function torOn() { try { var a = Lampa.Activity.active(); return !!(a && a.component === 'torrents'); } catch (e) { return false; } }
     function torAct() {
         if (!torOn()) return null;
@@ -420,6 +478,45 @@
             else if (!on && bd && bd.parentNode) bd.parentNode.removeChild(bd);
         });
     }
+    // Оформлення кожної роздачі: плашка якості, чіпи (UKR / HDR / кодек), роздачі великим числом зі шкалою; клас якості кольорує смужку
+    function torQual(all) {
+        if (/(^|[^a-z0-9])(2160p?|4k|uhd)([^a-z0-9]|$)/i.test(all)) return { n: 4, b: '4K', s: 'UHD' };
+        if (/(^|[^a-z0-9])1440p?([^a-z0-9]|$)/i.test(all)) return { n: 3, b: '1440p', s: 'QHD' };
+        if (/(^|[^a-z0-9])(1080[pi]?|fhd)([^a-z0-9]|$)/i.test(all)) return { n: 3, b: '1080p', s: 'FHD' };
+        if (/(^|[^a-z0-9])(720p?|hd)([^a-z0-9]|$)/i.test(all)) return { n: 2, b: '720p', s: 'HD' };
+        if (/(^|[^a-z0-9])(480p?|576p?|dvdrip|dvd|sd|xvid|tvrip|satrip|camrip|ts|hdtv)([^a-z0-9]|$)/i.test(all)) return { n: 1, b: 'SD', s: '480p' };
+        return { n: 0, b: '—', s: '' };
+    }
+    function torDecor(act) {
+        var items = [].slice.call(act.querySelectorAll('.torrent-item')), mx = 1;
+        if (act.__lmxTDn === items.length && items.every(function (it) { return it.__lmxTD; })) return;   // нічого нового — не чіпаємо розмітку кожні півсекунди
+        act.__lmxTDn = items.length;
+        items.forEach(function (it) { var sd = it.querySelector('.torrent-item__seeds span'), n = sd ? parseInt(sd.textContent, 10) || 0 : 0; it.__lmxSd = n; if (n > mx) mx = n; });
+        items.forEach(function (it) {
+            var tt = it.querySelector('.torrent-item__title'), t = (tt && tt.textContent) || '', gr = it.querySelector('.torrent-item__grabs span'), lc = gr ? parseInt(gr.textContent, 10) || 0 : 0,
+                sd = it.__lmxSd || 0, sig = t.length + '|' + sd + '|' + lc + '|' + mx;
+            if (it.__lmxTD === sig) return;
+            it.__lmxTD = sig;
+            // назву беремо без нашого бейджа «Найкращий», щоб він не потрапляв у розбір
+            var bd = tt && tt.querySelector('.lmx-tor-badge'), tx = bd ? t.replace(bd.textContent, '') : t, q = torQual(tx), pl = it.querySelector('.lmx-tq'), ch = it.querySelector('.lmx-tchips'), ts = it.querySelector('.lmx-ts');
+            if (!pl) { pl = document.createElement('div'); pl.className = 'lmx-tq'; it.insertBefore(pl, it.firstChild); }
+            pl.innerHTML = '<b>' + esc(q.b) + '</b>' + (q.s ? '<i>' + q.s + '</i>' : '');
+            [1, 2, 3, 4].forEach(function (z) { it.classList.remove('lmx-q' + z); }); it.classList.add('lmx-q' + q.n);
+            if (!ch) { ch = document.createElement('div'); ch.className = 'lmx-tchips'; if (tt && tt.nextSibling) it.insertBefore(ch, tt.nextSibling); else it.appendChild(ch); }
+            var c = [];
+            if (/(^|[^a-z0-9])(ukr|ua|ukrainian)([^a-z0-9]|$)|укр/i.test(tx)) c.push('<span class="lmx-chip-ua">UKR</span>');
+            if (/dolby\s*vision|(^|[^a-z0-9])dv([^a-z0-9]|$)/i.test(tx)) c.push('<span class="lmx-chip-hdr">DV</span>');
+            else if (/hdr/i.test(tx)) c.push('<span class="lmx-chip-hdr">HDR</span>');
+            if (/av1/i.test(tx)) c.push('<span>AV1</span>'); else if (/hevc|h\.?265|x265/i.test(tx)) c.push('<span>H.265</span>'); else if (/avc|h\.?264|x264/i.test(tx)) c.push('<span>H.264</span>');
+            if (/10[\s-]?bit/i.test(tx)) c.push('<span>10bit</span>');
+            if (/atmos/i.test(tx)) c.push('<span>Atmos</span>');
+            ch.innerHTML = c.slice(0, 5).join('');
+            if (!ts) { ts = document.createElement('div'); ts.className = 'lmx-ts'; it.appendChild(ts); }
+            ts.innerHTML = '<b>' + sd + '</b><s style="--w:' + Math.max(4, Math.round(sd / mx * 100)) + '%"></s>' + (gr ? '<i>↓ ' + lc + '</i>' : '');
+            it.classList.toggle('lmx-dead', sd <= 0);
+            it.classList.toggle('lmx-low', sd > 0 && sd < 5);
+        });
+    }
     function torTick() {
         var act = torAct();
         if (!act) return;
@@ -428,6 +525,7 @@
         if (!ex.classList.contains('lmx-tor')) ex.classList.add('lmx-tor');   // наш вигляд з першого кадру, а не після завантаження списку
         safe(function () { torDedupeSort(act); });
         safe(function () { torSeason(act); });
+        safe(function () { torDecor(act); });
         safe(function () { torBest(act); });
     }
     function torEarly() { [0, 40, 120, 260, 500, 900, 1500].forEach(function (ms) { setTimeout(function () { safe(torTick); }, ms); }); }
