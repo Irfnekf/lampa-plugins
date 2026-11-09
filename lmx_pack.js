@@ -1246,27 +1246,21 @@
                     startLazy();
                     startMoreWatch();
                 }
-                // Плитка «Ще» в кінці ряду з'являється лише після прокрутки; у коротких рядах (усі картки вже на екрані) прокрутки нема, і лишалась тільки маленька кнопка вгорі.
-                // Після побудови (і після кожного дописаного ряду) один раз «будимо» такі ряди, щоб плитка з'явилась
-                var moreT = 0;
-                function moreSoon() {
-                    clearTimeout(moreT);
-                    moreT = setTimeout(function () {
-                        try {
-                            (self.items || []).forEach(function (it) {
-                                if (it && it.emit && it.data && it.data.results && it.items && !it.more && it.data.total_pages > 1 && it.data.results.length === it.items.length) it.emit('scroll');
-                            });
-                        } catch (e) {}
-                    }, 800);
-                }
-                // кнопка «Ще» вгорі ряду недосяжна пультом (вона поза списком карток), а плитка в кінці з'являється, лише коли дорендерені всі картки;
-                // тому коли фокус заходить у ряд, дорендерюємо решту його карток — і плитка «Ще» з'являється в кінці
+                function moreSoon() {}
+                // Lampa (старий рядок) показує вгорі «Ще», але плитку «Ще» в кінці ряду будує лише для 20+ карток і лише після прокрутки; кнопка вгорі пультом недосяжна.
+                // Коли фокус заходить у ряд із «Ще» вгорі — дорендерюємо його картки й додаємо плитку в кінці
+                var lineList = [];
+                self.onAppend = function (item, element) { item.__lmxD = element; lineList.push(item); };
                 function fillRow(it) {
-                    if (!it || it.more || !it.emit || !it.data || !it.data.results || !it.items || !(it.data.total_pages > 1)) return;
-                    var rest = it.data.results.slice(it.items.length);
-                    if (rest.length > 40) return;
-                    rest.forEach(function (e) { it.emit('createAndAppend', e); });
-                    it.emit('scroll');
+                    var d = it && it.__lmxD;
+                    if (!d || it.__lmxFilled || d.nomore || !d.results || !(d.more || d.total_pages > 1)) return;
+                    var root = it.render(true);
+                    if (!root || !root.querySelector('.items-line__more')) return;
+                    it.__lmxFilled = true;
+                    if (root.querySelector('.card-more')) return;
+                    d.results.forEach(function (e) { it.append(e); });
+                    it.attach();
+                    if (!root.querySelector('.card-more')) { var m = it.more(); try { if (Lampa.Controller.own(it)) Lampa.Controller.collectionAppend(m); } catch (e) {} }
                 }
                 function startMoreWatch() {
                     var el = self.render(), last = null;
@@ -1276,8 +1270,8 @@
                         var fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line');
                         if (!fl || fl === last) return;
                         last = fl;
-                        safe(function () { (self.items || []).forEach(function (it) { if (it && it.render && it.render(true) === fl) fillRow(it); }); });
-                    }, 400);
+                        safe(function () { lineList.forEach(function (it) { if (it.render && it.render(true) === fl) fillRow(it); }); });
+                    }, 300);
                 }
                 function put(r) {
                     if (built) { try { self.append(r); moreSoon(); } catch (e) { next = cats.length; } } else firstRows.push(r);
@@ -5940,7 +5934,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.460';
+    var VERSION = '10.461';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
