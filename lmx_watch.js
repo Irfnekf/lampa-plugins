@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.41';
+    var VERSION = '3.42';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1574,7 +1574,13 @@
         } catch (e) {}
     }
     function qrank(q) { return q === '4K' ? 4 : q === 'FHD' ? 3 : q === 'HD' ? 2 : q ? 1 : 0; }
-    function gscore(g) { return g ? (g.ok || 0) - (g.fail || 0) * 2 + (g.q || 0) * 2 : 0; }
+    // Давні збої втрачають вагу: джерело, що тиждень «лежало», а тепер працює, не має нести покарання назавжди. Свіжі збої (за добу) — повна вага
+    function failEff(g) {
+        if (!g || !g.fail) return 0;
+        var age = Date.now() - (g.ft || (Date.now() - 14 * 86400000)), f = age < 86400000 ? 1 : age < 7 * 86400000 ? 0.7 : age < 30 * 86400000 ? 0.4 : 0.15;
+        return g.fail * f;
+    }
+    function gscore(g) { return g ? (g.ok || 0) - failEff(g) * 2 + (g.q || 0) * 2 : 0; }
     var QPREF = { auto: 'Авто (FHD і вище)', '4k': 'Віддавати перевагу 4K', fhd: 'Віддавати перевагу FHD', hd: 'Достатньо HD' };
     function qPref() { var v = String(Lampa.Storage.get('lmx_online_q', 'auto')); return QPREF[v] ? v : 'auto'; }
     // скільки ранг якості вважаємо «досить добрим», щоб не шукати далі
@@ -1672,7 +1678,7 @@
         if (q) why.push(QL[q]);
         if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
-        if (g && (g.fail || 0) > (g.ok || 0)) s -= Math.min(1.5, ((g.fail || 0) - (g.ok || 0)) * 0.25);
+        if (g && failEff(g) > (g.ok || 0)) s -= Math.min(1.5, (failEff(g) - (g.ok || 0)) * 0.25);
         ms = (pe && pe.ms) || (g && g.ms) || 0;
         if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
         return { s: s, why: why, ua: ua, ms: ms };
@@ -2806,7 +2812,7 @@
         function save(name, rank) {
             var g = mem.g[name] || (mem.g[name] = { ok: 0, fail: 0, q: 0 });
             if (rank < 0) { g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); }
-            else { g.ok = Math.min(50, (g.ok || 0) + 1); g.q = Math.max(0, Math.round(((g.q || 0) * 2 + rank) / 3)); }
+            else { g.ok = Math.min(50, (g.ok || 0) + 1); g.ot = Date.now(); if (g.fail) g.fail = Math.max(0, g.fail - 1); g.q = Math.max(0, Math.round(((g.q || 0) * 2 + rank) / 3)); }   // успіх «лікує» один збій
             memSet(mem);
         }
         function switchTo(inst, it, text) {
@@ -2927,7 +2933,7 @@
                         items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : gms ? Math.max(3000, Math.min(8000, Math.round(gms * 2.2))) : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
-                    function pri(x) { var g = mem.g[x.key]; return (g && g.fail >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + animeBonus(x.key) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
+                    function pri(x) { var g = mem.g[x.key]; return (g && failEff(g) >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + animeBonus(x.key) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     if (longSeries(card)) items = items.slice(0, 5);   // довгий серіал: відповіді джерел важкі — питаємо лише кількох найімовірніших
                     gs.total = items.length + cached; gs.bgDone = cached;
