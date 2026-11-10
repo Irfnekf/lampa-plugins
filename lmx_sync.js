@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.29';
+    var VERSION = '1.30';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Sync', description: 'Синхронізація закладок, історії та позицій перегляду між пристроями', author: 'Irfnekf' }; } catch (e) {}
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
@@ -795,13 +795,19 @@
         // Позиція йде на сервер ще під час перегляду (раз на хвилину), а при закритті/згортанні — «маяком», що долітає навіть коли застосунок закривається.
         // Раніше, якщо вимкнути телевізор посеред серії, сервер дізнавався про позицію лише при наступному запуску, і інший пристрій показував старий момент.
         // Це один маленький запит із єдиним таймкодом; повну синхронізацію під час перегляду, як і раніше, не запускаємо
-        var lastLive = 0, beaconNow = false;
+        var lastLive = 0, beaconNow = false, liveFront = null;
         function livePush(t, beacon) {
             try {
                 if (!t || !t.hash || !code() || !server() || !syncActive() || busy || applying) return;
                 if (!beacon && Date.now() - lastLive < 60000) return;
                 lastLive = Date.now();
                 var obj = { u: getState().u, since: -1, ops: [{ k: 't:' + t.hash, v: JSON.stringify(tlSlim(t)), t: Date.now() + st0skew(), d: 0 }] };
+                // Картка в історії теж їде одразу: повна синхронізація під час перегляду відкладається, і якщо вимкнути ТВ у плеєрі, інший пристрій
+                // отримував лише таймкод, а самої картки в історії не було до наступного запуску
+                try {
+                    var fd = favData(), fr = fd.history.length ? fd.history[0] : null, fc = fr !== null ? cardOf(fd, fr) : null;
+                    if (fc && liveFront !== fr) { obj.ops.push({ k: 'f:history:' + fr, v: JSON.stringify(slim(fc)), t: Date.now() + st0skew(), d: 0 }); liveFront = fr; }
+                } catch (e) {}
                 if (beacon && window.navigator && navigator.sendBeacon && typeof Blob !== 'undefined') {
                     try { if (navigator.sendBeacon(server() + '/api/sync', new Blob([JSON.stringify(obj)], { type: 'text/plain;charset=UTF-8' }))) return; } catch (e) {}
                 }
