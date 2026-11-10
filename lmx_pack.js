@@ -4568,6 +4568,24 @@
             if (++tries < 4) setTimeout(go, 500);
         })();
     }
+    // Опис став вибираним елементом і стоїть вище кнопок — Lampa фокусує перший вибираний. Повертаємо фокус на «Дивитись»
+    function focusWatch(r) {
+        var go = function () {
+            safe(function () {
+                if (!document.body.contains(r[0] || document.body)) return;
+                var d = r.find('.lmx-descr--btn.focus').get(0);
+                if (!d) return;
+                var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+                var w = cont.length ? watchBtnOf(cont) : null;
+                if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.hide,.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.lmx-mkbtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
+                if (!w) return;
+                var done = false;
+                try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
+                if (!done || r.find('.lmx-descr--btn.focus').length) { r.find('.lmx-descr--btn').removeClass('focus'); window.$(w).addClass('focus'); }
+            });
+        };
+        [120, 450].forEach(function (d) { setTimeout(go, d); });
+    }
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
         var m = e.data && e.data.movie;
@@ -4613,6 +4631,7 @@
                 if (getBool('lmx_descr_btn', true)) {
                     dEl.addClass('selector lmx-descr--btn');
                     dEl.on('hover:enter click', function () { safe(function () { openDescr(m, txt); }); });
+                    safe(function () { focusWatch(r); });
                 }
                 var btns = r.find('.full-start-new__buttons').eq(0);
                 // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
@@ -5963,7 +5982,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.481';
+    var VERSION = '10.482';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
