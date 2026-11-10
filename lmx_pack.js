@@ -3652,6 +3652,8 @@
                 // картка, з якої почали запит, зникла (рядок перебудувався) — але той самий фільм може бути ще на іншій картці (історія, «Пізніше»): беремо її
                 var alt = null, vi;
                 for (vi = 0; vi < j.views.length; vi++) { var vw = j.views[vi], cd = vw && vw.closest ? vw.closest('.card') : null; if (cd && document.documentElement.contains(cd)) { alt = cd; break; } }
+                // картку історії рахуємо ще до того, як Lampa вставила її в сторінку: даємо кілька секунд, а не скасовуємо запит одразу
+                if (!alt && j.t00 && Date.now() - j.t00 < 8000) { keep.push(j); continue; }
                 if (!alt) { delete uaqPend[j.key]; continue; }
                 j.el = alt;
             }
@@ -3695,7 +3697,7 @@
         var el = view.closest ? view.closest('.card') : view.parentNode;
         var alt = type === 'tv' ? (d.name || d.title) : (d.title || d.name);
         var job = { id: d.id, key: key, views: [view], el: el || view, type: type, title: String(title), alt: alt && String(alt) !== String(title) ? String(alt) : '', yr: yr, uk: d.original_language === 'uk' };
-        uaqPend[key] = job; uaqQ.push(job);
+        job.t00 = now; uaqPend[key] = job; uaqQ.push(job);
         if (!uaqTimer) uaqTimer = setInterval(function () { safe(uaqTick); }, 1200);
         safe(uaqTick);
     }
@@ -5939,7 +5941,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.465';
+    var VERSION = '10.466';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
