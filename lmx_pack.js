@@ -565,7 +565,6 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
-        H.trigger('lmx_trailer', true, 'Кнопка «Трейлер»', 'Один клік — трейлер українською, якщо його немає, то англійською. Рідна кнопка Lampa ховається, коли знайдено свій трейлер', null);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
@@ -4571,7 +4570,6 @@
         safe(function () { studioRow(e, m); });
         safe(function () { likeButton(r, m); });
         safe(function () { marksButtons(r, m); });
-        safe(function () { trailerButton(r, m); });
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -5944,7 +5942,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.473';
+    var VERSION = '10.474';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6013,7 +6011,7 @@
         };
     });
 
-    // ===== Статистика переглядів (пункт лівого меню) і кнопка «Трейлер» на сторінці фільму =====
+    // ===== Статистика переглядів (пункт лівого меню) =====
     var LANG_UA = { en: 'Англійська', uk: 'Українська', ko: 'Корейська', ja: 'Японська', fr: 'Французька', de: 'Німецька', es: 'Іспанська', it: 'Італійська', tr: 'Турецька', ru: 'Російська', pl: 'Польська', sv: 'Шведська', da: 'Данська', no: 'Норвезька', hi: 'Гінді', zh: 'Китайська', cn: 'Китайська' };
     function statsData() {
         var d = { movies: 0, tv: 0, hours: 0, genres: {}, decades: {}, langs: {}, vote: 0, voteN: 0, like: 0, later: 0, seen: 0, total: 0 };
@@ -6132,71 +6130,6 @@
             Lampa.Activity.push({ url: '', title: 'Статистика', component: 'lmx_stats', page: 1 });
         });
         if (el && el[0]) el[0].classList.add('lmx-statsmenu');
-    }
-
-    // Кнопка «Трейлер»: один клік — найкращий трейлер українською (якщо є), інакше англійською. Рідну кнопку Lampa ховаємо, лише коли знайшли свій
-    var TR_ICO = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.2-2.5z" fill="currentColor"/></svg>';
-    function trailerPick(j) {
-        var all = ((j && j.results) || []).filter(function (v) { return v && v.site === 'YouTube' && v.key; });
-        function best(lang) {
-            var l = all.filter(function (v) { return v.iso_639_1 === lang; });
-            var tr = l.filter(function (v) { return v.type === 'Trailer'; });
-            var pool = tr.length ? tr : l.filter(function (v) { return v.type === 'Teaser'; });
-            if (!pool.length) return null;
-            pool.sort(function (a, b) { return ((b.official ? 1 : 0) - (a.official ? 1 : 0)) || String(b.published_at || '').localeCompare(String(a.published_at || '')); });
-            return pool[0];
-        }
-        var uk = best('uk'), en = uk ? null : best('en');
-        return uk ? { v: uk, ua: true } : en ? { v: en, ua: false } : null;
-    }
-    function trailerButton(r, m) {
-        if (!getBool('lmx_trailer', true) || !m || !m.id) return;
-        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
-        if (!cont.length || cont.find('.lmx-trbtn').length) return;
-        var kind = typeOf(m) === 'tv' ? 'tv' : 'movie';
-        tget(kind + '/' + m.id + '/videos?include_video_language=uk%2Cen', {}, function (j) {
-            if (!document.body.contains(cont[0]) || cont.find('.lmx-trbtn').length) return;
-            var p = trailerPick(j);
-            if (!p) return;
-            var label = p.ua ? 'Трейлер UA' : 'Трейлер';
-            var native = cont.find('.view--trailer:not(.hide)').first();
-            var saved = [];
-            function play() {
-                // помилка YouTube 153 («конфігурація відеоплеєра») з'являється, коли сторінка не передає Referer у вбудований плеєр — вмикаємо його перед запуском
-                try {
-                    var mr = document.querySelector('meta[name="referrer"]');
-                    if (!mr) { mr = document.createElement('meta'); mr.name = 'referrer'; (document.head || document.documentElement).appendChild(mr); }
-                    mr.content = 'strict-origin-when-cross-origin';
-                } catch (e) {}
-                try {
-                    if (Lampa.YouTube && typeof Lampa.YouTube.play === 'function') { Lampa.YouTube.play(p.v.key); return; }
-                } catch (e) {}
-                // запасний шлях: рідна дія кнопки «Трейлери» цієї версії Lampa
-                if (saved.length) { try { saved.forEach(function (h) { h.call(native[0], {}); }); return; } catch (e) {} }
-                if (Lampa.Noty) Lampa.Noty.show('Не вдалося відкрити трейлер');
-            }
-            if (native.length) {
-                // рідна кнопка вже є — беремо її саму: вигляд, порядок і фокус лишаються як у решти кнопок, змінюємо тільки підпис і дію
-                try { var evs = window.$._data(native[0], 'events'); saved = ((evs && evs['hover:enter']) || []).map(function (h) { return h.handler; }); } catch (e) {}
-                native.off('hover:enter').on('hover:enter', function () { safe(play); });
-                var sp = native.find('span').first();
-                if (sp.length) sp.text(label);
-                native[0].__lmxT = label;
-                native.addClass('lmx-trbtn');
-                return;
-            }
-            var el = $('<div class="full-start__button selector lmx-trbtn">' + TR_ICO + '<span>' + label + '</span></div>');
-            el[0].__lmxT = label;
-            el.on('hover:enter', function () { safe(play); });
-            var after = cont.find('.lmx-mkbtn').last();
-            if (!after.length) after = cont.find('.lmx-likebtn').first();
-            if (after.length) after.after(el); else cont.append(el);
-            // кнопку додано вже після відповіді TMDB: Lampa запам'ятовує список кнопок у момент фокусу — оновлюємо його, а стиль беремо так само, як для решти кнопок
-            try { if (typeof btnRun === 'function') btnRun(true); } catch (e) {}
-            try { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); } catch (e) {}
-            // рідна кнопка Lampa могла з'явитися пізніше за нашу — ховаємо дубль
-            [1200, 3500].forEach(function (ms) { setTimeout(function () { try { cont.find('.view--trailer:not(.hide)').not(el[0]).addClass('hide'); } catch (e) {} }, ms); });
-        }, function () {});
     }
 
     function start() {
