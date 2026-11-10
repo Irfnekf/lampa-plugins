@@ -543,6 +543,7 @@
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
         H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
+        H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
 
 
@@ -564,6 +565,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('lmx_trailer', true, 'Кнопка «Трейлер»', 'Один клік — трейлер українською, якщо його немає, то англійською. Рідна кнопка Lampa ховається, коли знайдено свій трейлер', null);
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
@@ -4569,6 +4571,7 @@
         safe(function () { studioRow(e, m); });
         safe(function () { likeButton(r, m); });
         safe(function () { marksButtons(r, m); });
+        safe(function () { trailerButton(r, m); });
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -5941,7 +5944,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.468';
+    var VERSION = '10.469';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6010,13 +6013,177 @@
         };
     });
 
+    // ===== Статистика переглядів (пункт лівого меню) і кнопка «Трейлер» на сторінці фільму =====
+    var LANG_UA = { en: 'Англійська', uk: 'Українська', ko: 'Корейська', ja: 'Японська', fr: 'Французька', de: 'Німецька', es: 'Іспанська', it: 'Італійська', tr: 'Турецька', ru: 'Російська', pl: 'Польська', sv: 'Шведська', da: 'Данська', no: 'Норвезька', hi: 'Гінді', zh: 'Китайська', cn: 'Китайська' };
+    function statsData() {
+        var d = { movies: 0, tv: 0, hours: 0, genres: {}, decades: {}, langs: {}, vote: 0, voteN: 0, like: 0, later: 0, seen: 0, total: 0 };
+        var hist = [];
+        try { hist = Lampa.Favorite.get({ type: 'history' }) || []; } catch (e) {}
+        hist = hist.filter(function (c) { return c && c.id; });
+        d.total = hist.length;
+        hist.forEach(function (c) {
+            if (typeOf(c) === 'tv') d.tv++; else d.movies++;
+            var seenG = {};
+            genreIds(c).forEach(function (g) { var n = GENRES[g]; if (n && !seenG[n]) { seenG[n] = 1; d.genres[n] = (d.genres[n] || 0) + 1; } });
+            var y = parseInt(String(c.release_date || c.first_air_date || '').slice(0, 4), 10);
+            if (y > 1900) { var dec = Math.floor(y / 10) * 10 + '-ті'; d.decades[dec] = (d.decades[dec] || 0) + 1; }
+            if (c.original_language) { var ln = LANG_UA[c.original_language] || String(c.original_language).toUpperCase(); d.langs[ln] = (d.langs[ln] || 0) + 1; }
+            if (c.vote_average > 0) { d.vote += Number(c.vote_average); d.voteN++; }
+        });
+        try { d.like = (Lampa.Favorite.get({ type: 'like' }) || []).length; } catch (e) {}
+        try { d.later = (Lampa.Favorite.get({ type: 'wath' }) || []).length; } catch (e) {}
+        try { d.seen = (Lampa.Favorite.get({ type: 'viewed' }) || []).length; } catch (e) {}
+        var fv = fileViews(), sec = 0;
+        if (fv) for (var k in fv) { var t = fv[k] && Number(fv[k].time); if (t > 0 && t < 36000) sec += t; }
+        d.hours = Math.round(sec / 360) / 10;
+        return d;
+    }
+    function statsTop(o, n) {
+        return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n);
+    }
+    function statsCss() {
+        if (document.getElementById('lmx-stats-css')) return;
+        var st = document.createElement('style'); st.id = 'lmx-stats-css';
+        st.textContent = 'body{--lmx-sa:#fff}body.lmx-prem{--lmx-sa:#e9a24a}body.lmx-apple{--lmx-sa:#8ec5ff}' +
+            '.lmx-st{padding:1.4em 2em 3em;box-sizing:border-box}' +
+            '.lmx-st__h{font-size:2em;font-weight:700;margin:0 0 .8em;letter-spacing:.01em}' +
+            '.lmx-st__hero{display:flex;align-items:baseline;gap:.5em;padding:1em 1.3em;border-radius:1.1em;background:rgba(255,255,255,.07);margin-bottom:1em}' +
+            '.lmx-st__big{font-size:3.6em;font-weight:800;line-height:1;color:var(--lmx-sa)}' +
+            '.lmx-st__cap{font-size:1.1em;opacity:.7}' +
+            '.lmx-st__tiles{display:flex;flex-wrap:wrap;gap:.8em;margin-bottom:1em}' +
+            '.lmx-st__tile{flex:1 1 9em;min-width:9em;padding:.9em 1.1em;border-radius:1em;background:rgba(255,255,255,.07)}' +
+            '.lmx-st__tile b{display:block;font-size:2em;font-weight:700;color:var(--lmx-sa)}' +
+            '.lmx-st__tile span{font-size:.95em;opacity:.7}' +
+            '.lmx-st__card{padding:1em 1.3em;border-radius:1.1em;background:rgba(255,255,255,.07);margin-bottom:1em}' +
+            '.lmx-st__card h3{margin:0 0 .7em;font-size:1.15em;font-weight:600;opacity:.85}' +
+            '.lmx-st__row{display:flex;align-items:center;gap:.8em;margin:.35em 0}' +
+            '.lmx-st__row i{font-style:normal;flex:0 0 9em;font-size:.98em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.lmx-st__bar{flex:1;height:.55em;border-radius:99em;background:rgba(255,255,255,.12);overflow:hidden}' +
+            '.lmx-st__bar u{display:block;height:100%;border-radius:99em;background:var(--lmx-sa);text-decoration:none}' +
+            '.lmx-st__row em{flex:0 0 2.6em;text-align:right;font-style:normal;opacity:.7;font-size:.95em}' +
+            '.lmx-st .selector.focus{background:rgba(255,255,255,.2);box-shadow:0 0 0 .14em var(--lmx-sa)}' +
+            '.lmx-st__empty{padding:3em 1em;text-align:center;opacity:.7;font-size:1.2em}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function statsBars(title, list) {
+        if (!list.length) return '';
+        var mx = list[0][1] || 1;
+        return '<div class="lmx-st__card selector"><h3>' + title + '</h3>' + list.map(function (x) {
+            return '<div class="lmx-st__row"><i>' + x[0] + '</i><div class="lmx-st__bar"><u style="width:' + Math.max(4, Math.round(x[1] / mx * 100)) + '%"></u></div><em>' + x[1] + '</em></div>';
+        }).join('') + '</div>';
+    }
+    function statsHtml() {
+        var d = statsData();
+        if (!d.total && !d.hours) return '<div class="lmx-st"><div class="lmx-st__h">Статистика</div><div class="lmx-st__empty">Історія порожня — подивіться щось, і тут з’явиться ваша статистика</div></div>';
+        var days = d.hours >= 24 ? ' (' + (Math.round(d.hours / 2.4) / 10) + ' доби)' : '';
+        var avg = d.voteN ? (Math.round(d.vote / d.voteN * 10) / 10) : 0;
+        return '<div class="lmx-st"><div class="lmx-st__h">Статистика</div>' +
+            '<div class="lmx-st__hero selector"><span class="lmx-st__big">' + d.hours + '</span><span class="lmx-st__cap">годин перегляду' + days + '</span></div>' +
+            '<div class="lmx-st__tiles">' +
+            '<div class="lmx-st__tile selector"><b>' + d.movies + '</b><span>Фільмів в історії</span></div>' +
+            '<div class="lmx-st__tile selector"><b>' + d.tv + '</b><span>Серіалів в історії</span></div>' +
+            '<div class="lmx-st__tile selector"><b>' + d.seen + '</b><span>Переглянуто</span></div>' +
+            '<div class="lmx-st__tile selector"><b>' + d.like + '</b><span>Подобається</span></div>' +
+            '<div class="lmx-st__tile selector"><b>' + d.later + '</b><span>Подивитись пізніше</span></div>' +
+            (avg ? '<div class="lmx-st__tile selector"><b>' + avg + '</b><span>Середня оцінка</span></div>' : '') +
+            '</div>' +
+            statsBars('Улюблені жанри', statsTop(d.genres, 6)) +
+            statsBars('Мова оригіналу', statsTop(d.langs, 4)) +
+            statsBars('За роками виходу', statsTop(d.decades, 5).sort(function (a, b) { return parseInt(a[0], 10) - parseInt(b[0], 10); })) + '</div>';
+    }
+    var statsRegistered = false;
+    function registerStats() {
+        if (statsRegistered || !Lampa.Component || !Lampa.Component.add || !Lampa.Scroll) return;
+        statsRegistered = true;
+        Lampa.Component.add('lmx_stats', function (object) {
+            var scroll = new Lampa.Scroll({ mask: true, over: true, step: 250 }), html = $('<div></div>'), last;
+            this.create = function () {
+                statsCss();
+                html.append(statsHtml());
+                html.find('.selector').on('hover:focus', function () { last = this; scroll.update($(this), true); });
+                scroll.minus();
+                scroll.append(html);
+                this.activity.loader(false);
+                this.activity.toggle();
+            };
+            this.start = function () {
+                if (Lampa.Activity.active().activity !== this.activity) return;
+                Lampa.Controller.add('content', {
+                    toggle: function () { Lampa.Controller.collectionSet(scroll.render()); Lampa.Controller.collectionFocus(last || false, scroll.render()); },
+                    up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
+                    down: function () { if (Navigator.canmove('down')) Navigator.move('down'); },
+                    left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); },
+                    right: function () { if (Navigator.canmove('right')) Navigator.move('right'); },
+                    back: function () { Lampa.Activity.backward(); }
+                });
+                Lampa.Controller.toggle('content');
+            };
+            this.pause = function () {};
+            this.stop = function () {};
+            this.render = function () { return scroll.render(); };
+            this.destroy = function () { try { scroll.destroy(); } catch (e) {} html.remove(); };
+        });
+    }
+    function statsMenu() {
+        if (!getBool('lmx_stats_menu', true) || !Lampa.Menu || !Lampa.Menu.addButton || document.querySelector('.menu__item.lmx-statsmenu')) return;
+        var ico = '<svg viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>';
+        var el = Lampa.Menu.addButton(ico, 'Статистика', function () {
+            registerStats();
+            Lampa.Activity.push({ url: '', title: 'Статистика', component: 'lmx_stats', page: 1 });
+        });
+        if (el && el[0]) el[0].classList.add('lmx-statsmenu');
+    }
+
+    // Кнопка «Трейлер»: один клік — найкращий трейлер українською (якщо є), інакше англійською. Рідну кнопку Lampa ховаємо, лише коли знайшли свій
+    var TR_ICO = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.2-2.5z" fill="currentColor"/></svg>';
+    function trailerPick(j) {
+        var all = ((j && j.results) || []).filter(function (v) { return v && v.site === 'YouTube' && v.key; });
+        function best(lang) {
+            var l = all.filter(function (v) { return v.iso_639_1 === lang; });
+            var tr = l.filter(function (v) { return v.type === 'Trailer'; });
+            var pool = tr.length ? tr : l.filter(function (v) { return v.type === 'Teaser'; });
+            if (!pool.length) return null;
+            pool.sort(function (a, b) { return ((b.official ? 1 : 0) - (a.official ? 1 : 0)) || String(b.published_at || '').localeCompare(String(a.published_at || '')); });
+            return pool[0];
+        }
+        var uk = best('uk'), en = uk ? null : best('en');
+        return uk ? { v: uk, ua: true } : en ? { v: en, ua: false } : null;
+    }
+    function trailerButton(r, m) {
+        if (!getBool('lmx_trailer', true) || !m || !m.id) return;
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length || cont.find('.lmx-trbtn').length) return;
+        var kind = typeOf(m) === 'tv' ? 'tv' : 'movie';
+        tget(kind + '/' + m.id + '/videos?include_video_language=uk%2Cen', {}, function (j) {
+            if (!document.body.contains(cont[0]) || cont.find('.lmx-trbtn').length) return;
+            var p = trailerPick(j);
+            if (!p) return;
+            var el = $('<div class="full-start__button selector lmx-trbtn">' + TR_ICO + '<span>' + (p.ua ? 'Трейлер UA' : 'Трейлер') + '</span></div>');
+            el[0].__lmxT = p.ua ? 'Трейлер UA' : 'Трейлер';
+            el.on('hover:enter', function () {
+                safe(function () {
+                    var title = (m.title || m.name || '') + ' — трейлер';
+                    if (Lampa.YouTube && Lampa.YouTube.play) Lampa.YouTube.play(p.v.key);
+                    else if (Lampa.Player && Lampa.Player.play) Lampa.Player.play({ url: 'https://www.youtube.com/watch?v=' + p.v.key, title: title });
+                });
+            });
+            var native = cont.find('.view--trailer');
+            if (native.length) { native.first().before(el); native.addClass('hide'); } else {
+                var after = cont.find('.lmx-mkbtn').last();
+                if (!after.length) after = cont.find('.lmx-likebtn').first();
+                if (after.length) after.after(el); else cont.append(el);
+            }
+        }, function () {});
+    }
+
     function start() {
         safe(patchContentRows);
         safe(patchBackground);
         safe(syncCi);
         safe(addSettings);
         safe(moodMenu);
-        safe(function () { setTimeout(function () { safe(moodMenu); }, 2500); });
+        safe(statsMenu);
+        safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
         safe(function () {
