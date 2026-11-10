@@ -547,6 +547,7 @@
         H.trigger('lmx_hide_trl_btn', true, 'Ховати кнопку «Трейлери»', 'Прибирає штатну кнопку на картці фільму — трейлери є окремим рядом нижче. Діє після перезапуску', null);
         H.trigger('lmx_hide_tags', true, 'Ховати «Жанр / Виробництво / Теги»', 'Прибирає ряд кнопок під описом у розділі «Детально». Діє після перезапуску', null);
         H.trigger('lmx_descr_btn', true, 'Опис як кнопка', 'Опис на картці фільму відкривається повністю у вікні; закрити — «назад», вліво або вправо. Діє після перезапуску', null);
+        H.trigger('lmx_hide_descr_row', true, 'Ховати розділ «Детально»', 'Прибирає розділ із повторним описом, датою, бюджетом і країнами. Діє після перезапуску', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -5962,7 +5963,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.480';
+    var VERSION = '10.481';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6231,11 +6232,22 @@
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__name{-webkit-line-clamp:1}' +
             'html body.lmx-apple .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__photo{border-radius:1.5em !important}' +
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x).focus{background:none !important}' +
-            'body .lmx-descr--btn{cursor:pointer}' +
+            'html body .lmx-descr--btn:not(#lmx-x){cursor:pointer;border-radius:1.1em;padding:.55em .9em;transition:background .15s,box-shadow .15s}' +
+            'html body .lmx-descr--btn.focus:not(#lmx-x),html body .lmx-descr--btn.hover:not(#lmx-x){background:rgba(255,255,255,.13);box-shadow:0 0 0 .14em rgba(255,255,255,.85) inset}' +
+            'html body.lmx-prem .lmx-descr--btn.focus:not(#lmx-x){background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.07));box-shadow:0 0 0 1px rgba(255,255,255,.55) inset,0 .5em 1.4em rgba(0,0,0,.45)}' +
+            'html body.lmx-apple .lmx-descr--btn.focus:not(#lmx-x){background:rgba(255,255,255,.22);box-shadow:0 0 0 .14em rgba(255,255,255,.95) inset}' +
+            // вікно з повним описом — у стилі теми
+            '.modal.lmx-dm .modal__content{background:#171a24;border-radius:1.5em;border:1px solid rgba(255,255,255,.08);box-shadow:0 1.5em 4em rgba(0,0,0,.6);max-width:46em;padding:1.6em 2em}' +
+            '.modal.lmx-dm .modal__title{font-size:1.9em;font-weight:700;margin-bottom:.7em;letter-spacing:.01em}' +
+            'body.lmx-prem .modal.lmx-dm .modal__content{background:radial-gradient(120% 90% at 0% 0%,#232739 0%,#12141c 60%);border-color:rgba(255,255,255,.1);border-radius:1.2em}' +
+            'body.lmx-prem .modal.lmx-dm .modal__title{text-transform:uppercase;letter-spacing:.06em;font-size:1.6em}' +
+            'body.lmx-prem .modal.lmx-dm .modal__title::after{content:"";display:block;width:2.6em;height:.18em;margin-top:.5em;border-radius:1em;background:#9ccb6b}' +
+            'body.lmx-apple .modal.lmx-dm .modal__content{background:rgba(40,44,80,.55);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.28);border-radius:2em}' +
+            '.modal.lmx-dm .lmx-dmodal{color:rgba(255,255,255,.88)}' +
             'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
             '.lmx-dmodal{font-size:1.15em;line-height:1.6;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
-            'body.lmx-hidetrl .full-start__button.view--trailer,body.lmx-hidetrl .full-start-new__buttons .view--trailer{display:none !important}' +
+            'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
             '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
             // теми
@@ -6266,6 +6278,7 @@
         }
         window.addEventListener('keydown', onKey, true);
         Lampa.Modal.open({ title: String(m.title || m.name || ''), html: box, size: 'medium', mask: true, onBack: close });
+        setTimeout(function () { safe(function () { $('.modal').addClass('lmx-dm'); }); }, 0);
     }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
@@ -6274,7 +6287,8 @@
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
-                if (!e || !e.data) return;
+                if (!e) return;
+                if (e.type !== 'complite' && !e.data) return;
                 if (e.type === 'start') {
                     var adult = e.data.movie && e.data.movie.adult;
                     if (!adult && getBool('lmx_full_people', true)) fullPeople(e.data);
@@ -6285,6 +6299,14 @@
                             e.link.rows.splice(ix > 0 ? ix : 1, 0, ['persons', { results: tr, title: 'Трейлери', lmxTrailers: true }]);
                         }
                     }
+                    if (!adult && getBool('lmx_hide_descr_row', true) && e.link && Array.isArray(e.link.rows)) {
+                        var di = e.link.rows.indexOf('description');
+                        if (di >= 0) e.link.rows.splice(di, 1);
+                    }
+                } else if (e.type === 'complite' && getBool('lmx_hide_trl_btn', true)) {
+                    var rr = e.object && e.object.activity && e.object.activity.render ? e.object.activity.render() : null;
+                    var hideB = function () { if (rr) rr.find('.view--trailer').addClass('hide lmx-trlhide').removeClass('selector'); };
+                    hideB(); [400, 1200, 2500].forEach(function (d) { setTimeout(function () { safe(hideB); }, d); });
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
                     if (d.lmxTrailers) root.addClass('lmx-trl');
