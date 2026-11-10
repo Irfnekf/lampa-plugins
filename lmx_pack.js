@@ -543,6 +543,8 @@
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
         H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
+        H.trigger('lmx_full_trailers', true, 'Ряд «Трейлери» на сторінці фільму', 'Плитки з трейлерами над розділом «Детально»: спершу українські, потім англійські. Натиск відкриває відео', null);
+        H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
 
@@ -5953,7 +5955,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.475';
+    var VERSION = '10.476';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6143,6 +6145,112 @@
         if (el && el[0]) el[0].classList.add('lmx-statsmenu');
     }
 
+    // ===== Сторінка фільму: ряд «Трейлери» над «Детально» + режисер і актори в одному ряду («Акторський склад і знімальна група») =====
+    // Рядки — штатні рядки Lampa (Line + Person), тому пульт, фокус і прокрутка працюють як у решти рядів; додаємо лише дані й вигляд
+    var TR_TYPE = { 'Trailer': 0, 'Teaser': 1, 'Clip': 2, 'Featurette': 3, 'Behind the Scenes': 4 };
+    var TR_NAME = { 'Trailer': 'Трейлер', 'Teaser': 'Тизер', 'Clip': 'Уривок', 'Featurette': 'Про фільм', 'Behind the Scenes': 'За лаштунками' };
+    function trShape(x) { return { title: x.title, url: x.url, id: x.key, youtube: x.youtube, thumbnail: x.img, icon: '<img class="size-youtube" src="' + x.img + '" />', template: 'selectbox_icon' }; }
+    function trPlay(a, all) {
+        try {
+            if (Lampa.Platform && Lampa.Platform.is('android') && Lampa.Storage.field('player_launch_trailers') === 'youtube' && a.youtube && Lampa.Android && Lampa.Android.openYoutube) { Lampa.Android.openYoutube(a.key); return; }
+        } catch (e) {}
+        Lampa.Player.play(trShape(a));
+        Lampa.Player.playlist(all.map(trShape));
+    }
+    function fullTrailers(data) {
+        var v = data && data.videos && data.videos.results;
+        if (!v || !v.length) return null;
+        var lang = '', seen = {}, list = [];
+        try { lang = String(Lampa.Storage.field('tmdb_lang') || 'uk'); } catch (e) {}
+        v.forEach(function (x) {
+            if (!x || !x.key || seen[x.key]) return;
+            if (x.site && x.site !== 'YouTube' && !x.url) return;
+            seen[x.key] = 1; list.push(x);
+        });
+        list.forEach(function (x) { x._k = (x.iso_639_1 === lang ? 0 : 1) * 100 + (TR_TYPE[x.type] !== undefined ? TR_TYPE[x.type] : 5) * 10 + (x.official ? 0 : 1); });
+        list.sort(function (a, b) { return (a._k - b._k) || String(b.published_at || '').localeCompare(String(a.published_at || '')); });
+        var items = list.slice(0, 10).map(function (x) {
+            var tag = x.iso_639_1 ? (x.iso_639_1 === 'uk' ? 'UA' : String(x.iso_639_1).toUpperCase()) : '';
+            var nm = String(x.name || TR_NAME[x.type] || 'Трейлер');
+            return { id: x.key, key: x.key, title: nm, name: nm.length > 46 ? nm.slice(0, 45) + '…' : nm, job: (tag ? tag + ' · ' : '') + (TR_NAME[x.type] || 'Відео'),
+                img: x.icon || 'https://img.youtube.com/vi/' + x.key + '/mqdefault.jpg', url: x.url || 'https://www.youtube.com/watch?v=' + x.key, youtube: typeof x.youtube !== 'undefined' ? x.youtube : true };
+        });
+        items.forEach(function (it) { it.params = { emit: { onEnter: function () { safe(function () { trPlay(it, items); }); } } }; });
+        return items;
+    }
+    // режисер(и) першими в списку акторів; окремий ряд «Режисер» прибираємо (повторний виклик на тих самих даних нічого не змінює)
+    function fullPeople(data) {
+        var P = data && data.persons;
+        if (!P || !P.cast || !P.cast.length || !P.crew || !P.crew.length) return;
+        var dirs = P.crew.filter(function (m) { return m && m.job === 'Director'; });
+        if (!dirs.length) return;
+        var seen = {}, head = [], role = 'Режисер';
+        try { role = Lampa.Lang.translate('title_producer') || role; } catch (e) {}
+        dirs.forEach(function (d) {
+            if (seen[d.id]) return; seen[d.id] = 1;
+            var c = {}; for (var k in d) c[k] = d[k];
+            c.character = role; c.lmxDir = true; head.push(c);
+        });
+        P.cast = head.concat(P.cast.filter(function (a) { return !(a && seen[a.id]); }));
+        P.crew = P.crew.filter(function (m) { return !(m && m.job === 'Director'); });
+    }
+    function fxCss() {
+        if (document.getElementById('lmx-fullx-css')) return;
+        var play = "url(\"data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 5v14l11-7z' fill='white'/></svg>") + "\")";
+        var st = document.createElement('style'); st.id = 'lmx-fullx-css';
+        st.textContent =
+            // спільне: без «пігулки» з білою заливкою у фокусі — кільце на фото
+            '.lmx-people .full-person,.lmx-trl .full-person{flex-direction:column;align-items:flex-start;background:none !important;color:inherit !important;padding:0 1.1em 0 0;font-size:1em}' +
+            '.lmx-people .full-person__photo,.lmx-trl .full-person__photo{margin:0 0 .7em;position:relative;transition:transform .2s,box-shadow .2s}' +
+            '.lmx-people .full-person__photo>img,.lmx-trl .full-person__photo>img{width:100%;height:100%;object-fit:cover}' +
+            '.lmx-people .full-person__name,.lmx-trl .full-person__name{font-size:1.05em;font-weight:600;line-height:1.2}' +
+            '.lmx-people .full-person__role,.lmx-trl .full-person__role{font-size:.9em;margin-top:.25em;opacity:.6;line-height:1.2}' +
+            '.lmx-people .full-person.focus .full-person__photo,.lmx-trl .full-person.focus .full-person__photo,.lmx-people .full-person.hover .full-person__photo,.lmx-trl .full-person.hover .full-person__photo{box-shadow:0 0 0 .22em #fff,0 .6em 1.4em rgba(0,0,0,.55);transform:scale(1.05)}' +
+            '.lmx-people .full-person.focus .full-person__role,.lmx-trl .full-person.focus .full-person__role{opacity:.9}' +
+            // люди: круглі портрети з підписом знизу
+            '.lmx-people .full-person{align-items:center;text-align:center;width:9.4em;padding:0 .5em}' +
+            '.lmx-people .full-person__photo{width:7.8em;height:7.8em;border-radius:50%}' +
+            '.lmx-people .full-person__body{width:100%}' +
+            // трейлери: плитки 16:9 з кнопкою Play
+            '.lmx-trl .full-person{width:23.4em}' +
+            '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
+            '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
+            // теми
+            'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo{border:1px solid rgba(255,255,255,.35)}' +
+            'body.lmx-apple .lmx-trl .full-person__photo{border-radius:1.5em}' +
+            'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}' +
+            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo{box-shadow:0 0 0 .2em rgba(255,255,255,.95),0 0 1.8em rgba(255,255,255,.35)}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function initFullExtras() {
+        if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
+        window.__lmxFullX = 1;
+        fxCss();
+        Lampa.Listener.follow('full', function (e) {
+            safe(function () {
+                if (!e || !e.data) return;
+                if (e.type === 'start') {
+                    var adult = e.data.movie && e.data.movie.adult;
+                    if (!adult && getBool('lmx_full_people', true)) fullPeople(e.data);
+                    if (!adult && getBool('lmx_full_trailers', true) && e.link && Array.isArray(e.link.rows)) {
+                        var tr = fullTrailers(e.data);
+                        if (tr && tr.length) {
+                            var ix = e.link.rows.indexOf('description');
+                            e.link.rows.splice(ix > 0 ? ix : 1, 0, ['persons', { results: tr, title: 'Трейлери', lmxTrailers: true }]);
+                        }
+                    }
+                } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
+                    var d = e.data || {}, root = $(e.item.render(true));
+                    if (d.lmxTrailers) root.addClass('lmx-trl');
+                    else if (d.results && d.results[0] && d.results[0].lmxDir) {
+                        root.addClass('lmx-people');
+                        root.find('.items-line__title').first().text('Акторський склад і знімальна група');
+                    }
+                }
+            });
+        });
+    }
+
     function start() {
         safe(patchContentRows);
         safe(patchBackground);
@@ -6150,6 +6258,7 @@
         safe(addSettings);
         safe(moodMenu);
         safe(statsMenu);
+        safe(initFullExtras);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
