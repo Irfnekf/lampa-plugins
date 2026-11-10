@@ -3393,6 +3393,12 @@
             cin.insertBefore(cr, cin.firstChild);
         }
     }
+    // запит стартує, якщо ХОЧА Б ОДНА картка цього фільму поряд із екраном (той самий фільм може бути і в далекому ряду, і в «Історії» перед очима)
+    function uaqNearJob(j) {
+        if (uaqNear(j.el)) return true;
+        for (var i = 0; i < j.views.length && i < 6; i++) { var vw = j.views[i], cd = vw && vw.closest ? vw.closest('.card') : null; if (cd && cd !== j.el && uaqNear(cd)) return true; }
+        return false;
+    }
     function uaqNear(el) {
         var r = el.getBoundingClientRect(), W = window.innerWidth || 1280, H = window.innerHeight || 720;
         return r.width > 0 && r.right > -W * 0.8 && r.left < W * 2.2 && r.bottom > -H * 0.8 && r.top < H * 2;
@@ -3642,9 +3648,15 @@
         var keep = [], i, j, nearLeft = 0;
         for (i = 0; i < uaqQ.length; i++) {
             j = uaqQ[i];
-            if (!document.documentElement.contains(j.el)) { delete uaqPend[j.key]; continue; }
+            if (!document.documentElement.contains(j.el)) {
+                // картка, з якої почали запит, зникла (рядок перебудувався) — але той самий фільм може бути ще на іншій картці (історія, «Пізніше»): беремо її
+                var alt = null, vi;
+                for (vi = 0; vi < j.views.length; vi++) { var vw = j.views[vi], cd = vw && vw.closest ? vw.closest('.card') : null; if (cd && document.documentElement.contains(cd)) { alt = cd; break; } }
+                if (!alt) { delete uaqPend[j.key]; continue; }
+                j.el = alt;
+            }
             if (j.after && j.after > Date.now()) keep.push(j);
-            else if (!uaqNear(j.el)) keep.push(j);
+            else if (!uaqNearJob(j)) keep.push(j);
             else if (uaqBusyN() < 4) uaqFetch(j);
             else { keep.push(j); nearLeft++; }
         }
@@ -5927,7 +5939,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.464';
+    var VERSION = '10.465';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
