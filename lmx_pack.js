@@ -5944,7 +5944,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.472';
+    var VERSION = '10.473';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6162,6 +6162,12 @@
             var native = cont.find('.view--trailer:not(.hide)').first();
             var saved = [];
             function play() {
+                // помилка YouTube 153 («конфігурація відеоплеєра») з'являється, коли сторінка не передає Referer у вбудований плеєр — вмикаємо його перед запуском
+                try {
+                    var mr = document.querySelector('meta[name="referrer"]');
+                    if (!mr) { mr = document.createElement('meta'); mr.name = 'referrer'; (document.head || document.documentElement).appendChild(mr); }
+                    mr.content = 'strict-origin-when-cross-origin';
+                } catch (e) {}
                 try {
                     if (Lampa.YouTube && typeof Lampa.YouTube.play === 'function') { Lampa.YouTube.play(p.v.key); return; }
                 } catch (e) {}
