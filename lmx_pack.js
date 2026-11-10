@@ -5962,7 +5962,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.479';
+    var VERSION = '10.480';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6180,7 +6180,7 @@
         });
         list.forEach(function (x) { x._k = (x.iso_639_1 === lang ? 0 : 1) * 100 + (TR_TYPE[x.type] !== undefined ? TR_TYPE[x.type] : 5) * 10 + (x.official ? 0 : 1); });
         list.sort(function (a, b) { return (a._k - b._k) || String(b.published_at || '').localeCompare(String(a.published_at || '')); });
-        var items = list.slice(0, 10).map(function (x) {
+        var items = list.slice(0, 6).map(function (x) {
             var tag = x.iso_639_1 ? (x.iso_639_1 === 'uk' ? 'UA' : String(x.iso_639_1).toUpperCase()) : '';
             var nm = String(x.name || TR_NAME[x.type] || 'Трейлер');
             return { id: x.key, key: x.key, title: nm, name: nm.length > 46 ? nm.slice(0, 45) + '…' : nm, job: (tag ? tag + ' · ' : '') + (TR_NAME[x.type] || 'Відео'),
@@ -6212,11 +6212,11 @@
         st.textContent =
             // спільне: без «пігулки» з білою заливкою у фокусі — кільце на фото
             '.lmx-people .full-person,.lmx-trl .full-person{flex-direction:column;align-items:flex-start;background:none !important;color:inherit !important;padding:0 1.1em 0 0;font-size:1em}' +
-            '.lmx-people .full-person__photo,.lmx-trl .full-person__photo{margin:0 0 .7em;position:relative;transition:transform .2s,box-shadow .2s}' +
+            '.lmx-people .full-person__photo,.lmx-trl .full-person__photo{margin:0 0 .7em;position:relative}' +
             '.lmx-people .full-person__photo>img,.lmx-trl .full-person__photo>img{width:100%;height:100%;object-fit:cover}' +
             '.lmx-people .full-person__name,.lmx-trl .full-person__name{font-size:1.05em;font-weight:600;line-height:1.2}' +
             '.lmx-people .full-person__role,.lmx-trl .full-person__role{font-size:.9em;margin-top:.25em;opacity:.6;line-height:1.2}' +
-            '.lmx-people .full-person.focus .full-person__photo,.lmx-trl .full-person.focus .full-person__photo,.lmx-people .full-person.hover .full-person__photo,.lmx-trl .full-person.hover .full-person__photo{box-shadow:0 0 0 .22em #fff,0 .6em 1.4em rgba(0,0,0,.55);transform:scale(1.05)}' +
+            '.lmx-people .full-person.focus .full-person__photo,.lmx-trl .full-person.focus .full-person__photo,.lmx-people .full-person.hover .full-person__photo,.lmx-trl .full-person.hover .full-person__photo{box-shadow:0 0 0 .22em #fff}' +
             '.lmx-people .full-person.focus .full-person__role,.lmx-trl .full-person.focus .full-person__role{opacity:.9}' +
             // люди: круглі портрети з підписом знизу
             '.lmx-people .full-person{align-items:center;text-align:center;width:9.4em;padding:0 .5em}' +
@@ -6231,8 +6231,8 @@
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__name{-webkit-line-clamp:1}' +
             'html body.lmx-apple .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__photo{border-radius:1.5em !important}' +
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x).focus{background:none !important}' +
-            'body .lmx-descr--btn{cursor:pointer;transition:transform .2s,box-shadow .2s}' +
-            'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff;transform:scale(1.02)}' +
+            'body .lmx-descr--btn{cursor:pointer}' +
+            'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
             '.lmx-dmodal{font-size:1.15em;line-height:1.6;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'body.lmx-hidetrl .full-start__button.view--trailer,body.lmx-hidetrl .full-start-new__buttons .view--trailer{display:none !important}' +
@@ -6241,7 +6241,7 @@
             // теми
             'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo{border:1px solid rgba(255,255,255,.35)}' +
             'body.lmx-apple .lmx-trl .full-person__photo{border-radius:1.5em}' +
-            'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}' +
+            'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.3)}' +
             'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo{box-shadow:0 0 0 .2em rgba(255,255,255,.95),0 0 1.8em rgba(255,255,255,.35)}';
         (document.head || document.documentElement).appendChild(st);
     }
