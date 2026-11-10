@@ -543,7 +543,8 @@
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
         H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
-        H.trigger('lmx_full_trailers', true, 'Ряд «Трейлери» на сторінці фільму', 'Плитки з трейлерами над розділом «Детально»: спершу українські, потім англійські. Натиск відкриває відео', null);
+        H.trigger('lmx_full_trailers', true, 'Ряд «Трейлери» на сторінці фільму', 'Плитки з трейлерами над розділом «Детально»: лише українські, а якщо їх нема — англійські. Натиск відкриває відео', null);
+        H.trigger('lmx_hide_trl_btn', true, 'Ховати кнопку «Трейлери»', 'Прибирає штатну кнопку на картці фільму — трейлери є окремим рядом нижче. Діє після перезапуску', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -5955,7 +5956,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.476';
+    var VERSION = '10.477';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6162,6 +6163,10 @@
         if (!v || !v.length) return null;
         var lang = '', seen = {}, list = [];
         try { lang = String(Lampa.Storage.field('tmdb_lang') || 'uk'); } catch (e) {}
+        var pick = function (l) { return v.filter(function (x) { return x && x.key && x.iso_639_1 === l; }); };
+        var only = pick('uk'); if (!only.length) only = pick('en');
+        if (!only.length) return null;
+        v = only;
         v.forEach(function (x) {
             if (!x || !x.key || seen[x.key]) return;
             if (x.site && x.site !== 'YouTube' && !x.url) return;
@@ -6213,6 +6218,14 @@
             '.lmx-people .full-person__body{width:100%}' +
             // трейлери: плитки 16:9 з кнопкою Play
             '.lmx-trl .full-person{width:23.4em}' +
+            'body .lmx-trl .full-person:not(.full-person--small){width:23.4em !important;align-items:flex-start !important;text-align:left !important;padding:0 1.1em 0 0 !important;margin-right:0 !important}' +
+            'body .lmx-trl .full-person:not(.full-person--small) .full-person__photo{width:22.3em !important;height:12.5em !important;border-radius:1.1em !important;margin:0 0 .7em 0 !important;background:#1a1d27 !important}' +
+            'body .lmx-trl .full-person:not(.full-person--small) .full-person__photo img{border-radius:0 !important;width:100%;height:100%;object-fit:cover}' +
+            'body .lmx-trl .full-person:not(.full-person--small) .full-person__body{width:22.3em !important}' +
+            'body .lmx-trl .full-person:not(.full-person--small) .full-person__name{-webkit-line-clamp:1}' +
+            'body.lmx-apple .lmx-trl .full-person:not(.full-person--small) .full-person__photo{border-radius:1.5em !important}' +
+            'body .lmx-trl .full-person:not(.full-person--small).focus{background:none !important}' +
+            'body.lmx-hidetrl .full-start__button.view--trailer,body.lmx-hidetrl .full-start-new__buttons .view--trailer{display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
             '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
             // теми
@@ -6226,6 +6239,7 @@
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
         fxCss();
+        if (document.body) document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true));
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
                 if (!e || !e.data) return;
