@@ -3431,7 +3431,7 @@
         return out;
     }
     function uaqGet(q, yr, cb, maxHosts) {
-        var key = '', qq = String(q).toLowerCase().replace(/^\s+|\s+$/g, ''), now = Date.now(), all = uaqCombos(), order = [], i;
+        var key = '', qq = String(q).toLowerCase().replace(/[?!:;"«»“”„…]+/g, ' ').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '') || String(q), now = Date.now(), all = uaqCombos(), order = [], i;
         try { key = String(Lampa.Storage.get('jackett_key', '') || ''); } catch (e) {}
         // «глибокий» прохід (maxHosts) публічний парсер не навантажує: він шукає вживу по всіх трекерах, тож лишаємо його для першого, головного запиту
         for (i = 0; i < all.length; i++) if (!(uaqBadCombo[all[i]] && now - uaqBadCombo[all[i]] < 300000) && !(maxHosts && all[i].split('|')[0] === UAQ_PUB)) order.push(all[i]);
@@ -5941,7 +5941,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.466';
+    var VERSION = '10.467';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
