@@ -5944,7 +5944,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.470';
+    var VERSION = '10.471';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6161,11 +6161,16 @@
             var el = $('<div class="full-start__button selector lmx-trbtn">' + TR_ICO + '<span>' + (p.ua ? 'Трейлер UA' : 'Трейлер') + '</span></div>');
             el[0].__lmxT = p.ua ? 'Трейлер UA' : 'Трейлер';
             el.on('hover:enter', function () {
-                safe(function () {
-                    var title = (m.title || m.name || '') + ' — трейлер';
-                    if (Lampa.YouTube && Lampa.YouTube.play) Lampa.YouTube.play(p.v.key);
-                    else if (Lampa.Player && Lampa.Player.play) Lampa.Player.play({ url: 'https://www.youtube.com/watch?v=' + p.v.key, title: title });
-                });
+                var nat = cont.find('.view--trailer');
+                function viaNative(why) {
+                    // запасний шлях: рідна кнопка Lampa «Трейлери» (вона знає, як відкрити плеєр у цій версії)
+                    if (nat.length) { try { nat.first().trigger('hover:enter'); return; } catch (e) {} }
+                    if (Lampa.Noty) Lampa.Noty.show('Не вдалося відкрити трейлер' + (why ? ': ' + why : ''));
+                }
+                try {
+                    if (Lampa.YouTube && typeof Lampa.YouTube.play === 'function') Lampa.YouTube.play(p.v.key);
+                    else viaNative('');
+                } catch (e) { viaNative(e && e.message ? e.message : ''); }
             });
             var native = cont.find('.view--trailer');
             if (native.length) { native.first().before(el); native.addClass('hide'); } else {
