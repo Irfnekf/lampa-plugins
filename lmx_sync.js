@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.30';
+    var VERSION = '1.31';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Sync', description: 'Синхронізація закладок, історії та позицій перегляду між пристроями', author: 'Irfnekf' }; } catch (e) {}
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
@@ -143,7 +143,7 @@
         return cur;
     }
     // Налаштування LMX Pack: усі ключі lmx_*, крім службових і кешів
-    var SKIP_RX = /^(lmx_sync|lmx_btn_known|lmx_live|lmx_ver|lmx_t_ver|lmx_anime_|lmx_dorama_kw|lmx_stats|lmx_cache|lmx_hist_cache)/;
+    var SKIP_RX = /^(lmx_sync|lmx_btn_known|lmx_live|lmx_ver|lmx_t_ver|lmx_anime_|lmx_dorama_kw|lmx_stats|lmx_cache|lmx_hist_cache|lmx_ne_cache)/;
     function settingNames() {
         var out = [], i, k;
         try { for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && /^lmx_/.test(k) && !SKIP_RX.test(k)) out.push(k); } } catch (e) {}

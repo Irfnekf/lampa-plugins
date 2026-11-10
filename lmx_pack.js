@@ -5587,13 +5587,13 @@
 
 
 
-    // ===== Дзвіночок «Нові серії» у шапці: серіали, які ти дивишся/лайкнув/додав у закладки, з новою серією за останні 2 тижні =====
+    // ===== Дзвіночок «Нові серії» у шапці: серіали, які ти дивишся/лайкнув/додав у закладки, з новою серією за останній тиждень (уже переглянуті не показуємо) =====
     // Лічильник показує лише те, що ще не бачив; після відкриття списку скидається
     var neCache = null, neBusy = false;
     function neKey(e) { return e.season + ':' + e.episode; }
     function neCollect(cb) {
         // кеш на 2 години (у пам'яті й у сховищі), щоб не ганяти десятки запитів до TMDB при кожному запуску
-        if (!neCache) { var pc = jsonStore('lmx_ne_cache', null); if (pc && pc.data && Date.now() - pc.t < 7200000) neCache = pc; }
+        if (!neCache) { var pc = jsonStore('lmx_ne_cache7', null); if (pc && pc.data && Date.now() - pc.t < 7200000) neCache = pc; }
         if (neCache && Date.now() - neCache.t < 7200000) return cb(neCache.data);
         if (neBusy) return cb(neCache ? neCache.data : []);
         var seen = {}, list = [];
@@ -5608,13 +5608,13 @@
         list = list.slice(0, 30);
         if (!list.length) { neCache = { t: Date.now(), data: [] }; return cb([]); }
         neBusy = true;
-        var lo = dayStr(-14), hi = dayStr(0), out = [], qi = 0, left = list.length;
+        var lo = dayStr(-7), hi = dayStr(0), out = [], qi = 0, left = list.length;
         function fin() {
             if (--left > 0) return;
             neBusy = false;
             out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
             neCache = { t: Date.now(), data: out };
-            safe(function () { Lampa.Storage.set('lmx_ne_cache', neCache); });
+            safe(function () { Lampa.Storage.set('lmx_ne_cache7', neCache); });
             cb(out);
         }
         function pump() {
@@ -5624,12 +5624,22 @@
                 var le = j && j.last_episode_to_air;
                 if (le && le.air_date && le.air_date >= lo && le.air_date <= hi) {
                     out.push({ id: j.id, name: j.name || c.name, poster: j.poster_path, backdrop: j.backdrop_path, season: le.season_number, episode: le.episode_number, epname: le.name || '', date: le.air_date,
-                        card: { id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path, overview: j.overview, vote_average: j.vote_average, first_air_date: j.first_air_date, original_language: j.original_language, media_type: 'tv', source: 'tmdb' } });
+                        card: { id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path, overview: j.overview, vote_average: j.vote_average, first_air_date: j.first_air_date, original_language: j.original_language, number_of_seasons: j.number_of_seasons, seasons: (j.seasons || []).map(function (x) { return { season_number: x.season_number, episode_count: x.episode_count }; }), media_type: 'tv', source: 'tmdb' } });
                 }
                 fin(); pump();
             });
         }
         for (var k = 0; k < 2; k++) pump();
+    }
+    // уже переглянута серія (або пізніша в цьому ж сезоні) не має сповіщати
+    function neWatched(e) {
+        try {
+            var w = watchProgress(e.card);
+            if (!w || !w.s) return false;
+            if (w.s > e.season) return true;
+            if (w.s === e.season) return w.e > e.episode || (w.e === e.episode && w.pct >= 85);
+        } catch (x) {}
+        return false;
     }
     function neUnseen(arr) {
         var seen = jsonStore('lmx_ne_seen', {});
@@ -5687,7 +5697,7 @@
             b.toggleClass('lmx-has', n > 0);
             b.find('.lmx-nebadge').text(n > 9 ? '9+' : String(n)).css('background', color());
         }
-        function refresh() { safe(function () { neCollect(function (arr) { badge(neUnseen(arr).length); }); }); }
+        function refresh() { safe(function () { neCollect(function (arr) { badge(neUnseen(arr.filter(function (e) { return !neWatched(e); })).length); }); }); }
         var dd = null;
         function closeDD(back, dir) {
             if (!dd) return;
@@ -5705,10 +5715,11 @@
             if (dd) return closeDD(Lampa.Controller.enabled().name === 'lmx_ne' ? 'content' : null);
             var enabled = Lampa.Controller.enabled().name;
             ddBack = enabled;
-            neCollect(function (arr) {
+            neCollect(function (arr0) {
+                var arr = arr0.filter(function (e) { return !neWatched(e); });
                 var seen = jsonStore('lmx_ne_seen', {}), fresh = {}, nFresh = 0;
                 arr.forEach(function (e) { fresh[e.id] = seen[e.id] !== neKey(e); if (fresh[e.id]) nFresh++; });
-                if (!arr.length) { if (Lampa.Noty) Lampa.Noty.show('Нових серій за останні 2 тижні немає'); return; }
+                if (!arr.length) { if (Lampa.Noty) Lampa.Noty.show('Нових серій за останній тиждень немає'); return; }
                 var c = color();
                 dd = $('<div class="lmx-nedd"></div>');
                 dd.append($('<div class="lmx-nedd__h">Нові серії</div>').append($('<span></span>').text(nFresh ? nFresh + ' ' + plural(nFresh, 'непереглянута', 'непереглянуті', 'непереглянутих') : 'усе переглянуто')));
@@ -5765,7 +5776,7 @@
             var th = box.find('.lmx-themebtn').eq(0);
             if (th.length) th.after(b); else { var se = box.find('.open--settings').eq(0); if (se.length) se.before(b); else box.append(b); }
             // якщо є свіжий кеш, лічильник показуємо одразу (без мережі)
-            safe(function () { var pc = neCache || jsonStore('lmx_ne_cache', null); if (pc && pc.data && Date.now() - pc.t < 7200000) refresh(); });
+            safe(function () { var pc = neCache || jsonStore('lmx_ne_cache7', null); if (pc && pc.data && Date.now() - pc.t < 7200000) refresh(); });
         }
         ensure();
         var n = 0, iv = setInterval(function () { ensure(); if (++n > 20) clearInterval(iv); }, 1500);
@@ -5942,7 +5953,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.474';
+    var VERSION = '10.475';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
