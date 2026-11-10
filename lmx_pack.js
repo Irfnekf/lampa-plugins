@@ -5944,7 +5944,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.469';
+    var VERSION = '10.470';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6173,6 +6173,8 @@
                 if (!after.length) after = cont.find('.lmx-likebtn').first();
                 if (after.length) after.after(el); else cont.append(el);
             }
+            // кнопку додано вже після відповіді TMDB: Lampa запам'ятовує список кнопок у момент фокусу — оновлюємо його, інакше фокус її перестрибує
+            try { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); } catch (e) {}
         }, function () {});
     }
 
