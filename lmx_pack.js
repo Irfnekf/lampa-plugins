@@ -546,6 +546,7 @@
         H.trigger('lmx_full_trailers', true, 'Ряд «Трейлери» на сторінці фільму', 'Плитки з трейлерами над розділом «Детально»: лише українські, а якщо їх нема — англійські. Натиск відкриває відео', null);
         H.trigger('lmx_hide_trl_btn', true, 'Ховати кнопку «Трейлери»', 'Прибирає штатну кнопку на картці фільму — трейлери є окремим рядом нижче. Діє після перезапуску', null);
         H.trigger('lmx_hide_tags', true, 'Ховати «Жанр / Виробництво / Теги»', 'Прибирає ряд кнопок під описом у розділі «Детально». Діє після перезапуску', null);
+        H.trigger('lmx_descr_btn', true, 'Опис як кнопка', 'Опис на картці фільму відкривається повністю у вікні; закрити — «назад», вліво або вправо. Діє після перезапуску', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -4608,6 +4609,10 @@
             var body = r.find('.full-start-new__body').eq(0);
             if (txt && body.length) {
                 var dEl = $('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end();
+                if (getBool('lmx_descr_btn', true)) {
+                    dEl.addClass('selector lmx-descr--btn');
+                    dEl.on('hover:enter click', function () { safe(function () { openDescr(m, txt); }); });
+                }
                 var btns = r.find('.full-start-new__buttons').eq(0);
                 // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
                 if (btns.length) btns.before(dEl);
@@ -5957,7 +5962,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.478';
+    var VERSION = '10.479';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6226,6 +6231,9 @@
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__name{-webkit-line-clamp:1}' +
             'html body.lmx-apple .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x) .full-person__photo{border-radius:1.5em !important}' +
             'html body .items-line.lmx-trl .full-person:not(.full-person--small):not(#lmx-x).focus{background:none !important}' +
+            'body .lmx-descr--btn{cursor:pointer;transition:transform .2s,box-shadow .2s}' +
+            'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff;transform:scale(1.02)}' +
+            '.lmx-dmodal{font-size:1.15em;line-height:1.6;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'body.lmx-hidetrl .full-start__button.view--trailer,body.lmx-hidetrl .full-start-new__buttons .view--trailer{display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
@@ -6236,6 +6244,28 @@
             'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}' +
             'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo{box-shadow:0 0 0 .2em rgba(255,255,255,.95),0 0 1.8em rgba(255,255,255,.35)}';
         (document.head || document.documentElement).appendChild(st);
+    }
+    // Повний опис у спливаючому вікні: закривається «назад», а також стрілками вліво/вправо
+    function openDescr(m, txt) {
+        if (!(Lampa.Modal && Lampa.Modal.open && window.$) || document.querySelector('.modal')) return;
+        var enabled = Lampa.Controller.enabled().name, closed = false;
+        var box = $('<div class="lmx-dmodal"></div>');
+        String(txt).split(/\n+/).forEach(function (t) { if (t.trim()) box.append($('<p></p>').text(t.trim())); });
+        function onKey(ev) {
+            var k = ev.keyCode;
+            if (k === 37 || k === 39 || ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); ev.stopPropagation(); close(); }
+        }
+        function close() {
+            if (closed) return; closed = true;
+            window.removeEventListener('keydown', onKey, true);
+            safe(function () { Lampa.Modal.close(); });
+            safe(function () { Lampa.Controller.toggle(enabled); });
+            [80, 300].forEach(function (d) {
+                setTimeout(function () { safe(function () { if (!document.querySelector('.modal') && !document.querySelector('.selectbox')) Lampa.Controller.toggle(enabled); }); }, d);
+            });
+        }
+        window.addEventListener('keydown', onKey, true);
+        Lampa.Modal.open({ title: String(m.title || m.name || ''), html: box, size: 'medium', mask: true, onBack: close });
     }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
