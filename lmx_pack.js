@@ -5982,7 +5982,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.482';
+    var VERSION = '10.483';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6256,6 +6256,8 @@
             'html body.lmx-prem .lmx-descr--btn.focus:not(#lmx-x){background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.07));box-shadow:0 0 0 1px rgba(255,255,255,.55) inset,0 .5em 1.4em rgba(0,0,0,.45)}' +
             'html body.lmx-apple .lmx-descr--btn.focus:not(#lmx-x){background:rgba(255,255,255,.22);box-shadow:0 0 0 .14em rgba(255,255,255,.95) inset}' +
             // вікно з повним описом — у стилі теми
+            '.modal.lmx-dm{display:flex !important;align-items:center;justify-content:center;background:rgba(4,5,10,.78)}' +
+            '.modal.lmx-dm .modal__content{width:62vw;max-width:62vw !important;margin:0 !important}' +
             '.modal.lmx-dm .modal__content{background:#171a24;border-radius:1.5em;border:1px solid rgba(255,255,255,.08);box-shadow:0 1.5em 4em rgba(0,0,0,.6);max-width:46em;padding:1.6em 2em}' +
             '.modal.lmx-dm .modal__title{font-size:1.9em;font-weight:700;margin-bottom:.7em;letter-spacing:.01em}' +
             'body.lmx-prem .modal.lmx-dm .modal__content{background:radial-gradient(120% 90% at 0% 0%,#232739 0%,#12141c 60%);border-color:rgba(255,255,255,.1);border-radius:1.2em}' +
@@ -6264,7 +6266,7 @@
             'body.lmx-apple .modal.lmx-dm .modal__content{background:rgba(40,44,80,.55);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.28);border-radius:2em}' +
             '.modal.lmx-dm .lmx-dmodal{color:rgba(255,255,255,.88)}' +
             'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
-            '.lmx-dmodal{font-size:1.15em;line-height:1.6;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
+            '.lmx-dmodal{font-size:1.3em;line-height:1.65;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
