@@ -5944,7 +5944,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.471';
+    var VERSION = '10.472';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6158,28 +6158,38 @@
             if (!document.body.contains(cont[0]) || cont.find('.lmx-trbtn').length) return;
             var p = trailerPick(j);
             if (!p) return;
-            var el = $('<div class="full-start__button selector lmx-trbtn">' + TR_ICO + '<span>' + (p.ua ? 'Трейлер UA' : 'Трейлер') + '</span></div>');
-            el[0].__lmxT = p.ua ? 'Трейлер UA' : 'Трейлер';
-            el.on('hover:enter', function () {
-                var nat = cont.find('.view--trailer');
-                function viaNative(why) {
-                    // запасний шлях: рідна кнопка Lampa «Трейлери» (вона знає, як відкрити плеєр у цій версії)
-                    if (nat.length) { try { nat.first().trigger('hover:enter'); return; } catch (e) {} }
-                    if (Lampa.Noty) Lampa.Noty.show('Не вдалося відкрити трейлер' + (why ? ': ' + why : ''));
-                }
+            var label = p.ua ? 'Трейлер UA' : 'Трейлер';
+            var native = cont.find('.view--trailer:not(.hide)').first();
+            var saved = [];
+            function play() {
                 try {
-                    if (Lampa.YouTube && typeof Lampa.YouTube.play === 'function') Lampa.YouTube.play(p.v.key);
-                    else viaNative('');
-                } catch (e) { viaNative(e && e.message ? e.message : ''); }
-            });
-            var native = cont.find('.view--trailer');
-            if (native.length) { native.first().before(el); native.addClass('hide'); } else {
-                var after = cont.find('.lmx-mkbtn').last();
-                if (!after.length) after = cont.find('.lmx-likebtn').first();
-                if (after.length) after.after(el); else cont.append(el);
+                    if (Lampa.YouTube && typeof Lampa.YouTube.play === 'function') { Lampa.YouTube.play(p.v.key); return; }
+                } catch (e) {}
+                // запасний шлях: рідна дія кнопки «Трейлери» цієї версії Lampa
+                if (saved.length) { try { saved.forEach(function (h) { h.call(native[0], {}); }); return; } catch (e) {} }
+                if (Lampa.Noty) Lampa.Noty.show('Не вдалося відкрити трейлер');
             }
-            // кнопку додано вже після відповіді TMDB: Lampa запам'ятовує список кнопок у момент фокусу — оновлюємо його, інакше фокус її перестрибує
+            if (native.length) {
+                // рідна кнопка вже є — беремо її саму: вигляд, порядок і фокус лишаються як у решти кнопок, змінюємо тільки підпис і дію
+                try { var evs = window.$._data(native[0], 'events'); saved = ((evs && evs['hover:enter']) || []).map(function (h) { return h.handler; }); } catch (e) {}
+                native.off('hover:enter').on('hover:enter', function () { safe(play); });
+                var sp = native.find('span').first();
+                if (sp.length) sp.text(label);
+                native[0].__lmxT = label;
+                native.addClass('lmx-trbtn');
+                return;
+            }
+            var el = $('<div class="full-start__button selector lmx-trbtn">' + TR_ICO + '<span>' + label + '</span></div>');
+            el[0].__lmxT = label;
+            el.on('hover:enter', function () { safe(play); });
+            var after = cont.find('.lmx-mkbtn').last();
+            if (!after.length) after = cont.find('.lmx-likebtn').first();
+            if (after.length) after.after(el); else cont.append(el);
+            // кнопку додано вже після відповіді TMDB: Lampa запам'ятовує список кнопок у момент фокусу — оновлюємо його, а стиль беремо так само, як для решти кнопок
+            try { if (typeof btnRun === 'function') btnRun(true); } catch (e) {}
             try { if (Lampa.Controller.enabled().name === 'full_start') Lampa.Controller.toggle('full_start'); } catch (e) {}
+            // рідна кнопка Lampa могла з'явитися пізніше за нашу — ховаємо дубль
+            [1200, 3500].forEach(function (ms) { setTimeout(function () { try { cont.find('.view--trailer:not(.hide)').not(el[0]).addClass('hide'); } catch (e) {} }, ms); });
         }, function () {});
     }
 
