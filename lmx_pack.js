@@ -789,10 +789,10 @@
         ] },
         // Західні платформи: каталог «що реально є на платформі» (провайдер TMDB) + власні оригінали й студії окремими рядами
         hbo: provSvc(1899, [
-            { t: 'Max Originals', k: 'tv', q: 'with_networks=49' + PIPE + '3186&sort_by=popularity.desc' },
-            { t: 'Блокбастери Warner Bros.', k: 'movie', q: 'with_companies=174&sort_by=revenue.desc&vote_count.gte=1000' },
-            { t: 'Всесвіт DC', k: 'movie', q: 'with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' },
-            { t: 'Преміальні драми HBO', k: 'tv', q: 'with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' }
+            { t: 'Max Originals', k: 'tv', q: prov(1899) + '&with_networks=49' + PIPE + '3186&sort_by=popularity.desc' },
+            { t: 'Блокбастери Warner Bros.', k: 'movie', q: prov(1899) + '&with_companies=174&sort_by=revenue.desc&vote_count.gte=1000' },
+            { t: 'Всесвіт DC', k: 'movie', q: prov(1899) + '&with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' },
+            { t: 'Преміальні драми HBO', k: 'tv', q: prov(1899) + '&with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' }
         ]),
         netflix: provSvc(8, [
             { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' }
@@ -5941,7 +5941,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.467';
+    var VERSION = '10.468';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
