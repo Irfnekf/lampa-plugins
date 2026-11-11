@@ -579,6 +579,7 @@
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
         H.trigger('lmx_rx_row', true, 'Ряд реакцій під рейтингом', 'Реакції CUB (🔥 👍 🤔 😴 💩) з кількістю над кнопками на сторінці фільму; стиль залежить від теми. Кнопка «Реакції» вмикається окремо в NoCub', function () { document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true)); });
+        H.trigger('lmx_rx_focus', true, 'Реакції: вибір з пульта', 'Кнопка «вгору» з кнопок переводить фокус на ряд реакцій: ←/→ вибір, Enter — поставити реакцію', null);
         H.trigger('lmx_rx_mono', true, 'Реакції: однокольорові іконки', 'Замість кольорових смайликів CUB — прості лінійні іконки в стилі кнопок сторінки', null);
         H.trigger('lmx_eps_strip', true, 'Плеєр: серії карточками', 'У плеєрі кнопка «вниз» показує внизу екрана всі серії плейлиста (попередню, поточну, наступну…). Enter — перемкнути серію, назад — закрити', null);
         H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
@@ -2606,6 +2607,13 @@
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(18,18,24,.9) !important;box-shadow:0 0 0 .14em #fff !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.34) !important}' +
+            RXQ + ' .reaction{position:relative}' +
+            'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
+            'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.26) !important;transform:scale(1.1)}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x)::after{content:"";position:absolute;left:.9em;right:.9em;bottom:.12em;height:.14em;border-radius:1em;background:#fff}' +
+            '.lmx-rxi--menu{display:inline-flex;width:1.6em;height:1.6em;color:#fff}.lmx-rxi--menu svg{width:100%;height:100%}' +
+            'html body .selectbox-item .selectbox-item__icon:not(#lmx-x){display:flex;align-items:center;justify-content:center}' +
             // Обрана реакція — просто залита світлим, без обводки
             'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.92) !important;box-shadow:none !important;color:#111 !important;-webkit-backdrop-filter:none;backdrop-filter:none}' +
             'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x) .lmx-rxi{color:#111;opacity:1}' +
@@ -4593,24 +4601,96 @@
         think: '<circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="10" r=".6" fill="currentColor"/><circle cx="15.5" cy="10" r=".6" fill="currentColor"/><path d="M8 16h5"/><path d="M14.5 6.2l2.5-1"/>',
         nice: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
         fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
-    };    function rxRow(r) {
+    };
+    var RX_ORDER = ['fire', 'nice', 'think', 'bore', 'shit'];
+    function rxSvg(t) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + RX_ICONS[t] + '</svg>'; }
+    // голосування з ряду реакцій (так само, як через кнопку «Реакції»)
+    function rxVote(card, type, el) {
+        if (!card || !card.id || !window.Lampa || !Lampa.Api || !Lampa.Api.sources || !Lampa.Api.sources.cub) return;
+        var method = (card.name || card.first_air_date || card.number_of_seasons) ? 'tv' : 'movie', id = method + '_' + card.id;
+        var mine = Lampa.Storage.get('mine_reactions', {});
+        if (mine[id] && mine[id].indexOf(type) >= 0) { Lampa.Noty.show(Lampa.Lang.translate('reactions_ready')); return; }
+        Lampa.Api.sources.cub.reactionsAdd({ method: method, id: card.id, type: type }, function () {
+            var m2 = Lampa.Storage.get('mine_reactions', {});
+            if (!m2[id]) m2[id] = [];
+            if (m2[id].indexOf(type) < 0) m2[id].push(type);
+            Lampa.Storage.set('mine_reactions', m2);
+            el.classList.add('reaction--voted');
+            var cn = el.querySelector('.reaction__count'), n = cn && /^\d+$/.test(cn.textContent.trim()) ? parseInt(cn.textContent, 10) : null;
+            if (cn && n !== null) cn.textContent = String(n + 1);
+        }, function () { Lampa.Noty.show(Lampa.Lang.translate('reactions_ready')); });
+    }
+    function rxRow(r, card) {
         var row = r.find('.full-start-new__reactions')[0];
         if (!row) return;
         document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true));
+        var busy = false, interact = getBool('lmx_rx_focus', true), mono = getBool('lmx_rx_mono', true), refT = 0;
         var upd = function () {
-            row.classList.toggle('lmx-rx', !!row.querySelector('.reaction'));
-            if (!getBool('lmx_rx_mono', true)) return;
-            Array.prototype.forEach.call(row.querySelectorAll('.reaction'), function (el) {
-                if (el.querySelector('.lmx-rxi')) return;
-                var t = (/reaction--(\w+)/.exec(el.className) || [])[1], ic = t && RX_ICONS[t];
-                if (!ic) return;
-                var sp = document.createElement('span'); sp.className = 'lmx-rxi';
-                sp.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg>';
-                el.insertBefore(sp, el.firstChild);
-            });
+            if (busy) return;
+            busy = true;
+            try {
+                if (!row.querySelector('.reaction')) { row.classList.remove('lmx-rx'); return; }
+                // у ряді мають бути всі п'ять типів, щоб будь-який можна було обрати
+                if (interact) {
+                    var mineAll = Lampa.Storage.get('mine_reactions', {}), mk = ((card && (card.name || card.first_air_date || card.number_of_seasons)) ? 'tv' : 'movie') + '_' + (card && card.id);
+                    RX_ORDER.forEach(function (t) {
+                        if (row.querySelector('.reaction--' + t)) return;
+                        var w = document.createElement('div'), re = document.createElement('div'), cn = document.createElement('div');
+                        re.className = 'reaction reaction--' + t; cn.className = 'reaction__count'; cn.textContent = '0';
+                        if (!mono) { var im = document.createElement('img'); im.className = 'reaction__icon'; try { im.src = Lampa.Utils.protocol() + Lampa.Manifest.cub_domain + '/img/reactions/' + t + '.svg'; } catch (e) {} re.appendChild(im); }
+                        re.appendChild(cn); w.appendChild(re); row.appendChild(w);
+                        if (mineAll[mk] && mineAll[mk].indexOf(t) >= 0) re.classList.add('reaction--voted');
+                    });
+                }
+                row.classList.add('lmx-rx');
+                var added = false;
+                Array.prototype.forEach.call(row.querySelectorAll('.reaction'), function (el) {
+                    var t = (/reaction--(\w+)/.exec(el.className) || [])[1];
+                    if (mono && t && RX_ICONS[t] && !el.querySelector('.lmx-rxi')) {
+                        var sp = document.createElement('span'); sp.className = 'lmx-rxi'; sp.innerHTML = rxSvg(t);
+                        el.insertBefore(sp, el.firstChild);
+                    }
+                    if (interact && t && !el.classList.contains('selector')) {
+                        el.classList.add('selector'); added = true;
+                        window.$(el).on('hover:enter', function () { safe(function () { rxVote(card, t, el); }); });
+                    }
+                });
+                if (added) {
+                    clearTimeout(refT);
+                    refT = setTimeout(function () {
+                        safe(function () {
+                            if (!document.body.contains(row) || (Lampa.Controller.enabled() || {}).name !== 'full_start') return;
+                            var fo = r.find('.selector.focus')[0];
+                            Lampa.Controller.collectionSet(r);
+                            Lampa.Controller.collectionFocus(fo || false, r);
+                        });
+                    }, 120);
+                }
+            } finally { busy = false; }
         };
         upd();
-        try { var mo = new MutationObserver(upd); mo.observe(row, { childList: true, subtree: true }); setTimeout(function () { mo.disconnect(); }, 15000); } catch (e) {}
+        try { var mo = new MutationObserver(function () { setTimeout(upd, 0); }); mo.observe(row, { childList: true, subtree: true }); } catch (e) {}
+    }
+    // меню «Реакції» (кнопка): однокольорові іконки замість смайликів
+    function rxMenu() {
+        if (rxMenu.on || !window.$) return;
+        rxMenu.on = true;
+        window.$(document.body).on('hover:enter click', '.button--reaction', function () {
+            if (!getBool('lmx_rx_mono', true)) return;
+            [60, 200, 500].forEach(function (d) {
+                setTimeout(function () {
+                    safe(function () {
+                        var its = document.querySelectorAll('.selectbox .selectbox-item');
+                        if (its.length !== RX_ORDER.length) return;
+                        Array.prototype.forEach.call(its, function (it, i) {
+                            var ic = it.querySelector('.selectbox-item__icon');
+                            if (!ic || ic.querySelector('.lmx-rxi')) return;
+                            ic.innerHTML = '<span class="lmx-rxi lmx-rxi--menu">' + rxSvg(RX_ORDER[i]) + '</span>';
+                        });
+                    });
+                }, d);
+            });
+        });
     }
     function uacClose() {
         if (!uacV.on) return;
@@ -5077,7 +5157,8 @@
         safe(function () { likeButton(r, m); });
         safe(function () { marksButtons(r, m); });
         safe(function () { uacButton(r, m); });
-        safe(function () { rxRow(r); });
+        safe(function () { rxRow(r, m); });
+        safe(rxMenu);
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -6482,7 +6563,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.567';
+    var VERSION = '10.568';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
