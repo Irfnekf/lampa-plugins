@@ -6314,7 +6314,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.557';
+    var VERSION = '10.558';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6964,7 +6964,9 @@
                 if (d.__lmxStudios) nS += (d.results || []).length; else nA += (d.results || []).length;
             } else keep.push(r);
         });
-        if (!hid.length || !data || !data.movie) return;
+        if (!data || !data.movie) return;
+        var mv0 = data.movie, hasSt = !!(getBool('lmx_studios', true) && ((mv0.production_companies && mv0.production_companies.length) || (mv0.networks && mv0.networks.length)));
+        if (!hid.length && !hasSt) return;   // акторів нема, але студії ще додадуться (studioRow) — смужка потрібна й тоді
         var mv = data.movie;
         mv.genres = mv.genres || []; mv.production_companies = mv.production_companies || [];   // рядок «description» цього потребує
         rows.length = 0;
