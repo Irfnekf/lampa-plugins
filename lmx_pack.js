@@ -6062,7 +6062,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.504';
+    var VERSION = '10.505';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6386,6 +6386,7 @@
             '.lmx-coll .card.lmx-nseen .lmx-num{color:rgba(38,128,78,.55);-webkit-text-stroke-color:rgba(120,210,150,.9)}' +
             '.lmx-coll .lmx-ntag{position:absolute;right:calc(100% + .1em);top:.2em;z-index:2;padding:.2em .7em;border-radius:1em;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:.85em;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}' +
             '.lmx-coll .card.lmx-ncur .lmx-ntag{background:#fff;color:#111;border-color:#fff}' +
+            '.lmx-coll .lmx-ntag.lmx-ntag--ok{width:1.9em;height:1.9em;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#2fbf6b;border:0;color:#fff;font-size:1.1em;line-height:1;box-shadow:0 .1em .6em rgba(0,0,0,.45)}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
@@ -6470,7 +6471,7 @@
                 b.textContent = String(idx[dd.id]);
                 el.appendChild(b);
                 var tag = dd.id === cur ? 'Ви тут' : (seen[dd.id] ? 'Переглянуто' : (dd.id === next ? 'Далі' : ''));
-                if (tag) { var t = document.createElement('div'); t.className = 'lmx-ntag'; t.textContent = tag; el.appendChild(t); }
+                if (tag) { var t = document.createElement('div'); var ok = tag === 'Переглянуто'; t.className = 'lmx-ntag' + (ok ? ' lmx-ntag--ok' : ''); t.textContent = ok ? '\u2713' : tag; el.appendChild(t); }
             });
         };
         paint();
