@@ -3121,14 +3121,19 @@
             // бокове меню — повністю прозоре: крізь нього видно той самий фіксований фон-аврору, тож межі між меню й сторінкою немає
             A + '.wrap__left{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:none !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
+            // меню відкривається поверх сторінки, а не зсуває її на 15em: зсув усієї сторінки з великою афішею на ТВ «смикав» картинку. Читабельність дає м'який темний градієнт зліва
+            A + '.wrap__content{transform:none !important;transition:none !important}' +
+            'body.lmx-apple.menu--open .wrap__left{background:linear-gradient(90deg,rgba(10,10,12,.86) 0%,rgba(10,10,12,.6) 68%,rgba(10,10,12,0) 100%) !important}' +
             A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
+            F + '.full-start__background{will-change:opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.23 !important}' +
-            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
+            'body.lmx-apple .lmx-bgb{position:fixed !important;top:0;left:0;width:100vw;height:100vh;object-fit:cover;filter:blur(1.1em);opacity:0;transition:opacity .35s ease-out;will-change:opacity;pointer-events:none}' +
+            'body.lmx-apple.lmx-fscroll .lmx-bgb{opacity:.2}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:0 !important;filter:none !important;transform:none !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6084,7 +6089,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.539';
+    var VERSION = '10.540';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6685,6 +6690,17 @@
                 if (st) { var tp = st.getBoundingClientRect().top / window.innerHeight; on = b.classList.contains('lmx-fscroll') ? tp < -0.06 : tp < -0.15; }   // гістерезис: біля межі фон не смикається туди-сюди
             }
             if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
+            // розмитий шар фону: копія тієї ж картинки з статичним blur (малюється один раз), розмиття вмикається плавним opacity без перерахунку blur щокадру
+            if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
+                var sb = document.querySelector('.activity--active .full-start__background');
+                if (sb && sb.src) {
+                    var cl = sb.parentNode && sb.parentNode.querySelector('.lmx-bgb');
+                    if (!cl) { cl = document.createElement('img'); cl.className = 'lmx-bgb'; sb.parentNode.insertBefore(cl, sb.nextSibling); }
+                    if (cl.getAttribute('src') !== sb.getAttribute('src')) cl.src = sb.src;
+                    if (cl.style.top !== sb.style.top) cl.style.setProperty('top', sb.style.top || '0', 'important');
+                    if (cl.style.left !== sb.style.left) cl.style.setProperty('left', sb.style.left || '0', 'important');
+                }
+            }
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
                 // зсув фону змінюється лише при перебудові сторінки — перевіряємо раз на ~0,5 с, а не кожні 100 мс (getBoundingClientRect змушує ТВ перераховувати розкладку)
