@@ -2992,7 +2992,7 @@
         var GRAY = '#a1a1a6';
         var GLASS = 'rgba(255,255,255,.13)';
         // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
-        var AURORA = 'radial-gradient(70vw 55vh at 12% 8%,rgba(88,86,214,.55),rgba(88,86,214,0) 62%),radial-gradient(60vw 50vh at 88% 18%,rgba(20,190,200,.34),rgba(20,190,200,0) 62%),radial-gradient(70vw 60vh at 72% 100%,rgba(200,60,150,.34),rgba(200,60,150,0) 62%),radial-gradient(60vw 50vh at 0% 100%,rgba(40,90,220,.3),rgba(40,90,220,0) 62%),linear-gradient(180deg,#10122a 0%,#0b0d1c 55%,#080a14 100%)';
+        var AURORA = 'radial-gradient(75vw 60vh at 14% 6%,rgba(92,96,150,.26),rgba(92,96,150,0) 65%),radial-gradient(60vw 50vh at 90% 14%,rgba(70,120,150,.12),rgba(70,120,150,0) 65%),radial-gradient(70vw 60vh at 70% 100%,rgba(110,80,130,.14),rgba(110,80,130,0) 65%),linear-gradient(180deg,#15171e 0%,#0e1016 55%,#0a0b10 100%)';
         // сила кольору постера: [фон угорі, фон унизу, сяйво кнопки у спокої, сяйво/рамка у фокусі]
         var TL = tintTL();
         var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
@@ -6064,7 +6064,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.506';
+    var VERSION = '10.507';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
