@@ -4789,6 +4789,7 @@
         var Q = 'html body .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x)';
         st.textContent =
             Q + '{display:grid !important;grid-template-columns:100%;grid-template-rows:auto 1fr;row-gap:.7em;text-align:left !important;justify-items:stretch !important;width:24em !important;height:13em;box-sizing:border-box;margin:0 1.1em 0 0 !important;padding:1.1em 1.3em !important;border-radius:1.2em;background:rgba(255,255,255,.07) !important;color:#fff !important;align-items:start !important;position:relative;transition:transform .2s ease,background .2s ease,box-shadow .2s ease}' +
+            'html body .items-line.lmx-uacr .lmx-endpad:not(#lmx-x){min-width:3em}' +
             Q + ' .full-person__photo{display:none !important}' +
             Q + ' .full-person__body{display:contents}' +
             Q + ' .full-person__name{grid-column:1;grid-row:1;text-align:left;font-size:1.1em;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}' +
@@ -6582,7 +6583,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.576';
+    var VERSION = '10.577';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7343,7 +7344,21 @@
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
                     if (d.lmxTrailers) { root.addClass('lmx-trl'); [500, 1300, 2600].forEach(function (t) { setTimeout(function () { safe(function () { trPrune(root); }); }, t); }); }
-                    else if (d.lmxUac) root.addClass('lmx-uacr');
+                    else if (d.lmxUac) {
+                        root.addClass('lmx-uacr');
+                        // остання картка коментарів у фокусі збільшується й упиралась у край екрана (різалась справа): справжній порожній елемент у кінці ряду, який прокрутка Lampa враховує
+                        [0, 300, 1200].forEach(function (t) {
+                            setTimeout(function () {
+                                safe(function () {
+                                    var bd = root.find('.scroll__body').get(0);
+                                    if (!bd) return;
+                                    var pd = bd.querySelector(':scope > .lmx-endpad');
+                                    if (!pd) { pd = document.createElement('div'); pd.className = 'lmx-endpad'; pd.style.cssText = 'flex:none;width:3em;min-width:3em;height:1px;pointer-events:none'; }
+                                    if (bd.lastElementChild !== pd) bd.appendChild(pd);
+                                });
+                            }, t);
+                        });
+                    }
                     else if (d.results && d.results[0] && d.results[0].lmxDir) {
                         root.addClass('lmx-people');
                         root.find('.items-line__title').first().text('Акторський склад і знімальна група');
