@@ -2584,7 +2584,7 @@
     }
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
     function fullCss() {
-        var B = 'body.lmx-full ', RXQ = 'html body.lmx-full .full-start-new__reactions.lmx-rx';
+        var B = 'body.lmx-full ', RXQ = 'html body.lmx-full .full-start-new__reactions.lmx-rx', QA = 'html body.lmx-full .full-start-new__right';
         var compact = true;
         return '' +
             B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box}' +
@@ -2602,6 +2602,14 @@
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(18,18,24,.9) !important;box-shadow:0 0 0 .14em #fff !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.34) !important}' +
+            // Єдина ліва межа й однакові вертикальні відступи для всіх блоків тексту (рейтинг, жанри, інфо, опис, реакції)
+            QA + ' .full-start-new__rate-line:not(#lmx-x){margin:0 0 .8em 0 !important}' +
+            QA + ' .full-start-new__rate-line > :first-child:not(#lmx-x){padding-left:.5em !important;margin-left:-.5em !important}' +
+            QA + ' .full-start-new__details:not(#lmx-x){margin:0 0 .8em 0 !important;padding-left:0 !important;text-indent:0 !important}' +
+            QA + ' .lmx-info:not(#lmx-x){margin:0 0 .8em 0 !important}' +
+            QA + ' > .lmx-descr:not(#lmx-x){margin:0 0 .8em -.9em !important}' +
+            QA + ' > .full-start-new__reactions.lmx-rx:not(#lmx-x){margin:0 0 .9em 0 !important}' +
+            QA + ' > .full-start-new__buttons:not(#lmx-x){margin-top:0 !important;margin-left:0 !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
@@ -6443,7 +6451,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.562';
+    var VERSION = '10.563';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
