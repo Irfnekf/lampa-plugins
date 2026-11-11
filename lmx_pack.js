@@ -3125,10 +3125,10 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
+            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out,transform .35s ease-out !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.23 !important}' +
-            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:scale(1.12) !important;transition:opacity .2s linear !important}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:scale(1.12) !important;transition:opacity .35s ease-out,filter .35s ease-out,transform .35s ease-out !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.533';
+    var VERSION = '10.534';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6664,7 +6664,7 @@
             var on = false;
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
                 var st = document.querySelector('.full-start-new') || document.querySelector('.full-start');
-                if (st) on = st.getBoundingClientRect().top < -window.innerHeight * 0.15;
+                if (st) { var tp = st.getBoundingClientRect().top / window.innerHeight; on = b.classList.contains('lmx-fscroll') ? tp < -0.06 : tp < -0.15; }   // гістерезис: біля межі фон не смикається туди-сюди
             }
             if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
