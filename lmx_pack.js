@@ -4575,29 +4575,7 @@
         if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.hide,.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.lmx-mkbtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
         return w;
     }
-    function focusBtn(r, w) {
-        var done = false;
-        try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
-        if (!done || r.find('.selector.focus').not(w).length) { r.find('.selector.focus').not(w).removeClass('focus'); window.$(w).addClass('focus'); }
-    }
-    // «вгору» з опису — на кнопку «Дивитись», а не на сусідню за геометрією
-    var upBound = false;
-    function bindDescrUp() {
-        if (upBound) return; upBound = true;
-        window.addEventListener('keydown', function (ev) {
-            if (!(ev.keyCode === 38 || ev.key === 'ArrowUp')) return;
-            safe(function () {
-                var d = document.querySelector('.lmx-descr--btn.focus');
-                if (!d || document.querySelector('.modal')) return;
-                var r = window.$(d).closest('.full-start-new, .full-start').parent();
-                var w = r.length ? (firstBtn(r) || pickWatch(r)) : null;
-                if (!w) return;
-                ev.preventDefault(); ev.stopPropagation();
-                focusBtn(r, w);
-            });
-        }, true);
-    }
-    // перша (найлівіша) видима кнопка ряду — саме на неї має потрапляти фокус на старті
+    // перша (найлівіша) видима кнопка ряду — саме на неї має потрапляти фокус
     function firstBtn(r) {
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0), best = null, bl = 1e9;
         cont.find('.selector').each(function () {
@@ -4607,6 +4585,40 @@
             if (b.left < bl - 1) { bl = b.left; best = this; }
         });
         return best;
+    }
+    function focusBtn(r, w) {
+        var done = false;
+        try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
+        if (!done || r.find('.selector.focus').not(w).length) { r.find('.selector.focus').not(w).removeClass('focus'); window.$(w).addClass('focus'); }
+    }
+    // Вертикальний рух пультом, що закінчується на кнопках ряду, завжди веде на першу кнопку (а не на сусідню за геометрією)
+    var upBound = false;
+    function bindDescrUp() {
+        if (upBound) return; upBound = true;
+        window.addEventListener('keydown', function (ev) {
+            var k = ev.keyCode;
+            if (!(k === 38 || k === 40 || ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) return;
+            safe(function () {
+                if (document.querySelector('.modal')) return;
+                var cur = document.querySelector('.selector.focus');
+                var btnsBox = document.querySelector('.full-start-new__buttons, .full-start__buttons');
+                if (!btnsBox) return;
+                var wasIn = !!(cur && btnsBox.contains(cur));
+                if (wasIn) return;
+                var r = window.$(btnsBox).closest('.full-start-new, .full-start').parent();
+                if (!r.length) return;
+                [30, 90, 200].forEach(function (d) {
+                    setTimeout(function () {
+                        safe(function () {
+                            var nf = document.querySelector('.selector.focus');
+                            if (!nf || !btnsBox.contains(nf)) return;
+                            var w = firstBtn(r);
+                            if (w && w !== nf) focusBtn(r, w);
+                        });
+                    }, d);
+                });
+            });
+        }, true);
     }
     function focusWatch(r) {
         var pressed = false;
@@ -4668,7 +4680,7 @@
                 var dEl = $('<div class="lmx-descr"><div class="lmx-descr__t"></div></div>').find('.lmx-descr__t').text(txt).end();
                 if (getBool('lmx_descr_btn', true)) {
                     dEl.addClass('selector lmx-descr--btn');
-                    dEl.on('hover:enter click', function () { safe(function () { openDescr(m, txt); }); });
+                    dEl.on('hover:enter click', function () { safe(function () { openDescr(m, txt, r); }); });
                     safe(function () { focusWatch(r); bindDescrUp(); });
                 }
                 var btns = r.find('.full-start-new__buttons').eq(0);
@@ -6020,7 +6032,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.487';
+    var VERSION = '10.488';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6345,7 +6357,7 @@
         (document.head || document.documentElement).appendChild(st);
     }
     // Повний опис у спливаючому вікні: закривається «назад», а також стрілками вліво/вправо
-    function openDescr(m, txt) {
+    function openDescr(m, txt, r) {
         if (!(Lampa.Modal && Lampa.Modal.open && window.$) || document.querySelector('.modal')) return;
         var enabled = Lampa.Controller.enabled().name, closed = false;
         var box = $('<div class="lmx-dmodal"></div>');
@@ -6361,6 +6373,10 @@
             safe(function () { Lampa.Controller.toggle(enabled); });
             [80, 300].forEach(function (d) {
                 setTimeout(function () { safe(function () { if (!document.querySelector('.modal') && !document.querySelector('.selectbox')) Lampa.Controller.toggle(enabled); }); }, d);
+            });
+            // після закриття — фокус на першу кнопку
+            [120, 380].forEach(function (d) {
+                setTimeout(function () { safe(function () { if (r && !document.querySelector('.modal')) { var w = firstBtn(r); if (w && !w.classList.contains('focus')) focusBtn(r, w); } }); }, d);
             });
         }
         window.addEventListener('keydown', onKey, true);
