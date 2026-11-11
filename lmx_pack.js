@@ -579,6 +579,8 @@
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
         H.trigger('lmx_uac', true, 'UA Коментарі', 'Кнопка «Коментарі (N)» на сторінці фільму: українські коментарі й рецензії з UaKino, UAFlix, UASerials і KinoBaza через сервер lampaua.mooo.com. Якщо окремий плагін «UA Comments» уже встановлено, кнопка не дублюється', null);
+        H.trigger('lmx_uac_row', true, 'Коментарі: ряд під трейлерами', 'Картки з іменем і текстом коментаря під рядом трейлерів (стиль залежить від теми)', null);
+        H.trigger('lmx_uac_btn', false, 'Коментарі: кнопка', 'Показувати кнопку «Коментарі» разом із рядом', null);
         UAC_SRC.forEach(function (x) { H.trigger('lmx_uac_' + x[0], true, 'Коментарі: ' + x[1], 'Шукати коментарі на ' + x[2], null); });
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
@@ -4463,6 +4465,7 @@
         if (document.getElementById('lmx-uac-css')) return;
         var st = document.createElement('style'); st.id = 'lmx-uac-css';
         st.textContent =
+            '.lmx-uacl{pointer-events:none}' +
             '.lmx-uac-off{opacity:.55}' +
             '.lmx-uac-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);opacity:0;transition:opacity .2s ease}' +
             '.lmx-uac-ov.show{opacity:1}' +
@@ -4526,10 +4529,10 @@
         r.find('.lmx-uac-r').toggleClass('on', uacV.i < uacV.list.length - 1);
     }
     function uacStep(d) { var n = uacV.i + d; if (n < 0 || n >= uacV.list.length) return; uacV.i = n; uacDraw(); }
-    function uacOpen(list) {
+    function uacOpen(list, idx) {
         uacClose();
         uacCss();
-        uacV.on = true; uacV.list = list; uacV.i = 0; uacV.prev = '';
+        uacV.on = true; uacV.list = list; uacV.i = idx > 0 && idx < list.length ? idx : 0; uacV.prev = '';
         try { uacV.prev = (Lampa.Controller.enabled() || {}).name || ''; } catch (e) {}
         var root = $('<div class="lmx-uac-ov"><div class="lmx-uac-md"><div class="lmx-uac-hd">' +
             '<div class="lmx-uac-ar lmx-uac-l">&#9664;</div><div class="lmx-uac-meta"><div class="lmx-uac-src"></div><div class="lmx-uac-au"></div></div>' +
@@ -4555,7 +4558,9 @@
         uacDraw();
     }
     function uacButton(r, m) {
-        if (!getBool('lmx_uac', true) || !m || !m.id || window.__uacomments_plugin_started) return;   // якщо стоїть окремий плагін «UA Comments» — не дублюємо
+        if (!getBool('lmx_uac', true) || !m || !m.id || window.__uacomments_plugin_started) return;
+        if (getBool('lmx_uac_row', true) && !getBool('lmx_uac_btn', false)) return;   // є ряд під трейлерами — кнопка не потрібна
+        // якщо стоїть окремий плагін «UA Comments» — не дублюємо
         var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
         if (!cont.length || cont.find('.button--lmxuac').length) return;
         var el = $('<div class="full-start__button selector button--lmxuac">' + UAC_ICON + '<span>Коментарі…</span></div>'), list = null;
@@ -4573,6 +4578,54 @@
             list = res;
             if (!document.body.contains(el[0])) return;
             label(res.length ? 'Коментарі (' + res.length + ')' : 'Коментарів немає', !res.length);
+        });
+    }
+
+    // Ряд коментарів під трейлерами (лише ім'я й текст, без джерела). Додається, коли коментарі знайдено; Enter відкриває вікно перегляду на цій картці
+    function uacRowCss() {
+        if (document.getElementById('lmx-uacr-css')) return;
+        var st = document.createElement('style'); st.id = 'lmx-uacr-css';
+        var Q = 'html body .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x)';
+        st.textContent =
+            Q + '{display:grid !important;grid-template-columns:2.7em 1fr;grid-template-rows:auto 1fr;column-gap:.9em;row-gap:.7em;width:24em !important;height:13em;box-sizing:border-box;margin:0 1.1em 0 0 !important;padding:1.1em 1.3em !important;border-radius:1.2em;background:rgba(255,255,255,.07) !important;color:#fff !important;align-items:center !important;position:relative;transition:transform .2s ease,background .2s ease,box-shadow .2s ease}' +
+            Q + ' .full-person__photo{grid-column:1;grid-row:1;width:2.7em !important;height:2.7em !important;margin:0 !important;border-radius:50% !important;background:rgba(255,255,255,.16) !important;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.15em;overflow:hidden}' +
+            Q + ' .full-person__photo img{display:none}' +
+            Q + ' .full-person__body{display:contents}' +
+            Q + ' .full-person__name{grid-column:2;grid-row:1;font-size:1.1em;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}' +
+            Q + ' .full-person__role{grid-column:1 / -1;grid-row:2;align-self:start;margin:0;opacity:.82;font-size:.95em;line-height:1.4;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}' +
+            Q + '.focus{background:rgba(255,255,255,.17) !important;transform:scale(1.03)}' +
+            Q + '.focus .full-person__role{opacity:1}' +
+            'html body.lmx-prem .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x){background:#14141a !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);border-radius:1em}' +
+            'html body.lmx-prem .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:#1b1b23 !important;transform:scale(1.04);box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.6)}' +
+            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x){background:rgba(255,255,255,.08) !important;border-radius:1.5em;box-shadow:none}' +
+            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:rgba(255,255,255,.15) !important;transform:scale(1.06);box-shadow:none}' +
+            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus::before{content:"";position:absolute;left:1.5em;right:1.5em;bottom:.55em;height:.16em;border-radius:1em;background:#fff}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function uacRowMark(root, list) {
+        var els = root.find('.full-person'), n = 0;
+        els.each(function () {
+            var c = list[n++] || {}, ph = this.querySelector('.full-person__photo');
+            if (ph) { var ch = String(c.author || '?').trim().charAt(0).toUpperCase() || '?'; if (ph.getAttribute('data-l') !== ch) { ph.setAttribute('data-l', ch); var t = ph.querySelector('.lmx-uacl'); if (!t) { t = document.createElement('span'); t.className = 'lmx-uacl'; ph.appendChild(t); } t.textContent = ch; } }
+        });
+    }
+    function uacRowPrepare(link, data) {
+        var mv = data && data.movie;
+        if (!getBool('lmx_uac', true) || !getBool('lmx_uac_row', true) || window.__uacomments_plugin_started || !mv || !mv.id || !link || !Array.isArray(link.rows)) return;
+        uacFetch(mv, function (res) {
+            if (!res.length || !Array.isArray(link.rows)) return;
+            var list = res.slice(0, 30);
+            var items = list.map(function (c) {
+                var txt = String(c.text || '').replace(/\s+/g, ' ').trim();
+                return { id: 'uac' + Math.random().toString(36).slice(2), name: c.author || 'Користувач', character: txt.length > 260 ? txt.slice(0, 257) + '…' : txt, profile_path: '', img: './img/actor.svg' };
+            });
+            items.forEach(function (it, i) { it.params = { emit: { onEnter: function () { safe(function () { uacOpen(res, i); }); } } }; });
+            var at = -1, k;
+            for (k = 0; k < link.rows.length; k++) { var r = link.rows[k]; if (Array.isArray(r) && r[0] === 'persons' && r[1] && r[1].lmxTrailers) { at = k + 1; break; } }
+            if (at < 0) { at = link.rows.indexOf('description'); at = at >= 0 ? at + 1 : 1; }
+            at = Math.max(at, (link.items && link.items.length) || 0);
+            uacRowCss();
+            link.rows.splice(at, 0, ['persons', { results: items, title: 'Коментарі', lmxUac: true, lmxUacList: res }]);
         });
     }
 
@@ -6217,7 +6270,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.550';
+    var VERSION = '10.551';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6717,7 +6770,7 @@
         var kind = function (r) {
             if (!Array.isArray(r)) return 0;
             var n = r[0], d = r[1] || {};
-            if (n === 'persons' && d.lmxTrailers) return 0;
+            if (n === 'persons' && (d.lmxTrailers || d.lmxUac)) return 0;
             if (n === 'persons' && d.__lmxStudios) return 5;
             if (n === 'persons') return 4;
             if (n === 'cards' && d.lmxColl) return 1;
@@ -6862,7 +6915,7 @@
         var rows = lk.rows, hid = [], nA = 0, nS = 0, keep = [];
         rows.forEach(function (r) {
             var d = Array.isArray(r) && r[0] === 'persons' ? (r[1] || {}) : null;
-            if (d && !d.lmxTrailers) {
+            if (d && !d.lmxTrailers && !d.lmxUac) {
                 hid.push(r);
                 if (d.__lmxStudios) nS += (d.results || []).length; else nA += (d.results || []).length;
             } else keep.push(r);
@@ -6938,6 +6991,7 @@
                             e.link.rows.splice(ix > 0 ? ix : 1, 0, ['persons', { results: tr, title: 'Трейлери', lmxTrailers: true }]);
                         }
                     }
+                    if (!adult) safe(function () { uacRowPrepare(e.link, e.data); });
                     if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
                     if (!adult && getBool('lmx_related', true)) safe(function () { relPrepare(e.link, e.data); });
                     if (!adult && getBool('lmx_sim_better', true)) safe(function () { simPrepare(e.data); });
@@ -6976,6 +7030,7 @@
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
                     if (d.lmxTrailers) { root.addClass('lmx-trl'); [500, 1300, 2600].forEach(function (t) { setTimeout(function () { safe(function () { trPrune(root); }); }, t); }); }
+                    else if (d.lmxUac) { root.addClass('lmx-uacr'); [0, 300, 900, 2000].forEach(function (t) { setTimeout(function () { safe(function () { uacRowMark(root, d.results ? (d.lmxUacList || []) : []); }); }, t); }); }
                     else if (d.results && d.results[0] && d.results[0].lmxDir) {
                         root.addClass('lmx-people');
                         root.find('.items-line__title').first().text('Акторський склад і знімальна група');
