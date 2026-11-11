@@ -553,6 +553,7 @@
         H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
         H.trigger('lmx_rows_end', true, 'Склад і студії в кінці сторінки', 'Порядок рядів на сторінці фільму: колекція та схоже вище, акторський склад і студії — в самому кінці. Діє після перезапуску', null);
         H.trigger('lmx_adult_pages', true, 'Повні сторінки фільмів 18+', 'Показувати акторів, колекцію, трейлери та інші ряди й на фільмах із позначкою «Контент для дорослих» (вмикає відповідний параметр Lampa). Вимкнено — Lampa ховатиме ці ряди й проситиме підтвердити вік', function () { setTimeout(function () { safe(adultPages); }, 50); });
+        H.trigger('lmx_more_info', true, 'Додаткова інформація (актори, студії)', 'На сторінці фільму актори й студії згорнуті в смужку «Додаткова інформація» внизу сторінки; натисни на неї, щоб розгорнути', null);
         H.trigger('lmx_related', true, 'Ряд «Пов’язане»', 'На сторінці фільму чи серіалу показувати пов’язані тайтли однієї історії: серіали й фільми «Зоряних воєн», «Гри престолів», «Відьмака» тощо (TMDB сам їх не зв’язує)', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
@@ -6073,7 +6074,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.529';
+    var VERSION = '10.531';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6399,6 +6400,23 @@
             '.lmx-coll .card.lmx-ncur .lmx-ntag{background:#fff;color:#111;border-color:#fff}' +
             '.lmx-coll .lmx-ntag.lmx-ntag--ok{width:1.9em;height:1.9em;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#2fbf6b;border:0;color:#fff;font-size:1.1em;line-height:1;box-shadow:0 .1em .6em rgba(0,0,0,.45)}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
+            // смужка «Додаткова інформація»
+            '.lmx-more .items-line__head,.lmx-more .items-line__title{display:none !important}' +
+            '.lmx-more .items-line__body{padding:0 1.5em .6em !important}' +
+            '.lmx-more__bar{position:relative;display:flex;align-items:center;gap:1em;height:3.4em;padding:0 1.5em;border-radius:1em;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);font-size:1.15em;font-weight:600;color:#fff;transition:transform .18s ease-out,background-color .18s ease-out}' +
+            '.lmx-more__n{opacity:.55;font-weight:500;font-size:.88em}' +
+            '.lmx-more__ch{margin-left:auto;width:1.3em;height:1.3em;transition:transform .2s ease-out}' +
+            '.lmx-more__bar.lmx-more--open .lmx-more__ch{transform:rotate(180deg)}' +
+            // Полегшена: світліша заливка при фокусі
+            '.lmx-more__bar.focus{background:rgba(255,255,255,.2)}' +
+            // Кіно: біла «пігулка» у фокусі, як кнопка «Дивитись»
+            'body.lmx-prem .lmx-more__bar{border-radius:.5em;background:rgba(255,255,255,.07);box-shadow:none}' +
+            'body.lmx-prem .lmx-more__bar.focus{background:#fff;color:#111}' +
+            'body.lmx-prem .lmx-more__bar.focus .lmx-more__n{opacity:.6}' +
+            // Скло: скляна смужка, у фокусі — легке збільшення й підкреслення
+            'body.lmx-apple .lmx-more__bar{border-radius:1.2em;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
+            'body.lmx-apple .lmx-more__bar.focus{background:rgba(255,255,255,.14);transform:scale(1.03)}' +
+            'body.lmx-apple .lmx-more__bar.focus::after{content:"";position:absolute;left:30%;right:30%;bottom:-.55em;height:.26em;border-radius:99em;background:#fff}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
             '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
@@ -6650,11 +6668,61 @@
             }
         }, 100);
     }
+    // ===== «Додаткова інформація»: актори й студії згорнуті в одну смужку, що розгортається =====
+    function collapseMore(lk, data) {
+        var rows = lk.rows, hid = [], nA = 0, nS = 0, keep = [];
+        rows.forEach(function (r) {
+            var d = Array.isArray(r) && r[0] === 'persons' ? (r[1] || {}) : null;
+            if (d && !d.lmxTrailers) {
+                hid.push(r);
+                if (d.__lmxStudios) nS += (d.results || []).length; else nA += (d.results || []).length;
+            } else keep.push(r);
+        });
+        if (!hid.length || !data || !data.movie) return;
+        var mv = data.movie;
+        mv.genres = mv.genres || []; mv.production_companies = mv.production_companies || [];   // рядок «description» цього потребує
+        rows.length = 0;
+        keep.forEach(function (r) { rows.push(r); });
+        rows.push(['description', { movie: mv, lmxMore: { rows: hid, nA: nA, nS: nS } }]);
+    }
+    function moreBind(e) {
+        var d = e.data, m = d && d.lmxMore;
+        if (!m || e.name !== 'description') return;
+        var lk = e.link, item = e.item, html = item.render(), body = html.find('.items-line__body');
+        var label = [];
+        if (m.nA) label.push('Актори · ' + m.nA);
+        if (m.nS) label.push('Студії · ' + m.nS);
+        var bar = $('<div class="lmx-more__bar selector"><span class="lmx-more__t">Додаткова інформація</span><span class="lmx-more__n">' + label.join('&nbsp;&nbsp;&nbsp;') + '</span><svg class="lmx-more__ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg></div>');
+        html.addClass('lmx-more');
+        body.empty().append(bar);
+        item.last = bar[0];
+        var open = false;
+        bar.on('hover:focus hover:hover hover:touch', function () { item.last = bar[0]; });
+        bar.on('hover:enter', function () {
+            var bi = lk.rows.indexOf(lk.rows.filter(function (r) { return Array.isArray(r) && r[1] === d; })[0]), i;
+            if (bi < 0) return;
+            if (!open) {
+                open = true;
+                bar.addClass('lmx-more--open');
+                m.rows.forEach(function (r) { lk.rows.push(r); });
+                var v = lk.view; lk.view = 99;
+                try { lk.emit('scroll', 0); } catch (x) {}
+                lk.view = v;
+            } else {
+                open = false;
+                bar.removeClass('lmx-more--open');
+                for (i = lk.items.length - 1; i > bi; i--) { try { lk.items[i].destroy(); } catch (x) {} lk.items.splice(i, 1); }
+                lk.rows.length = bi + 1;
+            }
+            setTimeout(function () { try { item.toggle(); } catch (x) {} }, 30);
+        });
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
         fxCss();
         fullScrollWatch();
+        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'build' && e.name === 'description') safe(function () { moreBind(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
@@ -6663,7 +6731,7 @@
                 if (e.type === 'start') {
                     var adult = e.data.movie && e.data.movie.adult;
                     // Lampa будує одразу лише 3 ряди, решту — під час прокрутки (тому картки нижніх рядів з'являлись із запізненням): будуємо наперед 5
-                    if (e.link && typeof e.link.view === 'number' && e.link.view < 5 && getBool('lmx_rows_ahead', true)) e.link.view = 5;
+                    if (e.link && typeof e.link.view === 'number' && e.link.view < 5 && getBool('lmx_rows_ahead', true) && !(getBool('lmx_related', true) && e.data.movie && relFind(e.data.movie))) e.link.view = 5;   // якщо буде ряд «Пов'язане» (вставляється згодом) — залишаємо 3, щоб він ліг перед «Схоже»
                     if (!adult && getBool('lmx_full_people', true)) fullPeople(e.data);
                     if (!adult && getBool('lmx_full_trailers', true) && e.link && Array.isArray(e.link.rows)) {
                         var tr = fullTrailers(e.data);
@@ -6681,6 +6749,7 @@
                             lk.build = ob;
                             safe(function () { stripNocubRows(lk.rows); });   // метадані/настрої й коментарі прибираємо до побудови, а не після (інакше вони блимали на частку секунди)
                             if (getBool('lmx_rows_end', true)) safe(function () { reorderRows(lk.rows); });
+                            if (getBool('lmx_more_info', true)) safe(function () { collapseMore(lk, e.data); });
                             return ob.call(this, lk.rows.slice(0, lk.view || arguments[0].length));
                         };
                     }
