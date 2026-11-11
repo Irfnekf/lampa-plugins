@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.524';
+    var VERSION = '10.525';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6348,8 +6348,6 @@
         var st = document.createElement('style'); st.id = 'lmx-fullx-css';
         st.textContent =
             // спільне: без «пігулки» з білою заливкою у фокусі — кільце на фото
-            // запас унизу сторінки: рядки створюються поступово, і без запасу перший же «вниз» не міг підняти трейлери до верху (кнопки лишались видимі)
-            'body.lmx-onfull .layer--wheight .scroll:not(.scroll--horizontal) > .scroll__content > .scroll__body::after{content:"";display:block;height:70vh}' +
             '.lmx-people .full-person,.lmx-trl .full-person{flex-direction:column;align-items:flex-start;background:none !important;color:inherit !important;padding:0 1.1em 0 0;font-size:1em}' +
             '.lmx-people .full-person__photo,.lmx-trl .full-person__photo{margin:0 0 .7em;position:relative}' +
             '.lmx-people .full-person__photo>img,.lmx-trl .full-person__photo>img{width:100%;height:100%;object-fit:cover}' +
@@ -6641,6 +6639,15 @@
                 if (st) on = st.getBoundingClientRect().top < -window.innerHeight * 0.15;
             }
             if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
+            // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
+            if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
+                var bg = document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background');
+                if (bg) {
+                    var rc = bg.getBoundingClientRect(), dy = rc.top, dx = rc.left;
+                    if (Math.abs(dy) > 1) bg.style.setProperty('top', ((parseFloat(bg.style.top) || 0) - dy) + 'px', 'important');
+                    if (Math.abs(dx) > 1) bg.style.setProperty('left', ((parseFloat(bg.style.left) || 0) - dx) + 'px', 'important');
+                }
+            }
         }, 100);
     }
     function initFullExtras() {
