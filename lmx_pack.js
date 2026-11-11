@@ -1454,7 +1454,7 @@
         // сторож: рівно один активний слайд (інакше афіша порожня — так було, коли ряд перемальовувався)
         setInterval(function () {
             safe(function () {
-                if (!isMobile()) return;
+                if (document.hidden || !isMobile()) return;
                 var line = lineEl();
                 if (!line) return;
                 var cs = line.querySelectorAll('.card--lmxhero'), on = [], i;
@@ -2688,10 +2688,10 @@
         // Скло: матові скляні таблетки й опис у прозорій панелі
         var glass = rules('body.lmx-apple.lmx-full ', low({ text: 'rgba(255,255,255,.85)', label: 'rgba(255,255,255,.55)', title: '#fff', badge: 'background:rgba(255,255,255,.18) !important;color:#fff !important;border-radius:99em' }).concat(rate, split, [
             ['.full-start-new__details', 'font-size:1.02em;line-height:1.7;color:rgba(255,255,255,.78);opacity:1'],
-            ['.lmx-info .lmx-ip', 'background:rgba(255,255,255,.14) !important;border:1px solid rgba(255,255,255,.22);border-radius:99em;padding:.35em .9em;font-size:.95em;color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)'],
+            ['.lmx-info .lmx-ip', 'background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.22);border-radius:99em;padding:.35em .9em;font-size:.95em;color:#fff'],
             ['.lmx-info .lmx-ip::before', 'content:none !important'],
             [STATUS, 'background:rgba(143,155,255,.4) !important;border-color:rgba(143,155,255,.7);font-weight:700'],
-            ['.lmx-descr', 'background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:1.2em;padding:.8em 1.1em;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)'],
+            ['.lmx-descr', 'background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:1.2em;padding:.8em 1.1em'],
             ['.lmx-descr__t', 'color:rgba(255,255,255,.85);line-height:1.6']
         ]));
         // Полегшена: пласкі плашки; кольорові статуси лишаються як є
@@ -5807,7 +5807,7 @@
                 // Скло: матове скло, великі заокруглення, прозорі плашки
                 'body.lmx-apple .lmx-nedd{border-radius:1.4em}body.lmx-apple .lmx-ne{border-radius:1.1em;margin:.5em .7em}' +
                 'body.lmx-apple .lmx-ne.focus,body.lmx-apple .lmx-ne.hover{box-shadow:0 0 0 .18em rgba(255,255,255,.9),0 0 1.4em rgba(255,255,255,.28)}' +
-                'body.lmx-apple .lmx-ne__n{background:rgba(255,255,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.3);border-radius:1em;padding:.35em .9em}' +
+                'body.lmx-apple .lmx-ne__n{background:rgba(255,255,255,.24);border:1px solid rgba(255,255,255,.3);border-radius:1em;padding:.35em .9em}' +
                 'body.lmx-apple .lmx-ne__s b{color:#fff}body.lmx-apple .lmx-nebadge{background:rgba(255,255,255,.92);color:#000}';
             document.head.appendChild(st);
         }
@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.536';
+    var VERSION = '10.537';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6658,9 +6658,10 @@
     // Скло: розмиття фону залежить від того, чи сторінка справді прокручена вниз (власна перевірка замість рідного класу dim, який іноді «залипає» нагорі)
     function fullScrollWatch() {
         if (window.__lmxFsw) return;
+        var fswN = 0;
         window.__lmxFsw = setInterval(function () {
             var b = document.body;
-            if (!b) return;
+            if (!b || document.hidden) return;
             var on = false;
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
                 var st = document.querySelector('.activity--active .full-start-new') || document.querySelector('.activity--active .full-start');   // саме активної сторінки: після переходу з «Схожого» стара сторінка ще в DOM і її зсунутий верх лишав розмиття
@@ -6669,7 +6670,8 @@
             if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
-                var bg = document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background');
+                // зсув фону змінюється лише при перебудові сторінки — перевіряємо раз на ~0,5 с, а не кожні 100 мс (getBoundingClientRect змушує ТВ перераховувати розкладку)
+                var bg = (++fswN % 5 === 0) ? (document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background')) : null;
                 if (bg && !b.classList.contains('lmx-fscroll')) {
                     var rc = bg.getBoundingClientRect(), dy = rc.top, dx = rc.left;
                     if (Math.abs(dy) > 1) bg.style.setProperty('top', ((parseFloat(bg.style.top) || 0) - dy) + 'px', 'important');
