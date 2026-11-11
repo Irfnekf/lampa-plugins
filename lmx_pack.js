@@ -552,6 +552,7 @@
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
         H.trigger('lmx_rows_end', true, 'Склад і студії в кінці сторінки', 'Порядок рядів на сторінці фільму: колекція та схоже вище, акторський склад і студії — в самому кінці. Діє після перезапуску', null);
+        H.trigger('lmx_adult_pages', true, 'Повні сторінки фільмів 18+', 'Показувати акторів, колекцію, трейлери та інші ряди й на фільмах із позначкою «Контент для дорослих» (вмикає відповідний параметр Lampa). Вимкнено — Lampa ховатиме ці ряди й проситиме підтвердити вік', function () { setTimeout(function () { safe(adultPages); }, 50); });
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -6061,7 +6062,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.498';
+    var VERSION = '10.499';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6529,6 +6530,11 @@
         rows.length = 0;
         out.forEach(function (r) { rows.push(r); });
     }
+    // Рідний параметр Lampa adult_content_view: коли ввімкнено, сторінки фільмів 18+ відкриваються повністю (а не лише з попередженням)
+    function adultPages() {
+        var want = getBool('lmx_adult_pages', true);
+        try { if (Lampa.Storage.get('adult_content_view', false) !== want) Lampa.Storage.set('adult_content_view', want); } catch (e) {}
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6600,6 +6606,7 @@
         safe(moodMenu);
         safe(statsMenu);
         safe(initFullExtras);
+        safe(adultPages);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
