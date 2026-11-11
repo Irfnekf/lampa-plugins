@@ -4496,18 +4496,58 @@
         if (orig && orig.toLowerCase() !== title.toLowerCase()) q.push('original_title=' + encodeURIComponent(orig));
         if (year) q.push('year=' + encodeURIComponent(year));
         q.push('sources=' + encodeURIComponent(srcs.join(',')));
-        var key = [m.imdb_id, title, orig, year, srcs.join(',')].join('|').toLowerCase();
+        var key = [title, orig, year, srcs.join(',')].join('|').toLowerCase();
         var hit = uacMemo[key];
         if (hit && hit.exp > Date.now()) return done(hit.list.slice());
+        // постійний кеш: відомі коментарі показуємо одразу, а застарілі (старші за 10 хв) тихо оновлюємо у фоні
+        var pc = uacDisk(), pe = pc[key], stale = false;
+        if (pe && pe.l && pe.l.length && Date.now() - pe.t < 86400000) {
+            stale = Date.now() - pe.t > 600000;
+            uacMemo[key] = { list: pe.l, exp: Date.now() + (stale ? 1 : 600000) };
+            done(pe.l.slice());
+            if (!stale) return;
+            done = function () {};
+        }
         if (uacPend[key]) { uacPend[key].push(done); return; }
         uacPend[key] = [done];
         function fin(list) {
             list = Array.isArray(list) ? list.filter(function (x) { return x && x.text; }) : [];
             uacMemo[key] = { list: list, exp: Date.now() + (list.length ? 600000 : 120000) };
+            if (list.length) uacDiskPut(key, list);
             var cbs = uacPend[key] || []; delete uacPend[key];
             cbs.forEach(function (cb) { try { cb(list.slice()); } catch (e) {} });
         }
         $.ajax({ url: (getStr('lmx_uac_url', '') || UAC_URL) + '?' + q.join('&'), method: 'GET', timeout: 22000, dataType: 'json', success: fin, error: function () { fin([]); } });
+    }
+    function uacDisk() {
+        try { var o = JSON.parse(localStorage.getItem('lmx_uac_cache') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
+    }
+    function uacDiskPut(key, list) {
+        try {
+            var o = uacDisk(), ks, i;
+            o[key] = { t: Date.now(), l: list.slice(0, 30) };
+            ks = Object.keys(o);
+            if (ks.length > 40) { ks.sort(function (a, b) { return o[a].t - o[b].t; }); for (i = 0; i < ks.length - 40; i++) delete o[ks[i]]; }
+            localStorage.setItem('lmx_uac_cache', JSON.stringify(o));
+        } catch (e) {}
+    }
+    // заздалегідь: коли картка якийсь час у фокусі, одразу просимо коментарі — до відкриття фільму відповідь уже в кеші
+    var uacWarmT = 0;
+    function uacWarm() {
+        if (uacWarm.on || !window.$) return;
+        uacWarm.on = true;
+        window.$(document.body).on('hover:focus', '.card', function () {
+            var el = this;
+            clearTimeout(uacWarmT);
+            uacWarmT = setTimeout(function () {
+                safe(function () {
+                    var d = el.card_data;
+                    if (!d || !d.id || !getBool('lmx_uac', true) || window.__uacomments_plugin_started || d.lmxHero) return;
+                    if (!(d.title || d.name)) return;
+                    uacFetch(d, function () {});
+                });
+            }, 900);
+        });
     }
     function uacClose() {
         if (!uacV.on) return;
@@ -6273,7 +6313,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.555';
+    var VERSION = '10.556';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7051,6 +7091,7 @@
         safe(moodMenu);
         safe(statsMenu);
         safe(initFullExtras);
+        safe(uacWarm);
         safe(adultPages);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
