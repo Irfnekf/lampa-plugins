@@ -6057,7 +6057,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.494';
+    var VERSION = '10.495';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6370,11 +6370,16 @@
             '.modal.lmx-dm .lmx-dmodal{color:rgba(255,255,255,.88)}' +
             'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
             '.lmx-dmodal{font-size:1.3em;line-height:1.65;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
-            '.lmx-coll .lmx-ord{position:absolute;left:.55em;top:.55em;min-width:1.9em;height:1.9em;padding:0 .55em;border-radius:1em;background:rgba(0,0,0,.74);color:#fff;font-weight:800;font-size:1.05em;display:flex;align-items:center;justify-content:center;z-index:3}' +
-            '.lmx-coll .lmx-ord--seen{background:rgba(38,128,78,.92)}' +
-            '.lmx-coll .lmx-ord--cur{background:#fff;color:#111}' +
-            '.lmx-coll .lmx-ord-tag{position:absolute;left:.55em;bottom:.55em;padding:.2em .7em;border-radius:1em;background:rgba(10,11,16,.78);color:#fff;font-size:.85em;font-weight:700;letter-spacing:.04em;text-transform:uppercase;z-index:3}' +
-            '.lmx-coll .lmx-ord-tag--cur{background:#fff;color:#111}' +
+            // Netflix-стиль «Топ-10»: велика контурна цифра позаду постера
+            '.lmx-coll .card.lmx-ordd{overflow:visible !important;position:relative}' +
+            '.lmx-coll .card.lmx-nn1{margin-left:6.8em !important}' +
+            '.lmx-coll .card.lmx-nn2{margin-left:13em !important}' +
+            '.lmx-coll .lmx-num{position:absolute;right:calc(100% - .07em);bottom:.02em;z-index:0;pointer-events:none;font-family:"Oswald","Impact","Arial Narrow",sans-serif;font-weight:700;font-size:13em;line-height:.8;letter-spacing:-.04em;color:rgba(10,11,16,.9);-webkit-text-stroke:.025em rgba(255,255,255,.62);white-space:nowrap}' +
+            '.lmx-coll .card.lmx-ordd .card__view{position:relative;z-index:1}' +
+            '.lmx-coll .card.lmx-ncur .lmx-num{color:rgba(255,255,255,.92);-webkit-text-stroke-color:#fff}' +
+            '.lmx-coll .card.lmx-nseen .lmx-num{color:rgba(38,128,78,.55);-webkit-text-stroke-color:rgba(120,210,150,.9)}' +
+            '.lmx-coll .lmx-ntag{position:absolute;right:calc(100% + .1em);top:.2em;z-index:2;padding:.2em .7em;border-radius:1em;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:.85em;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}' +
+            '.lmx-coll .card.lmx-ncur .lmx-ntag{background:#fff;color:#111;border-color:#fff}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
@@ -6450,15 +6455,16 @@
         for (var i = 0; i < order.length; i++) { if (order[i] !== cur && !seen[order[i]]) { next = order[i]; break; } }
         var paint = function () {
             root.querySelectorAll('.card:not(.lmx-ordd)').forEach(function (el) {
-                var dd = getData(el), view = el.querySelector('.card__view');
-                if (!dd || !view || !idx[dd.id]) return;
-                el.classList.add('lmx-ordd');
+                var dd = getData(el);
+                if (!dd || !idx[dd.id]) return;
+                el.classList.add('lmx-ordd', idx[dd.id] > 9 ? 'lmx-nn2' : 'lmx-nn1');
+                if (dd.id === cur) el.classList.add('lmx-ncur'); else if (seen[dd.id]) el.classList.add('lmx-nseen');
                 var b = document.createElement('div');
-                b.className = 'lmx-ord' + (dd.id === cur ? ' lmx-ord--cur' : (seen[dd.id] ? ' lmx-ord--seen' : ''));
-                b.textContent = (seen[dd.id] && dd.id !== cur ? '✓ ' : '') + idx[dd.id];
-                view.appendChild(b);
-                var tag = dd.id === cur ? 'Ви тут' : (dd.id === next ? 'Далі' : '');
-                if (tag) { var t = document.createElement('div'); t.className = 'lmx-ord-tag' + (dd.id === cur ? ' lmx-ord-tag--cur' : ''); t.textContent = tag; view.appendChild(t); }
+                b.className = 'lmx-num';
+                b.textContent = String(idx[dd.id]);
+                el.appendChild(b);
+                var tag = dd.id === cur ? 'Ви тут' : (seen[dd.id] ? 'Переглянуто' : (dd.id === next ? 'Далі' : ''));
+                if (tag) { var t = document.createElement('div'); t.className = 'lmx-ntag'; t.textContent = tag; el.appendChild(t); }
             });
         };
         paint();
