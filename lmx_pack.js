@@ -4465,7 +4465,6 @@
         if (document.getElementById('lmx-uac-css')) return;
         var st = document.createElement('style'); st.id = 'lmx-uac-css';
         st.textContent =
-            '.lmx-uacl{pointer-events:none}' +
             '.lmx-uac-off{opacity:.55}' +
             '.lmx-uac-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);opacity:0;transition:opacity .2s ease}' +
             '.lmx-uac-ov.show{opacity:1}' +
@@ -4587,12 +4586,11 @@
         var st = document.createElement('style'); st.id = 'lmx-uacr-css';
         var Q = 'html body .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x)';
         st.textContent =
-            Q + '{display:grid !important;grid-template-columns:2.7em 1fr;grid-template-rows:auto 1fr;column-gap:.9em;row-gap:.7em;width:24em !important;height:13em;box-sizing:border-box;margin:0 1.1em 0 0 !important;padding:1.1em 1.3em !important;border-radius:1.2em;background:rgba(255,255,255,.07) !important;color:#fff !important;align-items:center !important;position:relative;transition:transform .2s ease,background .2s ease,box-shadow .2s ease}' +
-            Q + ' .full-person__photo{grid-column:1;grid-row:1;width:2.7em !important;height:2.7em !important;margin:0 !important;border-radius:50% !important;background:rgba(255,255,255,.16) !important;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.15em;overflow:hidden}' +
-            Q + ' .full-person__photo img{display:none}' +
+            Q + '{display:grid !important;grid-template-columns:100%;grid-template-rows:auto 1fr;row-gap:.7em;text-align:left !important;justify-items:stretch !important;width:24em !important;height:13em;box-sizing:border-box;margin:0 1.1em 0 0 !important;padding:1.1em 1.3em !important;border-radius:1.2em;background:rgba(255,255,255,.07) !important;color:#fff !important;align-items:start !important;position:relative;transition:transform .2s ease,background .2s ease,box-shadow .2s ease}' +
+            Q + ' .full-person__photo{display:none !important}' +
             Q + ' .full-person__body{display:contents}' +
-            Q + ' .full-person__name{grid-column:2;grid-row:1;font-size:1.1em;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}' +
-            Q + ' .full-person__role{grid-column:1 / -1;grid-row:2;align-self:start;margin:0;opacity:.82;font-size:.95em;line-height:1.4;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}' +
+            Q + ' .full-person__name{grid-column:1;grid-row:1;text-align:left;font-size:1.1em;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}' +
+            Q + ' .full-person__role{grid-column:1;grid-row:2;text-align:left;align-self:start;margin:0;opacity:.82;font-size:.95em;line-height:1.4;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}' +
             Q + '.focus{background:rgba(255,255,255,.17) !important;transform:scale(1.03)}' +
             Q + '.focus .full-person__role{opacity:1}' +
             'html body.lmx-prem .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x){background:#14141a !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);border-radius:1em}' +
@@ -4601,13 +4599,6 @@
             'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:rgba(255,255,255,.15) !important;transform:scale(1.06);box-shadow:none}' +
             'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus::before{content:"";position:absolute;left:1.5em;right:1.5em;bottom:.55em;height:.16em;border-radius:1em;background:#fff}';
         (document.head || document.documentElement).appendChild(st);
-    }
-    function uacRowMark(root, list) {
-        var els = root.find('.full-person'), n = 0;
-        els.each(function () {
-            var c = list[n++] || {}, ph = this.querySelector('.full-person__photo');
-            if (ph) { var ch = String(c.author || '?').trim().charAt(0).toUpperCase() || '?'; if (ph.getAttribute('data-l') !== ch) { ph.setAttribute('data-l', ch); var t = ph.querySelector('.lmx-uacl'); if (!t) { t = document.createElement('span'); t.className = 'lmx-uacl'; ph.appendChild(t); } t.textContent = ch; } }
-        });
     }
     function uacRowPrepare(link, data) {
         var mv = data && data.movie;
@@ -6270,7 +6261,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.551';
+    var VERSION = '10.552';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7030,7 +7021,7 @@
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
                     if (d.lmxTrailers) { root.addClass('lmx-trl'); [500, 1300, 2600].forEach(function (t) { setTimeout(function () { safe(function () { trPrune(root); }); }, t); }); }
-                    else if (d.lmxUac) { root.addClass('lmx-uacr'); [0, 300, 900, 2000].forEach(function (t) { setTimeout(function () { safe(function () { uacRowMark(root, d.results ? (d.lmxUacList || []) : []); }); }, t); }); }
+                    else if (d.lmxUac) root.addClass('lmx-uacr');
                     else if (d.results && d.results[0] && d.results[0].lmxDir) {
                         root.addClass('lmx-people');
                         root.find('.items-line__title').first().text('Акторський склад і знімальна група');
