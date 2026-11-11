@@ -6090,7 +6090,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.542';
+    var VERSION = '10.543';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6437,7 +6437,7 @@
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
             '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
             // теми
-            'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo{border:1px solid rgba(255,255,255,.35)}' +
+            'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo{border:0}' +
             'body.lmx-apple .lmx-trl .full-person__photo{border-radius:1.5em}' +
             'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.3)}' +
             // Скло: те саме виділення, що й у карток — збільшення 1.1 та біле підкреслення (актори, трейлери, епізоди)
