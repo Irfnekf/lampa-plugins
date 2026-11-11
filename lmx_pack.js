@@ -3877,7 +3877,7 @@
     function padFix() {
         if (!board()) return;
         var act = document.querySelector('.activity--active') || document.body;
-        var ar = act.getBoundingClientRect();
+        var ar = null;   // getBoundingClientRect змушує перерахунок розкладки: міряємо лише коли є ряд, який справді треба обробити
         var lines = act.querySelectorAll('.items-line:not(.lmx-hero-line)');
         for (var i = 0; i < lines.length; i++) {
             try {
@@ -3885,6 +3885,7 @@
                 if (!body || !body.firstElementChild || body.firstElementChild.classList.contains('lmx-endpad')) continue;
                 // ряд вже оброблено й нових карток нема — не рахуємо розміри знову (раніше кожен scan перераховував усі ряди, що змушувало ТВ перебудовувати розкладку)
                 if (body.__lmxN === body.children.length && body.lastElementChild && body.lastElementChild.classList.contains('lmx-endpad')) continue;
+                if (!ar) ar = act.getBoundingClientRect();
                 var pad = body.querySelector(':scope > .lmx-endpad');
                 if (!pad) { pad = document.createElement('div'); pad.className = 'lmx-endpad'; pad.style.cssText = 'flex:none;width:0;height:1px;pointer-events:none'; }
                 if (body.lastElementChild !== pad) body.appendChild(pad);
@@ -3903,19 +3904,21 @@
     }
     // Картки епізодів («Нещодавні/Найближчі виходи епізодів»): між ними завжди відступ. Ставимо inline !important — його не перебити жодним стилем теми/збірки
     function fixEpisodeGaps() {
-        var eps = document.querySelectorAll('.card-episode');
+        // лише ще не оброблені картки (раніше щоразу обходили всі епізодні картки сторінки)
+        var eps = document.querySelectorAll('.card-episode:not([data-lmxgap])');
         for (var i = 0; i < eps.length; i++) {
             var e = eps[i], pv = e.previousElementSibling;
-            if (pv && pv.classList && pv.classList.contains('card-episode') && !e.__lmxGap) { e.__lmxGap = 1; e.style.setProperty('margin-left', '1.2em', 'important'); }
+            if (!pv) continue;   // ще без сусіда: перевіримо наступного разу
+            e.setAttribute('data-lmxgap', '1');
+            if (pv.classList && pv.classList.contains('card-episode')) e.style.setProperty('margin-left', '1.2em', 'important');
         }
     }
     // Головна сторінка Lampa стоїть у вертикальній прокрутці з маскою (плавне згасання угорі й унизу): маска на всю сторінку змушує ТБ
     // малювати її окремим буфером на кожному кадрі прокрутки. У «Склі» (де багато напівпрозорого) це помітно гальмує — маску знімаємо
     function dropPageMask() {
-        var ls = document.querySelectorAll('.items-line');
+        var ls = document.querySelectorAll('.items-line:not([data-lmxpm])');
         for (var i = 0; i < ls.length; i++) {
-            if (ls[i].__lmxPM) continue;
-            ls[i].__lmxPM = 1;
+            ls[i].setAttribute('data-lmxpm', '1');
             var sc = ls[i].closest ? ls[i].closest('.scroll--mask') : null;
             if (sc && !sc.classList.contains('lmx-nomask')) sc.classList.add('lmx-nomask');
         }
@@ -6579,7 +6582,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.575';
+    var VERSION = '10.576';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
