@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.538';
+    var VERSION = '10.539';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6654,6 +6654,12 @@
             if (sm >= 0) at = sm;   // «Пов'язане» — вище за «Схоже»
             at = Math.max(at, (link.items && link.items.length) || 0);   // уже створені ряди не чіпаємо
             link.rows.splice(at, 0, ['cards', { results: list, title: 'Пов’язане', nomore: true, lmxRel: true }]);
+            // те, що вже є в «Пов'язане», з «Схожого» прибираємо (якщо той ряд ще не створений), щоб один фільм не стояв у двох рядах
+            if (data.simular && Array.isArray(data.simular.results) && (!link.items || link.rows.indexOf(link.rows.filter(function (r) { return Array.isArray(r) && r[1] === data.simular; })[0]) >= link.items.length)) {
+                var inRel = {}; list.forEach(function (r) { inRel[r.id] = 1; });
+                var keepS = data.simular.results.filter(function (r) { return !inRel[r.id]; });
+                if (keepS.length >= 4) { keepS.sort = data.simular.results.sort; data.simular.results = keepS; }
+            }
         }
         want.forEach(function (e, i) {
             tget('search/' + (e.k === 't' ? 'tv' : 'movie') + '?query=' + encodeURIComponent(e.n), {}, function (j) {
