@@ -2996,6 +2996,8 @@
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка (B2): вордмарк, рубрика, мета з бейджами, біла «Дивитись» + скляні кнопки, епізоди-картки
             F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;right:auto !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.55 !important}' +
+            'body.lmx-prem .full-start__background.dim + .lmx-bgv{opacity:0}' +
+            'body.lmx-prem .lmx-bgv{transition:opacity .2s linear}' +
             'body.lmx-prem .lmx-bgv{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;background:linear-gradient(90deg,rgba(7,8,16,.9) 0%,rgba(7,8,16,.72) 32%,rgba(7,8,16,.28) 58%,rgba(7,8,16,0) 78%),linear-gradient(0deg,rgba(7,8,16,.75) 0%,rgba(7,8,16,0) 38%)}' +
             // при спуску вниз фон приглушується (стандартний клас dim; наш opacity його перебивав) — помірно, не до чорного
             F + '.full-start__background.dim{opacity:.09 !important}' +
@@ -6584,7 +6586,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.578';
+    var VERSION = '10.579';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7211,9 +7213,12 @@
             // Кіно: затемнення зліва/знизу під текстом (рідна маска Lampa прибрана заради швидкості, фото під написами було надто світле): статичний шар-градієнт одразу над фоном, без маски й фільтрів
             if (b.classList.contains('lmx-prem') && b.classList.contains('lmx-onfull')) {
                 var pb = document.querySelector('.activity--active .full-start__background');
-                if (pb && pb.parentNode && !pb.parentNode.querySelector('.lmx-bgv')) {
-                    var vg = document.createElement('div'); vg.className = 'lmx-bgv';
-                    pb.parentNode.insertBefore(vg, pb.nextSibling);
+                if (pb && pb.parentNode) {
+                    var vg = pb.parentNode.querySelector('.lmx-bgv');
+                    if (!vg) { vg = document.createElement('div'); vg.className = 'lmx-bgv'; pb.parentNode.insertBefore(vg, pb.nextSibling); }
+                    // той самий зсув, що й у фону (його підганяє код нижче): інакше шар їде окремо від картинки
+                    if (vg.style.top !== pb.style.top) { if (pb.style.top) vg.style.setProperty('top', pb.style.top, 'important'); else vg.style.removeProperty('top'); }
+                    if (vg.style.left !== pb.style.left) { if (pb.style.left) vg.style.setProperty('left', pb.style.left, 'important'); else vg.style.removeProperty('left'); }
                 }
             }
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
