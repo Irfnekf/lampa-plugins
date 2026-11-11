@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.522';
+    var VERSION = '10.523';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6646,6 +6646,8 @@
                 if (e.type !== 'complite' && !e.data) return;
                 if (e.type === 'start') {
                     var adult = e.data.movie && e.data.movie.adult;
+                    // Lampa будує одразу лише 3 ряди, решту — під час прокрутки (тому картки нижніх рядів з'являлись із запізненням): будуємо наперед 5
+                    if (e.link && typeof e.link.view === 'number' && e.link.view < 5 && getBool('lmx_rows_ahead', true)) e.link.view = 5;
                     if (!adult && getBool('lmx_full_people', true)) fullPeople(e.data);
                     if (!adult && getBool('lmx_full_trailers', true) && e.link && Array.isArray(e.link.rows)) {
                         var tr = fullTrailers(e.data);
