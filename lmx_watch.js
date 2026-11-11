@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.43';
+    var VERSION = '3.44';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3225,13 +3225,16 @@
                     return true;
                 }
                 // джерело після повтору запиту так і мовчить (ні списку, ні «порожньо»): вважаємо порожнім і йдемо до наступного джерела (озвучки вже не перебираємо — це ще +8 с на кожну)
-                var silent = !empty && (act.__lmxNg || 0) >= 1 && waited > 8000;
+                // торентні джерела (JackTor, JacRed, Торент…) шукають по трекерах 10–40 с: повтор запиту на 6-й секунді обривав саме цей пошук, а автоперемикання на 14-й йшло геть, не дочекавшись результатів
+                var slowSrc = !!(curIt && isTorSrc(curIt));
+                var tRetry = slowSrc ? 35000 : 6000, tSilent = slowSrc ? 45000 : 8000;
+                var silent = !empty && (act.__lmxNg || 0) >= 1 && waited > tSilent;
                 if (silent) empty = true;
                 if (!cd && ((empty && !silent) || (manual && waited > 20000)) && tryVoice()) return;
                 // Після перемикання ДЖЕРЕЛА запит інколи «губиться» (список не приходить ні з відповіддю «порожньо», ні з помилкою), хоча той самий запит
                 // через вибір сезону/озвучки спрацьовує одразу. Тому, якщо за 6 с нічого немає, робимо саме цю дію: повторно обираємо поточний сезон (або озвучку),
                 // а коли це неможливо — повторюємо запит джерела. Одна спроба на джерело (на 6 с); якщо й після неї тиша ще 8 с — автоперемикання на наступне джерело
-                if (!empty && !cd && (act.__lmxNg || 0) < 1 && waited > 6000) {
+                if (!empty && !cd && (act.__lmxNg || 0) < 1 && waited > tRetry) {
                     act.__lmxNg = (act.__lmxNg || 0) + 1;
                     heroStatus(act, 'Повторюємо запит до «' + (curKey || 'джерела') + '»…', false, 0.4);
                     var ngG = (S.season && S.season.items && S.season.items.length) ? S.season : (S.voice && S.voice.items && S.voice.items.length ? S.voice : null), ngDone = false;
