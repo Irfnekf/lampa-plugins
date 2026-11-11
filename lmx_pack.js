@@ -2600,13 +2600,15 @@
             RXQ + ' .reaction__icon{width:1.35em !important;height:1.35em !important}' +
             RXQ + ' .lmx-rxi{display:inline-flex;width:1.3em;height:1.3em;color:#fff;opacity:.92}' +
             RXQ + ' .lmx-rxi svg{width:100%;height:100%}' +
+            // Обрана реакція: значок повністю залитий білим, а риси обличчя (очі, рот) — темні
+            'html body.lmx-full .full-start-new__reactions .reaction--voted .lmx-rxi .b:not(#lmx-x){fill:#fff;stroke:#111;stroke-width:1.2}' +
+            'html body.lmx-full .full-start-new__reactions .reaction--voted .lmx-rxi .f:not(#lmx-x){stroke:#111}' +
+            'html body.lmx-full .full-start-new__reactions .reaction--voted .lmx-rxi .f.d:not(#lmx-x){fill:#111}' +
+            'html body.lmx-full .full-start-new__reactions .reaction--voted .lmx-rxi:not(#lmx-x){opacity:1}' +
             RXQ + ' .lmx-rxi ~ .reaction__icon{display:none !important}' +
             RXQ + ' .reaction__count{padding:0 0 0 .4em !important;font-size:1em !important;letter-spacing:.01em}' +
-            RXQ + ' .reaction--voted{background:rgba(255,255,255,.3) !important}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(18,18,24,.78) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12) !important}' +
-            'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(18,18,24,.9) !important;box-shadow:0 0 0 .14em #fff !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
-            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.34) !important}' +
             RXQ + ' .reaction{position:relative}' +
             'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
@@ -2614,10 +2616,6 @@
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x)::after{content:"";position:absolute;left:.9em;right:.9em;bottom:.12em;height:.14em;border-radius:1em;background:#fff}' +
             '.lmx-rxi--menu{display:inline-flex;width:1.6em;height:1.6em;color:#fff}.lmx-rxi--menu svg{width:100%;height:100%}' +
             'html body .selectbox-item .selectbox-item__icon:not(#lmx-x){display:flex;align-items:center;justify-content:center}' +
-            // Обрана реакція — просто залита світлим, без обводки
-            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.92) !important;box-shadow:none !important;color:#111 !important;-webkit-backdrop-filter:none;backdrop-filter:none}' +
-            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x) .lmx-rxi{color:#111;opacity:1}' +
-            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x) .reaction__count{color:#111 !important}' +
             // Єдина ліва межа й однакові вертикальні відступи для всіх блоків тексту (рейтинг, жанри, інфо, опис, реакції)
             QA + ' .full-start-new__rate-line:not(#lmx-x){margin:0 0 .8em 0 !important}' +
             QA + ' .full-start-new__rate-line > :first-child:not(#lmx-x){padding-left:.5em !important;margin-left:-.5em !important}' +
@@ -4596,11 +4594,11 @@
     // Ряд реакцій CUB під рейтингом: показуємо лише коли реакції справді завантажились (інакше там порожній напис «Реакцій немає»)
     // Однокольорові іконки реакцій (в стилі кнопок сторінки) замість кольорових смайликів
     var RX_ICONS = {
-        shit: '<path d="M5 21h14a3 3 0 0 0 0-6H5a3 3 0 0 0 0 6z"/><path d="M7.5 15a3 3 0 0 1 .5-5.9h8a3 3 0 0 1 .5 5.9"/><path d="M9.5 9.2C8 8 8.5 5.8 10.8 4.8c1-.5 1.4-1.6 1-2.8 2.4.6 4 2.4 3.7 4.4-.2 1.2-1 2.2-2 2.8"/><circle cx="10" cy="12.2" r=".5" fill="currentColor"/><circle cx="14" cy="12.2" r=".5" fill="currentColor"/>',
-        bore: '<circle cx="11" cy="13" r="8"/><path d="M7.5 11.5c.8.7 1.7.7 2.5 0"/><path d="M12.5 11.5c.8.7 1.7.7 2.5 0"/><path d="M9.5 16.5c.9-.4 1.9-.4 3 0"/><path d="M17 3h4l-4 4h4"/>',
-        think: '<circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="10" r=".6" fill="currentColor"/><circle cx="15.5" cy="10" r=".6" fill="currentColor"/><path d="M8 16h5"/><path d="M14.5 6.2l2.5-1"/>',
-        nice: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
-        fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
+        fire: '<path class="b" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+        nice: '<path class="b" d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/><path class="f" d="M7 10v12"/>',
+        think: '<circle class="b" cx="12" cy="12" r="10"/><circle class="f d" cx="8.5" cy="10" r=".7"/><circle class="f d" cx="15.5" cy="10" r=".7"/><path class="f" d="M8 16h5"/><path class="f" d="M14.5 6.2l2.5-1"/>',
+        bore: '<circle class="b" cx="11" cy="13" r="8"/><path class="f" d="M7.5 11.5c.8.7 1.7.7 2.5 0"/><path class="f" d="M12.5 11.5c.8.7 1.7.7 2.5 0"/><path class="f" d="M9.5 16.5c.9-.4 1.9-.4 3 0"/><path d="M17 3h4l-4 4h4"/>',
+        shit: '<path class="b" d="M5 21h14a3 3 0 0 0 0-6H5a3 3 0 0 0 0 6z"/><path class="b" d="M7.5 15a3 3 0 0 1 .5-5.9h8a3 3 0 0 1 .5 5.9"/><path class="b" d="M9.5 9.2C8 8 8.5 5.8 10.8 4.8c1-.5 1.4-1.6 1-2.8 2.4.6 4 2.4 3.7 4.4-.2 1.2-1 2.2-2 2.8"/><circle class="f d" cx="10" cy="12.2" r=".7"/><circle class="f d" cx="14" cy="12.2" r=".7"/>'
     };
     var RX_ORDER = ['fire', 'nice', 'think', 'bore', 'shit'];
     function rxSvg(t) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + RX_ICONS[t] + '</svg>'; }
@@ -6563,7 +6561,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.568';
+    var VERSION = '10.569';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
