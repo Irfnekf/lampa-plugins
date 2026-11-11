@@ -6074,7 +6074,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.516';
+    var VERSION = '10.517';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6407,7 +6407,13 @@
             'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo{border:1px solid rgba(255,255,255,.35)}' +
             'body.lmx-apple .lmx-trl .full-person__photo{border-radius:1.5em}' +
             'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.3)}' +
-            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo{box-shadow:0 0 0 .2em rgba(255,255,255,.95),0 0 1.8em rgba(255,255,255,.35)}';
+            // Скло: те саме виділення, що й у карток — збільшення 1.1 та біле підкреслення (актори, трейлери, епізоди)
+            'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo,body.lmx-apple .full-episode .full-episode__img{transition:transform .2s cubic-bezier(.25,.8,.25,1)}' +
+            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img{box-shadow:none !important;transform:scale(1.1)}' +
+            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo::before,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo::before,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
+            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo::before{left:28%;right:28%}' +
+            'body.lmx-apple.lmx-full .full-episode.focus::after,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img::after{display:none !important}' +
+            'body.lmx-apple.lmx-full .full-episode .full-episode__img{position:relative}';
         (document.head || document.documentElement).appendChild(st);
     }
     // Повний опис у спливаючому вікні: закривається «назад», а також стрілками вліво/вправо
