@@ -4614,9 +4614,22 @@
             var at = -1, k;
             for (k = 0; k < link.rows.length; k++) { var r = link.rows[k]; if (Array.isArray(r) && r[0] === 'persons' && r[1] && r[1].lmxTrailers) { at = k + 1; break; } }
             if (at < 0) { at = link.rows.indexOf('description'); at = at >= 0 ? at + 1 : 1; }
-            at = Math.max(at, (link.items && link.items.length) || 0);
             uacRowCss();
-            link.rows.splice(at, 0, ['persons', { results: items, title: 'Коментарі', lmxUac: true, lmxUacList: res }]);
+            var row = ['persons', { results: items, title: 'Коментарі', lmxUac: true, lmxUacList: res }], built = (link.items && link.items.length) || 0;
+            if (at >= built) { link.rows.splice(at, 0, row); return; }
+            // ряди нижче вже створені — будуємо картку зараз і ставимо її DOM та елемент у списку одразу після трейлерів
+            var host = link.items[at - 1], hostEl = host && host.render ? host.render(true) : null;
+            if (!hostEl || !hostEl.parentNode || !link.scroll || !document.body.contains(hostEl)) { link.rows.splice(Math.max(at, built), 0, row); return; }
+            link.rows.splice(at, 0, row);
+            link.fragment = document.createDocumentFragment();
+            link.emit('createAndAppend', row);
+            link.scroll.append(link.fragment);
+            var it = link.items.pop(), el = it && it.render ? it.render(true) : null;
+            if (!it || !el) return;
+            link.items.splice(at, 0, it);
+            if (hostEl.nextSibling) hostEl.parentNode.insertBefore(el, hostEl.nextSibling); else hostEl.parentNode.appendChild(el);
+            if (typeof link.active === 'number' && link.active >= at) link.active++;
+            try { Lampa.Layer.visible(link.scroll.render()); } catch (x) {}
         });
     }
 
@@ -6261,7 +6274,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.552';
+    var VERSION = '10.553';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
