@@ -6010,7 +6010,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.484';
+    var VERSION = '10.485';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6212,6 +6212,28 @@
         Lampa.Player.play(trShape(a));
         Lampa.Player.playlist(all.map(trShape));
     }
+    // Недоступні відео (видалені / закриті / заблоковані — YouTube віддає сіру заглушку або помилку замість обкладинки) ховаємо.
+    // Результат перевірки пам'ятаємо, щоб наступного разу відео навіть не показувалось
+    function trCache() { try { return JSON.parse(localStorage.getItem('lmx_trl_ok') || '{}') || {}; } catch (e) { return {}; } }
+    function trSave(c) { try { var k = Object.keys(c); if (k.length > 600) k.slice(0, 200).forEach(function (n) { delete c[n]; }); localStorage.setItem('lmx_trl_ok', JSON.stringify(c)); } catch (e) {} }
+    function trThumb(key) { return 'https://img.youtube.com/vi/' + key + '/mqdefault.jpg'; }
+    function trProbe(keys) {
+        var c = trCache(), todo = keys.filter(function (k) { return !(k in c); });
+        todo.forEach(function (k) {
+            var im = new Image();
+            im.onload = function () { var cc = trCache(); cc[k] = (im.naturalWidth > 130 && im.naturalHeight > 90) ? 1 : 0; trSave(cc); };
+            im.onerror = function () { var cc = trCache(); cc[k] = 0; trSave(cc); };
+            im.src = trThumb(k);
+        });
+    }
+    function trPrune(root) {
+        var c = trCache(), left = 0;
+        root.find('.full-person').each(function () {
+            var im = this.querySelector('img'), m = im && /\/vi\/([^/]+)\//.exec(im.getAttribute('src') || im.src || '');
+            if (m && c[m[1]] === 0 && !this.classList.contains('focus')) window.$(this).remove(); else left++;
+        });
+        if (!left) root.addClass('hide');
+    }
     function fullTrailers(data) {
         var v = data && data.videos && data.videos.results;
         if (!v || !v.length) return null;
@@ -6226,6 +6248,10 @@
             if (x.site && x.site !== 'YouTube' && !x.url) return;
             seen[x.key] = 1; list.push(x);
         });
+        var tc = trCache();
+        list = list.filter(function (x) { return tc[x.key] !== 0; });
+        if (!list.length) return null;
+        safe(function () { trProbe(list.map(function (x) { return x.key; })); });
         list.forEach(function (x) { x._k = (x.iso_639_1 === lang ? 0 : 1) * 100 + (TR_TYPE[x.type] !== undefined ? TR_TYPE[x.type] : 5) * 10 + (x.official ? 0 : 1); });
         list.sort(function (a, b) { return (a._k - b._k) || String(b.published_at || '').localeCompare(String(a.published_at || '')); });
         var items = list.slice(0, 6).map(function (x) {
@@ -6360,7 +6386,7 @@
                     hideB(); [400, 1200, 2500].forEach(function (d) { setTimeout(function () { safe(hideB); }, d); });
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
-                    if (d.lmxTrailers) root.addClass('lmx-trl');
+                    if (d.lmxTrailers) { root.addClass('lmx-trl'); [500, 1300, 2600].forEach(function (t) { setTimeout(function () { safe(function () { trPrune(root); }); }, t); }); }
                     else if (d.results && d.results[0] && d.results[0].lmxDir) {
                         root.addClass('lmx-people');
                         root.find('.items-line__title').first().text('Акторський склад і знімальна група');
