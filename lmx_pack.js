@@ -578,6 +578,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('lmx_rx_row', true, 'Ряд реакцій під рейтингом', 'Реакції CUB (🔥 👍 🤔 😴 💩) з кількістю над кнопками на сторінці фільму; стиль залежить від теми. Кнопка «Реакції» вмикається окремо в NoCub', function () { document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true)); });
         H.trigger('lmx_eps_strip', true, 'Плеєр: серії карточками', 'У плеєрі кнопка «вниз» показує внизу екрана всі серії плейлиста (попередню, поточну, наступну…). Enter — перемкнути серію, назад — закрити', null);
         H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
@@ -2588,7 +2589,21 @@
         return '' +
             B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
-            B + '.full-start-new__reactions,' + B + '.full-start-new .reaction__count{display:none !important}' +
+            B + '.full-start-new__reactions{display:none !important}' +
+            B + '.full-start-new__reactions.lmx-rx{display:flex !important;flex-wrap:wrap;align-items:center;margin:0 0 .9em !important;min-height:0 !important;gap:.6em}' +
+            B + '.full-start-new__reactions.lmx-rx>div{padding:0 !important}' +
+            'body.lmx-norx .full-start-new__reactions{display:none !important}' +
+            B + '.full-start-new__reactions .reaction{padding:.35em .9em .35em .5em;border-radius:2em;background:rgba(255,255,255,.1) !important;font-weight:700;transition:background .2s ease}' +
+            B + '.full-start-new__reactions .reaction__icon{width:1.5em;height:1.5em}' +
+            B + '.full-start-new__reactions .reaction__count{padding:0 0 0 .45em;font-size:1.05em}' +
+            B + '.full-start-new__reactions>div:first-child .reaction{background:rgba(255,255,255,.18) !important}' +
+            B + '.full-start-new__reactions .reaction--voted{background:rgba(255,255,255,.3) !important}' +
+            'body.lmx-prem.lmx-full .full-start-new__reactions .reaction{background:#14141a !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}' +
+            'body.lmx-prem.lmx-full .full-start-new__reactions>div:first-child .reaction{box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
+            'body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted{box-shadow:inset 0 0 0 2px #fff}' +
+            'body.lmx-apple.lmx-full .full-start-new__reactions .reaction{background:rgba(255,255,255,.12) !important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}' +
+            'body.lmx-apple.lmx-full .full-start-new__reactions>div:first-child .reaction{background:rgba(255,255,255,.2) !important}' +
+            'body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted{background:rgba(255,255,255,.32) !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
@@ -4551,6 +4566,15 @@
             }, 900);
         });
     }
+    // Ряд реакцій CUB під рейтингом: показуємо лише коли реакції справді завантажились (інакше там порожній напис «Реакцій немає»)
+    function rxRow(r) {
+        var row = r.find('.full-start-new__reactions')[0];
+        if (!row) return;
+        document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true));
+        var upd = function () { row.classList.toggle('lmx-rx', !!row.querySelector('.reaction')); };
+        upd();
+        try { var mo = new MutationObserver(upd); mo.observe(row, { childList: true, subtree: true }); setTimeout(function () { mo.disconnect(); }, 15000); } catch (e) {}
+    }
     function uacClose() {
         if (!uacV.on) return;
         uacV.on = false;
@@ -5016,6 +5040,7 @@
         safe(function () { likeButton(r, m); });
         safe(function () { marksButtons(r, m); });
         safe(function () { uacButton(r, m); });
+        safe(function () { rxRow(r); });
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -6416,7 +6441,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.560';
+    var VERSION = '10.561';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7281,7 +7306,7 @@
 
     // Перемикачі: ключ → що ховаємо
     var ITEMS = [
-        { key: 'nocub_reactions', name: 'Реакції', desc: 'Кнопки реакцій на картках і на сторінці фільму' },
+        { key: 'nocub_reactions', name: 'Кнопка реакцій', desc: 'Кнопка «Реакції» на сторінці фільму та реакції на картках. Ряд реакцій під рейтингом керується в Налаштуваннях LMX' },
         { key: 'nocub_reviews', name: 'Коментарі та відгуки', desc: 'Блок «Коментарі» на сторінці фільму, разом із кнопкою «додати»', def: true },
         { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
         { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Вбудований акаунт і синхронізація CUB (пункт «Синхронізація», вхід у CUB, профілі). Сторонні плагіни синхронізації не чіпає' },
@@ -7313,7 +7338,7 @@
     var CSS = {
         nocub_reactions: [
             '.full-start__button.button--reaction', '.button--reaction',
-            '.full-start-new__reactions', '.full-start__reactions', '.full-start-new .reaction', '.full-start .reaction',
+            '.full-start__reactions',
             '.card__reactions', '.full-reactions'
         ],
         nocub_reviews: ['.full-review', '.full-review-add', '.full-reviews'],
