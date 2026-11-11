@@ -548,6 +548,8 @@
         H.trigger('lmx_hide_tags', true, 'Ховати «Жанр / Виробництво / Теги»', 'Прибирає ряд кнопок під описом у розділі «Детально». Діє після перезапуску', null);
         H.trigger('lmx_descr_btn', true, 'Опис як кнопка', 'Опис на картці фільму відкривається повністю у вікні; закрити — «назад», вліво або вправо. Діє після перезапуску', null);
         H.trigger('lmx_hide_descr_row', true, 'Ховати розділ «Детально»', 'Прибирає розділ із повторним описом, датою, бюджетом і країнами. Діє після перезапуску', null);
+        H.trigger('lmx_coll_order', true, 'Колекція: порядок перегляду', 'Ряд «Колекція» на сторінці фільму: частини франшизи за порядком виходу з номерами, позначкою «Ви тут», «Далі» й галочкою переглянутого. Діє після перезапуску', null);
+        H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -6055,7 +6057,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.493';
+    var VERSION = '10.494';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6368,6 +6370,11 @@
             '.modal.lmx-dm .lmx-dmodal{color:rgba(255,255,255,.88)}' +
             'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
             '.lmx-dmodal{font-size:1.3em;line-height:1.65;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
+            '.lmx-coll .lmx-ord{position:absolute;left:.55em;top:.55em;min-width:1.9em;height:1.9em;padding:0 .55em;border-radius:1em;background:rgba(0,0,0,.74);color:#fff;font-weight:800;font-size:1.05em;display:flex;align-items:center;justify-content:center;z-index:3}' +
+            '.lmx-coll .lmx-ord--seen{background:rgba(38,128,78,.92)}' +
+            '.lmx-coll .lmx-ord--cur{background:#fff;color:#111}' +
+            '.lmx-coll .lmx-ord-tag{position:absolute;left:.55em;bottom:.55em;padding:.2em .7em;border-radius:1em;background:rgba(10,11,16,.78);color:#fff;font-size:.85em;font-weight:700;letter-spacing:.04em;text-transform:uppercase;z-index:3}' +
+            '.lmx-coll .lmx-ord-tag--cur{background:#fff;color:#111}' +
             'body.lmx-hidetags .full-descr__tags{display:none !important}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
@@ -6412,6 +6419,51 @@
         Lampa.Modal.open({ title: String(m.title || m.name || ''), html: box, size: 'medium', mask: true, onBack: close });
         safe(function () { $('.modal').addClass('lmx-dm'); });
     }
+    // ===== Колекція (франшиза): порядок перегляду з номерами, «Ви тут», «Далі», позначка переглянутого =====
+    var CHRONO = { 10: [1893, 1894, 1895, 11, 1891, 1892, 140607, 181808, 181812] };   // Зоряні війни: за епізодами (id фільмів TMDB)
+    function collPrepare(data) {
+        var c = data && data.collection;
+        if (!c || !c.parts || !c.parts.length) return;
+        var dt = function (x) { return String(x.release_date || x.first_air_date || '9999-99-99'); };
+        var list = c.parts.slice().filter(function (x) { return x && x.id; });
+        list.sort(function (a, b) { return dt(a).localeCompare(dt(b)); });
+        var ord = CHRONO[c.id];
+        if (ord && getBool('lmx_coll_chrono', false)) {
+            list.sort(function (a, b) {
+                var ia = ord.indexOf(a.id), ib = ord.indexOf(b.id);
+                if (ia < 0 && ib < 0) return dt(a).localeCompare(dt(b));
+                if (ia < 0) return 1; if (ib < 0) return -1;
+                return ia - ib;
+            });
+        }
+        list = list.slice(0, 40);
+        list.sort = function () { return this; };   // Lampa після нас ще раз сортує ряд за роком — не даємо зіпсувати наш порядок
+        c.results = list;
+        c.lmxColl = true; c.lmxCur = data.movie && data.movie.id; c.lmxChrono = !!(ord && getBool('lmx_coll_chrono', false));
+    }
+    function collMark(root, d) {
+        var idx = {}, order = (d.results || []).map(function (x) { return x.id; });
+        order.forEach(function (id, i) { idx[id] = i + 1; });
+        var seen = {}, h = favIds('history'), v = favIds('viewed'), k;
+        for (k in h) seen[k] = 1; for (k in v) seen[k] = 1;
+        var cur = d.lmxCur, next = 0;
+        for (var i = 0; i < order.length; i++) { if (order[i] !== cur && !seen[order[i]]) { next = order[i]; break; } }
+        var paint = function () {
+            root.querySelectorAll('.card:not(.lmx-ordd)').forEach(function (el) {
+                var dd = getData(el), view = el.querySelector('.card__view');
+                if (!dd || !view || !idx[dd.id]) return;
+                el.classList.add('lmx-ordd');
+                var b = document.createElement('div');
+                b.className = 'lmx-ord' + (dd.id === cur ? ' lmx-ord--cur' : (seen[dd.id] ? ' lmx-ord--seen' : ''));
+                b.textContent = (seen[dd.id] && dd.id !== cur ? '✓ ' : '') + idx[dd.id];
+                view.appendChild(b);
+                var tag = dd.id === cur ? 'Ви тут' : (dd.id === next ? 'Далі' : '');
+                if (tag) { var t = document.createElement('div'); t.className = 'lmx-ord-tag' + (dd.id === cur ? ' lmx-ord-tag--cur' : ''); t.textContent = tag; view.appendChild(t); }
+            });
+        };
+        paint();
+        try { new MutationObserver(paint).observe(root, { childList: true, subtree: true }); } catch (e) {}
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6431,6 +6483,7 @@
                             e.link.rows.splice(ix > 0 ? ix : 1, 0, ['persons', { results: tr, title: 'Трейлери', lmxTrailers: true }]);
                         }
                     }
+                    if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
                     if (!adult && getBool('lmx_hide_descr_row', true) && e.link && Array.isArray(e.link.rows)) {
                         var di = e.link.rows.indexOf('description');
                         if (di >= 0) e.link.rows.splice(di, 1);
@@ -6448,6 +6501,11 @@
                     var rr = e.object && e.object.activity && e.object.activity.render ? e.object.activity.render() : null;
                     var hideB = function () { if (rr) rr.find('.view--trailer').remove(); };
                     hideB(); [400, 1200, 2500].forEach(function (d) { setTimeout(function () { safe(hideB); }, d); });
+                } else if (e.type === 'build' && e.name === 'cards' && e.data && e.data.lmxColl && e.item && e.item.render) {
+                    var cr = e.item.render(true), cd = e.data;
+                    $(cr).addClass('lmx-coll');
+                    $(cr).find('.items-line__title').first().text(cd.lmxChrono ? 'Колекція · хронологія подій' : 'Колекція · порядок перегляду');
+                    collMark(cr, cd);
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
                     if (d.lmxTrailers) { root.addClass('lmx-trl'); [500, 1300, 2600].forEach(function (t) { setTimeout(function () { safe(function () { trPrune(root); }); }, t); }); }
