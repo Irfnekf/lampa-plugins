@@ -4603,6 +4603,8 @@
                 var cur = document.querySelector('.selector.focus');
                 var btnsBox = document.querySelector('.full-start-new__buttons, .full-start__buttons');
                 if (!btnsBox) return;
+                var goesUp = (k === 38 || ev.key === 'ArrowUp');
+                var fromDescr = !!(cur && cur.classList.contains('lmx-descr--btn'));
                 var wasIn = !!(cur && btnsBox.contains(cur));
                 if (wasIn) return;
                 var r = window.$(btnsBox).closest('.full-start-new, .full-start').parent();
@@ -4611,7 +4613,9 @@
                     setTimeout(function () {
                         safe(function () {
                             var nf = document.querySelector('.selector.focus');
-                            if (!nf || !btnsBox.contains(nf)) return;
+                            if (!nf) return;
+                            var skipDescr = goesUp && !fromDescr && nf.classList.contains('lmx-descr--btn');
+                            if (!btnsBox.contains(nf) && !skipDescr) return;
                             var w = firstBtn(r);
                             if (w && w !== nf) focusBtn(r, w);
                         });
@@ -6032,7 +6036,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.489';
+    var VERSION = '10.490';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
