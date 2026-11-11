@@ -2628,6 +2628,8 @@
             QA + ' > .full-start-new__buttons:not(#lmx-x){margin-top:0 !important;margin-left:0 !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
+            // Lampa тримає назву в 1 рядок (line-clamp:1, overflow:hidden, text-overflow:".") — довга назва («Найкращий поліцейський») обрізалась до першого слова, а великі літери ще й різались зверху (Й) та знизу (Щ, Ц). Даємо 2 рядки, нормальне «…» і запас на виносні елементи
+            'html body.lmx-full .full-start-new__title:not(.lmx-has-logo):not(#lmx-x){-webkit-line-clamp:2 !important;line-clamp:2 !important;text-overflow:ellipsis !important;padding:.12em 0 .16em !important;margin-top:-.12em !important}' +
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
             B + '.full-start-new__title.lmx-has-logo{display:block !important;overflow:visible !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;height:auto !important;max-height:none !important}' +
             // фон-постер зсунуто нижче шапки: обличчя у верхній частині кадру не мають ховатися під іконками
@@ -4528,6 +4530,23 @@
     function uacFetch(m, done) {
         var srcs = uacSrcList();
         if (!srcs.length) return done([]);
+        // без IMDb-id сервер шукає лише за назвою і для нових/маловідомих (особливо серіалів) підсовує коментарі до іншого фільму — краще нічого, ніж чужі. Картки (прогрів) не мають imdb_id, тож дізнаємось його в TMDB (кеш Lampa на 7 днів)
+        if (!m.imdb_id) {
+            var T = window.Lampa && Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
+            if (!T || !T.external_imdb_id || !m.id) return done([]);
+            var isTv = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
+            var seen = false;
+            try {
+                T.external_imdb_id({ type: isTv ? 'tv' : 'movie', id: m.id }, function (iid) {
+                    if (seen) return; seen = true;
+                    if (!iid) return done([]);
+                    var m2 = {}; for (var k in m) m2[k] = m[k];
+                    m2.imdb_id = iid;
+                    uacFetch(m2, done);
+                });
+            } catch (e) { done([]); }
+            return;
+        }
         var title = m.title || m.name || '', orig = m.original_title || m.original_name || '', year = String(m.release_date || m.first_air_date || '').slice(0, 4);
         var q = [];
         if (m.imdb_id) q.push('imdb_id=' + encodeURIComponent(m.imdb_id));
@@ -4535,7 +4554,7 @@
         if (orig && orig.toLowerCase() !== title.toLowerCase()) q.push('original_title=' + encodeURIComponent(orig));
         if (year) q.push('year=' + encodeURIComponent(year));
         q.push('sources=' + encodeURIComponent(srcs.join(',')));
-        var key = [title, orig, year, srcs.join(',')].join('|').toLowerCase();
+        var key = [m.imdb_id, title, orig, year, srcs.join(',')].join('|').toLowerCase();
         var hit = uacMemo[key];
         if (hit && hit.exp > Date.now()) return done(hit.list.slice());
         // постійний кеш: відомі коментарі показуємо одразу, а застарілі (старші за 10 хв) тихо оновлюємо у фоні
@@ -6560,7 +6579,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.574';
+    var VERSION = '10.575';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
