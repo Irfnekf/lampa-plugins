@@ -4658,9 +4658,12 @@
                     refT = setTimeout(function () {
                         safe(function () {
                             if (!document.body.contains(row) || (Lampa.Controller.enabled() || {}).name !== 'full_start') return;
-                            var fo = r.find('.selector.focus')[0];
-                            Lampa.Controller.collectionSet(r);
-                            Lampa.Controller.collectionFocus(fo || false, r);
+                            // рідний контролер сторінки збирає .selector лише з верхнього блоку (не з усієї сторінки): інакше «вниз» перестрибує на нижні ряди без прокрутки
+                            var top = r.find('.full-start-new, .full-start').eq(0);
+                            if (!top.length) return;
+                            var fo = top.find('.selector.focus')[0];
+                            Lampa.Controller.collectionSet(top);
+                            Lampa.Controller.collectionFocus(fo || false, top);
                         });
                     }, 120);
                 }
@@ -6561,7 +6564,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.570';
+    var VERSION = '10.571';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
