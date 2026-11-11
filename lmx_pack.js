@@ -3124,7 +3124,9 @@
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
             // меню відкривається поверх сторінки, а не зсуває її на 15em: зсув усієї сторінки з великою афішею на ТВ «смикав» картинку. Читабельність дає м'який темний градієнт зліва
             A + '.wrap__content{transform:none !important;transition:none !important}' +
-            'body.lmx-apple.menu--open .wrap__left::before{content:"";position:absolute;top:0;bottom:0;left:0;right:0;z-index:-1;background:rgba(10,10,13,.93);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);box-shadow:1px 0 0 rgba(255,255,255,.1),.6em 0 1.6em rgba(0,0,0,.45)}' +
+            'body.lmx-apple.menu--open .wrap__left::before{content:"";position:absolute;top:0;bottom:0;left:0;right:-5em;z-index:-1;background:linear-gradient(90deg,rgba(12,12,15,.9) 0%,rgba(12,12,15,.82) 70%,rgba(12,12,15,0) 100%);-webkit-mask-image:linear-gradient(90deg,#000 0,#000 72%,transparent 100%);mask-image:linear-gradient(90deg,#000 0,#000 72%,transparent 100%)}' +
+            // якщо ТВ уміє розмиття підкладки — справжнє матове скло з м'яким краєм замість чорної плашки
+            '@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){body.lmx-apple.menu--open .wrap__left::before{background:linear-gradient(90deg,rgba(24,24,30,.58) 0%,rgba(24,24,30,.5) 70%,rgba(24,24,30,0) 100%);-webkit-backdrop-filter:blur(34px) saturate(1.5);backdrop-filter:blur(34px) saturate(1.5)}}' +
             A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
@@ -6090,7 +6092,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.543';
+    var VERSION = '10.544';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
