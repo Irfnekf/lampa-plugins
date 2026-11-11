@@ -3126,7 +3126,8 @@
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
             F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
-            F + '.full-start__background.dim{opacity:.17 !important;filter:blur(1.4em) !important}' +
+            F + '.full-start__background.dim{opacity:.23 !important}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.17 !important;filter:blur(1.2em) !important;transition:opacity .2s linear !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6072,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.519';
+    var VERSION = '10.520';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6617,10 +6618,25 @@
             }, fin);
         });
     }
+    // Скло: розмиття фону залежить від того, чи сторінка справді прокручена вниз (власна перевірка замість рідного класу dim, який іноді «залипає» нагорі)
+    function fullScrollWatch() {
+        if (window.__lmxFsw) return;
+        window.__lmxFsw = setInterval(function () {
+            var b = document.body;
+            if (!b) return;
+            var on = false;
+            if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
+                var st = document.querySelector('.full-start-new') || document.querySelector('.full-start');
+                if (st) on = st.getBoundingClientRect().top < -window.innerHeight * 0.15;
+            }
+            if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
+        }, 100);
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
         fxCss();
+        fullScrollWatch();
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
