@@ -578,6 +578,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('nocub_reviews', true, 'Сховати коментарі CUB', 'Рідний блок «Коментарі» від CUB внизу сторінки фільму (з кнопкою «додати»). Наші українські коментарі під трейлерами це не стосується', function () { if (window.__nocubApply) window.__nocubApply(); });
         H.trigger('lmx_uac', true, 'UA Коментарі', 'Кнопка «Коментарі (N)» на сторінці фільму: українські коментарі й рецензії з UaKino, UAFlix, UASerials і KinoBaza через сервер lampaua.mooo.com. Якщо окремий плагін «UA Comments» уже встановлено, кнопка не дублюється', null);
         H.trigger('lmx_uac_row', true, 'Коментарі: ряд під трейлерами', 'Картки з іменем і текстом коментаря під рядом трейлерів (стиль залежить від теми)', null);
         H.trigger('lmx_uac_btn', false, 'Коментарі: кнопка', 'Показувати кнопку «Коментарі» разом із рядом', null);
@@ -6274,7 +6275,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.553';
+    var VERSION = '10.554';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7303,6 +7304,7 @@
                         hit = !!txt && rule.re.test(txt.slice(0, 80));
                     }
                     // Блоки «Рекомендації» ховаємо лише на сторінці фільму, не на головній
+                    if (hit && el.classList.contains('lmx-uacr')) hit = false;   // наш ряд коментарів під трейлерами не чіпаємо
                     if (hit && rule.onlyFull && !document.querySelector('.activity--active .full-start-new, .activity--active .full-start')) hit = false;
                 }
                 if (hit) mark(el, rule.key);
@@ -7329,6 +7331,7 @@
         document.body.classList.toggle('nocub_bell', on('nocub_bell'));
     }
 
+    window.__nocubApply = function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); };
     var timer = 0;
     function schedule() {
         clearTimeout(timer);
@@ -7349,7 +7352,7 @@
             onChange: function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); }
         });
         ITEMS.forEach(function (it) {
-            if (it.key === 'nocub_promo' || it.key === 'nocub_strict') return;
+            if (it.key === 'nocub_promo' || it.key === 'nocub_strict' || it.key === 'nocub_reviews') return;   // «CUB-коментарі» перенесено в Налаштування LMX → Сторінка фільму
             S.addParam({
                 component: 'nocub', param: { name: it.key, type: 'trigger', default: !!it.def },
                 field: { name: it.name, description: it.desc },
@@ -7373,7 +7376,7 @@
             if (txt) {
                 for (var i = 0; i < TEXT.length; i++) {
                     var r = TEXT[i];
-                    if (r.sel === '.items-line' && r.title && r.re && on(r.key) && r.re.test(txt)) { mark(el, r.key); return true; }
+                    if (r.sel === '.items-line' && r.title && r.re && on(r.key) && r.re.test(txt) && !el.classList.contains('lmx-uacr')) { mark(el, r.key); return true; }
                 }
             }
         }
