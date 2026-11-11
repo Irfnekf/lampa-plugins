@@ -550,6 +550,7 @@
         H.trigger('lmx_hide_descr_row', true, 'Ховати розділ «Детально»', 'Прибирає розділ із повторним описом, датою, бюджетом і країнами. Діє після перезапуску', null);
         H.trigger('lmx_coll_order', true, 'Колекція: порядок перегляду', 'Ряд «Колекція» на сторінці фільму: частини франшизи за порядком виходу з номерами, позначкою «Ви тут», «Далі» й галочкою переглянутого. Діє після перезапуску', null);
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
+        H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -6057,7 +6058,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.495';
+    var VERSION = '10.496';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6470,6 +6471,43 @@
         paint();
         try { new MutationObserver(paint).observe(root, { childList: true, subtree: true }); } catch (e) {}
     }
+    // ===== «Схоже» на сторінці фільму: замість двох слабких рядів (рекомендації + схоже) — один відібраний =====
+    function simPrepare(data) {
+        var m = data && data.movie;
+        if (!m) return;
+        var rec = (data.recomend && data.recomend.results) || [], sim = (data.simular && data.simular.results) || [];
+        if (!rec.length && !sim.length) return;
+        var isTv = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
+        var mg = genreIds(m).filter(Boolean), myear = parseInt(String(m.release_date || m.first_air_date || '0').slice(0, 4), 10) || 0;
+        var skip = {}; skip[m.id] = 1;
+        ((data.collection && data.collection.parts) || []).forEach(function (x) { if (x && x.id) skip[x.id] = 1; });
+        var map = {}, order = [];
+        var add = function (x, w) {
+            if (!x || !x.id || skip[x.id]) return;
+            if (map[x.id]) { map[x.id].w += w; return; }
+            map[x.id] = { x: x, w: w }; order.push(x.id);
+        };
+        rec.forEach(function (x) { add(x, 3); });
+        sim.forEach(function (x) { add(x, 1); });
+        var list = order.map(function (id) { return map[id]; }).filter(function (o) {
+            var x = o.x, tv = !!(x.name || x.first_air_date) && !x.title;
+            return !x.adult && x.poster_path && tv === isTv && (x.vote_count || 0) >= 40 && (x.vote_average || 0) >= 5.5;
+        });
+        list.forEach(function (o) {
+            var x = o.x, g = genreIds(x).filter(Boolean), inter = g.filter(function (i) { return mg.indexOf(i) >= 0; }).length;
+            var jac = (mg.length || g.length) ? inter / (mg.length + g.length - inter || 1) : 0;
+            var y = parseInt(String(x.release_date || x.first_air_date || '0').slice(0, 4), 10) || 0;
+            var near = (myear && y) ? Math.max(0, 1 - Math.abs(myear - y) / 25) : 0.4;
+            o.s = o.w * 2 + jac * 4 + ((x.vote_average || 0) - 5) * 0.8 + Math.min(Math.log(((x.vote_count || 0) + 1)) / Math.LN10, 4) * 0.7 +
+                (x.original_language && x.original_language === m.original_language ? 0.8 : 0) + near;
+        });
+        list.sort(function (a, b) { return b.s - a.s; });
+        var out = list.slice(0, 20).map(function (o) { return o.x; });
+        if (out.length < 4) return;   // замало — лишаємо як є
+        out.sort = function () { return this; };
+        data.simular = { results: out, nomore: true, lmxSim: true };
+        data.recomend = null;
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6490,6 +6528,7 @@
                         }
                     }
                     if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
+                    if (!adult && getBool('lmx_sim_better', true)) safe(function () { simPrepare(e.data); });
                     if (!adult && getBool('lmx_hide_descr_row', true) && e.link && Array.isArray(e.link.rows)) {
                         var di = e.link.rows.indexOf('description');
                         if (di >= 0) e.link.rows.splice(di, 1);
