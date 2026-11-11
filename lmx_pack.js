@@ -6062,7 +6062,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.500';
+    var VERSION = '10.501';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6377,6 +6377,8 @@
             '.lmx-dmodal{font-size:1.3em;line-height:1.65;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
             // Netflix-стиль «Топ-10»: велика контурна цифра позаду постера
             '.lmx-coll .card.lmx-ordd{overflow:visible !important;position:relative}' +
+            '.lmx-coll .scroll__body{padding-right:9em !important}' +
+            '.lmx-coll .scroll__body:after{content:"";flex:0 0 9em;display:block}' +
             '.lmx-coll .card.lmx-nn1{margin-left:6.8em !important}' +
             '.lmx-coll .card.lmx-nn2{margin-left:13em !important}' +
             '.lmx-coll .lmx-num{position:absolute;right:calc(100% - .07em);bottom:.02em;z-index:0;pointer-events:none;font-family:"Oswald","Impact","Arial Narrow",sans-serif;font-weight:700;font-size:13em;line-height:.8;letter-spacing:-.04em;color:rgba(10,11,16,.9);-webkit-text-stroke:.025em rgba(255,255,255,.62);white-space:nowrap}' +
