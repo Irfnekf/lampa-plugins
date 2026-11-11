@@ -5586,6 +5586,18 @@
             edPrev = null;
             safe(function () { Lampa.Modal.close(); });
             safe(function () { Lampa.Controller.toggle(back); });
+            // після перебудови кнопок (перейменування/порядок) старий елемент у фокусі зникає — тоді фокус на першу кнопку
+            var ensure = function () {
+                safe(function () {
+                    if (document.querySelector('.modal') || document.querySelector('.selectbox')) return;
+                    var r = btnLast;
+                    if (!r || !r.find) return;
+                    if (document.querySelector('.selector.focus')) return;
+                    var w = firstBtn(r);
+                    if (w) focusBtn(r, w);
+                });
+            };
+            [150, 450, 900, 1600].forEach(function (d) { setTimeout(ensure, d); });
             // страховка: Lampa сама повертає контролер після Modal.close, але могла запам'ятати не той — повертаємо свій, коли модалки вже немає
             [80, 300].forEach(function (d) {
                 setTimeout(function () {
@@ -6036,7 +6048,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.490';
+    var VERSION = '10.491';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
