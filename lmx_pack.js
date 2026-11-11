@@ -6032,7 +6032,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.488';
+    var VERSION = '10.489';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6369,14 +6369,20 @@
         function close() {
             if (closed) return; closed = true;
             window.removeEventListener('keydown', onKey, true);
+            var refocus = function () {
+                if (!r) return;
+                var w = firstBtn(r);
+                if (w && !w.classList.contains('focus')) focusBtn(r, w);
+            };
             safe(function () { Lampa.Modal.close(); });
             safe(function () { Lampa.Controller.toggle(enabled); });
-            [80, 300].forEach(function (d) {
-                setTimeout(function () { safe(function () { if (!document.querySelector('.modal') && !document.querySelector('.selectbox')) Lampa.Controller.toggle(enabled); }); }, d);
-            });
-            // після закриття — фокус на першу кнопку
-            [120, 380].forEach(function (d) {
-                setTimeout(function () { safe(function () { if (r && !document.querySelector('.modal')) { var w = firstBtn(r); if (w && !w.classList.contains('focus')) focusBtn(r, w); } }); }, d);
+            // фокус на першу кнопку в тому ж такті (без миготіння другої), і після кожного повторного повернення контролера
+            safe(refocus);
+            [30, 80, 300].forEach(function (d) {
+                setTimeout(function () {
+                    safe(function () { if (!document.querySelector('.modal') && !document.querySelector('.selectbox')) Lampa.Controller.toggle(enabled); });
+                    safe(refocus);
+                }, d);
             });
         }
         window.addEventListener('keydown', onKey, true);
