@@ -6020,7 +6020,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.486';
+    var VERSION = '10.487';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6321,6 +6321,8 @@
             'html body.lmx-apple .lmx-descr--btn.focus:not(#lmx-x){background:rgba(255,255,255,.22);box-shadow:0 0 0 .14em rgba(255,255,255,.95) inset}' +
             // вікно з повним описом — у стилі теми
             '.modal.lmx-dm{display:flex !important;align-items:center;justify-content:center;background:rgba(4,5,10,.78)}' +
+            '@keyframes lmxdm{from{opacity:0;transform:translateY(.5em)}to{opacity:1;transform:none}}' +
+            '.modal.lmx-dm .modal__content{animation:lmxdm .22s ease-out both}' +
             '.modal.lmx-dm .modal__content{width:62vw;max-width:62vw !important;margin:0 !important}' +
             '.modal.lmx-dm .modal__content{background:#171a24;border-radius:1.5em;border:1px solid rgba(255,255,255,.08);box-shadow:0 1.5em 4em rgba(0,0,0,.6);max-width:46em;padding:1.6em 2em}' +
             '.modal.lmx-dm .modal__title{font-size:1.9em;font-weight:700;margin-bottom:.7em;letter-spacing:.01em}' +
@@ -6363,7 +6365,7 @@
         }
         window.addEventListener('keydown', onKey, true);
         Lampa.Modal.open({ title: String(m.title || m.name || ''), html: box, size: 'medium', mask: true, onBack: close });
-        setTimeout(function () { safe(function () { $('.modal').addClass('lmx-dm'); }); }, 0);
+        safe(function () { $('.modal').addClass('lmx-dm'); });
     }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
