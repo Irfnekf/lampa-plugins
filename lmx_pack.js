@@ -3125,10 +3125,10 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out,transform .35s ease-out !important}' +
+            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.23 !important}' +
-            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:scale(1.12) !important;transition:opacity .35s ease-out,filter .35s ease-out,transform .35s ease-out !important}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.534';
+    var VERSION = '10.535';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6670,7 +6670,7 @@
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
                 var bg = document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background');
-                if (bg) {
+                if (bg && !b.classList.contains('lmx-fscroll')) {
                     var rc = bg.getBoundingClientRect(), dy = rc.top, dx = rc.left;
                     if (Math.abs(dy) > 1) bg.style.setProperty('top', ((parseFloat(bg.style.top) || 0) - dy) + 'px', 'important');
                     if (Math.abs(dx) > 1) bg.style.setProperty('left', ((parseFloat(bg.style.left) || 0) - dx) + 'px', 'important');
@@ -6715,6 +6715,9 @@
         };
         bar.on('hover:focus hover:hover hover:touch', function () { item.last = bar[0]; });
         bar.on('hover:enter', function () {
+            // emit('scroll', 0) і перебудова рядів скидають клас dim фону (затемнення) — запам'ятовуємо й тримаємо його
+            var bgs = lk.html.find('.full-start__background'), wasDim = bgs.hasClass('dim'), gt = 0;
+            var hold = setInterval(function () { bgs.toggleClass('dim', wasDim); if (++gt > 20) clearInterval(hold); }, 40);
             var bi = lk.rows.indexOf(lk.rows.filter(function (r) { return Array.isArray(r) && r[1] === d; })[0]), i;
             if (bi < 0) return;
             if (!open) {
