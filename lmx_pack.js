@@ -5099,7 +5099,7 @@
             if (!(k === 38 || k === 40 || ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) return;
             if ((k === 40 || ev.key === 'ArrowDown') && !document.querySelector('.modal')) {
                 var dd = document.querySelector('.lmx-descr--btn.focus');
-                if (dd) {
+                if (dd && !document.querySelector('.full-start-new__reactions .selector')) {   // є ряд реакцій — «вниз» з опису веде на нього (Navigator), а не на кнопки
                     var rr = window.$(dd).closest('.full-start-new, .full-start').parent(), ww = rr.length ? firstBtn(rr) : null;
                     if (ww) { ev.preventDefault(); ev.stopImmediatePropagation(); focusBtn(rr, ww); return; }
                 }
@@ -5111,7 +5111,7 @@
                 if (!btnsBox) return;
                 var goesUp = (k === 38 || ev.key === 'ArrowUp');
                 var fromDescr = !!(cur && cur.classList.contains('lmx-descr--btn'));
-                var wasIn = !!(cur && btnsBox.contains(cur));
+                var wasIn = !!(cur && (btnsBox.contains(cur) || (cur.closest && cur.closest('.full-start-new__reactions'))));   // реакції — теж частина блоку кнопок: «вгору» з них веде на опис
                 if (wasIn) return;
                 var r = window.$(btnsBox).closest('.full-start-new, .full-start').parent();
                 if (!r.length) return;
@@ -6561,7 +6561,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.569';
+    var VERSION = '10.570';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
