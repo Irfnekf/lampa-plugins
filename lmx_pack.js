@@ -543,19 +543,6 @@
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
         H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
-        H.trigger('lmx_full_trailers', true, 'Ряд «Трейлери» на сторінці фільму', 'Плитки з трейлерами над розділом «Детально»: лише українські, а якщо їх нема — англійські. Натиск відкриває відео', null);
-        H.trigger('lmx_hide_trl_btn', true, 'Ховати кнопку «Трейлери»', 'Прибирає штатну кнопку на картці фільму — трейлери є окремим рядом нижче. Діє після перезапуску', null);
-        H.trigger('lmx_hide_tags', true, 'Ховати «Жанр / Виробництво / Теги»', 'Прибирає ряд кнопок під описом у розділі «Детально». Діє після перезапуску', null);
-        H.trigger('lmx_descr_btn', true, 'Опис як кнопка', 'Опис на картці фільму відкривається повністю у вікні; закрити — «назад», вліво або вправо. Діє після перезапуску', null);
-        H.trigger('lmx_hide_descr_row', true, 'Ховати розділ «Детально»', 'Прибирає розділ із повторним описом, датою, бюджетом і країнами. Діє після перезапуску', null);
-        H.trigger('lmx_coll_order', true, 'Колекція: порядок перегляду', 'Ряд «Колекція» на сторінці фільму: частини франшизи за порядком виходу з номерами, позначкою «Ви тут», «Далі» й галочкою переглянутого. Діє після перезапуску', null);
-        H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
-        H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
-        H.trigger('lmx_rows_end', true, 'Склад і студії в кінці сторінки', 'Порядок рядів на сторінці фільму: колекція та схоже вище, акторський склад і студії — в самому кінці. Діє після перезапуску', null);
-        H.trigger('lmx_adult_pages', true, 'Повні сторінки фільмів 18+', 'Показувати акторів, колекцію, трейлери та інші ряди й на фільмах із позначкою «Контент для дорослих» (вмикає відповідний параметр Lampa). Вимкнено — Lampa ховатиме ці ряди й проситиме підтвердити вік', function () { setTimeout(function () { safe(adultPages); }, 50); });
-        H.trigger('lmx_more_info', true, 'Додаткова інформація (актори, студії)', 'На сторінці фільму актори й студії згорнуті в смужку «Додаткова інформація» внизу сторінки; натисни на неї, щоб розгорнути', null);
-        H.trigger('lmx_related', true, 'Ряд «Пов’язане»', 'На сторінці фільму чи серіалу показувати пов’язані тайтли однієї історії: серіали й фільми «Зоряних воєн», «Гри престолів», «Відьмака» тощо (TMDB сам їх не зв’язує)', null);
-        H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
 
@@ -575,18 +562,9 @@
 
         // ---- Сторінка фільму ----
         H.title('lmx_t_page', 'Сторінка фільму');
-        H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
-        H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
-        H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
-        H.trigger('lmx_rx_row', true, 'Ряд реакцій під рейтингом', 'Реакції CUB (🔥 👍 🤔 😴 💩) з кількістю над кнопками на сторінці фільму; стиль залежить від теми. Кнопка «Реакції» вмикається окремо в NoCub', function () { document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true)); });
-        H.trigger('lmx_rx_focus', true, 'Реакції: вибір з пульта', 'Кнопка «вгору» з кнопок переводить фокус на ряд реакцій: ←/→ вибір, Enter — поставити реакцію', null);
-        H.trigger('lmx_rx_mono', true, 'Реакції: однокольорові іконки', 'Замість кольорових смайликів CUB — прості лінійні іконки в стилі кнопок сторінки', null);
-        H.trigger('lmx_eps_strip', true, 'Плеєр: серії карточками', 'У плеєрі кнопка «вниз» показує внизу екрана всі серії плейлиста (попередню, поточну, наступну…). Enter — перемкнути серію, назад — закрити', null);
         H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
-        H.trigger('lmx_uac_btn', false, 'Коментарі: кнопка', 'Додатково до ряду показувати кнопку «Коментарі (N)» серед кнопок фільму', null);
-        UAC_SRC.forEach(function (x) { H.trigger('lmx_uac_' + x[0], true, 'Коментарі: ' + x[1], 'Шукати коментарі на ' + x[2], null); });
-        H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
+        H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
 
@@ -4001,6 +3979,18 @@
             })(bodies[i]);
         }
     }
+    // Сторінка торентів: Lampa малює довгий список під маскою (плавне згасання зверху/знизу) — на ТВ маска на великому списку перемальовується на кожному кадрі прокрутки і дає підвисання. Знімаємо маску й ізолюємо розкладку рядків
+    function torrentPerf() {
+        if (!document.getElementById('lmx-perf-css')) {
+            var st = document.createElement('style'); st.id = 'lmx-perf-css';
+            st.textContent = 'html body .scroll--mask.lmx-nomask:not(#lmx-x){-webkit-mask-image:none !important;mask-image:none !important}' +
+                '.torrent-item{contain:layout style}';
+            (document.head || document.documentElement).appendChild(st);
+        }
+        var it = document.querySelector('.torrent-item');
+        var sc = it && it.closest ? it.closest('.scroll--mask') : null;
+        if (sc && !sc.classList.contains('lmx-nomask')) sc.classList.add('lmx-nomask');
+    }
     function markHero(heroAdded) {
         hqPoster();
         // ці перевірки не потрібні на кожну окрему зміну сторінки: не частіше разу на 150 мс
@@ -6586,7 +6576,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.579';
+    var VERSION = '10.580';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7400,18 +7390,20 @@
             applyStyle();
             new MutationObserver(function (muts) {
                 // дивимось лише на додані вузли: чи з'явились картки й чи є серед них афіша
-                var hero = false, card = false;
+                var hero = false, card = false, tor = false;
                 for (var i = 0; i < muts.length; i++) {
                     var add = muts[i].addedNodes;
                     for (var k = 0; k < add.length; k++) {
                         var n = add[k];
                         if (n.nodeType !== 1) continue;
                         var cl = n.classList;
+                        if (cl && cl.contains('torrent-item')) { tor = true; continue; }   // сторінка торентів: сотні рядків додаються по одному — для них querySelector нижче зайвий
                         if (cl && cl.contains('card')) { card = true; if (cl.contains('card--lmxhero')) hero = true; }
                         else if (n.querySelector && n.querySelector('.card')) { card = true; if (n.querySelector('.card--lmxhero')) hero = true; }
                     }
                 }
                 safe(function () { markHero(hero); });
+                if (tor) safe(torrentPerf);
                 if (card) schedule();
             }).observe(document.body, { childList: true, subtree: true });
             scan();
@@ -7473,7 +7465,7 @@
 
     // Перемикачі: ключ → що ховаємо
     var ITEMS = [
-        { key: 'nocub_reactions', name: 'Кнопка реакцій', desc: 'Кнопка «Реакції» на сторінці фільму та реакції на картках. Ряд реакцій під рейтингом керується в Налаштуваннях LMX' },
+        { key: 'nocub_reactions', name: 'Кнопка реакцій', desc: 'Кнопка «Реакції» на сторінці фільму та реакції на картках. Ряд реакцій під рейтингом лишається' },
         { key: 'nocub_reviews', name: 'Коментарі та відгуки', desc: 'Блок «Коментарі» на сторінці фільму, разом із кнопкою «додати»', def: true },
         { key: 'nocub_premium', name: 'Преміум і запрошення', desc: 'Пункти меню, іконки й плашки про преміум-підписку та запрошення друзів' },
         { key: 'nocub_account', name: 'Акаунт CUB', desc: 'Вбудований акаунт і синхронізація CUB (пункт «Синхронізація», вхід у CUB, профілі). Сторонні плагіни синхронізації не чіпає' },
@@ -7496,6 +7488,8 @@
         // без налаштувань: акційні плашки CUB ховаємо завжди, суворий режим шапки вимкнений
         if (key === 'nocub_promo') return true;
         if (key === 'nocub_strict') return false;
+        if (key === 'nocub_meta') return true;   // «Метадані» не потрібні — завжди сховані (перемикач прибрано)
+        if (key === 'nocub_recs') return false;   // рядок «Схоже» тепер наш: рідні блоки не чіпаємо (перемикач прибрано)
         if (key === 'nocub_reviews') return true;   // коментарі CUB замінено нашими — рідний блок ховаємо завжди
         var v = Lampa.Storage.get(key, defOf(key) ? 'true' : 'false');
         return v === true || v === 'true';
@@ -7545,6 +7539,7 @@
         { key: 'nocub_account', sel: '.menu .menu__item', re: /(увійти|войти|login|sign in).{0,12}cub|cub.{0,12}(акаунт|аккаунт|account)/i },
         { key: 'nocub_account', sel: '.settings-folder', re: /cub.{0,12}(акаунт|аккаунт|account)|(акаунт|аккаунт|account).{0,12}cub/i },
         { key: 'nocub_shots', sel: '.menu .menu__item', re: /^\s*shots\s*$/i },
+        { key: 'nocub_shots', sel: '.selectbox-item, .selectbox__item, .menu__item', re: /^\s*(shots|шотс)\b/i },
         { key: 'nocub_shots', sel: '.items-line', re: /^\s*shots\b/i, title: true },
         { key: 'nocub_subscribe', sel: '.full-start-new__buttons .full-start__button, .full-start__buttons .full-start__button', re: /підписат|подписат|subscribe/i },
         { key: 'nocub_reviews', sel: '.items-line', re: /^\s*(коментар|комментар|відгук|отзыв|comments|reviews)/i, title: true },
@@ -7703,7 +7698,7 @@
             onChange: function () { setTimeout(function () { safe(applyBody); safe(scan); }, 50); }
         });
         ITEMS.forEach(function (it) {
-            if (it.key === 'nocub_promo' || it.key === 'nocub_strict' || it.key === 'nocub_reviews') return;   // коментарі CUB ховаються завжди
+            if (it.key === 'nocub_promo' || it.key === 'nocub_strict' || it.key === 'nocub_reviews' || it.key === 'nocub_meta' || it.key === 'nocub_recs') return;   // коментарі CUB ховаються завжди
             S.addParam({
                 component: 'nocub', param: { name: it.key, type: 'trigger', default: !!it.def },
                 field: { name: it.name, description: it.desc },
@@ -7806,7 +7801,7 @@
                         if (n.nodeType !== 1) continue;
                         // картки та власні елементи LMX (підписи на постерах, точки, шар кольору тощо) NoCub не стосуються
                         var nc = typeof n.className === 'string' ? n.className : '';
-                        if (n.classList && n.classList.contains('card')) continue;
+                        if (n.classList && (n.classList.contains('card') || n.classList.contains('torrent-item'))) continue;
                         if (/(^|\s)lmx-(endpad|cin|tr|box|dots|pill|tintbg|hist|logo|info|descr)/.test(nc) || n.id === 'lmx-tintbg') continue;
                         schedule(); return;
                     }
