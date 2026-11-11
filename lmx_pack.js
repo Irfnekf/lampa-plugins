@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.537';
+    var VERSION = '10.538';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6540,9 +6540,20 @@
         };
         rec.forEach(function (x) { add(x, 3); });
         sim.forEach(function (x) { add(x, 1); });
+        // назви: спін-оффи й фільми за серіалом (напр. «Blue Mountain State» → «…: The Rise of Thadland») мають спільний початок оригінальної назви — це найкращий сигнал «схожого»
+        var nn = function (t) { return String(t || '').toLowerCase().replace(/[^a-z0-9\u0400-\u04ff]/g, ''); };
+        var mk = nn(m.original_title || m.original_name || m.title || m.name);
+        var kin = function (x) {
+            var k = nn(x.original_title || x.original_name || x.title || x.name);
+            return mk.length >= 5 && k.length >= 5 && (k.indexOf(mk) === 0 || mk.indexOf(k) === 0);
+        };
         var list = order.map(function (id) { return map[id]; }).filter(function (o) {
-            var x = o.x, tv = !!(x.name || x.first_air_date) && !x.title;
-            return !x.adult && x.poster_path && tv === isTv && (x.vote_count || 0) >= 40 && (x.vote_average || 0) >= 5.5;
+            var x = o.x, tv = !!(x.name || x.first_air_date) && !x.title, vc = x.vote_count || 0, va = x.vote_average || 0;
+            if (x.adult || !x.poster_path) return false;
+            o.kin = kin(x); o.cross = tv !== isTv;
+            if (o.kin) return vc >= 5;                                    // спін-офф / продовження за назвою — беремо навіть із малою кількістю голосів і будь-якого типу
+            if (o.cross) return o.w >= 3 && vc >= 100 && va >= 6.5;        // фільм ↔ серіал: лише якщо його радить сама TMDB і він добре оцінений
+            return vc >= 25 && va >= 5.5;
         });
         list.forEach(function (o) {
             var x = o.x, g = genreIds(x).filter(Boolean), inter = g.filter(function (i) { return mg.indexOf(i) >= 0; }).length;
@@ -6550,7 +6561,7 @@
             var y = parseInt(String(x.release_date || x.first_air_date || '0').slice(0, 4), 10) || 0;
             var near = (myear && y) ? Math.max(0, 1 - Math.abs(myear - y) / 25) : 0.4;
             o.s = o.w * 2 + jac * 4 + ((x.vote_average || 0) - 5) * 0.8 + Math.min(Math.log(((x.vote_count || 0) + 1)) / Math.LN10, 4) * 0.7 +
-                (x.original_language && x.original_language === m.original_language ? 0.8 : 0) + near;
+                (x.original_language && x.original_language === m.original_language ? 0.8 : 0) + near + (o.kin ? 8 : 0) - (o.cross ? 1.2 : 0);
         });
         list.sort(function (a, b) { return b.s - a.s; });
         var out = list.slice(0, 20).map(function (o) { return o.x; });
