@@ -578,6 +578,8 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('lmx_uac', true, 'UA Коментарі', 'Кнопка «Коментарі (N)» на сторінці фільму: українські коментарі й рецензії з UaKino, UAFlix, UASerials і KinoBaza через сервер lampaua.mooo.com. Якщо окремий плагін «UA Comments» уже встановлено, кнопка не дублюється', null);
+        UAC_SRC.forEach(function (x) { H.trigger('lmx_uac_' + x[0], true, 'Коментарі: ' + x[1], 'Шукати коментарі на ' + x[2], null); });
         H.trigger('lmx_tint', true, 'Колір постера (тема «Скло»)', 'Аврора, підсвічування кнопок і розділів на сторінці фільму беруть колір із постера', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
@@ -4452,6 +4454,128 @@
         marksButtons.cur = function () { if (document.body.contains(later[0])) paintAll(); };
     }
 
+    // ===== UA Коментарі: кнопка «Коментарі (N)» на сторінці фільму + вікно перегляду. Дані дає серверний API Lampac (lite/uacomments/fetch): UaKino, UAFlix, UASerials, KinoBaza =====
+    var UAC_URL = 'http://lampaua.mooo.com/lite/uacomments/fetch';
+    var UAC_SRC = [['uakino', 'UaKino', 'uakino.best'], ['uaflix', 'UAFlix', 'uafix.net'], ['uaserials', 'UASerials', 'uaserials.com'], ['kinobaza', 'KinoBaza', 'kinobaza.com.ua']];
+    var UAC_ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+    var uacMemo = {}, uacPend = {}, uacV = { on: false, root: null, list: [], i: 0, prev: '' };
+    function uacCss() {
+        if (document.getElementById('lmx-uac-css')) return;
+        var st = document.createElement('style'); st.id = 'lmx-uac-css';
+        st.textContent =
+            '.lmx-uac-off{opacity:.55}' +
+            '.lmx-uac-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);opacity:0;transition:opacity .2s ease}' +
+            '.lmx-uac-ov.show{opacity:1}' +
+            '.lmx-uac-md{width:min(56em,92vw);height:80vh;max-height:60em;display:flex;flex-direction:column;overflow:hidden;border-radius:1.4em;background:#15171e;color:#f2f3f7;box-shadow:0 1em 3em rgba(0,0,0,.55)}' +
+            '.lmx-uac-hd{display:flex;align-items:center;gap:1em;padding:1em 1.3em;border-bottom:1px solid rgba(255,255,255,.08)}' +
+            '.lmx-uac-meta{flex:1;min-width:0}' +
+            '.lmx-uac-src{font-size:.8em;opacity:.65;letter-spacing:.02em}' +
+            '.lmx-uac-au{font-size:1.15em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.lmx-uac-cn{opacity:.6;font-weight:600;min-width:5.5ch;text-align:right}' +
+            '.lmx-uac-ar,.lmx-uac-x{width:2.6em;height:2.6em;border-radius:.9em;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.09);transition:transform .15s ease,background .15s ease}' +
+            '.lmx-uac-ar{opacity:.35}.lmx-uac-ar.on{opacity:1;cursor:pointer}' +
+            '.lmx-uac-x.focus{background:rgba(255,255,255,.28);transform:scale(1.06)}' +
+            '.lmx-uac-tx{flex:1;min-height:0;overflow-y:auto;padding:1.4em 1.5em;font-size:1.2em;line-height:1.6;white-space:normal}' +
+            '.lmx-uac-tx::-webkit-scrollbar{width:.45em}.lmx-uac-tx::-webkit-scrollbar-thumb{background:rgba(255,255,255,.28);border-radius:1em}' +
+            'body.lmx-prem .lmx-uac-md{background:#0e0e12;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 1em 3em rgba(0,0,0,.7);border-radius:1em}' +
+            'body.lmx-prem .lmx-uac-x.focus{background:#fff;color:#111}' +
+            'body.lmx-apple .lmx-uac-ov{background:rgba(8,8,10,.55)}' +
+            'body.lmx-apple .lmx-uac-md{background:rgba(34,34,40,.78);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1em 3em rgba(0,0,0,.45);border-radius:1.7em}' +
+            'body.lmx-apple .lmx-uac-hd{border-bottom-color:rgba(255,255,255,.1)}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function uacSrcList() { return UAC_SRC.filter(function (x) { return getBool('lmx_uac_' + x[0], true); }).map(function (x) { return x[0]; }); }
+    function uacFetch(m, done) {
+        var srcs = uacSrcList();
+        if (!srcs.length) return done([]);
+        var title = m.title || m.name || '', orig = m.original_title || m.original_name || '', year = String(m.release_date || m.first_air_date || '').slice(0, 4);
+        var q = [];
+        if (m.imdb_id) q.push('imdb_id=' + encodeURIComponent(m.imdb_id));
+        if (title) q.push('title=' + encodeURIComponent(title));
+        if (orig && orig.toLowerCase() !== title.toLowerCase()) q.push('original_title=' + encodeURIComponent(orig));
+        if (year) q.push('year=' + encodeURIComponent(year));
+        q.push('sources=' + encodeURIComponent(srcs.join(',')));
+        var key = [m.imdb_id, title, orig, year, srcs.join(',')].join('|').toLowerCase();
+        var hit = uacMemo[key];
+        if (hit && hit.exp > Date.now()) return done(hit.list.slice());
+        if (uacPend[key]) { uacPend[key].push(done); return; }
+        uacPend[key] = [done];
+        function fin(list) {
+            list = Array.isArray(list) ? list.filter(function (x) { return x && x.text; }) : [];
+            uacMemo[key] = { list: list, exp: Date.now() + (list.length ? 600000 : 120000) };
+            var cbs = uacPend[key] || []; delete uacPend[key];
+            cbs.forEach(function (cb) { try { cb(list.slice()); } catch (e) {} });
+        }
+        $.ajax({ url: (getStr('lmx_uac_url', '') || UAC_URL) + '?' + q.join('&'), method: 'GET', timeout: 22000, dataType: 'json', success: fin, error: function () { fin([]); } });
+    }
+    function uacClose() {
+        if (!uacV.on) return;
+        uacV.on = false;
+        var root = uacV.root; uacV.root = null;
+        if (root) { root.removeClass('show'); setTimeout(function () { root.remove(); }, 220); }
+        try { if (uacV.prev) Lampa.Controller.toggle(uacV.prev); } catch (e) {}
+    }
+    function uacDraw() {
+        if (!uacV.on || !uacV.root) return;
+        var c = uacV.list[uacV.i] || {}, r = uacV.root;
+        r.find('.lmx-uac-src').text(c.source ? (c.source === 'KinoBaza' && c.isReview ? 'KinoBaza: рецензія' : c.source) : 'Джерело');
+        r.find('.lmx-uac-au').text(c.author || 'Користувач');
+        r.find('.lmx-uac-cn').text((uacV.i + 1) + ' / ' + uacV.list.length);
+        r.find('.lmx-uac-tx').html(String(c.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')).scrollTop(0);
+        r.find('.lmx-uac-l').toggleClass('on', uacV.i > 0);
+        r.find('.lmx-uac-r').toggleClass('on', uacV.i < uacV.list.length - 1);
+    }
+    function uacStep(d) { var n = uacV.i + d; if (n < 0 || n >= uacV.list.length) return; uacV.i = n; uacDraw(); }
+    function uacOpen(list) {
+        uacClose();
+        uacCss();
+        uacV.on = true; uacV.list = list; uacV.i = 0; uacV.prev = '';
+        try { uacV.prev = (Lampa.Controller.enabled() || {}).name || ''; } catch (e) {}
+        var root = $('<div class="lmx-uac-ov"><div class="lmx-uac-md"><div class="lmx-uac-hd">' +
+            '<div class="lmx-uac-ar lmx-uac-l">&#9664;</div><div class="lmx-uac-meta"><div class="lmx-uac-src"></div><div class="lmx-uac-au"></div></div>' +
+            '<div class="lmx-uac-cn"></div><div class="lmx-uac-ar lmx-uac-r">&#9654;</div><div class="lmx-uac-x selector">&#10005;</div></div>' +
+            '<div class="lmx-uac-tx"></div></div></div>');
+        uacV.root = root;
+        $('body').append(root);
+        setTimeout(function () { if (uacV.root) uacV.root.addClass('show'); }, 10);
+        root.find('.lmx-uac-x').on('hover:enter click', uacClose);
+        root.find('.lmx-uac-l').on('click', function () { uacStep(-1); });
+        root.find('.lmx-uac-r').on('click', function () { uacStep(1); });
+        try {
+            Lampa.Controller.add('lmx_uac', {
+                toggle: function () { Lampa.Controller.collectionSet(root); Lampa.Controller.collectionFocus(root.find('.lmx-uac-x')[0], root); },
+                up: function () { var b = root.find('.lmx-uac-tx'); b.scrollTop(b.scrollTop() - 180); },
+                down: function () { var b = root.find('.lmx-uac-tx'); b.scrollTop(b.scrollTop() + 180); },
+                left: function () { uacStep(-1); },
+                right: function () { uacStep(1); },
+                back: uacClose
+            });
+            Lampa.Controller.toggle('lmx_uac');
+        } catch (e) {}
+        uacDraw();
+    }
+    function uacButton(r, m) {
+        if (!getBool('lmx_uac', true) || !m || !m.id || window.__uacomments_plugin_started) return;   // якщо стоїть окремий плагін «UA Comments» — не дублюємо
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        if (!cont.length || cont.find('.button--lmxuac').length) return;
+        var el = $('<div class="full-start__button selector button--lmxuac">' + UAC_ICON + '<span>Коментарі…</span></div>'), list = null;
+        function label(t, off) { el.find('span').text(t); el[0].__lmxT = t; el[0].classList.toggle('lmx-uac-off', !!off); }
+        el[0].__lmxT = 'Коментарі';
+        el.on('hover:enter click', function () {
+            if (list === null) { if (Lampa.Noty) Lampa.Noty.show('Шукаємо коментарі…'); return; }
+            if (!list.length) { if (Lampa.Noty) Lampa.Noty.show('Коментарів не знайдено'); return; }
+            uacOpen(list);
+        });
+        var after = cont.find('.lmx-mk-later').first();
+        if (!after.length) after = cont.find('.lmx-likebtn').first();
+        if (after.length) after.after(el); else cont.append(el);
+        uacFetch(m, function (res) {
+            list = res;
+            if (!document.body.contains(el[0])) return;
+            label(res.length ? 'Коментарі (' + res.length + ')' : 'Коментарів немає', !res.length);
+        });
+    }
+
     // ===== Колір постера для сторінки фільму (тема «Скло»): один раз зменшуємо картинку й беремо найнасиченіший колір =====
     var tintCache = {};
     function tintTL() {
@@ -4692,6 +4816,7 @@
         safe(function () { studioRow(e, m); });
         safe(function () { likeButton(r, m); });
         safe(function () { marksButtons(r, m); });
+        safe(function () { uacButton(r, m); });
         safe(function () { btnsOnFull(r); });
         safe(function () { resumeNow(r, m); });
         safe(function () { posterTint(r, m); });
@@ -4787,7 +4912,7 @@
         ['#4caf50', 'Зелений'], ['#26c6da', 'Бірюзовий'], ['#42a5f5', 'Блакитний'], ['#7e57c2', 'Фіолетовий'], ['#ec407a', 'Рожевий']];
     var BTN_LOOKS = [['', 'Стандартний'], ['icons', 'Усі компактні (1)'], ['full', 'Усі з підписом (3)']];
     var BTN_NAMES = { 'button--book': 'Закладки', 'button--reaction': 'Реакції', 'button--subscribe': 'Підписатися', 'button--options': 'Опції',
-        'button--play': 'Дивитись', 'button--lmxlike': 'Подобається', 'button--lmxlater': 'Дивитись пізніше', 'button--lmxseen': 'Переглянуто', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
+        'button--play': 'Дивитись', 'button--lmxlike': 'Подобається', 'button--lmxlater': 'Дивитись пізніше', 'button--lmxseen': 'Переглянуто', 'button--lmxuac': 'Коментарі', 'view--trailer': 'Трейлери', 'view--torrent': 'Торренти', 'view--online': 'Онлайн' };
     var PENCIL = BI('<path d="M4 20l1-4 11-11 3 3L8 19z"/>');
     var IMGI = BI('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 9"/>');
     var PALI = BI('<path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2s0-2 1.5-2h2a3 3 0 003-3c0-6-4-11-8-11z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="11" r="1"/>');
@@ -6092,7 +6217,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.549';
+    var VERSION = '10.550';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
