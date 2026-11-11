@@ -2946,6 +2946,8 @@
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка (B2): вордмарк, рубрика, мета з бейджами, біла «Дивитись» + скляні кнопки, епізоди-картки
             F + '.full-start__background{opacity:.85 !important}' +
+            // при спуску вниз фон приглушується (стандартний клас dim; наш opacity його перебивав) — помірно, не до чорного
+            F + '.full-start__background.dim{opacity:.5 !important}' +
             F + '.full-start-new__right{max-width:50%}' +
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:1;font-size:4.2em;margin-bottom:.25em}' +
             // є логотип — текстової назви немає (інакше вона дублюється); немає — лишається назва
@@ -6059,7 +6061,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.497';
+    var VERSION = '10.498';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
