@@ -2840,8 +2840,10 @@
             T + '.settings-param-title.focus,' + T + '.simple-button.focus,' + T + '.full-person.focus,' +
             T + '.head__action.focus,' + T + '.head__action.hover,' + T + '.lmx-ord__btn.focus,' + T + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.2) !important;color:#fff !important}' +
-            T + '.selectbox,' + T + '.settings,' + T + '.menu{background:#0c0c10}' +
-            T + '.settings__content,' + T + '.selectbox__content,' + T + '.modal__content,' + T + '.menu,' + T + '.wrap__left{background:#0e0e12 !important}' +
+            T + '.selectbox,' + T + '.settings{background:#0c0c10}' +
+            T + '.settings__content,' + T + '.selectbox__content,' + T + '.modal__content{background:#0e0e12 !important}' +
+            // бокове меню — без власної заливки: крізь нього той самий фон сторінки, що й на головній, межі немає
+            T + '.menu,' + T + '.wrap__left{background:transparent !important;box-shadow:none !important;border:0 !important}' +
             T + '.modal__content{background:#121216}' +
             // ===== сторінка фільму =====
             F + '.full-start__background{opacity:.35 !important}' +
@@ -3122,11 +3124,6 @@
             // бокове меню — повністю прозоре: крізь нього видно той самий фіксований фон-аврору, тож межі між меню й сторінкою немає
             A + '.wrap__left{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:none !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
-            // меню відкривається поверх сторінки, а не зсуває її на 15em: зсув усієї сторінки з великою афішею на ТВ «смикав» картинку. Читабельність дає м'який темний градієнт зліва
-            A + '.wrap__content{transform:none !important;transition:none !important}' +
-            'body.lmx-apple.menu--open .wrap__left::before{content:"";position:absolute;top:0;bottom:0;left:0;right:-5em;z-index:-1;background:linear-gradient(90deg,rgba(12,12,15,.9) 0%,rgba(12,12,15,.82) 70%,rgba(12,12,15,0) 100%);-webkit-mask-image:linear-gradient(90deg,#000 0,#000 72%,transparent 100%);mask-image:linear-gradient(90deg,#000 0,#000 72%,transparent 100%)}' +
-            // якщо ТВ уміє розмиття підкладки — справжнє матове скло з м'яким краєм замість чорної плашки
-            '@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){body.lmx-apple.menu--open .wrap__left::before{background:linear-gradient(90deg,rgba(24,24,30,.58) 0%,rgba(24,24,30,.5) 70%,rgba(24,24,30,0) 100%);-webkit-backdrop-filter:blur(34px) saturate(1.5);backdrop-filter:blur(34px) saturate(1.5)}}' +
             A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
@@ -6092,7 +6089,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.544';
+    var VERSION = '10.545';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
