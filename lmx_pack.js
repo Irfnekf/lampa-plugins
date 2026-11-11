@@ -6560,7 +6560,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.573';
+    var VERSION = '10.574';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7463,15 +7463,24 @@
         nocub_account: ['.menu__item[data-action="account"]', '.settings-folder[data-component="account"]', '.head__action.open--profile'],
         nocub_subscribe: ['.button--subscribe', '.full-start__button.view--subscribe'],
         nocub_shots: ['.shots-view-button', '.shots-player-button', '.shots-player-segments', '.shots-player-recorder', '.settings-folder[data-component="shots"]'],
-        nocub_promo: PROMO.reduce(function (acc, w) { acc.push('[class^="' + w + '"]', '[class*=" ' + w + '"]'); return acc; }, [])
+        nocub_promo: []   // акційні плашки шукає scanPromo (один regexp у шапці/меню/корені), а не 34 атрибутних селектори в CSS: ті браузер перевіряє для кожного елемента при кожному перерахунку стилів
     };
+    var PROMO_RE = new RegExp('(^|\\s)(?:' + PROMO.join('|') + ')');
+    function scanPromo() {
+        var els = document.querySelectorAll('.head [class], .menu [class], .wrap__left [class], body > [class]');
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i], c = el.getAttribute('class') || '';
+            if (c.indexOf('nocub-hide') >= 0 && el.getAttribute('data-nocub')) continue;
+            if (PROMO_RE.test(c)) mark(el, 'nocub_promo');
+        }
+    }
     var HIDE = '{display:none !important}';
     // Правила лише для ввімкнених перемикачів: селектори на кшталт [class*="sale"] браузер перевіряє для КОЖНОГО елемента сторінки при кожному перерахунку стилів, навіть якщо перемикач вимкнено
     var lastCss = null;
     function css() {
         var out = '';
         Object.keys(CSS).forEach(function (k) {
-            if (!on(k)) return;
+            if (!on(k) || !CSS[k].length) return;
             out += CSS[k].map(function (s) { return 'body.' + k + ' ' + s; }).join(',') + HIDE;
         });
         return out + '.nocub-hide' + HIDE;
@@ -7508,6 +7517,7 @@
     }
     function scanCss() {
         Object.keys(CSS).forEach(function (k) {
+            if (!CSS[k].length) return;
             var active = on(k);
             var sel = active ? CSS[k].join(',') : '[data-nocub="' + k + '"]'; // вимкнений перемикач: шукаємо лише вже позначені елементи, щоб їх повернути
             var els;
@@ -7575,6 +7585,7 @@
         if (any) safe(fixSettingsFocus);
         if (!any && !document.querySelector('.nocub-hide')) return;
         scanCss();
+        scanPromo();
         scanStrict();
         TEXT.forEach(function (rule) {
             var active = on(rule.key);
