@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.535';
+    var VERSION = '10.536';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6663,7 +6663,7 @@
             if (!b) return;
             var on = false;
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
-                var st = document.querySelector('.full-start-new') || document.querySelector('.full-start');
+                var st = document.querySelector('.activity--active .full-start-new') || document.querySelector('.activity--active .full-start');   // саме активної сторінки: після переходу з «Схожого» стара сторінка ще в DOM і її зсунутий верх лишав розмиття
                 if (st) { var tp = st.getBoundingClientRect().top / window.innerHeight; on = b.classList.contains('lmx-fscroll') ? tp < -0.06 : tp < -0.15; }   // гістерезис: біля межі фон не смикається туди-сюди
             }
             if (b.classList.contains('lmx-fscroll') !== on) b.classList.toggle('lmx-fscroll', on);
