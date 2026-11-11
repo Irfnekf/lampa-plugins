@@ -3124,10 +3124,10 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
+            F + '.full-start__background{will-change:filter,opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.23 !important}' +
-            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.1 !important;filter:none !important;transition:opacity .2s linear !important}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.2 !important;filter:blur(1.1em) !important;transform:scale(1.12) !important;transition:opacity .2s linear !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.521';
+    var VERSION = '10.522';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6348,6 +6348,8 @@
         var st = document.createElement('style'); st.id = 'lmx-fullx-css';
         st.textContent =
             // спільне: без «пігулки» з білою заливкою у фокусі — кільце на фото
+            // запас унизу сторінки: рядки створюються поступово, і без запасу перший же «вниз» не міг підняти трейлери до верху (кнопки лишались видимі)
+            'body.lmx-onfull .layer--wheight .scroll:not(.scroll--horizontal) > .scroll__content > .scroll__body::after{content:"";display:block;height:70vh}' +
             '.lmx-people .full-person,.lmx-trl .full-person{flex-direction:column;align-items:flex-start;background:none !important;color:inherit !important;padding:0 1.1em 0 0;font-size:1em}' +
             '.lmx-people .full-person__photo,.lmx-trl .full-person__photo{margin:0 0 .7em;position:relative}' +
             '.lmx-people .full-person__photo>img,.lmx-trl .full-person__photo>img{width:100%;height:100%;object-fit:cover}' +
