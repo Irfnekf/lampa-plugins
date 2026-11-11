@@ -4569,7 +4569,17 @@
         pos = Math.max(built, pos + 1);
         if (pos > rows.length) pos = rows.length;
         studioHook();
-        rows.splice(pos, 0, ['persons', { results: out, title: tv ? 'Студії та канали' : 'Студії', __lmxStudios: 1 }]);
+        var srow = ['persons', { results: out, title: tv ? 'Студії та канали' : 'Студії', __lmxStudios: 1 }];
+        // «Додаткова інформація» вже згорнула актори — студії теж ховаємо в смужку, а не вставляємо в сторінку
+        var mb = rows.filter(function (r) { return Array.isArray(r) && r[0] === 'description' && r[1] && r[1].lmxMore; })[0];
+        if (mb) {
+            var mm = mb[1].lmxMore;
+            mm.rows.push(srow); mm.nS = (mm.nS || 0) + out.length;
+            if (mm.open) rows.push(srow);
+            if (mm.upd) mm.upd();
+            return;
+        }
+        rows.splice(pos, 0, srow);
     }
 
     // «Продовжити» з головної: після відкриття сторінки натискаємо кнопку «Дивитись» (до 4 спроб — кнопку онлайн-плагіна додають із запізненням)
@@ -6074,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.531';
+    var VERSION = '10.532';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6697,19 +6707,25 @@
         body.empty().append(bar);
         item.last = bar[0];
         var open = false;
+        m.upd = function () {
+            var l = [];
+            if (m.nA) l.push('Актори · ' + m.nA);
+            if (m.nS) l.push('Студії · ' + m.nS);
+            bar.find('.lmx-more__n').html(l.join('&nbsp;&nbsp;&nbsp;'));
+        };
         bar.on('hover:focus hover:hover hover:touch', function () { item.last = bar[0]; });
         bar.on('hover:enter', function () {
             var bi = lk.rows.indexOf(lk.rows.filter(function (r) { return Array.isArray(r) && r[1] === d; })[0]), i;
             if (bi < 0) return;
             if (!open) {
-                open = true;
+                open = true; m.open = true;
                 bar.addClass('lmx-more--open');
                 m.rows.forEach(function (r) { lk.rows.push(r); });
                 var v = lk.view; lk.view = 99;
                 try { lk.emit('scroll', 0); } catch (x) {}
                 lk.view = v;
             } else {
-                open = false;
+                open = false; m.open = false;
                 bar.removeClass('lmx-more--open');
                 for (i = lk.items.length - 1; i > bi; i--) { try { lk.items[i].destroy(); } catch (x) {} lk.items.splice(i, 1); }
                 lk.rows.length = bi + 1;
