@@ -538,7 +538,6 @@
         H.title('lmx_t_look', 'Зовнішній вигляд');
         H.select('lmx_theme', { prem: 'Кіно', apple: 'Скло', 'default': 'Полегшена' }, 'prem', 'Тема',
             'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — як у стрімінгових сервісах: афіша з великою назвою, темні плитки каталогів, біла рамка у фокусі; Скло — напівпрозорі скляні панелі на темному кольоровому тлі; Полегшена — найпростіша й найлегша для слабких пристроїв. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
-        H.select('lmx_focus_mark', { line: 'Підкреслення', dot: 'Крапка', glow: 'Підсвічування', none: 'Без позначки' }, 'line', 'Позначка картки у фокусі (Скло)', 'У темі Скло картка в фокусі збільшується; додатково під нею можна показати підкреслення, крапку або м’яке підсвічування', function () { setTimeout(function () { safe(focusMark); }, 50); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
 
         // ---- Головна ----
@@ -3026,13 +3025,10 @@
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus{z-index:3}' +
-            // позначка картки у фокусі (налаштування «Позначка картки у фокусі»)
-            'body.lmx-apple.lmx-fm-line .card.focus:not(.card--lmxhero) .card__view,body.lmx-apple.lmx-fm-dot .card.focus:not(.card--lmxhero) .card__view{position:relative}' +
-            'body.lmx-apple.lmx-fm-line .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
-            'body.lmx-apple.lmx-fm-dot .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:50%;margin-left:-.3em;bottom:-.95em;width:.6em;height:.6em;border-radius:50%;background:#fff;z-index:4}' +
-            'body.lmx-apple.lmx-fm-line .card--lmxhist.focus .card__view::before,body.lmx-apple.lmx-fm-line .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
-            'body.lmx-apple.lmx-fm-dot .card--lmxhist.focus .card__view::before,body.lmx-apple.lmx-fm-dot .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
-            'body.lmx-apple.lmx-fm-glow .card.focus:not(.card--lmxhero) .card__view{box-shadow:0 0 1.8em rgba(255,255,255,.38) !important}' +
+            // позначка картки у фокусі — підкреслення під карткою
+            'body.lmx-apple .card.focus:not(.card--lmxhero) .card__view{position:relative}' +
+            'body.lmx-apple .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
+            'body.lmx-apple .card--lmxhist.focus .card__view::before,body.lmx-apple .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
             // у «Склі» жодних ободків на картках (історія, каталоги, ряди): лише збільшення; ні рідна рамка Lampa, ні рухома .lmx-sel не показуються
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after,' + A + '.lmx-sel{display:none !important;border:0 !important;box-shadow:none !important}' +
             A + '.card--lmxhist.focus .card__view,' + A + '.card--lmxhist.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:none !important;outline:0 !important;border-color:transparent !important}' +
@@ -6078,7 +6074,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.515';
+    var VERSION = '10.516';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6629,12 +6625,6 @@
         bg.after(d);
         try { var im = new Image(); im.src = u; } catch (x) {}
     }
-    // позначка картки у фокусі (тема Скло): підкреслення / крапка / підсвічування / немає
-    function focusMark() {
-        var b = document.body, v = getStr('lmx_focus_mark', 'line');
-        if (!b) return;
-        ['line', 'dot', 'glow', 'none'].forEach(function (k) { b.classList.toggle('lmx-fm-' + k, k === v); });
-    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6709,7 +6699,6 @@
         safe(statsMenu);
         safe(initFullExtras);
         safe(adultPages);
-        safe(focusMark);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
