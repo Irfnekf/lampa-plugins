@@ -551,6 +551,7 @@
         H.trigger('lmx_coll_order', true, 'Колекція: порядок перегляду', 'Ряд «Колекція» на сторінці фільму: частини франшизи за порядком виходу з номерами, позначкою «Ви тут», «Далі» й галочкою переглянутого. Діє після перезапуску', null);
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
+        H.trigger('lmx_rows_end', true, 'Склад і студії в кінці сторінки', 'Порядок рядів на сторінці фільму: колекція та схоже вище, акторський склад і студії — в самому кінці. Діє після перезапуску', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -6058,7 +6059,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.496';
+    var VERSION = '10.497';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6508,6 +6509,24 @@
         data.simular = { results: out, nomore: true, lmxSim: true };
         data.recomend = null;
     }
+    // ===== Порядок рядів на сторінці фільму: … → колекція → схоже → акторський склад → студії =====
+    function reorderRows(rows) {
+        var kind = function (r) {
+            if (!Array.isArray(r)) return 0;
+            var n = r[0], d = r[1] || {};
+            if (n === 'persons' && d.lmxTrailers) return 0;
+            if (n === 'persons' && d.__lmxStudios) return 5;
+            if (n === 'persons') return 4;
+            if (n === 'cards' && d.lmxColl) return 1;
+            if (n === 'cards') return 2;
+            return 0;
+        };
+        var keep = [], b = { 1: [], 2: [], 4: [], 5: [] };
+        rows.forEach(function (r) { var k = kind(r); if (k) b[k].push(r); else keep.push(r); });
+        var out = keep.concat(b[1], b[2], b[4], b[5]);
+        rows.length = 0;
+        out.forEach(function (r) { rows.push(r); });
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6529,6 +6548,14 @@
                     }
                     if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
                     if (!adult && getBool('lmx_sim_better', true)) safe(function () { simPrepare(e.data); });
+                    if (!adult && getBool('lmx_rows_end', true) && e.link && Array.isArray(e.link.rows) && typeof e.link.build === 'function') {
+                        var lk = e.link, ob = lk.build;
+                        lk.build = function () {
+                            lk.build = ob;
+                            safe(function () { reorderRows(lk.rows); });
+                            return ob.call(this, lk.rows.slice(0, lk.view || arguments[0].length));
+                        };
+                    }
                     if (!adult && getBool('lmx_hide_descr_row', true) && e.link && Array.isArray(e.link.rows)) {
                         var di = e.link.rows.indexOf('description');
                         if (di >= 0) e.link.rows.splice(di, 1);
