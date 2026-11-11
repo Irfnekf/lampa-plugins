@@ -4598,6 +4598,13 @@
         window.addEventListener('keydown', function (ev) {
             var k = ev.keyCode;
             if (!(k === 38 || k === 40 || ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) return;
+            if ((k === 40 || ev.key === 'ArrowDown') && !document.querySelector('.modal')) {
+                var dd = document.querySelector('.lmx-descr--btn.focus');
+                if (dd) {
+                    var rr = window.$(dd).closest('.full-start-new, .full-start').parent(), ww = rr.length ? firstBtn(rr) : null;
+                    if (ww) { ev.preventDefault(); ev.stopImmediatePropagation(); focusBtn(rr, ww); return; }
+                }
+            }
             safe(function () {
                 if (document.querySelector('.modal')) return;
                 var cur = document.querySelector('.selector.focus');
@@ -6048,7 +6055,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.492';
+    var VERSION = '10.493';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6428,8 +6435,15 @@
                         var di = e.link.rows.indexOf('description');
                         if (di >= 0) e.link.rows.splice(di, 1);
                     }
-                } else if (e.type === 'build' && e.name === 'start' && getBool('lmx_hide_trl_btn', true)) {
-                    safe(function () { $(e.body).find('.view--trailer').remove(); });
+                } else if (e.type === 'build' && e.name === 'start') {
+                    if (getBool('lmx_hide_trl_btn', true)) safe(function () { $(e.body).find('.view--trailer').remove(); });
+                    // Lampa при поверненні на блок кнопок ставить фокус на «останню» кнопку (this.last) — підміняємо її на першу
+                    safe(function () {
+                        e.item.use({ onGroupButtons: function () {
+                            var w = this.html ? firstBtn(this.html) : null;
+                            if (w) this.last = w;
+                        } });
+                    });
                 } else if (e.type === 'complite' && getBool('lmx_hide_trl_btn', true)) {
                     var rr = e.object && e.object.activity && e.object.activity.render ? e.object.activity.render() : null;
                     var hideB = function () { if (rr) rr.find('.view--trailer').remove(); };
