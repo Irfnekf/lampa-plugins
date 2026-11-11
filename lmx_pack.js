@@ -3127,7 +3127,7 @@
             F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.23 !important}' +
-            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.17 !important;filter:blur(1.2em) !important;transition:opacity .2s linear !important}' +
+            'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:.1 !important;filter:none !important;transition:opacity .2s linear !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.520';
+    var VERSION = '10.521';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
