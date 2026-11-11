@@ -2992,12 +2992,12 @@
         var GRAY = '#a1a1a6';
         var GLASS = 'rgba(255,255,255,.13)';
         // «скло»: темне кольорове тло з розмитими плямами світла, поверх — напівпрозорі панелі з тонкою світлою гранню
-        var AURORA = 'radial-gradient(75vw 60vh at 14% 6%,rgba(92,96,150,.26),rgba(92,96,150,0) 65%),radial-gradient(60vw 50vh at 90% 14%,rgba(70,120,150,.12),rgba(70,120,150,0) 65%),radial-gradient(70vw 60vh at 70% 100%,rgba(110,80,130,.14),rgba(110,80,130,0) 65%),linear-gradient(180deg,#15171e 0%,#0e1016 55%,#0a0b10 100%)';
+        var AURORA = 'radial-gradient(75vw 60vh at 14% 6%,rgba(120,124,134,.15),rgba(120,124,134,0) 65%),radial-gradient(60vw 50vh at 90% 14%,rgba(120,130,140,.07),rgba(120,130,140,0) 65%),radial-gradient(70vw 60vh at 70% 100%,rgba(120,120,125,.07),rgba(120,120,125,0) 65%),linear-gradient(180deg,#18191c 0%,#101113 55%,#0b0b0d 100%)';
         // сила кольору постера: [фон угорі, фон унизу, сяйво кнопки у спокої, сяйво/рамка у фокусі]
         var TL = tintTL();
         var RIM = 'inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.34)';
         return '' +
-            'html{background:#090b16 !important}' +
+            'html{background:#0b0b0d !important}' +
             A + '.background{display:none !important}' +
             // аврора — окремий статичний шар (малюється один раз і не перемальовується при русі карток; на ТВ це суттєво легше)
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
@@ -3010,7 +3010,7 @@
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n),body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary{box-shadow:0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             'body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button:first-child:not(.lmx-n).focus,body.lmx-apple.lmx-onfull.lmx-tint .full-start-new__buttons > .full-start__button.lmx-primary.lmx-primary.focus{box-shadow:0 0 0 .14em rgba(var(--lmx-acc),' + TL[3] + '),0 0 1.1em rgba(var(--lmx-acc),' + TL[2] + ') !important}' +
             // ряд при перелистуванні рухається цілим шаром, без перемальовування карток
-            A + '{background:#090b16 !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
+            A + '{background:#0b0b0d !important;color:#f5f5f7;font-family:-apple-system,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}' +
             A + '.activity,' + A + '.activity__body,' + A + '.wrap{background:transparent}' +
             // заголовки рядів
             A + '.items-line__title,' + A + '.items-line__head,' + A + '.items-line{background:none !important;box-shadow:none}' +
@@ -3018,25 +3018,24 @@
             A + '.items-line__more{background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);border-radius:99em;font-weight:600}' +
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
-            A + '.card__view{border-radius:1.2em;background:#191c2b;box-shadow:' + RIM + ';animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1) !important}' +
-            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.8),0 .45em .9em rgba(0,0,0,.5)}' +
+            A + '.card__view{border-radius:1.2em;background:#1c1c20;box-shadow:' + RIM + ';animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1) !important}' +
+            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 2px #fff}' +
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
-            A + '.card.focus:not(.card--lmxhero) .card__view::before,' + A + '.card.hover:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.08) 28%,rgba(255,255,255,0) 46%);pointer-events:none;z-index:2}' +
             A + '.card.focus{z-index:3}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
-            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.2em 1.2em;background:linear-gradient(to top,rgba(8,10,28,.9) 0%,rgba(8,10,28,.55) 45%,rgba(8,10,28,0) 100%)}' +
+            A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.2em 1.2em;background:linear-gradient(to top,rgba(10,10,12,.9) 0%,rgba(10,10,12,.55) 45%,rgba(10,10,12,0) 100%)}' +
             A + '.lmx-cin__t{font-size:1.15em;font-weight:600;letter-spacing:-.015em;line-height:1.15}' +
             A + '.lmx-cin__g{opacity:.6;text-transform:uppercase;letter-spacing:.08em;font-size:.58em;font-weight:600}' +
             A + '.lmx-cin__v{background:none;padding:0;font-weight:600;-webkit-text-fill-color:#f5f5f7}' +
             A + '.lmx-cin__v i{-webkit-text-fill-color:currentColor;font-style:normal}' +
             A + '.lmx-cin__y{opacity:.7;font-weight:500}' +
             // мітки — капсули
-            A + '.lmx-uaq{background:rgba(30,32,60,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);border-radius:0 .9em .9em 0;font-weight:700}' +
+            A + '.lmx-uaq{background:rgba(34,34,38,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);border-radius:0 .9em .9em 0;font-weight:700}' +
             A + '.lmx-uaq b{letter-spacing:.06em}' +
             A + '.lmx-pill{border:0 !important;border-radius:99em;font-weight:600;letter-spacing:.02em;padding:.34em .9em}' +
-            A + '.lmx-box .lmx-pill{background:rgba(30,32,60,.62) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#fff !important}' +
+            A + '.lmx-box .lmx-pill{background:rgba(34,34,38,.62) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#fff !important}' +
             A + '.lmx-pill.lmx-m-next{background:#0a84ff !important;color:#fff !important}' +
             A + '.lmx-pill.lmx-m-new{background:#f5f5f7 !important;color:#000 !important}' +
             A + '.lmx-pill.lmx-m-soon{background:rgba(255,255,255,.2) !important;color:#fff !important}' +
@@ -3050,7 +3049,7 @@
             A + '.card--lmxhero.focus .card__view::after,' + A + '.card--lmxhero.hover .card__view::after{display:none !important}' +
             // стрімінги: така сама анімація й тінь, як у карток фільмів (рамка не обрізає тінь)
             A + '.card--lmxstudio .card__view{overflow:visible !important}' +
-                        A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgb(10,12,24) 0%,rgba(10,12,24,.8) 14%,rgba(10,12,24,.3) 35%,rgba(10,12,24,0) 64%),linear-gradient(to bottom,rgba(30,32,66,.9) 0%,rgba(30,32,66,.46) 7%,rgba(30,32,66,0) 23%),linear-gradient(90deg,rgba(0,0,0,.56) 0%,rgba(0,0,0,.22) 34%,rgba(0,0,0,0) 62%)}' +
+                        A + '.card--lmxhero .lmx-hero__shade{height:100%;background:linear-gradient(to top,rgb(12,12,14) 0%,rgba(12,12,14,.8) 14%,rgba(12,12,14,.3) 35%,rgba(12,12,14,0) 64%),linear-gradient(to bottom,rgba(12,12,14,.7) 0%,rgba(12,12,14,.35) 7%,rgba(12,12,14,0) 23%),linear-gradient(90deg,rgba(0,0,0,.56) 0%,rgba(0,0,0,.22) 34%,rgba(0,0,0,0) 62%)}' +
             A + '.card--lmxhero .lmx-hero__text{left:4em;right:4em;bottom:3.6em;max-width:46%}' +
             A + '.card--lmxhero .lmx-hero__title{font-size:3.3em;font-weight:700;line-height:1.02;letter-spacing:-.03em;margin-bottom:.35em}' +
             A + '.card--lmxhero .lmx-hero__meta{font-size:1.05em;opacity:.9;font-weight:500}' +
@@ -3073,7 +3072,7 @@
             A + '.lmx-hero-line{position:relative}' +
             A + '.lmx-hero-line .items-line__head,' + A + '.lmx-hero-line .items-line__title{display:none !important}' +
             // сповіщення Lampa («Додано до…») у стилі теми «Скло»: напівпрозора плашка-таблетка внизу по центру
-            A + '.noty{left:50%;right:auto;bottom:2.4em;max-width:70vw;border-radius:99em;background:rgba(36,38,60,.92);color:#fff;border:1px solid rgba(255,255,255,.22);box-shadow:0 .6em 1.6em rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18);transform:translate(-50%,200%)}' +
+            A + '.noty{left:50%;right:auto;bottom:2.4em;max-width:70vw;border-radius:99em;background:rgba(38,38,42,.92);color:#fff;border:1px solid rgba(255,255,255,.22);box-shadow:0 .6em 1.6em rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18);transform:translate(-50%,200%)}' +
             A + '.noty--visible{transform:translate(-50%,0)}' +
             A + '.noty__body{padding:.75em 1.8em;text-align:center}' +
             A + '.noty__text{font-size:1.1em;font-weight:600}' +
@@ -3096,8 +3095,8 @@
             A + '.lmx-hero__btn{display:inline-block;padding:.75em 2em;border-radius:99em;background:#f5f5f7;color:#000;font-weight:600;font-size:1.08em}' +
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
             // ===== плитки стрімінгів — як канали Apple TV =====
-            A + '.card--lmxstudio .card__view{background:#222640 !important;border-radius:1.25em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.9),0 .5em 1.1em rgba(0,0,0,.5),0 0 1.1em rgba(130,150,255,.4) !important}' +
+            A + '.card--lmxstudio .card__view{background:#232326 !important;border-radius:1.25em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 2px #fff}' +
             A + '.lmx-studio__name{font-weight:600;letter-spacing:-.01em}' +
             // ===== шапка, меню, налаштування =====
             A + '.head__action{border-radius:50%;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
@@ -3107,8 +3106,8 @@
             A + '.settings-param-title.focus,' + A + '.simple-button.focus,' + A + '.full-person.focus,' +
             A + '.head__action.focus,' + A + '.head__action.hover,' + A + '.lmx-ord__btn.focus,' + A + '.lmx-ord__reset.focus' +
             '{background:rgba(255,255,255,.2) !important;color:#fff !important;box-shadow:none}' +
-                        A + '.selectbox,' + A + '.settings{background:rgba(6,8,20,.55)}' +
-            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:linear-gradient(180deg,rgba(20,22,50,.95) 0%,rgba(11,13,32,.97) 100%) !important;box-shadow:0 .8em 1.6em rgba(0,0,0,.4) !important;border:0 !important}' +
+                        A + '.selectbox,' + A + '.settings{background:rgba(8,8,10,.55)}' +
+            A + '.settings__content,' + A + '.selectbox__content,' + A + '.modal__content{background:linear-gradient(180deg,rgba(24,24,28,.95) 0%,rgba(14,14,17,.97) 100%) !important;box-shadow:0 .8em 1.6em rgba(0,0,0,.4) !important;border:0 !important}' +
             // бокове меню — повністю прозоре: крізь нього видно той самий фіксований фон-аврору, тож межі між меню й сторінкою немає
             A + '.wrap__left{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:none !important;border:0 !important}' +
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
@@ -3120,7 +3119,7 @@
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{filter:blur(1.1em) brightness(.55) !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
-            'body.lmx-apple.lmx-onfull{background:#080a14 !important}' +
+            'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%) !important;box-shadow:none !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
@@ -6064,7 +6063,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.507';
+    var VERSION = '10.508';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
