@@ -2606,6 +2606,9 @@
             QA + ' .full-start-new__rate-line:not(#lmx-x){margin:0 0 .8em 0 !important}' +
             QA + ' .full-start-new__rate-line > :first-child:not(#lmx-x){padding-left:.5em !important;margin-left:-.5em !important}' +
             QA + ' .full-start-new__details:not(#lmx-x){margin:0 0 .8em 0 !important;padding-left:0 !important;text-indent:0 !important}' +
+            QA + ' .full-start-new__details:not(#lmx-x){margin:0 0 .6em 0 !important}' +
+            QA + ' .full-start-new__details > *:not(#lmx-x){margin:.2em .45em !important}' +
+            QA + ' .full-start-new__details > :first-child:not(#lmx-x){margin-left:0 !important}' +
             QA + ' .lmx-info:not(#lmx-x){margin:0 0 .8em 0 !important}' +
             QA + ' > .lmx-descr:not(#lmx-x){margin:0 0 .8em -.9em !important}' +
             QA + ' > .full-start-new__reactions.lmx-rx:not(#lmx-x){margin:0 0 .9em 0 !important}' +
@@ -4085,6 +4088,8 @@
             var sc = lang === 'uk' ? 3 : (lang === 'en' ? 2 : (!lang ? 1 : 0));
             if (!sc) return;
             sc = sc * 1000 + (l.vote_average || 0) * 10 + Math.min(9, (l.width || 0) / 400);
+            // «стовпчик» (слова одне під одним) займає пів екрана — при інших рівних беремо широкий логотип
+            if (l.aspect_ratio && l.aspect_ratio < 1.7) sc -= 120;
             if (sc > bestScore) { bestScore = sc; best = l; }
         });
         return best && best.file_path;
@@ -6451,7 +6456,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.563';
+    var VERSION = '10.564';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
