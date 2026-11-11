@@ -2606,6 +2606,10 @@
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(18,18,24,.9) !important;box-shadow:0 0 0 .14em #fff !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.34) !important}' +
+            // Обрана реакція — просто залита світлим, без обводки
+            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.92) !important;box-shadow:none !important;color:#111 !important;-webkit-backdrop-filter:none;backdrop-filter:none}' +
+            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x) .lmx-rxi{color:#111;opacity:1}' +
+            'html body.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x) .reaction__count{color:#111 !important}' +
             // Єдина ліва межа й однакові вертикальні відступи для всіх блоків тексту (рейтинг, жанри, інфо, опис, реакції)
             QA + ' .full-start-new__rate-line:not(#lmx-x){margin:0 0 .8em 0 !important}' +
             QA + ' .full-start-new__rate-line > :first-child:not(#lmx-x){padding-left:.5em !important;margin-left:-.5em !important}' +
@@ -6478,7 +6482,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.566';
+    var VERSION = '10.567';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
