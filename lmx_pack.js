@@ -553,6 +553,7 @@
         H.trigger('lmx_sim_better', true, 'Схоже: кращий добір', 'Замість рядів «Рекомендації» і «Схоже» — один ряд «Схоже»: поєднання рекомендацій і схожих за жанрами, оцінкою та епохою, без частин цієї ж колекції. Діє після перезапуску', null);
         H.trigger('lmx_rows_end', true, 'Склад і студії в кінці сторінки', 'Порядок рядів на сторінці фільму: колекція та схоже вище, акторський склад і студії — в самому кінці. Діє після перезапуску', null);
         H.trigger('lmx_adult_pages', true, 'Повні сторінки фільмів 18+', 'Показувати акторів, колекцію, трейлери та інші ряди й на фільмах із позначкою «Контент для дорослих» (вмикає відповідний параметр Lampa). Вимкнено — Lampa ховатиме ці ряди й проситиме підтвердити вік', function () { setTimeout(function () { safe(adultPages); }, 50); });
+        H.trigger('lmx_related', true, 'Ряд «Пов’язане»', 'На сторінці фільму чи серіалу показувати пов’язані тайтли однієї історії: серіали й фільми «Зоряних воєн», «Гри престолів», «Відьмака» тощо (TMDB сам їх не зв’язує)', null);
         H.trigger('lmx_full_people', true, 'Режисер і актори в одному ряду', 'Один ряд «Акторський склад і знімальна група»: режисер першим, потім актори', null);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
@@ -6063,7 +6064,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.508';
+    var VERSION = '10.509';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6538,6 +6539,69 @@
         var want = getBool('lmx_adult_pages', true);
         try { if (Lampa.Storage.get('adult_content_view', false) !== want) Lampa.Storage.set('adult_content_view', want); } catch (e) {}
     }
+    // ===== «Пов'язане»: серіали й фільми однієї історії (TMDB їх між собою не пов'язує). Назви шукаються через TMDB і звіряються з оригінальною назвою, тож хибного збігу не буде — зайве просто пропускається =====
+    // t: серіал, m: фільм, c: уся колекція TMDB (id), |рік — для однойменних
+    var REL = [
+        ['c:10', 'm:The Mandalorian & Grogu', 't:The Mandalorian', 't:Andor', 't:Ahsoka', 't:Obi-Wan Kenobi', 't:The Book of Boba Fett', 't:The Acolyte', 't:Skeleton Crew', 't:Star Wars: The Clone Wars|2008', 't:Star Wars Rebels', 't:Star Wars: The Bad Batch', 't:Star Wars: Tales of the Jedi', 't:Star Wars: Visions'],
+        ['t:Breaking Bad', 't:Better Call Saul', 'm:El Camino: A Breaking Bad Movie'],
+        ['t:Game of Thrones', 't:House of the Dragon', 't:A Knight of the Seven Kingdoms'],
+        ['t:Peaky Blinders', 'm:Peaky Blinders: The Immortal Man'],
+        ['t:The Witcher', 't:The Witcher: Blood Origin', 'm:The Witcher: Nightmare of the Wolf', 'm:The Witcher: Sirens of the Deep'],
+        ['m:Dune|2021', 'm:Dune: Part Two', 't:Dune: Prophecy'],
+        ['t:Vikings', 't:Vikings: Valhalla'],
+        ['t:La casa de papel', 't:Berlín'],
+        ['t:Narcos', 't:Narcos: Mexico'],
+        ['t:The Boys', 't:Gen V', 't:The Boys Presents: Diabolical'],
+        ['t:The Walking Dead', 't:Fear the Walking Dead', 't:The Walking Dead: World Beyond', 't:The Walking Dead: Dead City', 't:The Walking Dead: Daryl Dixon', 't:The Walking Dead: The Ones Who Live']
+    ];
+    function relNorm(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9Ѐ-ӿ]+/g, ''); }
+    function relParse(x) { var m = x.match(/^(t|m|c):([^|]*)(?:\|(\d{4}))?$/); return m ? { k: m[1], n: m[2], y: m[3] || '' } : null; }
+    function relFind(mv) {
+        var kind = (mv.name || mv.first_air_date || mv.number_of_seasons) ? 't' : 'm';
+        var title = relNorm(mv.original_title || mv.original_name), year = String(mv.release_date || mv.first_air_date || '').slice(0, 4);
+        var col = mv.belongs_to_collection && mv.belongs_to_collection.id, i, j, e;
+        for (i = 0; i < REL.length; i++) for (j = 0; j < REL[i].length; j++) {
+            e = relParse(REL[i][j]);
+            if (!e) continue;
+            if (e.k === 'c') { if (col && String(col) === e.n) return REL[i]; continue; }
+            if (e.k === kind && relNorm(e.n) === title && (!e.y || e.y === year)) return REL[i];
+        }
+        return null;
+    }
+    function relPrepare(link, data) {
+        var mv = data && data.movie, grp = mv && relFind(mv);
+        if (!grp || !link || !Array.isArray(link.rows)) return;
+        var want = [], res = [], left, done = false;
+        grp.forEach(function (x) { var e = relParse(x); if (e && e.k !== 'c') want.push(e); });
+        left = want.length;
+        if (!left) return;
+        function fin() {
+            if (done || --left > 0) return;
+            done = true;
+            var seen = {}, list = [];
+            want.forEach(function (e, i) { var r = res[i]; if (r && r.id !== mv.id && !seen[r.id]) { seen[r.id] = 1; list.push(r); } });
+            if (!list.length) return;
+            // колекція — власний ряд; те, що вже в ній, у «Пов'язане» не дублюємо
+            var inColl = {};
+            ((data.collection && data.collection.parts) || []).forEach(function (x) { inColl[x.id] = 1; });
+            list = list.filter(function (r) { return !inColl[r.id] || r.name; });
+            if (!list.length || !Array.isArray(link.rows)) return;
+            var at = link.rows.length, k;
+            for (k = link.rows.length - 1; k >= 0; k--) { if (Array.isArray(link.rows[k]) && link.rows[k][0] === 'cards') { at = k + 1; break; } }
+            at = Math.max(at, (link.items && link.items.length) || 0);   // уже створені ряди не чіпаємо
+            link.rows.splice(at, 0, ['cards', { results: list, title: 'Пов’язане', nomore: true, lmxRel: true }]);
+        }
+        want.forEach(function (e, i) {
+            tget('search/' + (e.k === 't' ? 'tv' : 'movie') + '?query=' + encodeURIComponent(e.n), {}, function (j) {
+                var arr = (j && j.results) || [], n = relNorm(e.n), q;
+                for (q = 0; q < arr.length; q++) {
+                    var r = arr[q], rt = relNorm(r.original_title || r.original_name), ry = String(r.release_date || r.first_air_date || '').slice(0, 4);
+                    if (rt === n && (!e.y || ry === e.y)) { res[i] = r; break; }
+                }
+                fin();
+            }, fin);
+        });
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
@@ -6558,6 +6622,7 @@
                         }
                     }
                     if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
+                    if (!adult && getBool('lmx_related', true)) safe(function () { relPrepare(e.link, e.data); });
                     if (!adult && getBool('lmx_sim_better', true)) safe(function () { simPrepare(e.data); });
                     if (!adult && getBool('lmx_rows_end', true) && e.link && Array.isArray(e.link.rows) && typeof e.link.build === 'function') {
                         var lk = e.link, ob = lk.build;
