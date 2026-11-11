@@ -4569,6 +4569,34 @@
         })();
     }
     // Опис став вибираним елементом і стоїть вище кнопок — Lampa фокусує перший вибираний. Повертаємо фокус на «Дивитись»
+    function pickWatch(r) {
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
+        var w = cont.length ? watchBtnOf(cont) : null;
+        if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.hide,.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.lmx-mkbtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
+        return w;
+    }
+    function focusBtn(r, w) {
+        var done = false;
+        try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
+        if (!done || r.find('.lmx-descr--btn.focus').length) { r.find('.lmx-descr--btn').removeClass('focus'); window.$(w).addClass('focus'); }
+    }
+    // «вгору» з опису — на кнопку «Дивитись», а не на сусідню за геометрією
+    var upBound = false;
+    function bindDescrUp() {
+        if (upBound) return; upBound = true;
+        window.addEventListener('keydown', function (ev) {
+            if (!(ev.keyCode === 38 || ev.key === 'ArrowUp')) return;
+            safe(function () {
+                var d = document.querySelector('.lmx-descr--btn.focus');
+                if (!d || document.querySelector('.modal')) return;
+                var r = window.$(d).closest('.full-start-new, .full-start').parent();
+                var w = r.length ? pickWatch(r) : null;
+                if (!w) return;
+                ev.preventDefault(); ev.stopPropagation();
+                focusBtn(r, w);
+            });
+        }, true);
+    }
     function focusWatch(r) {
         var go = function () {
             safe(function () {
@@ -4631,7 +4659,7 @@
                 if (getBool('lmx_descr_btn', true)) {
                     dEl.addClass('selector lmx-descr--btn');
                     dEl.on('hover:enter click', function () { safe(function () { openDescr(m, txt); }); });
-                    safe(function () { focusWatch(r); });
+                    safe(function () { focusWatch(r); bindDescrUp(); });
                 }
                 var btns = r.find('.full-start-new__buttons').eq(0);
                 // у темі HBO опис стоїть у лівій колонці над кнопками, а не у куті
@@ -5982,7 +6010,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.483';
+    var VERSION = '10.484';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6324,9 +6352,11 @@
                         var di = e.link.rows.indexOf('description');
                         if (di >= 0) e.link.rows.splice(di, 1);
                     }
+                } else if (e.type === 'build' && e.name === 'start' && getBool('lmx_hide_trl_btn', true)) {
+                    safe(function () { $(e.body).find('.view--trailer').remove(); });
                 } else if (e.type === 'complite' && getBool('lmx_hide_trl_btn', true)) {
                     var rr = e.object && e.object.activity && e.object.activity.render ? e.object.activity.render() : null;
-                    var hideB = function () { if (rr) rr.find('.view--trailer').addClass('hide lmx-trlhide').removeClass('selector'); };
+                    var hideB = function () { if (rr) rr.find('.view--trailer').remove(); };
                     hideB(); [400, 1200, 2500].forEach(function (d) { setTimeout(function () { safe(hideB); }, d); });
                 } else if (e.type === 'build' && e.name === 'persons' && e.item && e.item.render) {
                     var d = e.data || {}, root = $(e.item.render(true));
