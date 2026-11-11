@@ -3097,7 +3097,8 @@
             A + '.lmx-hist__t{font-size:1.05em;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
             A + '.lmx-hist__m{display:flex;gap:1em;font-size:.82em;line-height:1.3;opacity:.85;margin-top:.55em}' +
             A + '.items-line .card:not(.card--lmxhero){margin-right:.9em}' +
-            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.3em !important}' +
+            A + '.items-line:not(.lmx-hero-line) .scroll--horizontal .scroll__body{padding-right:1.3em !important;padding-left:1.4em !important}' +
+            A + '.items-line:not(.lmx-hero-line) .items-line__head{margin-left:1.4em}' +
             // перелистування ряду — як у «Кіно»
             A + '.items-line:not(.lmx-hero-line) .scroll__body{transition:transform .3s cubic-bezier(.3,.75,.25,1) !important}' +
             A + '.scroll--mask.lmx-nomask{-webkit-mask-image:none !important;mask-image:none !important}' +
@@ -3123,7 +3124,7 @@
             A + '.menu{background:transparent !important;box-shadow:none !important;border:0 !important}' +
             // меню відкривається поверх сторінки, а не зсуває її на 15em: зсув усієї сторінки з великою афішею на ТВ «смикав» картинку. Читабельність дає м'який темний градієнт зліва
             A + '.wrap__content{transform:none !important;transition:none !important}' +
-            'body.lmx-apple.menu--open .wrap__left{background:linear-gradient(90deg,rgba(10,10,12,.86) 0%,rgba(10,10,12,.6) 68%,rgba(10,10,12,0) 100%) !important}' +
+            'body.lmx-apple.menu--open .wrap__left{background:rgba(14,14,17,.66) !important;-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:1px 0 0 rgba(255,255,255,.08),.6em 0 1.6em rgba(0,0,0,.35) !important}' +
             A + '.modal__content,' + A + '.selectbox__content{border-radius:1.4em}' +
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
@@ -6089,7 +6090,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.540';
+    var VERSION = '10.541';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
