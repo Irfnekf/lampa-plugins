@@ -6084,7 +6084,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.532';
+    var VERSION = '10.533';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6420,9 +6420,9 @@
             // Полегшена: світліша заливка при фокусі
             '.lmx-more__bar.focus{background:rgba(255,255,255,.2)}' +
             // Кіно: біла «пігулка» у фокусі, як кнопка «Дивитись»
-            'body.lmx-prem .lmx-more__bar{border-radius:.5em;background:rgba(255,255,255,.07);box-shadow:none}' +
-            'body.lmx-prem .lmx-more__bar.focus{background:#fff;color:#111}' +
-            'body.lmx-prem .lmx-more__bar.focus .lmx-more__n{opacity:.6}' +
+            'body.lmx-prem .lmx-more__bar{border-radius:1em;background:#12131f;box-shadow:none;transition:transform .2s cubic-bezier(.25,.8,.25,1),box-shadow .2s}' +
+            'body.lmx-prem .lmx-more__bar.focus{background:#171826;transform:scale(1.02);z-index:3;box-shadow:0 0 0 .12em rgba(255,255,255,.55),0 .5em 1em rgba(0,0,0,.6)}' +
+            'body.lmx-prem .lmx-more__bar.focus .lmx-more__n{opacity:.8}' +
             // Скло: скляна смужка, у фокусі — легке збільшення й підкреслення
             'body.lmx-apple .lmx-more__bar{border-radius:1.2em;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             'body.lmx-apple .lmx-more__bar.focus{background:rgba(255,255,255,.14);transform:scale(1.03)}' +
