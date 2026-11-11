@@ -3126,9 +3126,7 @@
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
             F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
-            F + '.full-start__background.dim{opacity:0 !important}' +
-            F + '.lmx-bgb{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:-1;background-size:cover;background-position:center;opacity:0;pointer-events:none;transition:opacity .15s linear}' +
-            F + '.full-start__background.dim ~ .lmx-bgb{opacity:.2}' +
+            F + '.full-start__background.dim{opacity:.17 !important;filter:blur(1.4em) !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6074,7 +6072,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.518';
+    var VERSION = '10.519';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6619,23 +6617,10 @@
             }, fin);
         });
     }
-    // Скло: при прокрутці вниз фон не розмивається фільтром (на ТВ це важко й виглядає плямами), а плавно замінюється вже розмитою копією — зменшеною картинкою, розтягнутою на весь екран
-    function fxBlur(e) {
-        if (getStr('lmx_theme', 'default') !== 'apple') return;
-        var mv = e.data && e.data.movie, bg = e.body && e.body.find && e.body.find('.full-start__background');
-        if (!mv || !mv.backdrop_path || !bg || !bg.length || e.body.find('.lmx-bgb').length) return;
-        var u = imgUrl(mv.backdrop_path, 'w300');
-        var d = document.createElement('div');
-        d.className = 'lmx-bgb';
-        d.style.backgroundImage = 'url(' + u + ')';
-        bg.after(d);
-        try { var im = new Image(); im.src = u; } catch (x) {}
-    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
         fxCss();
-        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite') safe(function () { fxBlur(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
