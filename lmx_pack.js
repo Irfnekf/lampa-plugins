@@ -4655,6 +4655,7 @@
             var at = -1, k;
             for (k = 0; k < link.rows.length; k++) { var r = link.rows[k]; if (Array.isArray(r) && r[0] === 'persons' && r[1] && r[1].lmxTrailers) { at = k + 1; break; } }
             if (at < 0) { at = link.rows.indexOf('description'); at = at >= 0 ? at + 1 : 1; }
+            while (link.rows[at] && link.rows[at][0] === 'cards' && link.rows[at][1] && link.rows[at][1].lmxColl) at++;   // «Порядок перегляду» стоїть вище коментарів
             uacRowCss();
             var row = ['persons', { results: items, title: 'Коментарі', lmxUac: true, lmxUacList: res }], built = (link.items && link.items.length) || 0;
             if (at >= built) { link.rows.splice(at, 0, row); return; }
@@ -6415,7 +6416,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.559';
+    var VERSION = '10.560';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6915,16 +6916,17 @@
         var kind = function (r) {
             if (!Array.isArray(r)) return 0;
             var n = r[0], d = r[1] || {};
-            if (n === 'persons' && (d.lmxTrailers || d.lmxUac)) return 0;
+            if (n === 'persons' && d.lmxTrailers) return 0;
+            if (n === 'persons' && d.lmxUac) return 3;   // коментарі: одразу після «Порядку перегляду» (якщо він є)
             if (n === 'persons' && d.__lmxStudios) return 5;
             if (n === 'persons') return 4;
             if (n === 'cards' && d.lmxColl) return 1;
             if (n === 'cards') return 2;
             return 0;
         };
-        var keep = [], b = { 1: [], 2: [], 4: [], 5: [] };
+        var keep = [], b = { 1: [], 2: [], 3: [], 4: [], 5: [] };
         rows.forEach(function (r) { var k = kind(r); if (k) b[k].push(r); else keep.push(r); });
-        var out = keep.concat(b[1], b[2], b[4], b[5]);
+        var out = keep.concat(b[1], b[3], b[2], b[4], b[5]);
         rows.length = 0;
         out.forEach(function (r) { rows.push(r); });
     }
