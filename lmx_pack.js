@@ -2588,7 +2588,7 @@
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
             B + '.full-start-new__title.lmx-has-logo{display:block !important;overflow:visible !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;height:auto !important;max-height:none !important}' +
             // фон-постер зсунуто нижче шапки: обличчя у верхній частині кадру не мають ховатися під іконками
-            'body.lmx-full .full-start__background{top:-1.2em !important;left:0 !important;right:0 !important;width:100% !important}' +
+            'body.lmx-full .full-start__background{position:fixed !important;top:0 !important;left:0 !important;right:auto !important;width:100vw !important;height:100vh !important;object-fit:cover}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .5s ease-out}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .5s ease-out}' +
@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.528';
+    var VERSION = '10.529';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
