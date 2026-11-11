@@ -2608,7 +2608,7 @@
             RXQ + ' .lmx-rxi ~ .reaction__icon{display:none !important}' +
             RXQ + ' .reaction__count{padding:0 0 0 .4em !important;font-size:1em !important;letter-spacing:.01em}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(18,18,24,.78) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12) !important}' +
-            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.2) !important;border-radius:2em !important}' +
             RXQ + ' .reaction{position:relative}' +
             'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
@@ -2644,7 +2644,7 @@
             B + '.full-start-new__right{text-shadow:0 1px 3px rgba(0,0,0,.75)}' +
             B + '.full-start-new__right .lmx-info{margin:.5em 0 .9em}' +
             B + '.full-start__background{-webkit-mask-image:none !important;mask-image:none !important;filter:none !important;transform:none !important;animation:none !important;transition:opacity .25s ease-out !important}' +
-            B + '.background{filter:brightness(.45)}' +
+            B + '.background::after{content:"";position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em}' +
             B + '.lmx-descr__t{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}' +
@@ -4520,7 +4520,7 @@
             'body.lmx-prem .lmx-uac-md{background:#0e0e12;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 1em 3em rgba(0,0,0,.7);border-radius:1em}' +
             'body.lmx-prem .lmx-uac-x.focus{background:#fff;color:#111}' +
             'body.lmx-apple .lmx-uac-ov{background:rgba(8,8,10,.55)}' +
-            'body.lmx-apple .lmx-uac-md{background:rgba(34,34,40,.78);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1em 3em rgba(0,0,0,.45);border-radius:1.7em}' +
+            'body.lmx-apple .lmx-uac-md{background:rgba(34,34,40,.78);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1em 3em rgba(0,0,0,.45);border-radius:1.7em}' +
             'body.lmx-apple .lmx-uac-hd{border-bottom-color:rgba(255,255,255,.1)}';
         (document.head || document.documentElement).appendChild(st);
     }
@@ -6267,7 +6267,7 @@
             st.textContent = '.lmx-nebell{position:relative}body.lmx-bell-off .lmx-nebell{display:none !important}.lmx-nebadge{position:absolute;right:-.15em;top:-.15em;min-width:1.25em;height:1.25em;padding:0 .3em;border-radius:1em;font-size:.62em;font-weight:700;line-height:1.25em;text-align:center;color:#fff;display:none}' +
                 '.lmx-nebell.lmx-has .lmx-nebadge{display:block}' +
                 '.lmx-nedd{position:fixed;z-index:9999;width:29em;max-width:92vw;max-height:70vh;overflow:hidden auto;background:#1c1f27;border:1px solid rgba(255,255,255,.1);border-radius:.9em;box-shadow:0 1em 3em rgba(0,0,0,.65);color:#fff;font-size:1em}' +
-                'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
+                'body.lmx-apple .lmx-nedd{background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-color:rgba(255,255,255,.22);border-radius:1.3em}' +
                 '.lmx-nedd__h{text-transform:uppercase;display:flex;justify-content:space-between;padding:.9em 1.1em .7em;font-size:.8em;font-weight:800;letter-spacing:.14em;border-bottom:1px solid rgba(255,255,255,.1)}.lmx-nedd__h span{opacity:.55;font-weight:500;letter-spacing:0}' +
                 '.lmx-ne{position:relative;display:block;height:7.2em;margin:.5em .6em;border-radius:.7em;overflow:hidden;background:#2a2d36 center/cover no-repeat}' +
                 '.lmx-ne::before{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.1) 85%)}' +
@@ -6560,7 +6560,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.572';
+    var VERSION = '10.573';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6869,7 +6869,7 @@
             'body.lmx-prem .modal.lmx-dm .modal__content{background:radial-gradient(120% 90% at 0% 0%,#232739 0%,#12141c 60%);border-color:rgba(255,255,255,.1);border-radius:1.2em}' +
             'body.lmx-prem .modal.lmx-dm .modal__title{text-transform:uppercase;letter-spacing:.06em;font-size:1.6em}' +
             'body.lmx-prem .modal.lmx-dm .modal__title::after{content:"";display:block;width:2.6em;height:.18em;margin-top:.5em;border-radius:1em;background:#9ccb6b}' +
-            'body.lmx-apple .modal.lmx-dm .modal__content{background:rgba(40,44,80,.55);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.28);border-radius:2em}' +
+            'body.lmx-apple .modal.lmx-dm .modal__content{background:rgba(40,44,80,.55);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.28);border-radius:2em}' +
             '.modal.lmx-dm .lmx-dmodal{color:rgba(255,255,255,.88)}' +
             'body .lmx-descr--btn.focus,body .lmx-descr--btn.hover{box-shadow:0 0 0 .2em #fff}' +
             '.lmx-dmodal{font-size:1.3em;line-height:1.65;padding:.2em .4em 1em}.lmx-dmodal p{margin:0 0 .9em}' +
@@ -7196,7 +7196,7 @@
                     if (Math.abs(dx) > 1) bg.style.setProperty('left', ((parseFloat(bg.style.left) || 0) - dx) + 'px', 'important');
                 }
             }
-        }, 100);
+        }, 150);
     }
     // ===== «Додаткова інформація»: актори й студії згорнуті в одну смужку, що розгортається =====
     function collapseMore(lk, data) {
