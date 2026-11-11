@@ -3025,6 +3025,9 @@
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus{z-index:3}' +
+            // у «Склі» жодних ободків на картках (історія, каталоги, ряди): лише збільшення; ні рідна рамка Lampa, ні рухома .lmx-sel не показуються
+            A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after,' + A + '.lmx-sel{display:none !important;border:0 !important;box-shadow:none !important}' +
+            A + '.card--lmxhist.focus .card__view,' + A + '.card--lmxhist.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:none !important;outline:0 !important;border-color:transparent !important}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
             A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.2em 1.2em;background:linear-gradient(to top,rgba(10,10,12,.9) 0%,rgba(10,10,12,.55) 45%,rgba(10,10,12,0) 100%)}' +
@@ -6065,7 +6068,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.512';
+    var VERSION = '10.513';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
