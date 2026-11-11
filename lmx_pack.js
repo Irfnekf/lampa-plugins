@@ -4578,7 +4578,7 @@
     function focusBtn(r, w) {
         var done = false;
         try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
-        if (!done || r.find('.lmx-descr--btn.focus').length) { r.find('.lmx-descr--btn').removeClass('focus'); window.$(w).addClass('focus'); }
+        if (!done || r.find('.selector.focus').not(w).length) { r.find('.selector.focus').not(w).removeClass('focus'); window.$(w).addClass('focus'); }
     }
     // «вгору» з опису — на кнопку «Дивитись», а не на сусідню за геометрією
     var upBound = false;
@@ -4590,29 +4590,39 @@
                 var d = document.querySelector('.lmx-descr--btn.focus');
                 if (!d || document.querySelector('.modal')) return;
                 var r = window.$(d).closest('.full-start-new, .full-start').parent();
-                var w = r.length ? pickWatch(r) : null;
+                var w = r.length ? (firstBtn(r) || pickWatch(r)) : null;
                 if (!w) return;
                 ev.preventDefault(); ev.stopPropagation();
                 focusBtn(r, w);
             });
         }, true);
     }
+    // перша (найлівіша) видима кнопка ряду — саме на неї має потрапляти фокус на старті
+    function firstBtn(r) {
+        var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0), best = null, bl = 1e9;
+        cont.find('.selector').each(function () {
+            if (this.classList.contains('hide') || this.classList.contains('lmx-bh')) return;
+            var b = this.getBoundingClientRect();
+            if (!b.width || !b.height) return;
+            if (b.left < bl - 1) { bl = b.left; best = this; }
+        });
+        return best;
+    }
     function focusWatch(r) {
+        var pressed = false;
+        var onKey = function () { pressed = true; window.removeEventListener('keydown', onKey, true); };
+        window.addEventListener('keydown', onKey, true);
         var go = function () {
             safe(function () {
-                if (!document.body.contains(r[0] || document.body)) return;
-                var d = r.find('.lmx-descr--btn.focus').get(0);
-                if (!d) return;
-                var cont = r.find('.full-start-new__buttons, .full-start__buttons').eq(0);
-                var w = cont.length ? watchBtnOf(cont) : null;
-                if (!w && cont.length) w = cont.find('.full-start__button.selector').not('.hide,.lmx-edit,.lmx-folder,.lmx-virt,.lmx-likebtn,.lmx-mkbtn,.button--book,.button--reaction,.button--subscribe,.button--options,.view--trailer').get(0) || null;
-                if (!w) return;
-                var done = false;
-                try { Lampa.Controller.collectionFocus(w, r[0]); done = true; } catch (e) {}
-                if (!done || r.find('.lmx-descr--btn.focus').length) { r.find('.lmx-descr--btn').removeClass('focus'); window.$(w).addClass('focus'); }
+                if (pressed || !document.body.contains(r[0] || document.body)) return;
+                if (document.querySelector('.modal')) return;
+                var w = firstBtn(r);
+                if (!w || w.classList.contains('focus')) return;
+                focusBtn(r, w);
             });
         };
-        [120, 450].forEach(function (d) { setTimeout(go, d); });
+        [150, 500, 1000, 1700, 2600].forEach(function (d) { setTimeout(go, d); });
+        setTimeout(function () { window.removeEventListener('keydown', onKey, true); }, 2800);
     }
     function onFull(e) {
         if (!e || (e.type !== 'complite' && e.type !== 'complete')) return;
@@ -6010,7 +6020,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.485';
+    var VERSION = '10.486';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
