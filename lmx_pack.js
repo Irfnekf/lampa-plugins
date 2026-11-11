@@ -538,6 +538,7 @@
         H.title('lmx_t_look', 'Зовнішній вигляд');
         H.select('lmx_theme', { prem: 'Кіно', apple: 'Скло', 'default': 'Полегшена' }, 'prem', 'Тема',
             'Змінює вигляд карток, банера, меню та сторінки фільму. Кіно — як у стрімінгових сервісах: афіша з великою назвою, темні плитки каталогів, біла рамка у фокусі; Скло — напівпрозорі скляні панелі на темному кольоровому тлі; Полегшена — найпростіша й найлегша для слабких пристроїв. Після вибору Lampa перезапуститься сама', function () { reloadApp(); });
+        H.select('lmx_focus_mark', { line: 'Підкреслення', dot: 'Крапка', glow: 'Підсвічування', none: 'Без позначки' }, 'line', 'Позначка картки у фокусі (Скло)', 'У темі Скло картка в фокусі збільшується; додатково під нею можна показати підкреслення, крапку або м’яке підсвічування', function () { setTimeout(function () { safe(focusMark); }, 50); });
         H.select('lmx_card_size', { m: 'Стандартні', l: 'Трохи більші', xl: 'Великі' }, 'm', 'Розмір карток', 'Ширина постерів у рядах', restyle);
 
         // ---- Головна ----
@@ -3025,6 +3026,13 @@
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus{z-index:3}' +
+            // позначка картки у фокусі (налаштування «Позначка картки у фокусі»)
+            'body.lmx-apple.lmx-fm-line .card.focus:not(.card--lmxhero) .card__view,body.lmx-apple.lmx-fm-dot .card.focus:not(.card--lmxhero) .card__view{position:relative}' +
+            'body.lmx-apple.lmx-fm-line .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
+            'body.lmx-apple.lmx-fm-dot .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:50%;margin-left:-.3em;bottom:-.95em;width:.6em;height:.6em;border-radius:50%;background:#fff;z-index:4}' +
+            'body.lmx-apple.lmx-fm-line .card--lmxhist.focus .card__view::before,body.lmx-apple.lmx-fm-line .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
+            'body.lmx-apple.lmx-fm-dot .card--lmxhist.focus .card__view::before,body.lmx-apple.lmx-fm-dot .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
+            'body.lmx-apple.lmx-fm-glow .card.focus:not(.card--lmxhero) .card__view{box-shadow:0 0 1.8em rgba(255,255,255,.38) !important}' +
             // у «Склі» жодних ободків на картках (історія, каталоги, ряди): лише збільшення; ні рідна рамка Lampa, ні рухома .lmx-sel не показуються
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after,' + A + '.lmx-sel{display:none !important;border:0 !important;box-shadow:none !important}' +
             A + '.card--lmxhist.focus .card__view,' + A + '.card--lmxhist.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:none !important;outline:0 !important;border-color:transparent !important}' +
@@ -3122,7 +3130,9 @@
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
             F + '.full-start__background{opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
-            F + '.full-start__background.dim{opacity:.15 !important;filter:blur(1.1em) !important}' +
+            F + '.full-start__background.dim{opacity:0 !important}' +
+            F + '.lmx-bgb{position:absolute;left:0;top:-6em;width:100%;height:108%;z-index:-1;background-size:cover;background-position:center;opacity:0;pointer-events:none;transition:opacity .15s linear}' +
+            F + '.full-start__background.dim ~ .lmx-bgb{opacity:.2}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
@@ -6068,7 +6078,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.514';
+    var VERSION = '10.515';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6590,8 +6600,9 @@
             ((data.collection && data.collection.parts) || []).forEach(function (x) { inColl[x.id] = 1; });
             list = list.filter(function (r) { return !inColl[r.id] || r.name; });
             if (!list.length || !Array.isArray(link.rows)) return;
-            var at = link.rows.length, k;
-            for (k = link.rows.length - 1; k >= 0; k--) { if (Array.isArray(link.rows[k]) && link.rows[k][0] === 'cards') { at = k + 1; break; } }
+            var at = link.rows.length, k, sm = -1;
+            for (k = link.rows.length - 1; k >= 0; k--) { if (Array.isArray(link.rows[k]) && link.rows[k][0] === 'cards') { if (at === link.rows.length) at = k + 1; if (data.simular && link.rows[k][1] === data.simular) { sm = k; break; } } }
+            if (sm >= 0) at = sm;   // «Пов'язане» — вище за «Схоже»
             at = Math.max(at, (link.items && link.items.length) || 0);   // уже створені ряди не чіпаємо
             link.rows.splice(at, 0, ['cards', { results: list, title: 'Пов’язане', nomore: true, lmxRel: true }]);
         }
@@ -6606,10 +6617,29 @@
             }, fin);
         });
     }
+    // Скло: при прокрутці вниз фон не розмивається фільтром (на ТВ це важко й виглядає плямами), а плавно замінюється вже розмитою копією — зменшеною картинкою, розтягнутою на весь екран
+    function fxBlur(e) {
+        if (getStr('lmx_theme', 'default') !== 'apple') return;
+        var mv = e.data && e.data.movie, bg = e.body && e.body.find && e.body.find('.full-start__background');
+        if (!mv || !mv.backdrop_path || !bg || !bg.length || e.body.find('.lmx-bgb').length) return;
+        var u = imgUrl(mv.backdrop_path, 'w300');
+        var d = document.createElement('div');
+        d.className = 'lmx-bgb';
+        d.style.backgroundImage = 'url(' + u + ')';
+        bg.after(d);
+        try { var im = new Image(); im.src = u; } catch (x) {}
+    }
+    // позначка картки у фокусі (тема Скло): підкреслення / крапка / підсвічування / немає
+    function focusMark() {
+        var b = document.body, v = getStr('lmx_focus_mark', 'line');
+        if (!b) return;
+        ['line', 'dot', 'glow', 'none'].forEach(function (k) { b.classList.toggle('lmx-fm-' + k, k === v); });
+    }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
         window.__lmxFullX = 1;
         fxCss();
+        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite') safe(function () { fxBlur(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
@@ -6679,6 +6709,7 @@
         safe(statsMenu);
         safe(initFullExtras);
         safe(adultPages);
+        safe(focusMark);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
