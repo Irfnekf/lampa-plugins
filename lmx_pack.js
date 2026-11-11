@@ -3021,7 +3021,7 @@
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             A + '.card__view{border-radius:1.2em;background:#1c1c20;box-shadow:' + RIM + ';animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1) !important}' +
-            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 2px #fff}' +
+            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.1);box-shadow:none}' +
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus{z-index:3}' +
@@ -3098,7 +3098,7 @@
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
             // ===== плитки стрімінгів — як канали Apple TV =====
             A + '.card--lmxstudio .card__view{background:#232326 !important;border-radius:1.25em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.05);box-shadow:inset 0 0 0 2px #fff}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.1);box-shadow:none}' +
             A + '.lmx-studio__name{font-weight:600;letter-spacing:-.01em}' +
             // ===== шапка, меню, налаштування =====
             A + '.head__action{border-radius:50%;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
@@ -6065,7 +6065,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.510';
+    var VERSION = '10.511';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
