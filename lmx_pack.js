@@ -578,6 +578,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('lmx_eps_strip', true, 'Плеєр: серії карточками', 'У плеєрі кнопка «вниз» показує внизу екрана всі серії плейлиста (попередню, поточну, наступну…). Enter — перемкнути серію, назад — закрити', null);
         H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
         H.trigger('lmx_uac_btn', false, 'Коментарі: кнопка', 'Додатково до ряду показувати кнопку «Коментарі (N)» серед кнопок фільму', null);
@@ -4673,6 +4674,106 @@
         });
     }
 
+    // ===== Плеєр: «вниз» показує серії плейлиста карточками (попередня, поточна, наступна й усі інші) — вибір Enter, відтворення продовжується =====
+    var epsV = { on: false, root: null, idx: 0, cards: [], list: [] };
+    function epsCss() {
+        if (document.getElementById('lmx-eps-css')) return;
+        var st = document.createElement('style'); st.id = 'lmx-eps-css';
+        st.textContent =
+            '.lmx-eps{position:fixed;left:0;right:0;bottom:0;z-index:10001;padding:5em 0 2.2em;background:linear-gradient(0deg,rgba(0,0,0,.92) 0%,rgba(0,0,0,.7) 55%,rgba(0,0,0,0) 100%);opacity:0;transform:translateY(1.5em);transition:opacity .2s ease,transform .2s ease;pointer-events:auto;overflow:hidden}' +
+            '.lmx-eps.show{opacity:1;transform:none}' +
+            '.lmx-eps__hd{padding:0 3em .8em;font-size:1.15em;font-weight:700;color:#fff;opacity:.9}' +
+            '.lmx-eps__tr{display:flex;align-items:stretch;padding:.6em 3em 1em;transition:transform .22s ease;will-change:transform}' +
+            '.lmx-eps__c{flex:0 0 auto;position:relative;width:17em;height:10em;box-sizing:border-box;margin-right:1.1em;padding:.9em 1em;border-radius:1.1em;background:rgba(255,255,255,.1);color:#fff;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;background-size:cover;background-position:center;transition:transform .2s ease,background-color .2s ease,box-shadow .2s ease}' +
+            '.lmx-eps__c::before{content:"";position:absolute;left:0;right:0;top:0;bottom:0;background:linear-gradient(0deg,rgba(0,0,0,.82),rgba(0,0,0,.15) 70%)}' +
+            '.lmx-eps__c>*{position:relative}' +
+            '.lmx-eps__n{font-size:.85em;opacity:.75;font-weight:600;margin-bottom:.25em}' +
+            '.lmx-eps__t{font-size:1.05em;font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
+            '.lmx-eps__now{position:absolute !important;top:.7em;right:.8em;font-size:.75em;font-weight:700;padding:.25em .7em;border-radius:2em;background:#fff;color:#111}' +
+            '.lmx-eps__p{position:absolute !important;left:0;bottom:0;height:.28em;background:rgba(255,255,255,.9)}' +
+            '.lmx-eps__c.focus{transform:scale(1.06);background-color:rgba(255,255,255,.24)}' +
+            'body.lmx-prem .lmx-eps__c{border-radius:.9em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}' +
+            'body.lmx-prem .lmx-eps__c.focus{transform:scale(1.04);box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.6)}' +
+            'body.lmx-apple .lmx-eps__c{border-radius:1.5em;background-color:rgba(255,255,255,.12)}' +
+            'body.lmx-apple .lmx-eps__c.focus::after{content:"";position:absolute;left:1.2em;right:1.2em;bottom:.5em;height:.16em;border-radius:1em;background:#fff}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function epsClose(back) {
+        if (!epsV.on) return;
+        epsV.on = false;
+        var root = epsV.root; epsV.root = null;
+        if (root) { root.removeClass('show'); setTimeout(function () { root.remove(); }, 230); }
+        if (back !== false) { try { Lampa.Controller.toggle('player'); } catch (e) {} }
+    }
+    function epsFocus() {
+        var c = epsV.cards;
+        c.forEach(function (el, i) { el.classList.toggle('focus', i === epsV.idx); });
+        var tr = epsV.root && epsV.root.find('.lmx-eps__tr')[0], cur = c[epsV.idx];
+        if (!tr || !cur) return;
+        var vw = window.innerWidth || 1280, off = cur.offsetLeft + cur.offsetWidth / 2 - vw / 2;
+        tr.style.transform = 'translateX(' + (-Math.max(0, off)) + 'px)';
+    }
+    function epsPick(i) {
+        var it = epsV.list[i], pl = epsV.list;
+        if (!it) return;
+        var curPos = 0;
+        try { curPos = Lampa.PlayerPlaylist.position(); } catch (e) {}
+        epsClose(false);
+        if (i === curPos) { try { Lampa.Controller.toggle('player'); } catch (e) {} return; }
+        try { Lampa.PlayerPlaylist.listener.send('select', { playlist: pl, position: i, item: it }); } catch (e) {}
+    }
+    function epsOpen() {
+        var pl = [], pos = 0;
+        try { Lampa.PlayerPlaylist.active(); pl = Lampa.PlayerPlaylist.get() || []; pos = Lampa.PlayerPlaylist.position(); } catch (e) {}
+        if (!pl || pl.length < 2) return false;
+        epsCss();
+        epsV.on = true; epsV.list = pl; epsV.idx = pos; epsV.cards = [];
+        var root = $('<div class="lmx-eps"><div class="lmx-eps__hd">Серії</div><div class="lmx-eps__tr"></div></div>'), tr = root.find('.lmx-eps__tr');
+        pl.forEach(function (it, i) {
+            var c = $('<div class="lmx-eps__c"></div>'), n = '', t = String(it.title || '');
+            if (it.season && it.episode) n = 'Сезон ' + it.season + ' · Серія ' + it.episode; else if (it.episode) n = 'Серія ' + it.episode; else n = (i + 1) + ' / ' + pl.length;
+            var th = it.thumbnail || it.img || it.poster;
+            if (typeof th === 'string' && th) c.css('background-image', 'url("' + th.replace(/"/g, '%22') + '")');
+            c.append($('<div class="lmx-eps__n"></div>').text(n)).append($('<div class="lmx-eps__t"></div>').text(t));
+            if (i === pos) c.append('<div class="lmx-eps__now">Зараз</div>');
+            var pc = it.timeline && it.timeline.percent;
+            if (pc > 0) c.append($('<div class="lmx-eps__p"></div>').css('width', Math.min(100, pc) + '%'));
+            c.on('click', function () { epsPick(i); });
+            tr.append(c); epsV.cards.push(c[0]);
+        });
+        epsV.root = root;
+        $('body').append(root);
+        setTimeout(function () { if (epsV.root) { epsV.root.addClass('show'); epsFocus(); } }, 10);
+        try {
+            Lampa.Controller.add('lmx_eps', {
+                toggle: function () {},
+                left: function () { if (epsV.idx > 0) { epsV.idx--; epsFocus(); } },
+                right: function () { if (epsV.idx < epsV.cards.length - 1) { epsV.idx++; epsFocus(); } },
+                up: function () { epsClose(); },
+                down: function () { epsClose(); },
+                enter: function () { epsPick(epsV.idx); },
+                back: function () { epsClose(); }
+            });
+            Lampa.Controller.toggle('lmx_eps');
+        } catch (e) {}
+        return true;
+    }
+    function epsPlayer() {
+        if (epsPlayer.on || !window.Lampa || !Lampa.Keypad || !Lampa.Keypad.listener) return;
+        epsPlayer.on = true;
+        Lampa.Keypad.listener.follow('keydown', function (d) {
+            safe(function () {
+                if (!d || !d.event || !(d.code === 40 || d.code === 29461) || !getBool('lmx_eps_strip', true)) return;
+                var en = (Lampa.Controller.enabled() || {}).name;
+                if (en !== 'player') return;
+                var pd = Lampa.Player.playdata ? Lampa.Player.playdata() : null;
+                if (pd && (pd.iptv || pd.tv)) return;
+                if (epsOpen()) { d.event.preventDefault(); }
+            });
+        });
+        if (Lampa.Player && Lampa.Player.listener) Lampa.Player.listener.follow('destroy', function () { epsClose(false); });
+    }
+
     // ===== Колір постера для сторінки фільму (тема «Скло»): один раз зменшуємо картинку й беремо найнасиченіший колір =====
     var tintCache = {};
     function tintTL() {
@@ -6314,7 +6415,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.558';
+    var VERSION = '10.559';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7096,6 +7197,7 @@
         safe(statsMenu);
         safe(initFullExtras);
         safe(uacWarm);
+        safe(epsPlayer);
         safe(adultPages);
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
