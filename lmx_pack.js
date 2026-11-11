@@ -3101,7 +3101,7 @@
             A + '.lmx-hero__circ{display:inline-flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;margin-left:.8em;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);color:#fff;font-size:1.1em;font-weight:500}' +
             // ===== плитки стрімінгів — як канали Apple TV =====
             A + '.card--lmxstudio .card__view{background:#232326 !important;border-radius:1.25em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}' +
-            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.1);box-shadow:none}' +
+            A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{transform:scale(1.12) !important;background:#3a3a40 !important;box-shadow:none;transition:transform .15s ease-out,background-color .15s ease-out !important}' +
             A + '.lmx-studio__name{font-weight:600;letter-spacing:-.01em}' +
             // ===== шапка, меню, налаштування =====
             A + '.head__action{border-radius:50%;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
@@ -6068,7 +6068,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.513';
+    var VERSION = '10.514';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
