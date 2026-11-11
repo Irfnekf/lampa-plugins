@@ -2600,7 +2600,7 @@
             B + '.full-start-new__details{margin:0 0 .8em -0.3em;font-size:1em;line-height:1.5;opacity:.85}' +
             B + '.full-start-new__right{text-shadow:0 1px 3px rgba(0,0,0,.75)}' +
             B + '.full-start-new__right .lmx-info{margin:.5em 0 .9em}' +
-            B + '.full-start__background{filter:brightness(.45);transform:none !important;animation:none !important;transition:opacity .8s ease-out;will-change:opacity}' +
+            B + '.full-start__background{-webkit-mask-image:none !important;mask-image:none !important;filter:none !important;transform:none !important;animation:none !important;transition:opacity .25s ease-out !important}' +
             B + '.background{filter:brightness(.45)}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em}' +
@@ -2843,7 +2843,8 @@
             T + '.settings__content,' + T + '.selectbox__content,' + T + '.modal__content,' + T + '.menu,' + T + '.wrap__left{background:#0e0e12 !important}' +
             T + '.modal__content{background:#121216}' +
             // ===== сторінка фільму =====
-            F + '.full-start__background{opacity:.78 !important}' +
+            F + '.full-start__background{opacity:.35 !important}' +
+            F + '.full-start__background.dim{opacity:.09 !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:30vw;max-height:20vh;margin-bottom:1.6vh}' +
             F + '.full-start-new__tagline{display:none}' +
@@ -2947,9 +2948,9 @@
             T + '.card--lmxstudio.focus .card__view,' + T + '.card--lmxstudio.hover .card__view{transform:scale(1.06) !important;background:#1c1f2c !important;border-color:transparent !important;box-shadow:0 0 0 .2em #fff,0 .6em 1.2em rgba(0,0,0,.55) !important}' +
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка (B2): вордмарк, рубрика, мета з бейджами, біла «Дивитись» + скляні кнопки, епізоди-картки
-            F + '.full-start__background{opacity:.85 !important}' +
+            F + '.full-start__background{opacity:.38 !important}' +
             // при спуску вниз фон приглушується (стандартний клас dim; наш opacity його перебивав) — помірно, не до чорного
-            F + '.full-start__background.dim{opacity:.2 !important}' +
+            F + '.full-start__background.dim{opacity:.09 !important}' +
             F + '.full-start-new__right{max-width:50%}' +
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:1;font-size:4.2em;margin-bottom:.25em}' +
             // є логотип — текстової назви немає (інакше вона дублюється); немає — лишається назва
@@ -3116,9 +3117,9 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{opacity:.52 !important;filter:blur(0) brightness(.45) !important;transition:opacity .8s ease-out,filter .8s ease-out !important}' +
+            F + '.full-start__background{opacity:.23 !important;filter:none !important;transition:opacity .25s ease-out,filter .25s ease-out !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
-            F + '.full-start__background.dim{filter:blur(1.1em) brightness(.55) !important}' +
+            F + '.full-start__background.dim{opacity:.15 !important;filter:blur(1.1em) !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
             'body.lmx-apple.lmx-onfull .head{background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%) !important;box-shadow:none !important}' +
@@ -6064,7 +6065,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.509';
+    var VERSION = '10.510';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
