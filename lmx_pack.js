@@ -2590,6 +2590,10 @@
             B + '.full-start-new__title.lmx-has-logo{display:block !important;overflow:visible !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;height:auto !important;max-height:none !important}' +
             // фон-постер зсунуто нижче шапки: обличчя у верхній частині кадру не мають ховатися під іконками
             'body.lmx-full .full-start__background{position:fixed !important;top:0 !important;left:0 !important;right:auto !important;width:100vw !important;height:100vh !important;object-fit:cover}' +
+            // меню зсуває всю сторінку на 15em разом із fixed-фоном (transform предка) — компенсуємо зсув, щоб картинка стояла на місці в усіх темах
+            'html body.lmx-full .full-start__background,html body.lmx-full .lmx-bgb{transition:opacity .3s ease-out,left .2s !important}' +
+            'html body.menu--open.lmx-full .full-start__background,html body.menu--open.lmx-full .lmx-bgb{left:-15em !important}' +
+            'html body.menu--always.menu--open.lmx-full .full-start__background,html body.menu--always.menu--open.lmx-full .lmx-bgb{left:-10em !important}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .5s ease-out}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .5s ease-out}' +
@@ -6089,7 +6093,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.545';
+    var VERSION = '10.546';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6680,7 +6684,7 @@
     // Скло: розмиття фону залежить від того, чи сторінка справді прокручена вниз (власна перевірка замість рідного класу dim, який іноді «залипає» нагорі)
     function fullScrollWatch() {
         if (window.__lmxFsw) return;
-        var fswN = 0;
+        var fswN = 0, lastMo = false, menuT = 0;
         window.__lmxFsw = setInterval(function () {
             var b = document.body;
             if (!b || document.hidden) return;
@@ -6697,14 +6701,16 @@
                     var cl = sb.parentNode && sb.parentNode.querySelector('.lmx-bgb');
                     if (!cl) { cl = document.createElement('img'); cl.className = 'lmx-bgb'; sb.parentNode.insertBefore(cl, sb.nextSibling); }
                     if (cl.getAttribute('src') !== sb.getAttribute('src')) cl.src = sb.src;
-                    if (cl.style.top !== sb.style.top) cl.style.setProperty('top', sb.style.top || '0', 'important');
-                    if (cl.style.left !== sb.style.left) cl.style.setProperty('left', sb.style.left || '0', 'important');
+                    if (cl.style.top !== sb.style.top) { if (sb.style.top) cl.style.setProperty('top', sb.style.top, 'important'); else cl.style.removeProperty('top'); }
+                    if (cl.style.left !== sb.style.left) { if (sb.style.left) cl.style.setProperty('left', sb.style.left, 'important'); else cl.style.removeProperty('left'); }
                 }
             }
             // фон закріплений на весь екран, але сторінка Lampa може бути зміщена (шапка, transform предка) — тоді під шапкою лишалась чорна смуга: підганяємо фон до справжнього верху-ліва екрана
             if (b.classList.contains('lmx-apple') && b.classList.contains('lmx-onfull')) {
                 // зсув фону змінюється лише при перебудові сторінки — перевіряємо раз на ~0,5 с, а не кожні 100 мс (getBoundingClientRect змушує ТВ перераховувати розкладку)
-                var bg = (++fswN % 5 === 0) ? (document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background')) : null;
+                var mo = b.classList.contains('menu--open');
+                if (mo !== lastMo) { lastMo = mo; menuT = Date.now(); }
+                var bg = (++fswN % 5 === 0 && !mo && Date.now() - menuT > 800) ? (document.querySelector('.activity--active .full-start__background') || document.querySelector('.full-start__background')) : null;
                 if (bg && !b.classList.contains('lmx-fscroll')) {
                     var rc = bg.getBoundingClientRect(), dy = rc.top, dx = rc.left;
                     if (Math.abs(dy) > 1) bg.style.setProperty('top', ((parseFloat(bg.style.top) || 0) - dy) + 'px', 'important');
