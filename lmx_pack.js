@@ -2584,26 +2584,24 @@
     }
     // Сторінка фільму/серіалу в кіно-стилі: фон на весь екран, затемнення, великий заголовок, скляні кнопки
     function fullCss() {
-        var B = 'body.lmx-full ';
+        var B = 'body.lmx-full ', RXQ = 'html body.lmx-full .full-start-new__reactions.lmx-rx';
         var compact = true;
         return '' +
             B + '.full-start-new__body{position:relative;height:84vh;padding-bottom:3vh;box-sizing:border-box}' +
             B + '.full-start-new__right{display:flex;flex-direction:column;justify-content:flex-end;max-width:56%}' +
             B + '.full-start-new__reactions{display:none !important}' +
-            B + '.full-start-new__reactions.lmx-rx{display:flex !important;flex-wrap:wrap;align-items:center;margin:0 0 .9em !important;min-height:0 !important;gap:.6em}' +
-            B + '.full-start-new__reactions.lmx-rx>div{padding:0 !important}' +
+            B + '.full-start-new__reactions.lmx-rx{display:flex !important;flex-wrap:wrap;align-items:center;order:8;margin:.6em 0 1em !important;min-height:0 !important;gap:.55em}' +
+            B + '.full-start-new__buttons{order:9}' +
             'body.lmx-norx .full-start-new__reactions{display:none !important}' +
-            B + '.full-start-new__reactions .reaction{padding:.35em .9em .35em .5em;border-radius:2em;background:rgba(255,255,255,.1) !important;font-weight:700;transition:background .2s ease}' +
-            B + '.full-start-new__reactions .reaction__icon{width:1.5em;height:1.5em}' +
-            B + '.full-start-new__reactions .reaction__count{padding:0 0 0 .45em;font-size:1.05em}' +
-            B + '.full-start-new__reactions>div:first-child .reaction{background:rgba(255,255,255,.18) !important}' +
-            B + '.full-start-new__reactions .reaction--voted{background:rgba(255,255,255,.3) !important}' +
-            'body.lmx-prem.lmx-full .full-start-new__reactions .reaction{background:#14141a !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}' +
-            'body.lmx-prem.lmx-full .full-start-new__reactions>div:first-child .reaction{box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}' +
-            'body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted{box-shadow:inset 0 0 0 2px #fff}' +
-            'body.lmx-apple.lmx-full .full-start-new__reactions .reaction{background:rgba(255,255,255,.12) !important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}' +
-            'body.lmx-apple.lmx-full .full-start-new__reactions>div:first-child .reaction{background:rgba(255,255,255,.2) !important}' +
-            'body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted{background:rgba(255,255,255,.32) !important}' +
+            RXQ + '>div{padding:0 !important}' +
+            RXQ + ' .reaction{padding:.3em .85em .3em .45em !important;border-radius:2em !important;background:rgba(255,255,255,.12) !important;box-shadow:none !important;font-weight:700;transition:transform .2s ease,background .2s ease}' +
+            RXQ + ' .reaction__icon{width:1.35em !important;height:1.35em !important}' +
+            RXQ + ' .reaction__count{padding:0 0 0 .4em !important;font-size:1em !important;letter-spacing:.01em}' +
+            RXQ + ' .reaction--voted{background:rgba(255,255,255,.3) !important}' +
+            'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(18,18,24,.78) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12) !important}' +
+            'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(18,18,24,.9) !important;box-shadow:0 0 0 .14em #fff !important}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(255,255,255,.14) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:2em !important}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction--voted:not(#lmx-x){background:rgba(255,255,255,.34) !important}' +
             B + '.full-start-new__title{font-size:3em;line-height:1.05;font-weight:700}' +
             B + '.full-start-new__title.lmx-has-logo{font-size:0;line-height:0}' +
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
@@ -5095,6 +5093,10 @@
 
         r.find('.lmx-info').remove();
         r.find('.lmx-ip-head').remove();
+        // рідний час Lampa («02:14») неправильний — є наш формат («2 год 14 хв»)
+        if (pills.some(function (x) { return /(хв|год)/.test(x.t || ''); })) r.find('.full-start-new__details span').each(function () {
+            if (/^\d{1,2}:\d{2}(:\d{2})?$/.test((this.textContent || '').trim())) { $(this).hide(); $(this).next('.full-start-new__split').hide(); $(this).prev('.full-start-new__split').hide(); }
+        });
 
         var html = '<div class="lmx-info">' + pills.map(function (x) {
             return '<div class="lmx-ip ' + (x.c || '') + '">' + x.t + '</div>';
@@ -6441,7 +6443,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.561';
+    var VERSION = '10.562';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
