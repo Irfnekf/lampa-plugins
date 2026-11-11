@@ -2588,7 +2588,7 @@
             // Lampa обрізає заголовок до одного рядка (line-clamp + overflow:hidden) — WebKit (Mac/iPhone) через це різав низ логотипа
             B + '.full-start-new__title.lmx-has-logo{display:block !important;overflow:visible !important;-webkit-line-clamp:unset !important;line-clamp:unset !important;height:auto !important;max-height:none !important}' +
             // фон-постер зсунуто нижче шапки: обличчя у верхній частині кадру не мають ховатися під іконками
-            'body.lmx-full .full-start__background{top:-1.2em !important}' +
+            'body.lmx-full .full-start__background{top:-1.2em !important;left:0 !important;right:0 !important;width:100% !important}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title{opacity:0;transition:opacity .5s ease-out}' +
             'body.lmx-logo-on.lmx-full .full-start-new__title.lmx-reveal{opacity:1}' +
             'body.lmx-logo-on.lmx-full .full-start-new__head{opacity:0;transition:opacity .5s ease-out}' +
@@ -3003,7 +3003,7 @@
             A + '.background{display:none !important}' +
             // аврора — окремий статичний шар (малюється один раз і не перемальовується при русі карток; на ТВ це суттєво легше)
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
-            'body.lmx-apple.lmx-onfull::before{opacity:.3}' +
+            'body.lmx-apple.lmx-onfull::before,body.lmx-apple.lmx-onfull #lmx-tintbg{display:none !important}' +
             // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
             '#lmx-tintbg{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;transform:translateZ(0)}' +
             'body.lmx-apple.lmx-onfull.lmx-tint #lmx-tintbg{display:block}' +
@@ -3117,12 +3117,12 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{opacity:.23 !important;filter:none !important;transition:opacity .25s ease-out,filter .25s ease-out !important}' +
+            F + '.full-start__background{opacity:.23 !important;filter:none !important;transition:opacity .12s linear,filter .12s linear !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
             F + '.full-start__background.dim{opacity:.15 !important;filter:blur(1.1em) !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
-            'body.lmx-apple.lmx-onfull .head{background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%) !important;box-shadow:none !important}' +
+            'body.lmx-apple.lmx-onfull .head{background:none !important;box-shadow:none !important}' +
             F + '.full-start-new__right{max-width:44%}' +
             F + '.lmx-logo{max-width:32vw;max-height:23vh;margin-bottom:2vh}' +
             F + '.full-start-new__title{font-size:3.4em;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin-bottom:.25em}' +
@@ -6065,7 +6065,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.511';
+    var VERSION = '10.512';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
