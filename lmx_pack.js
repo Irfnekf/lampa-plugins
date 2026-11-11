@@ -579,6 +579,7 @@
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
         H.trigger('lmx_rx_row', true, 'Ряд реакцій під рейтингом', 'Реакції CUB (🔥 👍 🤔 😴 💩) з кількістю над кнопками на сторінці фільму; стиль залежить від теми. Кнопка «Реакції» вмикається окремо в NoCub', function () { document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true)); });
+        H.trigger('lmx_rx_mono', true, 'Реакції: однокольорові іконки', 'Замість кольорових смайликів CUB — прості лінійні іконки в стилі кнопок сторінки', null);
         H.trigger('lmx_eps_strip', true, 'Плеєр: серії карточками', 'У плеєрі кнопка «вниз» показує внизу екрана всі серії плейлиста (попередню, поточну, наступну…). Enter — перемкнути серію, назад — закрити', null);
         H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
@@ -2596,6 +2597,9 @@
             RXQ + '>div{padding:0 !important}' +
             RXQ + ' .reaction{padding:.3em .85em .3em .45em !important;border-radius:2em !important;background:rgba(255,255,255,.12) !important;box-shadow:none !important;font-weight:700;transition:transform .2s ease,background .2s ease}' +
             RXQ + ' .reaction__icon{width:1.35em !important;height:1.35em !important}' +
+            RXQ + ' .lmx-rxi{display:inline-flex;width:1.3em;height:1.3em;color:#fff;opacity:.92}' +
+            RXQ + ' .lmx-rxi svg{width:100%;height:100%}' +
+            RXQ + ' .lmx-rxi ~ .reaction__icon{display:none !important}' +
             RXQ + ' .reaction__count{padding:0 0 0 .4em !important;font-size:1em !important;letter-spacing:.01em}' +
             RXQ + ' .reaction--voted{background:rgba(255,255,255,.3) !important}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction:not(#lmx-x){background:rgba(18,18,24,.78) !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12) !important}' +
@@ -4578,11 +4582,30 @@
         });
     }
     // Ряд реакцій CUB під рейтингом: показуємо лише коли реакції справді завантажились (інакше там порожній напис «Реакцій немає»)
+    // Однокольорові іконки реакцій (в стилі кнопок сторінки) замість кольорових смайликів
+    var RX_ICONS = {
+        fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+        nice: '<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
+        think: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+        bore: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        shit: '<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>'
+    };
     function rxRow(r) {
         var row = r.find('.full-start-new__reactions')[0];
         if (!row) return;
         document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true));
-        var upd = function () { row.classList.toggle('lmx-rx', !!row.querySelector('.reaction')); };
+        var upd = function () {
+            row.classList.toggle('lmx-rx', !!row.querySelector('.reaction'));
+            if (!getBool('lmx_rx_mono', true)) return;
+            Array.prototype.forEach.call(row.querySelectorAll('.reaction'), function (el) {
+                if (el.querySelector('.lmx-rxi')) return;
+                var t = (/reaction--(\w+)/.exec(el.className) || [])[1], ic = t && RX_ICONS[t];
+                if (!ic) return;
+                var sp = document.createElement('span'); sp.className = 'lmx-rxi';
+                sp.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ic + '</svg>';
+                el.insertBefore(sp, el.firstChild);
+            });
+        };
         upd();
         try { var mo = new MutationObserver(upd); mo.observe(row, { childList: true, subtree: true }); setTimeout(function () { mo.disconnect(); }, 15000); } catch (e) {}
     }
@@ -6456,7 +6479,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.564';
+    var VERSION = '10.565';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
