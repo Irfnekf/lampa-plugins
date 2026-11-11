@@ -578,6 +578,7 @@
         H.trigger('lmx_full', true, 'Кіно-оформлення сторінки', 'Фон на весь екран із затемненням, великий заголовок і опис. На телефоні завжди рідна сторінка Lampa', restyle);
         H.trigger('lmx_like', true, 'Кнопка «Подобається»', 'На сторінці фільму/серіалу: додає у список «Подобається» в Закладках; на цьому будується ряд «Схоже на те, що вам сподобалось»', null);
         H.trigger('lmx_pagebtns', true, 'Кнопка «Дивитись пізніше»', 'На сторінці фільму поруч із «Подобається» і «Закладками»: швидко додає фільм у ряд «Переглянути пізніше» на головній', null);
+        H.trigger('lmx_hide_episodes', true, 'Сховати розділ «Сезони»', 'Ряд із сезонами та серіями (Сезон 1, Сезон 2…) на сторінці серіалу. Вимкнути — розділ повернеться', null);
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
         H.trigger('lmx_uac_btn', false, 'Коментарі: кнопка', 'Додатково до ряду показувати кнопку «Коментарі (N)» серед кнопок фільму', null);
         UAC_SRC.forEach(function (x) { H.trigger('lmx_uac_' + x[0], true, 'Коментарі: ' + x[1], 'Шукати коментарі на ' + x[2], null); });
@@ -6313,7 +6314,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.556';
+    var VERSION = '10.557';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7042,7 +7043,8 @@
                         var lk = e.link, ob = lk.build;
                         lk.build = function () {
                             lk.build = ob;
-                            safe(function () { stripNocubRows(lk.rows); });   // метадані/настрої й коментарі прибираємо до побудови, а не після (інакше вони блимали на частку секунди)
+                            safe(function () { stripNocubRows(lk.rows); });
+                            if (getBool('lmx_hide_episodes', true)) safe(function () { for (var q = lk.rows.length - 1; q >= 0; q--) if ((Array.isArray(lk.rows[q]) ? lk.rows[q][0] : lk.rows[q]) === 'episodes') lk.rows.splice(q, 1); });   // метадані/настрої й коментарі прибираємо до побудови, а не після (інакше вони блимали на частку секунди)
                             if (getBool('lmx_rows_end', true)) safe(function () { reorderRows(lk.rows); });
                             if (getBool('lmx_more_info', true)) safe(function () { collapseMore(lk, e.data); });
                             return ob.call(this, lk.rows.slice(0, lk.view || arguments[0].length));
