@@ -3006,7 +3006,10 @@
             A + '.background{display:none !important}' +
             // аврора — окремий статичний шар (малюється один раз і не перемальовується при русі карток; на ТВ це суттєво легше)
             A.trim() + '::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;background:' + AURORA + ';transform:translateZ(0);transition:opacity .5s ease}' +
-            'body.lmx-apple.lmx-onfull::before,body.lmx-apple.lmx-onfull #lmx-tintbg{display:none !important}' +
+            'body.lmx-apple.lmx-onfull #lmx-tintbg{display:none !important}' +
+            // на сторінці фільму аврору лишаємо тільки під бічним меню (смуга 15em, з'являється разом із меню): його фон такий самий, як на головній, а не чорний
+            'body.lmx-apple.lmx-onfull::before{display:block !important;opacity:0;-webkit-clip-path:inset(0 calc(100% - 15em) 0 0);clip-path:inset(0 calc(100% - 15em) 0 0);transition:opacity .2s ease}' +
+            'body.lmx-apple.lmx-onfull.menu--open::before{opacity:1}' +
             // колір постера: окремий статичний шар зверху авори (малюється один раз, без анімацій)
             '#lmx-tintbg{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:-1;pointer-events:none;transform:translateZ(0)}' +
             'body.lmx-apple.lmx-onfull.lmx-tint #lmx-tintbg{display:block}' +
@@ -6089,7 +6092,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.548';
+    var VERSION = '10.549';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
