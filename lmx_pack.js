@@ -6093,7 +6093,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.546';
+    var VERSION = '10.547';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6644,14 +6644,19 @@
         var mv = data && data.movie, grp = mv && relFind(mv);
         if (!grp || !link || !Array.isArray(link.rows)) return;
         var want = [], res = [], left, done = false;
-        grp.forEach(function (x) { var e = relParse(x); if (e && e.k !== 'c') want.push(e); });
+        var myCol = mv.belongs_to_collection && String(mv.belongs_to_collection.id);
+        // колекція TMDB (напр. Зоряні війни) для серіалу окремого ряду не має — підтягуємо її фільми в «Пов'язане»; для фільму з цієї колекції вона вже є власним рядом
+        grp.forEach(function (x) { var e = relParse(x); if (e && (e.k !== 'c' || e.n !== myCol)) want.push(e); });
         left = want.length;
         if (!left) return;
         function fin() {
             if (done || --left > 0) return;
             done = true;
             var seen = {}, list = [];
-            want.forEach(function (e, i) { var r = res[i]; if (r && r.id !== mv.id && !seen[r.id]) { seen[r.id] = 1; list.push(r); } });
+            want.forEach(function (e, i) {
+                var rr = res[i], arr2 = Array.isArray(rr) ? rr : (rr ? [rr] : []);
+                arr2.forEach(function (r) { if (r && r.id !== mv.id && !seen[r.id]) { seen[r.id] = 1; list.push(r); } });
+            });
             if (!list.length) return;
             // колекція — власний ряд; те, що вже в ній, у «Пов'язане» не дублюємо
             var inColl = {};
@@ -6671,6 +6676,15 @@
             }
         }
         want.forEach(function (e, i) {
+            if (e.k === 'c') {
+                tget('collection/' + e.n, {}, function (j) {
+                    var ps = ((j && j.parts) || []).filter(function (x) { return x && x.id && x.poster_path; });
+                    ps.sort(function (a, b) { return String(a.release_date || '9999').localeCompare(String(b.release_date || '9999')); });
+                    if (ps.length) res[i] = ps;
+                    fin();
+                }, fin);
+                return;
+            }
             tget('search/' + (e.k === 't' ? 'tv' : 'movie') + '?query=' + encodeURIComponent(e.n), {}, function (j) {
                 var arr = (j && j.results) || [], n = relNorm(e.n), q;
                 for (q = 0; q < arr.length; q++) {
