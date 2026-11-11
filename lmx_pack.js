@@ -6073,7 +6073,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.523';
+    var VERSION = '10.524';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6534,6 +6534,15 @@
         data.recomend = null;
     }
     // ===== Порядок рядів на сторінці фільму: … → колекція → схоже → акторський склад → студії =====
+    // «Метадані», «Настрої» і «Коментарі» (вимикаються в NoCub) прибираємо з переліку рядків ще до побудови сторінки
+    function stripNocubRows(rows) {
+        var on = function (k) { var v = Lampa.Storage.get(k, 'true'); return v === true || v === 'true'; };
+        var meta = on('nocub_meta'), rev = on('nocub_reviews'), i, n;
+        for (i = rows.length - 1; i >= 0; i--) {
+            n = Array.isArray(rows[i]) ? rows[i][0] : rows[i];
+            if ((meta && (n === 'metadata_chart' || n === 'metadata_tags')) || (rev && n === 'discuss')) rows.splice(i, 1);
+        }
+    }
     function reorderRows(rows) {
         var kind = function (r) {
             if (!Array.isArray(r)) return 0;
@@ -6659,11 +6668,12 @@
                     if (!adult && getBool('lmx_coll_order', true)) safe(function () { collPrepare(e.data); });
                     if (!adult && getBool('lmx_related', true)) safe(function () { relPrepare(e.link, e.data); });
                     if (!adult && getBool('lmx_sim_better', true)) safe(function () { simPrepare(e.data); });
-                    if (!adult && getBool('lmx_rows_end', true) && e.link && Array.isArray(e.link.rows) && typeof e.link.build === 'function') {
+                    if (!adult && e.link && Array.isArray(e.link.rows) && typeof e.link.build === 'function') {
                         var lk = e.link, ob = lk.build;
                         lk.build = function () {
                             lk.build = ob;
-                            safe(function () { reorderRows(lk.rows); });
+                            safe(function () { stripNocubRows(lk.rows); });   // метадані/настрої й коментарі прибираємо до побудови, а не після (інакше вони блимали на частку секунди)
+                            if (getBool('lmx_rows_end', true)) safe(function () { reorderRows(lk.rows); });
                             return ob.call(this, lk.rows.slice(0, lk.view || arguments[0].length));
                         };
                     }
