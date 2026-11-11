@@ -2612,8 +2612,7 @@
             RXQ + ' .reaction{position:relative}' +
             'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
-            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.26) !important;transform:scale(1.1)}' +
-            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x)::after{content:"";position:absolute;left:.9em;right:.9em;bottom:.12em;height:.14em;border-radius:1em;background:#fff}' +
+            'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.26) !important;transform:scale(1.1);box-shadow:0 0 0 .14em #fff !important}' +
             '.lmx-rxi--menu{display:inline-flex;width:1.6em;height:1.6em;color:#fff}.lmx-rxi--menu svg{width:100%;height:100%}' +
             'html body .selectbox-item .selectbox-item__icon:not(#lmx-x){display:flex;align-items:center;justify-content:center}' +
             // Єдина ліва межа й однакові вертикальні відступи для всіх блоків тексту (рейтинг, жанри, інфо, опис, реакції)
@@ -3070,17 +3069,15 @@
             // ===== картки =====
             A + '.card,' + A + '.card.focus,' + A + '.card.hover{transform:none !important;animation:none !important;transition:none !important}' +
             A + '.card__view{border-radius:1.2em;background:#1c1c20;box-shadow:' + RIM + ';animation:none !important;transition:transform .2s cubic-bezier(.25,.8,.25,1) !important}' +
-            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.1);box-shadow:none}' +
+            A + '.card.focus:not(.card--lmxhero):not(.card--lmxstudio) .card__view,' + A + '.card.hover:not(.card--lmxhero):not(.card--lmxstudio) .card__view{transform:scale(1.1);box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4)}' +
             A + '.card__img,' + A + '.card__view::after{border-radius:1.2em}' +
             // блік скла на картці у фокусі
             A + '.card.focus{z-index:3}' +
             // позначка картки у фокусі — підкреслення під карткою
             'body.lmx-apple .card.focus:not(.card--lmxhero) .card__view{position:relative}' +
-            'body.lmx-apple .card.focus:not(.card--lmxhero) .card__view::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
-            'body.lmx-apple .card--lmxhist.focus .card__view::before,body.lmx-apple .card--lmxstudio.focus .card__view::before{bottom:.6em}' +
             // у «Склі» жодних ободків на картках (історія, каталоги, ряди): лише збільшення; ні рідна рамка Lampa, ні рухома .lmx-sel не показуються
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after,' + A + '.lmx-sel{display:none !important;border:0 !important;box-shadow:none !important}' +
-            A + '.card--lmxhist.focus .card__view,' + A + '.card--lmxhist.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:none !important;outline:0 !important;border-color:transparent !important}' +
+            A + '.card--lmxhist.focus .card__view,' + A + '.card--lmxhist.hover .card__view,' + A + '.card--lmxstudio.focus .card__view,' + A + '.card--lmxstudio.hover .card__view{box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4) !important;outline:0 !important;border-color:transparent !important}' +
             A + '.card.focus .card__view::after,' + A + '.card.hover .card__view::after{display:none !important}' +
             '@keyframes lmxshadow{from{opacity:0}to{opacity:1}}' +
             A + '.lmx-cin{padding:3em .9em .75em;border-radius:0 0 1.2em 1.2em;background:linear-gradient(to top,rgba(10,10,12,.9) 0%,rgba(10,10,12,.55) 45%,rgba(10,10,12,0) 100%)}' +
@@ -4779,8 +4776,7 @@
             'html body.lmx-prem .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x){background:#14141a !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);border-radius:1em}' +
             'html body.lmx-prem .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:#1b1b23 !important;transform:scale(1.04);box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.6)}' +
             'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x){background:rgba(255,255,255,.08) !important;border-radius:1.5em;box-shadow:none}' +
-            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:rgba(255,255,255,.15) !important;transform:scale(1.06);box-shadow:none}' +
-            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus::before{content:"";position:absolute;left:1.5em;right:1.5em;bottom:.55em;height:.16em;border-radius:1em;background:#fff}';
+            'html body.lmx-apple .items-line.lmx-uacr .full-person:not(.full-person--small):not(#lmx-x).focus{background:rgba(255,255,255,.15) !important;transform:scale(1.06);box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4)}';
         (document.head || document.documentElement).appendChild(st);
     }
     function uacRowPrepare(link, data) {
@@ -4838,7 +4834,7 @@
             'body.lmx-prem .lmx-eps__c{border-radius:.9em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}' +
             'body.lmx-prem .lmx-eps__c.focus{transform:scale(1.04);box-shadow:0 0 0 .2em #fff,0 .6em 1.6em rgba(0,0,0,.6)}' +
             'body.lmx-apple .lmx-eps__c{border-radius:1.5em;background-color:rgba(255,255,255,.12)}' +
-            'body.lmx-apple .lmx-eps__c.focus::after{content:"";position:absolute;left:1.2em;right:1.2em;bottom:.5em;height:.16em;border-radius:1em;background:#fff}';
+            'body.lmx-apple .lmx-eps__c.focus{box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4)}';
         (document.head || document.documentElement).appendChild(st);
     }
     function epsClose(back) {
@@ -6564,7 +6560,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.571';
+    var VERSION = '10.572';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -6905,8 +6901,7 @@
             'body.lmx-prem .lmx-more__bar.focus .lmx-more__n{opacity:.8}' +
             // Скло: скляна смужка, у фокусі — легке збільшення й підкреслення
             'body.lmx-apple .lmx-more__bar{border-radius:1.2em;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
-            'body.lmx-apple .lmx-more__bar.focus{background:rgba(255,255,255,.14);transform:scale(1.03)}' +
-            'body.lmx-apple .lmx-more__bar.focus::after{content:"";position:absolute;left:30%;right:30%;bottom:-.55em;height:.26em;border-radius:99em;background:#fff}' +
+            'body.lmx-apple .lmx-more__bar.focus{background:rgba(255,255,255,.14);transform:scale(1.03);box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4)}' +
             'html body.lmx-hidetrl .full-start__button.view--trailer:not(#lmx-x),html body.lmx-hidetrl .full-start-new__buttons .view--trailer:not(#lmx-x),html body.lmx-hidetrl .view--trailer.lmx-trlhide:not(#lmx-x){display:none !important}' +
             '.lmx-trl .full-person__photo{width:22.3em;height:12.5em;border-radius:1.1em;background:#1a1d27}' +
             '.lmx-trl .full-person__photo::after{content:"";position:absolute;left:50%;top:50%;width:3.4em;height:3.4em;margin:-1.7em 0 0 -1.7em;border-radius:50%;background:rgba(10,11,16,.55) ' + play + ' 56% 50%/42% no-repeat;border:1px solid rgba(255,255,255,.35)}' +
@@ -6916,9 +6911,7 @@
             'body.lmx-apple .lmx-trl .full-person__photo::after{background-color:rgba(255,255,255,.3)}' +
             // Скло: те саме виділення, що й у карток — збільшення 1.1 та біле підкреслення (актори, трейлери, епізоди)
             'body.lmx-apple .lmx-people .full-person__photo,body.lmx-apple .lmx-trl .full-person__photo,body.lmx-apple .full-episode .full-episode__img{transition:transform .2s cubic-bezier(.25,.8,.25,1)}' +
-            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img{box-shadow:none !important;transform:scale(1.1)}' +
-            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo::before,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo::before,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img::before{content:"";position:absolute;left:18%;right:18%;bottom:-.6em;height:.26em;border-radius:99em;background:#fff;z-index:4}' +
-            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo::before{left:28%;right:28%}' +
+            'body.lmx-apple .lmx-people .full-person.focus .full-person__photo,body.lmx-apple .lmx-trl .full-person.focus .full-person__photo,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img{box-shadow:0 0 0 .16em #fff,0 .5em 1.5em rgba(0,0,0,.4) !important;transform:scale(1.1)}' +
             'body.lmx-apple.lmx-full .full-episode.focus::after,body.lmx-apple.lmx-full .full-episode.focus .full-episode__img::after{display:none !important}' +
             'body.lmx-apple.lmx-full .full-episode .full-episode__img{position:relative}';
         (document.head || document.documentElement).appendChild(st);
