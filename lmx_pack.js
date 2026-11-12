@@ -2624,6 +2624,9 @@
             B + '.full-start-new__right{text-shadow:0 1px 3px rgba(0,0,0,.75)}' +
             B + '.full-start-new__right .lmx-info{margin:.5em 0 .9em}' +
             B + '.full-start__background{-webkit-mask-image:none !important;mask-image:none !important;filter:none !important;transform:none !important;animation:none !important;transition:opacity .25s ease-out !important}' +
+            // Lampa при відкритті сторінки фільму ганяє активність знизу вгору (animation-activity) і фон збоку (animation-full-background); фон у нас fixed усередині цього блоку — тож картинка «заїжджала» вгору. На сторінці фільму ці анімації вимкнено, картинка одразу на місці
+            'html body.lmx-full .activity.lmx-fullact .activity__body:not(#lmx-x){-webkit-animation:none !important;animation:none !important}' +
+            'html body.lmx-full .full-start__background.loaded:not(#lmx-x){-webkit-animation:none !important;animation:none !important}' +
             B + '.background::after{content:"";position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);pointer-events:none}' +
             B + '.lmx-descr{position:absolute;right:2%;top:11%;width:30vw;font-size:1.05em;line-height:1.5;z-index:2;color:#fff;' +
                 'background:rgba(0,0,0,.45);padding:.9em 1.1em;border-radius:1em}' +
@@ -6586,7 +6589,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.584';
+    var VERSION = '10.585';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7423,6 +7426,8 @@
             // може бути не першим на екрані. Якщо пульт ще не чіпали — ставимо фокус на першу видиму кнопку
             Lampa.Listener.follow('activity', function (e) {
                 if (!e || e.type !== 'start' || e.component !== 'full') return;
+                // клас на активність якомога раніше, до старту рідної анімації відкриття (див. стилі lmx-fullact)
+                [0, 30, 90].forEach(function (ms) { setTimeout(function () { safe(function () { var ac = document.querySelector('.activity--active'); if (ac && ac.querySelector('.full-start-new, .full-start, .full-start__background')) ac.classList.add('lmx-fullact'); }); }, ms); });
                 var t0 = Date.now();
                 [120, 450, 1000].forEach(function (ms) {
                     setTimeout(function () {
