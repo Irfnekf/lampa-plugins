@@ -2551,9 +2551,7 @@
         // одноколонкова сторінка Lampa (до 480px): афіша на всю ширину з плавним затемненням унизу, назва й рейтинг поверх неї без «плашки», широка біла кнопка «Дивитись»
         '@media (max-width:480px){' +
             P + '.full-start-new__poster{padding-bottom:125%}' +
-            P + '.full-start-new__img{border-radius:0 !important;object-fit:cover;object-position:50% 20%;filter:saturate(1.1) contrast(1.05);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 44%,rgba(0,0,0,.9) 54%,rgba(0,0,0,.66) 66%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.12) 90%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to bottom,#000 0%,#000 44%,rgba(0,0,0,.9) 54%,rgba(0,0,0,.66) 66%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.12) 90%,rgba(0,0,0,0) 100%)}' +
-            P + '.full-start-new__poster{position:relative}' +
-            P + '.full-start-new__poster::after{content:"";position:absolute;left:0;right:0;top:0;height:26%;background:linear-gradient(to bottom,rgba(8,8,14,.62),rgba(8,8,14,0));pointer-events:none;z-index:1}' +
+            P + '.full-start-new__img{border-radius:0 !important;-webkit-mask-image:linear-gradient(to bottom,#000 58%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to bottom,#000 58%,rgba(0,0,0,0) 100%)}' +
             P + '.full-start-new__right{background:none !important;border-radius:0 !important;margin-top:-30vh !important;padding-top:0 !important;text-shadow:0 1px 8px rgba(0,0,0,.65)}' +
             P + '.full-start-new__tagline{display:none}' +
             P + '.full-start-new__rate-line{padding-top:.4em !important;margin-bottom:1.2em}' +
@@ -3979,7 +3977,7 @@
     // Сторінка фільму на телефоні: Lampa бере бекдроп у w780 і розтягує на весь екран (на 3x-екрані мильно) — підміняємо на оригінал
     function hqPoster() {
         if (window.innerWidth > 480) return;
-        var im = document.querySelectorAll('.full-start-new__img:not([data-lmxhq]),.full-start__img:not([data-lmxhq])');
+        var im = document.querySelectorAll('.full-start-new__img:not([data-lmxhq]),.full-start__img:not([data-lmxhq]),.activity--active .full-start__background:not([data-lmxhq])');
         for (var i = 0; i < im.length; i++) (function (el) {
             el.setAttribute('data-lmxhq', '1');
             var up = function () {
@@ -6613,7 +6611,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.589';
+    var VERSION = '10.590';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
