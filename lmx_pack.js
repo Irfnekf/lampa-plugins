@@ -2591,6 +2591,7 @@
             'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.26) !important;transform:scale(1.1);box-shadow:0 0 0 .14em #fff !important}' +
+            '.lmx-rxi{display:inline-flex;flex:none;width:1.3em;height:1.3em;max-width:2em;max-height:2em;overflow:hidden}.lmx-rxi svg{width:100%;height:100%;max-width:100%;max-height:100%}' +
             '.lmx-rxi--menu{display:inline-flex;width:1.6em;height:1.6em;color:#fff}.lmx-rxi--menu svg{width:100%;height:100%}' +
             'html body .selectbox-item .selectbox-item__icon:not(#lmx-x){display:flex;align-items:center;justify-content:center}' +
             // Єдина ліва межа й однакові вертикальні відступи для всіх блоків тексту (рейтинг, жанри, інфо, опис, реакції)
@@ -6589,7 +6590,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.585';
+    var VERSION = '10.586';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7276,7 +7277,13 @@
             bar.find('.lmx-more__n').html(l.join('&nbsp;&nbsp;&nbsp;'));
         };
         bar.on('hover:focus hover:hover hover:touch', function () { item.last = bar[0]; });
+        var lastTap = 0;
         bar.on('hover:enter', function () {
+            // на телефоні дотик дає і touch, і click — обробник спрацьовував двічі: розгортав і одразу згортав (а недобудовані ряди кидали «Script error»)
+            var nowT = Date.now(); if (nowT - lastTap < 600) return; lastTap = nowT;
+            try { moreToggle(); } catch (x) { try { Lampa.Noty.show('Додаткова інформація: ' + (x && x.message || x)); } catch (y) {} }
+        });
+        function moreToggle() {
             // emit('scroll', 0) і перебудова рядів скидають клас dim фону (затемнення) — запам'ятовуємо й тримаємо його
             var bgs = lk.html.find('.full-start__background'), wasDim = bgs.hasClass('dim'), gt = 0;
             var hold = setInterval(function () { bgs.toggleClass('dim', wasDim); if (++gt > 20) clearInterval(hold); }, 40);
@@ -7296,7 +7303,7 @@
                 lk.rows.length = bi + 1;
             }
             setTimeout(function () { try { item.toggle(); } catch (x) {} }, 30);
-        });
+        }
     }
     function initFullExtras() {
         if (window.__lmxFullX || !window.Lampa || !Lampa.Listener) return;
