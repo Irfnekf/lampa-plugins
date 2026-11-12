@@ -2551,7 +2551,9 @@
         // одноколонкова сторінка Lampa (до 480px): афіша на всю ширину з плавним затемненням унизу, назва й рейтинг поверх неї без «плашки», широка біла кнопка «Дивитись»
         '@media (max-width:480px){' +
             P + '.full-start-new__poster{padding-bottom:125%}' +
-            P + '.full-start-new__img{border-radius:0 !important;-webkit-mask-image:linear-gradient(to bottom,#000 58%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to bottom,#000 58%,rgba(0,0,0,0) 100%)}' +
+            P + '.full-start-new__img{border-radius:0 !important;object-fit:cover;object-position:50% 20%;filter:saturate(1.1) contrast(1.05);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 44%,rgba(0,0,0,.9) 54%,rgba(0,0,0,.66) 66%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.12) 90%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to bottom,#000 0%,#000 44%,rgba(0,0,0,.9) 54%,rgba(0,0,0,.66) 66%,rgba(0,0,0,.34) 79%,rgba(0,0,0,.12) 90%,rgba(0,0,0,0) 100%)}' +
+            P + '.full-start-new__poster{position:relative}' +
+            P + '.full-start-new__poster::after{content:"";position:absolute;left:0;right:0;top:0;height:26%;background:linear-gradient(to bottom,rgba(8,8,14,.62),rgba(8,8,14,0));pointer-events:none;z-index:1}' +
             P + '.full-start-new__right{background:none !important;border-radius:0 !important;margin-top:-30vh !important;padding-top:0 !important;text-shadow:0 1px 8px rgba(0,0,0,.65)}' +
             P + '.full-start-new__tagline{display:none}' +
             P + '.full-start-new__rate-line{padding-top:.4em !important;margin-bottom:1.2em}' +
@@ -2591,6 +2593,7 @@
             'html body.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.28) !important;transform:scale(1.08)}' +
             'html body.lmx-prem.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:#1b1b23 !important;box-shadow:0 0 0 .16em #fff,0 .4em 1.1em rgba(0,0,0,.55) !important}' +
             'html body.lmx-apple.lmx-full .full-start-new__reactions .reaction.focus:not(#lmx-x){background:rgba(255,255,255,.26) !important;transform:scale(1.1);box-shadow:0 0 0 .14em #fff !important}' +
+            '.reaction .lmx-rxi ~ .reaction__icon{display:none !important}' +
             '.lmx-rxi{display:inline-flex;flex:none;width:1.3em;height:1.3em;max-width:2em;max-height:2em;overflow:hidden}.lmx-rxi svg{width:100%;height:100%;max-width:100%;max-height:100%}' +
             '.lmx-rxi--menu{display:inline-flex;width:1.6em;height:1.6em;color:#fff}.lmx-rxi--menu svg{width:100%;height:100%}' +
             'html body .selectbox-item .selectbox-item__icon:not(#lmx-x){display:flex;align-items:center;justify-content:center}' +
@@ -3981,8 +3984,8 @@
             el.setAttribute('data-lmxhq', '1');
             var up = function () {
                 var s = el.getAttribute('src') || '';
-                if (s.indexOf('/t/p/w780/') < 0 && s.indexOf('/t/p/w500/') < 0 && s.indexOf('/t/p/w300/') < 0) return;
-                var big = s.replace(/\/t\/p\/w(780|500|300)\//, '/t/p/original/');
+                if (!/\/t\/p\/w\d+\//.test(s)) return;
+                var big = s.replace(/\/t\/p\/w\d+\//, '/t/p/original/');
                 var pre = new Image();
                 pre.onload = function () { if (el.getAttribute('src') === s) el.src = big; };
                 pre.src = big;
@@ -4667,7 +4670,7 @@
         var row = r.find('.full-start-new__reactions')[0];
         if (!row) return;
         document.body.classList.toggle('lmx-norx', !getBool('lmx_rx_row', true));
-        var busy = false, interact = getBool('lmx_rx_focus', true), mono = getBool('lmx_rx_mono', true), refT = 0;
+        var busy = false, interact = getBool('lmx_rx_focus', true), mono = getBool('lmx_rx_mono', true) && !isMobile(), refT = 0;   // на телефоні лишаємо рідні кольорові смайли: однокольорова копія поруч дублювала їх
         var upd = function () {
             if (busy) return;
             busy = true;
@@ -6610,7 +6613,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.588';
+    var VERSION = '10.589';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
