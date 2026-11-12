@@ -6590,7 +6590,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.586';
+    var VERSION = '10.587';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7285,8 +7285,9 @@
         });
         function moreToggle() {
             // emit('scroll', 0) і перебудова рядів скидають клас dim фону (затемнення) — запам'ятовуємо й тримаємо його
-            var bgs = lk.html.find('.full-start__background'), wasDim = bgs.hasClass('dim'), gt = 0;
-            var hold = setInterval(function () { bgs.toggleClass('dim', wasDim); if (++gt > 20) clearInterval(hold); }, 40);
+            // lk.html у деяких збірках Lampa (телефон) — не jQuery-об'єкт, тож беремо фон напряму з активного екрана
+            var bgs = $(document.querySelectorAll('.activity--active .full-start__background')), wasDim = bgs.hasClass('dim'), gt = 0;
+            var hold = setInterval(function () { try { bgs.toggleClass('dim', wasDim); } catch (x) {} if (++gt > 20) clearInterval(hold); }, 40);
             var bi = lk.rows.indexOf(lk.rows.filter(function (r) { return Array.isArray(r) && r[1] === d; })[0]), i;
             if (bi < 0) return;
             if (!open) {
