@@ -3207,8 +3207,16 @@
         if (getStr('lmx_theme', 'default') === 'default' || document.getElementById('lmx-font')) return;
         var l = document.createElement('link');
         l.id = 'lmx-font'; l.rel = 'stylesheet';
-        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Oswald:wght@500;600;700&subset=cyrillic&display=swap';
+        // display=block: поки шрифт вантажиться, текст не показується запасним шрифтом, тож на головній не видно підміни шрифтів (раніше swap: спершу Arial, потім Oswald/Inter). preconnect і document.fonts.load стартують завантаження одразу, не чекаючи, поки браузер побачить перший напис
+        l.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=Oswald:wght@500;600;700&subset=cyrillic&display=block';
+        ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'].forEach(function (h) {
+            var pc = document.createElement('link'); pc.rel = 'preconnect'; pc.href = h; if (h.indexOf('gstatic') > 0) pc.crossOrigin = 'anonymous';
+            document.head.appendChild(pc);
+        });
         document.head.appendChild(l);
+        l.onload = function () {
+            try { if (document.fonts && document.fonts.load) ['700 1em Oswald', '600 1em Oswald', '500 1em Inter', '700 1em Inter', '800 1em Inter'].forEach(function (f) { document.fonts.load(f, 'АаБбЯя'); }); } catch (e) {}
+        };
     }
     function applyThemeClass() {
         safe(loadThemeFont);
@@ -6152,17 +6160,17 @@
     function initRowsWarm() {
         if (window.__lmxRW) return;
         window.__lmxRW = 1;
-        var lastKey = Date.now();
+        var lastKey = Date.now(), tBoot = Date.now();
         ['keydown', 'mousedown', 'touchstart', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastKey = Date.now(); }, true); });
         function pass() {
-            if (!board() || isMobile() || document.hidden || Date.now() - lastKey < 1500) return;
+            if (!board() || isMobile() || document.hidden || Date.now() - lastKey < 1500 || Date.now() - tBoot < 20000) return;   // перші 20 с після запуску не розкодовуємо картинки наперед: Lampa ще вантажить головну
             var act = document.querySelector('.activity--active');
             if (!act || !act.querySelector('.items-line')) return;
             // афіша: після кожного оновлення головної заздалегідь розкодовуємо сусідній слайд, щоб перше перегортання не гальмувало
             var hl = act.querySelector('.items-line.lmx-hero-line'), h0 = hl && (hl.querySelector('.card--lmxhero.lmx-cur') || hl.querySelector('.card--lmxhero'));
             if (h0 && !hl.__lmxHW) { hl.__lmxHW = 1; try { heroTouch(h0, hl); } catch (x) {} }
             var all = act.querySelectorAll('.items-line:not(.lmx-hero-line) img'), list = [], i, im;
-            for (i = 0; i < all.length && list.length < 80; i++) {
+            for (i = 0; i < all.length && list.length < 40; i++) {
                 im = all[i];
                 if (!im.__lmxDec && im.decode && im.complete && im.naturalWidth > 0) list.push(im);
             }
@@ -6173,7 +6181,7 @@
                 var e = list[k++];
                 e.__lmxDec = 1;
                 try { e.decode().then(function () {}, function () {}); } catch (x) {}
-                setTimeout(next, 70);
+                setTimeout(next, 100);
             })();
         }
         var iv = setInterval(function () { safe(pass); }, 3000);
@@ -6577,7 +6585,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.581';
+    var VERSION = '10.582';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7381,9 +7389,10 @@
         safe(moodMenu);
         safe(statsMenu);
         safe(initFullExtras);
-        safe(uacWarm);
-        safe(epsPlayer);
-        safe(adultPages);
+        // усе нижче не потрібне для першого кадру: розносимо в часі, щоб запуск Lampa не підвисав одним великим стрибком роботи
+        safe(function () { setTimeout(function () { safe(uacWarm); }, 2200); });
+        safe(function () { setTimeout(function () { safe(epsPlayer); }, 2800); });
+        safe(function () { setTimeout(function () { safe(adultPages); }, 3400); });
         safe(function () { setTimeout(function () { safe(moodMenu); safe(statsMenu); }, 2500); });
         safe(initRows);
         safe(function () { setTimeout(resolveCatalogRefs, 3000); });
@@ -7436,7 +7445,7 @@
             });
             safe(initDots);
             safe(initThemeBtn);
-            safe(initNewEpBell);
+            safe(function () { setTimeout(function () { safe(initNewEpBell); }, 4000); });
             safe(initCinema);
             safe(initBtnRowsNav);
             safe(initRowsWarm);
