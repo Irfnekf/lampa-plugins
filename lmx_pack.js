@@ -2974,12 +2974,13 @@
             T + '.card--lmxhist .card__view{border-radius:.8em}' +
             // сторінка (B2): вордмарк, рубрика, мета з бейджами, біла «Дивитись» + скляні кнопки, епізоди-картки
             F + '.full-start__background{position:fixed !important;top:0 !important;left:0 !important;right:auto !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.55 !important}' +
-            'body.lmx-prem.lmx-fscroll .lmx-bgv{opacity:0}' +
-            'body.lmx-prem .lmx-bgv{transition:opacity .25s linear}' +
+            'body.lmx-prem .lmx-bgv{transition:opacity .5s ease-out}' +
+            'body.lmx-prem.lmx-fscroll .lmx-bgv{opacity:1}' +
             'body.lmx-prem .lmx-bgv{position:fixed;z-index:-1;top:0;left:0;width:100vw;height:100vh;pointer-events:none;background:linear-gradient(90deg,rgba(7,8,16,.9) 0%,rgba(7,8,16,.72) 32%,rgba(7,8,16,.28) 58%,rgba(7,8,16,0) 78%),linear-gradient(0deg,rgba(7,8,16,.75) 0%,rgba(7,8,16,0) 38%)}' +
             // при спуску вниз фон приглушується за власною перевіркою прокрутки (lmx-fscroll): рідний клас dim нагорі «залипає» і фон лишався темним після повернення вгору
             F + '.full-start__background.dim{opacity:.55 !important}' +
-            'body.lmx-prem.lmx-fscroll .full-start__background,body.lmx-prem.lmx-fscroll .full-start__background.dim{opacity:.09 !important;transition:opacity .25s linear}' +
+            'body.lmx-prem.lmx-fscroll .full-start__background,body.lmx-prem.lmx-fscroll .full-start__background.dim{opacity:.24 !important}' +
+            'body.lmx-prem .full-start__background{transition:opacity .5s ease-out !important}' +
             F + '.full-start-new__right{max-width:50%}' +
             F + '.full-start-new__title{font-family:' + D + ';text-transform:uppercase;font-weight:700;letter-spacing:.01em;line-height:1;font-size:4.2em;margin-bottom:.25em}' +
             // є логотип — текстової назви немає (інакше вона дублюється); немає — лишається назва
@@ -6585,7 +6586,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.582';
+    var VERSION = '10.583';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
