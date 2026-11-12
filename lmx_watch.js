@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.44';
+    var VERSION = '3.45';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1095,12 +1095,27 @@
             j = jd(els[i]);
             if (!j || j.episode === undefined || j.episode === null || j.episode === '') continue;
             key = [j.season || '', j.episode, j.voice || j.translate || j.balanser || '', j.quality ? JSON.stringify(j.quality) : ''].join('|');
-            if (seen[key]) drop.push(els[i]); else seen[key] = 1;
+            // джерело може віддати ту саму серію з іншими службовими полями (якість, озвучка) — тоді дублікат видно лише за самою карткою:
+            // однаковий видимий текст (номер, назва, тривалість) = та сама серія
+            var tk = 'T|' + (j.season || '') + '|' + String(els[i].textContent || '').replace(/\s+/g, ' ').trim();
+            if (seen[key] || (tk.length > 8 && seen[tk])) drop.push(els[i]); else { seen[key] = 1; seen[tk] = 1; }
         }
         if (!drop.length) return els;
         drop.forEach(function (e) { try { if (e.parentNode) e.parentNode.removeChild(e); } catch (x) {} });
         return els.filter(function (e) { return drop.indexOf(e) < 0; });
     }
+    // Дублі можуть дійти вже після оформлення списку (друга відповідь джерела) — раз на півтори секунди чистимо відкритий екран «Онлайн»
+    var dupN = 0;
+    setInterval(function () {
+        try {
+            var act = document.querySelector('.activity--active'), body = act && act.querySelector('.explorer.lmx-onl .explorer__files-body .scroll__body');
+            if (!body || body.children.length === dupN) return;
+            var kids = body.children, list = [], i, el;
+            for (i = 0; i < kids.length; i++) { el = kids[i]; if (el.classList && el.classList.contains('lmx-onl-item') && hasEp(el)) list.push(el); }
+            if (list.length > 1) dedupeEps(list);
+            dupN = body.children.length;
+        } catch (e) {}
+    }, 1500);
     function hideJunk(act) {
         var body = act.querySelector('.explorer__files-body .scroll__body'), kids = body ? body.children : [], i, el, ch = false;
         // кнопки рідного блоку «не дав результатів» невидимі — не даємо їм ловити фокус
