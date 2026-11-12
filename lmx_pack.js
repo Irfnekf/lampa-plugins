@@ -3227,6 +3227,24 @@
         safe(loadThemeFont);
         if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', themeBase() === 'hbo'); document.body.classList.toggle('lmx-prem', themeBase() === 'prem'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); }
     }
+    // Тема читається зі сховища один раз на старті, а значення може змінитись згодом (синхронізація профілю/хмари підтягує інше після запуску):
+    // тоді галочка в меню «Тема» показує одне, а екран лишається в іншій темі. Стежимо: розбіжність — перезапуск (не частіше за раз на 20 с)
+    function themeWatch() {
+        if (themeWatch.on) return;
+        themeWatch.on = true;
+        var boot = getStr('lmx_theme', 'default'), n = 0;
+        function chk() {
+            try {
+                if (window.__lmxReloading || getStr('lmx_theme', 'default') === boot) return;
+                var last = 0; try { last = parseInt(window.sessionStorage.getItem('lmx_theme_rl') || '0', 10) || 0; } catch (e) {}
+                if (Date.now() - last < 20000) return;
+                try { window.sessionStorage.setItem('lmx_theme_rl', String(Date.now())); } catch (e) {}
+                reloadApp();
+            } catch (e) {}
+        }
+        try { Lampa.Storage.listener.follow('change', function (e) { if (e && e.name === 'lmx_theme') setTimeout(chk, 50); }); } catch (e) {}
+        var iv = setInterval(function () { chk(); if (++n > 60) clearInterval(iv); }, 3000);
+    }
     function isMobile() { return (window.innerWidth || 1000) <= 760; }
     function applyFullClass() {
         var on = getBool('lmx_full', true) && !isMobile();
@@ -3268,6 +3286,7 @@
         safe(applyFullClass);
         safe(function () { if (document.body) document.body.classList.toggle('lmx-nogap', !flexGapOk()); });
         safe(applyThemeClass);
+        safe(themeWatch);
         var s = document.getElementById('lmx-css');
         if (!s) {
             s = document.createElement('style');
@@ -5859,6 +5878,7 @@
     var edPrev = null;
     // тема змінюється повним перезапуском, щоб усе (банер, ряди, сторінка фільму) застосувалось чисто
     function reloadApp() {
+        window.__lmxReloading = true;
         if (Lampa.Noty) Lampa.Noty.show('Перезапуск...');
         setTimeout(function () { try { window.location.reload(); } catch (e) { location.href = location.href; } }, 400);
     }
@@ -6590,7 +6610,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.587';
+    var VERSION = '10.588';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
