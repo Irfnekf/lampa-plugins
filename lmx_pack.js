@@ -3156,9 +3156,9 @@
             A + '.simple-button{border-radius:99em;background:' + GLASS + ';box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}' +
             // ===== сторінка фільму: назва/логотип → метадані → опис → кнопки =====
             // затемнення фону: opacity замість filter:brightness — фон і так лежить на темному тлі, а filter на повноекранній картинці змушує ТВ перемальовувати її щокадру
-            F + '.full-start__background{will-change:opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.23 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
+            F + '.full-start__background{will-change:opacity;position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;object-fit:cover;opacity:.36 !important;filter:none !important;transition:opacity .35s ease-out,filter .35s ease-out !important}' +
             // при спуску вниз фон розмивається (стандартний клас dim)
-            F + '.full-start__background.dim{opacity:.23 !important}' +
+            F + '.full-start__background.dim{opacity:.36 !important}' +
             'body.lmx-apple .lmx-bgb{position:fixed !important;top:0;left:0;width:100vw;height:100vh;object-fit:cover;filter:blur(1.1em);opacity:0;transition:opacity .35s ease-out;will-change:opacity;pointer-events:none}' +
             'body.lmx-apple.lmx-fscroll .lmx-bgb{opacity:.2}' +
             'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:0 !important;filter:none !important;transform:none !important}' +
@@ -6586,7 +6586,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.583';
+    var VERSION = '10.584';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
