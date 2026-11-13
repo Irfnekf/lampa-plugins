@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.45';
+    var VERSION = '3.46';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -530,13 +530,47 @@
     }
     function torEarly() { [0, 40, 120, 260, 500, 900, 1500].forEach(function (ms) { setTimeout(function () { safe(torTick); }, ms); }); }
 
+    // Старі телевізори (Chromium до 84) не знають flex-gap: відступи між блоками зникають, а ширини карток (розраховані з gap) лишають щілину.
+    // Визначаємо підтримку й, якщо її нема, замінюємо gap на margin
+    function flexGapOk() {
+        try {
+            var d = document.createElement('div');
+            d.style.cssText = 'display:flex;flex-direction:column;row-gap:1px;position:absolute;left:-99px;top:0;visibility:hidden';
+            d.appendChild(document.createElement('div')); d.appendChild(document.createElement('div'));
+            document.body.appendChild(d);
+            var ok = d.scrollHeight === 1;
+            document.body.removeChild(d);
+            return ok;
+        } catch (e) { return true; }
+    }
+    var NOGAP_CSS = (function () {
+        var H = 'html.lmx-nogap ';
+        return H + S + '.lmx-onl-hero__m > * + *{margin-left:.9em}' +
+            H + '.lmx-onl-hero__m > * + *{margin-left:.9em}' +
+            H + '.lmx-onl-hero__a > *{margin:0 .7em .5em 0}' +
+            H + S + '.lmx-onl-bar > *{margin:0 1.3em .4em 0}' +
+            H + S + '.lmx-onl-g > * + *{margin-left:.4em}' +
+            H + S + '.lmx-onl-drop > *{margin:0 .5em .5em 0}' +
+            H + S + '.lmx-onl-dead > *{margin:0 .8em .6em 0}' +
+            H + S + '.lmx-onl-prog__f > *{margin-right:1.3em}' +
+            H + S + '.lmx-onl-prog__g > * + *{margin-left:.9em}' +
+            H + S + '.lmx-onl-item [class*="__info"] > *,' + H + S + '.lmx-onl-item [class*="__footer"] > *,' + H + S + '.lmx-onl-item [class*="-footer"] > *{margin:0 .7em .15em 0}' +
+            '@media (min-width:761px){' +
+                H + BG + ' > .lmx-onl-item,' + H + BG + ' > .videos__item,' + H + BG + ' > .videos__season{margin:0 .9em .9em 0 !important;flex:0 0 calc(20% - .9em) !important;width:calc(20% - .9em) !important}' +
+            '}' +
+            H + 'body.lmx-online .explorer.lmx-tor .lmx-tq > * + *{margin-top:.12em}' +
+            H + 'body.lmx-online .explorer.lmx-tor .lmx-tchips > *{margin:0 .35em .35em 0}' +
+            H + 'body.lmx-online .explorer.lmx-tor .torrent-item__details > *{margin:0 1.1em .1em 0}' +
+            H + 'body.lmx-online .explorer.lmx-tor .lmx-ts > * + *{margin-top:.3em}';
+    })();
     function addCss() {
+        try { document.documentElement.classList.toggle('lmx-nogap', !flexGapOk()); } catch (e) {}
         var st = document.getElementById('lmx-online-css');
         if (!st) { st = document.createElement('style'); st.id = 'lmx-online-css'; document.head.appendChild(st); }
         // екран «Торренти» отримує клас lmx-tor замість lmx-onl (щоб не вмикати онлайн-логіку: рідне меню «Фільтр», клавіші, автовибір),
         // а вигляд той самий: усі правила онлайн-екрана повторюємо для .explorer.lmx-tor
         var base = CSS + THEME_CSS + CARD_CSS;
-        st.textContent = base + base.split('.explorer.lmx-onl').join('.explorer.lmx-tor') + TOR_CSS + UAK_CSS;
+        st.textContent = base + base.split('.explorer.lmx-onl').join('.explorer.lmx-tor') + TOR_CSS + UAK_CSS + NOGAP_CSS;
     }
 
     // серія, що ще не вийшла: джерела показують її напівпрозорою (як у Nova — «soon»); у «Продовжити/Наступна» її не враховуємо
