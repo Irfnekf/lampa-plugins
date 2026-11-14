@@ -103,8 +103,23 @@ export async function handleTg(update, env) {
       'Ваш код синхронізації LMX:\n\n<code>' + pretty(row.code) + '</code>\n\n' +
       'Lampa → Налаштування → LMX Sync → «Ввести код» (на кожному пристрої один і той самий код). ' +
       'Якщо забудете — напишіть мені /code, і я надішлю його знову. Нікому цей код не показуйте.');
+  } else if (cmd === '/notify') {
+    if (!row) { await tgSend(env, m.chat.id, 'Спершу напишіть /start — я видам код синхронізації, і сповіщення почнуть працювати.'); return; }
+    await ntfEnsure(env);
+    const arg = (m.text.trim().split(/\s+/)[1] || '').toLowerCase();
+    const u = await sha256hex('lmx-sync:v1:' + row.code);
+    if (arg === 'off') {
+      await env.DB.prepare('INSERT OR REPLACE INTO ntf (u, k, t, v) VALUES (?, ?, ?, ?)').bind(u, 'off', Date.now(), '1').run();
+      await tgSend(env, m.chat.id, 'Сповіщення про нові серії й частини франшиз вимкнено. Увімкнути: /notify on');
+    } else if (arg === 'on') {
+      await env.DB.prepare('DELETE FROM ntf WHERE u = ? AND k = ?').bind(u, 'off').run();
+      await tgSend(env, m.chat.id, 'Сповіщення увімкнено: надішлю, коли вийде нова серія серіалу з вашої історії чи нова частина франшизи, яку ви вже дивились. Вимкнути: /notify off');
+    } else {
+      const off = await env.DB.prepare('SELECT 1 AS x FROM ntf WHERE u = ? AND k = ?').bind(u, 'off').first();
+      await tgSend(env, m.chat.id, 'Сповіщення про нові серії й частини франшиз зараз ' + (off ? 'вимкнено. Увімкнути: /notify on' : 'увімкнено. Вимкнути: /notify off'));
+    }
   } else {
-    await tgSend(env, m.chat.id, 'Команди: /code — показати ваш код синхронізації. Резервні копії закладок і таймкодів плагін надсилає сюди сам файлом; відновити їх можна в Lampa → LMX Sync → «Відновити з Telegram».');
+    await tgSend(env, m.chat.id, 'Команди: /code — показати ваш код синхронізації; /notify on|off — сповіщення про нові серії й частини франшиз. Резервні копії закладок і таймкодів плагін надсилає сюди сам файлом; відновити їх можна в Lampa → LMX Sync → «Відновити з Telegram».');
   }
 }
 
@@ -160,6 +175,150 @@ export async function handleBackup(body, env, nowMs, fetchFn) {
   return [{ ok: 1, t: now, size: data.length }, 200];
 }
 
+// ───────── Сповіщення про нові серії й нові частини франшиз ─────────
+// Потрібна змінна Worker TMDB_KEY (ключ API v3 або токен v4 з themoviedb.org); без неї сповіщення просто не працюють.
+// Раз на кілька годин (cron) беремо серіали й фільми з історії кожного користувача бота, питаємо TMDB і шлемо в його чат.
+// Безкоштовний тариф Cloudflare дозволяє лише ~50 зовнішніх запитів за запуск, тому за запуск перевіряємо обмежену кількість
+// назв — тих, що не перевірялись найдовше, так що черга рухається по колу.
+const NTF_CATS = ['history', 'look', 'continued'];
+const NTF_RECENT = 3 * DAY;        // про вихід серії сповіщаємо, якщо вона вийшла не раніше ніж 3 доби тому
+const NTF_COL_BACK = 30 * DAY;     // про частину франшизи — якщо вона вийшла не раніше ніж 30 діб тому або ще попереду
+const NTF_COL_AHEAD = 365 * DAY;
+
+let ntfReady = false;
+async function ntfEnsure(env) {
+  if (ntfReady) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS ntf (u TEXT NOT NULL, k TEXT NOT NULL, t INTEGER NOT NULL, v TEXT, PRIMARY KEY (u, k))').run();
+  ntfReady = true;
+}
+function ymd(ms) { return new Date(ms).toISOString().slice(0, 10); }
+function dayMs(s) { const t = Date.parse(String(s || '') + 'T00:00:00Z'); return isFinite(t) ? t : 0; }
+function ruDate(s) { const p = String(s || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : ''; }
+function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+export function ntfIsTv(c) { return !!c && (c.media_type === 'tv' || (!c.media_type && (c.name || c.first_air_date) && !c.title)); }
+
+// Що написати про серіал (info — відповідь TMDB /tv/{id}); повертає [{key, text}]
+export function ntfPlanTv(card, info, now, sent) {
+  const out = [];
+  if (!info || typeof info !== 'object') return out;
+  const name = esc(info.name || card.name || card.original_name || '');
+  const last = info.last_episode_to_air, next = info.next_episode_to_air;
+  if (last && last.air_date) {
+    const at = dayMs(last.air_date);
+    const key = 'ep:' + card.id + ':' + last.season_number + ':' + last.episode_number;
+    if (at && now - at <= NTF_RECENT && at <= now + DAY && !sent[key]) {
+      out.push({ key, text: '🆕 <b>' + name + '</b>\nНова серія: S' + last.season_number + 'E' + last.episode_number + (last.name ? ' «' + esc(last.name) + '»' : '') + '\nВийшла ' + ruDate(last.air_date) });
+    }
+  }
+  if (next && next.air_date && next.episode_number === 1) {
+    const at = dayMs(next.air_date);
+    const key = 'season:' + card.id + ':' + next.season_number;
+    if (at && at >= now - DAY && at <= now + NTF_COL_AHEAD && !sent[key]) {
+      out.push({ key, text: '📅 <b>' + name + '</b>\nСезон ' + next.season_number + ' стартує ' + ruDate(next.air_date) });
+    }
+  }
+  return out;
+}
+
+// Нові частини франшизи (col — відповідь TMDB /collection/{id}, known — id фільмів, які користувач уже має в списках)
+export function ntfPlanCol(col, known, now, sent) {
+  const out = [];
+  if (!col || !Array.isArray(col.parts)) return out;
+  for (const p of col.parts) {
+    if (!p || !p.id || known[p.id] || !p.release_date) continue;
+    const at = dayMs(p.release_date), key = 'col:' + p.id;
+    if (!at || at < now - NTF_COL_BACK || at > now + NTF_COL_AHEAD || sent[key]) continue;
+    const future = at > now;
+    out.push({ key, poster: p.poster_path || '', text: '🎬 <b>' + esc(p.title || p.original_title || '') + '</b>\nНова частина франшизи «' + esc(col.name || '') + '»\n' + (future ? 'Вихід: ' : 'Вийшов: ') + ruDate(p.release_date) });
+  }
+  return out;
+}
+
+async function tmdbGet(env, path, f) {
+  const key = String(env.TMDB_KEY || '');
+  const bearer = key.length > 40;
+  const url = 'https://api.themoviedb.org/3' + path + (path.indexOf('?') < 0 ? '?' : '&') + 'language=uk-UA' + (bearer ? '' : '&api_key=' + encodeURIComponent(key));
+  const r = await f(url, bearer ? { headers: { Authorization: 'Bearer ' + key } } : undefined);
+  if (!r.ok) throw new Error('tmdb ' + r.status);
+  return r.json();
+}
+async function tgPhoto(env, chat, photoPath, text, f) {
+  const base = 'https://api.telegram.org/bot' + env.BOT_TOKEN;
+  if (photoPath) {
+    const r = await f(base + '/sendPhoto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chat, photo: 'https://image.tmdb.org/t/p/w500' + photoPath, caption: text, parse_mode: 'HTML' }) });
+    if (r.ok) return;
+  }
+  await f(base + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' }) });
+}
+
+export async function runNotify(env, nowMs, fetchFn) {
+  if (!env.TMDB_KEY || !env.BOT_TOKEN) return { skipped: 1 };
+  const now = nowMs || Date.now(), f = fetchFn || fetch;
+  let budget = Number(env.NTF_BUDGET || 22);
+  await ntfEnsure(env);
+  const users = ((await env.DB.prepare('SELECT id, code FROM tg').all()).results) || [];
+  // список «що перевіряти» по всіх користувачах: найдавніше перевірені — першими
+  const jobs = [];
+  for (const us of users) {
+    const u = await sha256hex('lmx-sync:v1:' + us.code);
+    const off = await env.DB.prepare('SELECT 1 AS x FROM ntf WHERE u = ? AND k = ?').bind(u, 'off').first();
+    if (off) continue;
+    const rows = ((await env.DB.prepare("SELECT k, v FROM kv WHERE u = ? AND d = 0 AND (k LIKE 'f:history:%' OR k LIKE 'f:look:%' OR k LIKE 'f:continued:%') LIMIT 600").bind(u).all()).results) || [];
+    const known = {}, cards = {};
+    for (const r of rows) {
+      let c; try { c = JSON.parse(r.v); } catch (e) { continue; }
+      if (!c || !c.id) continue;
+      known[c.id] = 1;
+      if (!cards[c.id]) cards[c.id] = c;
+    }
+    const chk = ((await env.DB.prepare("SELECT k, t FROM ntf WHERE u = ? AND k LIKE 'chk:%'").bind(u).all()).results) || {};
+    const lastChk = {};
+    for (const r of (Array.isArray(chk) ? chk : [])) lastChk[r.k] = r.t;
+    const sentRows = ((await env.DB.prepare("SELECT k FROM ntf WHERE u = ? AND (k LIKE 'ep:%' OR k LIKE 'season:%' OR k LIKE 'col:%')").bind(u).all()).results) || [];
+    const sent = {}; for (const r of sentRows) sent[r.k] = 1;
+    for (const id of Object.keys(cards)) jobs.push({ u, chat: us.id, card: cards[id], known, sent, last: lastChk['chk:' + id] || 0 });
+  }
+  jobs.sort((a, b) => a.last - b.last);
+  let sentN = 0, checked = 0;
+  for (const j of jobs) {
+    if (budget <= 0) break;
+    const c = j.card;
+    try {
+      let plan = [];
+      if (ntfIsTv(c)) {
+        budget -= 1;
+        plan = ntfPlanTv(c, await tmdbGet(env, '/tv/' + c.id, f), now, j.sent);
+      } else {
+        // фільм: франшиза (id колекції запам'ятовуємо, щоб не питати двічі)
+        const cacheKey = 'cid:' + c.id;
+        let row = await env.DB.prepare('SELECT v FROM ntf WHERE u = ? AND k = ?').bind(j.u, cacheKey).first();
+        if (!row) {
+          budget -= 1;
+          const info = await tmdbGet(env, '/movie/' + c.id, f);
+          const cid = info && info.belongs_to_collection ? String(info.belongs_to_collection.id) : '0';
+          await env.DB.prepare('INSERT OR REPLACE INTO ntf (u, k, t, v) VALUES (?, ?, ?, ?)').bind(j.u, cacheKey, now, cid).run();
+          row = { v: cid };
+        }
+        if (row.v && row.v !== '0') {
+          if (budget <= 0) continue;
+          budget -= 1;
+          plan = ntfPlanCol(await tmdbGet(env, '/collection/' + row.v, f), j.known, now, j.sent);
+        }
+      }
+      for (const n of plan) {
+        if (j.sent[n.key]) continue;
+        j.sent[n.key] = 1;
+        await env.DB.prepare('INSERT OR IGNORE INTO ntf (u, k, t, v) VALUES (?, ?, ?, NULL)').bind(j.u, n.key, now).run();
+        await tgPhoto(env, j.chat, n.poster || c.poster_path || '', n.text, f);
+        sentN++;
+      }
+      await env.DB.prepare('INSERT OR REPLACE INTO ntf (u, k, t, v) VALUES (?, ?, ?, NULL)').bind(j.u, 'chk:' + c.id, now).run();
+      checked++;
+    } catch (e) { /* одна назва не має зупиняти решту */ }
+  }
+  return { jobs: jobs.length, checked, sent: sentN };
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -195,6 +354,8 @@ export default {
   // щоденне прибирання: видалені записи старші 90 днів і користувачі, які не заходили пів року
   async scheduled(event, env) {
     const now = Date.now();
+    if (event && event.cron && event.cron !== '17 3 * * *') { try { await runNotify(env, now); } catch (e) {} return; }
+    try { await ntfEnsure(env); await env.DB.prepare('DELETE FROM ntf WHERE t < ? AND k NOT IN (\'off\')').bind(now - 400 * DAY).run(); } catch (e) {}
     await env.DB.prepare('DELETE FROM kv WHERE d = 1 AND t < ?').bind(now - 90 * DAY).run();
     await env.DB.prepare('DELETE FROM kv WHERE u IN (SELECT u FROM kv GROUP BY u HAVING MAX(st) < ?)').bind(now - 180 * DAY).run();
   }
