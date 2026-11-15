@@ -2116,7 +2116,7 @@
             var c = list[qi++];
             load(c.id, function (j) {
                 var d = j && j.last_episode_to_air && j.last_episode_to_air.air_date;
-                if (d && d >= lo && d <= hi && j.poster_path) {
+                if (d && d >= lo && d <= hi && j.poster_path && !lastEpSeen(j)) {
                     out.push({ id: j.id, name: j.name, original_name: j.original_name, poster_path: j.poster_path, backdrop_path: j.backdrop_path,
                         overview: j.overview, vote_average: j.vote_average, vote_count: j.vote_count, first_air_date: j.first_air_date,
                         original_language: j.original_language, genre_ids: (j.genres || []).map(function (g) { return g.id; }),
@@ -2247,11 +2247,24 @@
     }
 
     // ===== Мітки =====
+    // остання вийшла серія вже переглянута (за таймкодами Lampa: далі, ніж вона, або вона досмотрена)? Тоді мітка «Нова серія» не потрібна
+    function lastEpSeen(j) {
+        try {
+            var last = j && j.last_episode_to_air;
+            if (!last || !(last.season_number > 0) || !(last.episode_number > 0)) return false;
+            var w = watchProgress(j);
+            if (!w || !w.s) return false;
+            if (w.s > last.season_number) return true;
+            if (w.s === last.season_number) return w.e > last.episode_number || (w.e === last.episode_number && w.pct >= 85);
+        } catch (e) {}
+        return false;
+    }
     function tvMark(j) {
         var n = j.next_episode_to_air ? dayDiff(j.next_episode_to_air.air_date) : null;
         var l = j.last_episode_to_air ? dayDiff(j.last_episode_to_air.air_date) : null;
-        if (n === 0 || l === 0) return { t: 'Сьогодні', c: 'next' };
-        if (l !== null && l < 0 && l >= -7) return { t: 'Нова серія', c: 'next' };
+        var seen = (l !== null && l <= 0 && l >= -7) && lastEpSeen(j);
+        if (n === 0 || (l === 0 && !seen)) return { t: 'Сьогодні', c: 'next' };
+        if (l !== null && l < 0 && l >= -7 && !seen) return { t: 'Нова серія', c: 'next' };
         var fa = dayDiff(j.first_air_date);
         var planned = j.status === 'Planned' || j.status === 'In Production' || j.status === 'Pilot';
         if ((fa !== null && fa > 0) || (planned && !j.last_episode_to_air && fa === null)) return { t: 'Скоро', c: 'soon' };
@@ -6631,7 +6644,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.593';
+    var VERSION = '10.594';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
