@@ -180,7 +180,7 @@ export async function handleBackup(body, env, nowMs, fetchFn) {
 // Раз на кілька годин (cron) беремо серіали й фільми з історії кожного користувача бота, питаємо TMDB і шлемо в його чат.
 // Безкоштовний тариф Cloudflare дозволяє лише ~50 зовнішніх запитів за запуск, тому за запуск перевіряємо обмежену кількість
 // назв — тих, що не перевірялись найдовше, так що черга рухається по колу.
-const NTF_CATS = ['history', 'look', 'continued'];
+const NTF_CATS = ['look', 'like', 'book', 'wath'];   // ті самі списки, що й у дзвіночку Lampa (історія не враховується)
 const NTF_RECENT = 3 * DAY;        // про вихід серії сповіщаємо, якщо вона вийшла не раніше ніж 3 доби тому
 const NTF_COL_BACK = 30 * DAY;     // про частину франшизи — якщо вона вийшла не раніше ніж 30 діб тому або ще попереду
 const NTF_COL_AHEAD = 365 * DAY;
@@ -263,7 +263,7 @@ export async function runNotify(env, nowMs, fetchFn) {
     const u = await sha256hex('lmx-sync:v1:' + us.code);
     const off = await env.DB.prepare('SELECT 1 AS x FROM ntf WHERE u = ? AND k = ?').bind(u, 'off').first();
     if (off) continue;
-    const rows = ((await env.DB.prepare("SELECT k, v FROM kv WHERE u = ? AND d = 0 AND (k LIKE 'f:history:%' OR k LIKE 'f:look:%' OR k LIKE 'f:continued:%') LIMIT 600").bind(u).all()).results) || [];
+    const rows = ((await env.DB.prepare("SELECT k, v FROM kv WHERE u = ? AND d = 0 AND (k LIKE 'f:look:%' OR k LIKE 'f:like:%' OR k LIKE 'f:book:%' OR k LIKE 'f:wath:%') LIMIT 600").bind(u).all()).results) || [];
     const known = {}, cards = {};
     for (const r of rows) {
       let c; try { c = JSON.parse(r.v); } catch (e) { continue; }
