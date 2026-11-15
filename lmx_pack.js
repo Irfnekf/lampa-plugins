@@ -2,7 +2,7 @@
  * LMX Pack v10.331 — усе в одному для Lampa: власна головна, каталоги (стрімінги, аніме, дорами), теми, сторінка фільму, NoCub
  *  1) Головна: афіша, каталоги, «Популярне на …», TMDB, 
  *     історія та «Схоже на те, що вам сподобалось»; порядок і видимість рядів налаштовуються
- *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Аніме, Дорами — окрема сторінка з підбірками
+ *  2) Каталоги: Netflix, Apple TV+, HBO, Prime, Disney+, Paramount+, SkyShowtime, AMC+, Hulu, Аніме, Дорами — окрема сторінка з підбірками
  *  3) Картки: назва, жанр, рейтинг і рік на постері, значок С4Е32, мітки «Нова серія» / «Сьогодні» / «Новинка» / «Скоро»
  *  4) Теми: Кіно (prem, за замовчуванням), Скло (apple), Полегшена (default); афіша: на весь екран (HBO, Apple) або компактна з автосменою (стандартна, Аніме, Дорами)
  *  5) Сторінка фільму: кіно-оформлення, логотип замість назви, тривалість і статус з відліком, кнопки
@@ -93,7 +93,7 @@
     var SERVICES = [
         ['hbo', 'HBO / Max', 1899], ['netflix', 'Netflix', 8], ['apple', 'Apple TV+', 350],
         ['amazon', 'Prime Video', 119], ['disney', 'Disney+', 337], ['paramount', 'Paramount+', 531],
-        ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['ua', 'Українське', 9003], ['anime', 'Аніме', 9000, 'Популярне в аніме'], ['dorama', 'Дорами', 9001, 'Популярне в дорамах']
+        ['sky', 'SkyShowtime', 1773], ['amc', 'AMC+', 526], ['hulu', 'Hulu', 15], ['ua', 'Українське', 9003], ['anime', 'Аніме', 9000, 'Популярне в аніме'], ['dorama', 'Дорами', 9001, 'Популярне в дорамах']
     ];
     // На Сяйві (siaivo.*) і в лампаюа (lampaua.*) наш каталог аніме не показуємо (ні плитку, ні ряд на головній): у Сяйві є власний розділ, у лампаюа сторінка аніме порожня
     var ON_SIAIVO = false;
@@ -165,7 +165,7 @@
     // Порядок за замовчуванням (поки користувач не змінив його сам)
     var DEFAULT_ORDER = ['LmxHero', 'LmxStudios', 'LmxHistory', 'LmxLater', 'LmxPopularMovies', 'LmxSvc_hbo', 'LmxPopularTv', 'LmxSvc_apple', 'LmxNowPlaying',
         'LmxSvc_netflix', 'LmxSvc_amazon', 'LmxRecs', 'LmxRecsBy1', 'LmxRecsBy2', 'LmxSvc_disney', 'LmxSvc_paramount', 'LmxTopMovies', 'LmxUpcoming',
-        'LmxSvc_sky', 'LmxSvc_amc'];
+        'LmxSvc_sky', 'LmxSvc_amc', 'LmxSvc_hulu'];
 
     function allRows() {
         var map = {}, list = [];
@@ -735,7 +735,7 @@
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
     // Регіон каталогу: SkyShowtime — Польща, Paramount+ — США (в Україні його немає), решта, зокрема Max, — Україна (якщо порожньо — США)
     function prov(id) {
-        var region = id === 1773 ? 'PL' : (id === 531 || id === 526) ? 'US' : 'UA';
+        var region = id === 1773 ? 'PL' : (id === 531 || id === 526 || id === 15) ? 'US' : 'UA';
         // Prime Video в TMDB має два ідентифікатори (9 і 119): у різних регіонах заповнений то один, то інший
         return 'with_watch_providers=' + (id === 119 ? '9' + PIPE + '119' : id) + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
     }
@@ -793,6 +793,13 @@
             { t: 'Блокбастери Warner Bros.', k: 'movie', q: prov(1899) + '&with_companies=174&sort_by=revenue.desc&vote_count.gte=1000' },
             { t: 'Всесвіт DC', k: 'movie', q: prov(1899) + '&with_companies=174&with_keywords=9715&sort_by=release_date.desc&release_date.lte={today}' },
             { t: 'Преміальні драми HBO', k: 'tv', q: prov(1899) + '&with_networks=49&with_genres=18&without_genres=10765&sort_by=popularity.desc' }
+        ]),
+        // Hulu — той самий набір рядів, що й у HBO / Max: власні оригінали, блокбастери студії, FX, преміальні драми, далі жанри
+        hulu: provSvc(15, [
+            { t: 'Hulu Originals', k: 'tv', q: prov(15) + '&with_networks=453&sort_by=popularity.desc' },
+            { t: 'Блокбастери 20th Century', k: 'movie', q: prov(15) + '&with_companies=25' + PIPE + '127928&sort_by=revenue.desc&vote_count.gte=1000' },
+            { t: 'Серіали FX', k: 'tv', q: prov(15) + '&with_networks=88&sort_by=popularity.desc' },
+            { t: 'Преміальні драми Hulu', k: 'tv', q: prov(15) + '&with_networks=453' + PIPE + '88&with_genres=18&without_genres=10765&sort_by=popularity.desc' }
         ]),
         netflix: provSvc(8, [
             { t: 'Оригінали Netflix', k: 'tv', q: 'with_networks=213&sort_by=popularity.desc&vote_count.gte=300' }
@@ -883,6 +890,7 @@
     // «Скоро вийде» для провайдерських каталогів: мережі (серіали) і студії (фільми) платформи; де надійного id студії немає — лише серіали
     SVC.hbo.soon = { tf: 'with_networks=49' + PIPE + '3186', mf: 'with_companies=174' };
     SVC.netflix.soon = { tf: 'with_networks=213' };
+    SVC.hulu.soon = { tf: 'with_networks=453' + PIPE + '88', mf: 'with_companies=25' + PIPE + '127928' };
     SVC.apple.soon = { tf: 'with_networks=2552' };
     SVC.amazon.soon = { tf: 'with_networks=1024', mf: 'with_companies=20580' };
     SVC.disney.soon = { tf: 'with_networks=2739', mf: 'with_companies=2' + PIPE + '3' + PIPE + '420' + PIPE + '1' + PIPE + '6125' };
@@ -1081,9 +1089,11 @@
         119: { movie: 'with_companies=20580' + '%7C56178%7C21', tv: 'with_networks=1024' },
         531: { movie: 'with_companies=4', tv: 'with_networks=4330%7C16%7C67%7C13' },
         // AMC+: якщо TMDB не віддає дані провайдера — серіали каналу AMC; для фільмів заміни немає (порожньо, ряд просто не показується)
-        526: { movie: 'with_companies=0', tv: 'with_networks=174' }
+        526: { movie: 'with_companies=0', tv: 'with_networks=174' },
+        // Hulu: у регіоні UA провайдер порожній — беремо мережі Hulu і FX та студії 20th Century
+        15: { movie: 'with_companies=25%7C127928', tv: 'with_networks=453%7C88' }
     };
-    var ALT_SVC = { amazon: 1, disney: 1, paramount: 1, sky: 1, amc: 1 };
+    var ALT_SVC = { amazon: 1, disney: 1, paramount: 1, sky: 1, amc: 1, hulu: 1 };
     var PROV_RX = /with_watch_providers=([^&]*)&watch_region=[^&]*&with_watch_monetization_types=[^&]*/;
     function empty(j) { return !j || !j.results || !j.results.length; }
     // ok(j, usedUrl): другий аргумент — адреса, що справді дала результат (для «Ще» потрібна саме вона, а не порожній запит за регіоном UA)
@@ -6644,7 +6654,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.594';
+    var VERSION = '10.595';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
