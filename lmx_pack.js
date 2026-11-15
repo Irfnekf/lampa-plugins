@@ -6611,7 +6611,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.590';
+    var VERSION = '10.591';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7362,6 +7362,14 @@
                             if (getBool('lmx_hide_episodes', true)) safe(function () { for (var q = lk.rows.length - 1; q >= 0; q--) if ((Array.isArray(lk.rows[q]) ? lk.rows[q][0] : lk.rows[q]) === 'episodes') lk.rows.splice(q, 1); });   // метадані/настрої й коментарі прибираємо до побудови, а не після (інакше вони блимали на частку секунди)
                             if (getBool('lmx_rows_end', true)) safe(function () { reorderRows(lk.rows); });
                             if (getBool('lmx_more_info', true)) safe(function () { collapseMore(lk, e.data); });
+                            // «Пов'язане» приходить асинхронно (пошук у TMDB), а ряд «Подібні» вже будувався разом із першими: тоді «Пов'язане» опинялось під ним.
+                            // Для сторінок із «Пов'язаним» перший звичайний ряд карток не будуємо одразу — він з'явиться, коли ряд «Пов'язане» вже вставлено над ним
+                            if (getBool('lmx_related', true) && e.data.movie && relFind(e.data.movie)) safe(function () {
+                                for (var q = 0; q < lk.rows.length; q++) {
+                                    var rw = lk.rows[q];
+                                    if (Array.isArray(rw) && rw[0] === 'cards' && !(rw[1] && (rw[1].lmxColl || rw[1].lmxRel))) { if (q >= 1 && q < (lk.view || lk.rows.length)) lk.view = q; break; }
+                                }
+                            });
                             return ob.call(this, lk.rows.slice(0, lk.view || arguments[0].length));
                         };
                     }
