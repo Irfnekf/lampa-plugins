@@ -1446,16 +1446,23 @@
     function initPhoneHero() {
         if (window.__lmxPH) return;
         window.__lmxPH = true;
-        var touchT = 0, sx = 0, sy = 0;
+        var touchT = 0, sx = 0, sy = 0, tl = null;
         function lineEl() {
             var ls = document.querySelectorAll('.items-line.lmx-hero-line'), i, r;
-            for (i = 0; i < ls.length; i++) if (ls[i].offsetParent !== null) return ls[i];
+            var vh = window.innerHeight || 800, best = null, bs = -1;
+            for (i = 0; i < ls.length; i++) {
+                if (ls[i].offsetParent === null) continue;
+                r = ls[i].getBoundingClientRect();
+                var vis = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+                if (vis > bs) { bs = vis; best = ls[i]; }
+            }
+            if (best) return best;
             // запасний варіант: ряд може не мати offsetParent (fixed/transform-предки), тоді беремо той, що реально має розмір
             for (i = 0; i < ls.length; i++) { r = ls[i].getBoundingClientRect(); if (r.width > 0 && r.height > 0) return ls[i]; }
             return null;
         }
-        function step(dir) {
-            var line = lineEl();
+        function step(dir, only) {
+            var line = only && only.isConnected !== false ? only : lineEl();
             if (!line) return;
             var cs = line.querySelectorAll('.card--lmxhero');
             if (cs.length < 2) return;
@@ -1499,13 +1506,15 @@
         function swipeAt(t) {
             lx = t.clientX; ly = t.clientY;
             var dx = t.clientX - sx, dy = t.clientY - sy;
-            if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.4) { touchT = Date.now(); fired = true; safe(function () { step(dx < 0 ? 1 : -1); }); return true; }
+            if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.4) { touchT = Date.now(); fired = true; var ln = tl; safe(function () { step(dx < 0 ? 1 : -1, ln); }); return true; }
             return false;
         }
         function down(t, target) {
             fired = false;
             if (!t || !target || !target.closest || !target.closest('.lmx-hero-line, .card--lmxhero')) { sx = 0; return; }
             sx = t.clientX || 1; sy = t.clientY; lx = sx; ly = sy;
+            // свайп керує саме тією афішею, на якій почався дотик (на сторінках каталогів у DOM можуть лишатися й інші ряди)
+            tl = target.closest('.items-line.lmx-hero-line') || (target.closest('.card--lmxhero') && target.closest('.card--lmxhero').closest('.items-line')) || null;
         }
         function end() { sx = 0; fired = false; }
         // слухачі на window у фазі перехоплення: раніше за будь-які слухачі Lampa (вони могли гасити подію до document).
@@ -6669,7 +6678,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.596';
+    var VERSION = '10.597';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
