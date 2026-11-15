@@ -880,6 +880,15 @@
             return out;
           } }
     };
+    // «Скоро вийде» для провайдерських каталогів: мережі (серіали) і студії (фільми) платформи; де надійного id студії немає — лише серіали
+    SVC.hbo.soon = { tf: 'with_networks=49' + PIPE + '3186', mf: 'with_companies=174' };
+    SVC.netflix.soon = { tf: 'with_networks=213' };
+    SVC.apple.soon = { tf: 'with_networks=2552' };
+    SVC.amazon.soon = { tf: 'with_networks=1024', mf: 'with_companies=20580' };
+    SVC.disney.soon = { tf: 'with_networks=2739', mf: 'with_companies=2' + PIPE + '3' + PIPE + '420' + PIPE + '1' + PIPE + '6125' };
+    SVC.paramount.soon = { tf: 'with_networks=4330', mf: 'with_companies=4' };
+    SVC.amc.soon = { tf: 'with_networks=174' };
+    SVC.sky.soon = {};
     var ANIME_TAGS = [
         ['isekai', 'Ісекай'], ['reincarnation', 'Переродження'], ['vampire', 'Вампіри'],
         ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність']
@@ -920,6 +929,13 @@
         if (c.lead && !forHome) c.lead().forEach(function (e) { out.push(e); });
         out.push({ t: 'Нові фільми', k: 'movie', q: c.mf + '&sort_by=primary_release_date.desc&primary_release_date.lte=' + today + '&vote_count.gte=10' });
         out.push({ t: 'Нові серіали', k: 'tv', q: c.tf + '&sort_by=first_air_date.desc&first_air_date.lte=' + today + '&vote_count.gte=' + (key === 'ua' ? 0 : 5) });
+        // «Скоро вийде» — у кожному каталозі, але лише з тим, що належить саме йому (мережа/студія/країна), а не з усього TMDB;
+        // для провайдерських каталогів фільтр «доступно на платформі» для ще не вийшлих тайтлів порожній, тому беремо мережі й студії платформи
+        if (!forHome) {
+            var sn = c.soon || { mf: c.mf, tf: c.tf }, sd1 = dayStr(1), sd2 = dayStr(330), anySoon = function () { return true; };
+            if (sn.tf) out.push({ t: 'Скоро вийде: серіали', k: 'tv', min: 3, f: anySoon, q: sn.tf + '&first_air_date.gte=' + sd1 + '&first_air_date.lte=' + sd2 + '&sort_by=popularity.desc' });
+            if (sn.mf) out.push({ t: 'Скоро вийде: фільми', k: 'movie', min: 3, f: anySoon, q: sn.mf + '&primary_release_date.gte=' + sd1 + '&primary_release_date.lte=' + sd2 + '&sort_by=popularity.desc' });
+        }
         // у всіх каталогах, крім аніме: «Популярні фільми» і «Популярні серіали» поруч (порядок важливий: на нього спирається serviceCall)
         out.push({ t: 'Популярні фільми', k: 'movie', q: c.mf + '&sort_by=popularity.desc&vote_count.gte=50' });
         out.push({ t: key === 'anime' ? 'Головні хіти' : 'Популярні серіали', k: 'tv', q: c.tf + '&sort_by=popularity.desc' });
@@ -1185,7 +1201,7 @@
                                 return (b.popularity || 0) - (a.popularity || 0);
                             });
                         }
-                        if (cats[i].f) out.sort(function (a, b) { return String(a.first_air_date || '').localeCompare(String(b.first_air_date || '')); });
+                        if (cats[i].f) out.sort(function (a, b) { return String(a.first_air_date || a.release_date || '').localeCompare(String(b.first_air_date || b.release_date || '')); });
                         res[i] = out;
                         dbg.push({ s: id, i: i, t: cats[i].title, n: out.length, ms: Date.now() - t0, err: errs });
                         done();
@@ -1266,10 +1282,11 @@
                         if (next >= cats.length) return clearInterval(iv);
                         if (busy || typeof self.append !== 'function') return;
                         // один пошук фокусу замість обходу всіх рядів: цей таймер іде, доки не догрузяться всі ряди
-                        var fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line');
-                        if (!fl) return;
-                        var lines = root.querySelectorAll('.items-line'), fi = [].indexOf.call(lines, fl);
-                        if (fi < 0 || fi < lines.length - 3) return;
+                        var lines = root.querySelectorAll('.items-line'), fo = root.querySelector('.focus'), fl = fo && fo.closest('.items-line'), near = false;
+                        if (fl) { var fi = [].indexOf.call(lines, fl); near = fi >= 0 && fi >= lines.length - 3; }
+                        // на телефоні фокусу немає (гортання пальцем): додатково дивимось, чи останні ряди вже близько до видимої частини екрана
+                        if (!near && lines.length && root.closest('.activity--active')) { var lr = lines[lines.length - 1].getBoundingClientRect(); near = lr.top < (window.innerHeight || 800) * 2.2 && lr.bottom > -100; }
+                        if (!near) return;
                         busy = true;
                         loadGroup(put, function () { busy = false; });
                     }, 400);
@@ -6611,7 +6628,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.591';
+    var VERSION = '10.592';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
