@@ -1448,8 +1448,10 @@
         window.__lmxPH = true;
         var touchT = 0, sx = 0, sy = 0;
         function lineEl() {
-            var ls = document.querySelectorAll('.items-line.lmx-hero-line');
-            for (var i = 0; i < ls.length; i++) if (ls[i].offsetParent !== null) return ls[i];
+            var ls = document.querySelectorAll('.items-line.lmx-hero-line'), i, r;
+            for (i = 0; i < ls.length; i++) if (ls[i].offsetParent !== null) return ls[i];
+            // запасний варіант: ряд може не мати offsetParent (fixed/transform-предки), тоді беремо той, що реально має розмір
+            for (i = 0; i < ls.length; i++) { r = ls[i].getBoundingClientRect(); if (r.width > 0 && r.height > 0) return ls[i]; }
             return null;
         }
         function step(dir) {
@@ -1493,31 +1495,44 @@
                 step(1);
             });
         }, 4500);
-        var fired = false;
+        var fired = false, lx = 0, ly = 0;
         function swipeAt(t) {
+            lx = t.clientX; ly = t.clientY;
             var dx = t.clientX - sx, dy = t.clientY - sy;
-            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) { touchT = Date.now(); fired = true; safe(function () { step(dx < 0 ? 1 : -1); }); return true; }
+            if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.4) { touchT = Date.now(); fired = true; safe(function () { step(dx < 0 ? 1 : -1); }); return true; }
             return false;
         }
-        // дотик починається будь-де на афіші (не лише на самій картці: на сторінках каталогів слайд може бути вужчим за ряд)
-        document.addEventListener('touchstart', function (e) {
-            var t = e.touches && e.touches[0];
+        function down(t, target) {
             fired = false;
-            if (!t || !e.target.closest || !e.target.closest('.lmx-hero-line .scroll, .card--lmxhero')) { sx = 0; return; }
-            sx = t.clientX; sy = t.clientY;
-        }, { passive: true, capture: true });
+            if (!t || !target || !target.closest || !target.closest('.lmx-hero-line, .card--lmxhero')) { sx = 0; return; }
+            sx = t.clientX || 1; sy = t.clientY; lx = sx; ly = sy;
+        }
+        function end() { sx = 0; fired = false; }
+        // слухачі на window у фазі перехоплення: раніше за будь-які слухачі Lampa (вони могли гасити подію до document).
+        // Дотик починається будь-де на афіші (не лише на самій картці: на сторінках каталогів слайд може бути вужчим за ряд)
+        var opt = { passive: true, capture: true };
+        window.addEventListener('touchstart', function (e) { down(e.touches && e.touches[0], e.target); }, opt);
         // гортаємо вже під час руху: коли браузер забирає жест собі (рідна прокрутка ряду), touchend може не прийти взагалі
-        document.addEventListener('touchmove', function (e) {
+        window.addEventListener('touchmove', function (e) {
             if (!sx || fired) return;
             var t = e.touches && e.touches[0];
             if (t) swipeAt(t);
-        }, { passive: true, capture: true });
-        document.addEventListener('touchend', function (e) {
-            var t = e.changedTouches && e.changedTouches[0], was = fired;
-            if (sx && !was && t) swipeAt(t);
-            sx = 0; fired = false;
-        }, { passive: true, capture: true });
-        document.addEventListener('touchcancel', function () { sx = 0; fired = false; }, { passive: true, capture: true });
+        }, opt);
+        window.addEventListener('touchend', function (e) {
+            var t = e.changedTouches && e.changedTouches[0];
+            if (sx && !fired && t) swipeAt(t);
+            end();
+        }, opt);
+        // touchcancel: браузер забрав жест — рахуємо за останньою відомою точкою
+        window.addEventListener('touchcancel', function () {
+            if (sx && !fired) swipeAt({ clientX: lx, clientY: ly });
+            end();
+        }, opt);
+        // pointer-події: з touch-action pan-y горизонтальний жест не скасовується, тож це надійний другий шлях (не спрацьовує двічі: fired)
+        window.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' || e.pointerType === 'pen') down(e, e.target); }, opt);
+        window.addEventListener('pointermove', function (e) { if (sx && !fired && (e.pointerType === 'touch' || e.pointerType === 'pen')) swipeAt(e); }, opt);
+        window.addEventListener('pointerup', function (e) { if (e.pointerType === 'touch' || e.pointerType === 'pen') end(); }, opt);
+        window.addEventListener('pointercancel', function (e) { if (e.pointerType === 'touch' || e.pointerType === 'pen') { if (sx && !fired) swipeAt({ clientX: lx, clientY: ly }); end(); } }, opt);
     }
     // назва в кнопці «Каталоги» ніколи не обрізається: шрифт стискається під ширину кнопки
     function fitStudioNames(root) {
@@ -6654,7 +6669,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.595';
+    var VERSION = '10.596';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
