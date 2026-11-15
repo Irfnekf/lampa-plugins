@@ -933,8 +933,10 @@
         // для провайдерських каталогів фільтр «доступно на платформі» для ще не вийшлих тайтлів порожній, тому беремо мережі й студії платформи
         if (!forHome) {
             var sn = c.soon || { mf: c.mf, tf: c.tf }, sd1 = dayStr(1), sd2 = dayStr(330), anySoon = function () { return true; };
-            if (sn.tf) out.push({ t: 'Скоро вийде: серіали', k: 'tv', min: 3, f: anySoon, q: sn.tf + '&first_air_date.gte=' + sd1 + '&first_air_date.lte=' + sd2 + '&sort_by=popularity.desc' });
-            if (sn.mf) out.push({ t: 'Скоро вийде: фільми', k: 'movie', min: 3, f: anySoon, q: sn.mf + '&primary_release_date.gte=' + sd1 + '&primary_release_date.lte=' + sd2 + '&sort_by=popularity.desc' });
+            // один ряд «Скоро вийде»: серіали й фільми разом, найближчі за датою першими
+            var sTv = sn.tf ? sn.tf + '&first_air_date.gte=' + sd1 + '&first_air_date.lte=' + sd2 + '&sort_by=popularity.desc' : '',
+                sMv = sn.mf ? sn.mf + '&primary_release_date.gte=' + sd1 + '&primary_release_date.lte=' + sd2 + '&sort_by=popularity.desc' : '';
+            if (sTv || sMv) out.push({ t: 'Скоро вийде', k: sTv ? 'tv' : 'movie', q: sTv || sMv, alt2: (sTv && sMv) ? 'discover/movie?' + sMv : '', mix: !!(sTv && sMv), min: 3, f: anySoon });
         }
         // у всіх каталогах, крім аніме: «Популярні фільми» і «Популярні серіали» поруч (порядок важливий: на нього спирається serviceCall)
         out.push({ t: 'Популярні фільми', k: 'movie', q: c.mf + '&sort_by=popularity.desc&vote_count.gte=50' });
@@ -958,7 +960,7 @@
             });
         }
         var mapped = out.map(function (e) {
-            return { alts: (e.alts || []).map(function (a) { return (e.search ? 'search/' : 'discover/') + e.k + '?' + a.replace('{today}', today); }), title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min };
+            return { alts: (e.alts || []).map(function (a) { return (e.search ? 'search/' : 'discover/') + e.k + '?' + a.replace('{today}', today); }).concat(e.alt2 ? [e.alt2.replace('{today}', today)] : []), title: e.t, url: (e.search ? 'search/' : 'discover/') + e.k + '?' + e.q.replace('{today}', today), kind: e.k, f: e.f, min: e.min, mix: e.mix };
         });
         // «Схоже на те, що вам сподобалось» — лише аніме / лише дорами (будується лише на цих сторінках, на головну не впливає)
         if (!forHome && (key === 'anime' || key === 'dorama')) mapped.splice(1, 0, { title: 'Схоже на те, що вам сподобалось', url: 'lmx://recs/' + key, kind: 'tv', recs: key, min: 6 });
@@ -1174,7 +1176,7 @@
                 // У порції ряди з'являються строго по порядку, у міру готовності; повільний ряд не втрачається, а долучається пізніше.
                 function rowData(i) {
                     // «Ще» є в кожного ряду з адресою (раніше — лише коли після фільтрів лишалось ≥18 карток, тож у багатьох рядів кнопки не було)
-                    var mt = meta[i], url = mt ? mt.url : (cats[i].url2 || cats[i].url), more = !!url && !cats[i].newep;
+                    var mt = meta[i], url = mt ? mt.url : (cats[i].url2 || cats[i].url), more = !!url && !cats[i].newep && !cats[i].mix;
                     return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: url, source: 'tmdb', page: 1, more: more, total_pages: more ? ((mt && mt.tp) || 20) : 1 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
@@ -1213,6 +1215,7 @@
                             tgetFb(qx, { page: pg }, function (j, u) {
                                 if (!empty(j) && ui === 0) cats[i].url2 = u;
                                 got[gi] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
+                                if (cats[i].mix) got[gi].forEach(function (x) { if (!x.media_type) x.media_type = /^discover\/tv|^search\/tv/.test(qx) ? 'tv' : 'movie'; });
                                 end();
                             }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[gi] = []; end(); });
                         })();
@@ -6628,7 +6631,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.592';
+    var VERSION = '10.593';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
