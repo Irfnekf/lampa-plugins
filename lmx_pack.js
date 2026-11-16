@@ -5474,6 +5474,13 @@
     }
     function btnIdOf(el) {
         var cls = String(el.className || '').split(/\s+/), i, c;
+        // Наші кнопки змінюють підпис залежно від стану («Подобається» ↔ «Вам подобається», «Переглянути пізніше» ↔ «У списку»). id з хешем підпису
+        // тоді різний залежно від того, у якому стані відкрито сторінку, і збережений порядок «губився» після перезавантаження: id має бути сталим
+        if (el.classList) {
+            if (el.classList.contains('lmx-likebtn')) return 'lmx_like';
+            if (el.classList.contains('lmx-mk-later')) return 'lmx_mk_later';
+            if (el.classList.contains('lmx-mk-seen')) return 'lmx_mk_seen';
+        }
         var t = String(el.__lmxT || btnTitleOf(el) || '').toLowerCase();
         for (i = 0; i < cls.length; i++) { c = cls[i]; if (/^(view--|button--)/.test(c) && c !== 'button--priority') return c + (t ? '|' + strHash(t) : ''); }
         return 't_' + strHash(t || 'x');
@@ -6743,7 +6750,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.598';
+    var VERSION = '10.599';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
