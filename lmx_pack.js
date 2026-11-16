@@ -504,6 +504,70 @@
     }
 
 
+    // ===== ПОРЯДОК КАТАЛОГІВ (плитки в ряду «Каталоги») =====
+    function svcOrderIds() {
+        var ids = SERVICES.map(function (x) { return x[0]; }), saved = readJson('lmx_svc_order').filter(function (n) { return ids.indexOf(n) >= 0; });
+        ids.forEach(function (n, i) {
+            if (saved.indexOf(n) >= 0) return;
+            // новий каталог ставимо слідом за своїм сусідом із порядку за замовчуванням
+            var pos = -1, k;
+            for (k = i - 1; k >= 0; k--) { pos = saved.indexOf(ids[k]); if (pos >= 0) break; }
+            if (i > 0 && pos >= 0) saved.splice(pos + 1, 0, n); else saved.push(n);
+        });
+        return saved;
+    }
+    function svcList() {
+        var hid = readJson('lmx_svc_hidden');
+        return svcOrderIds().filter(function (n) { return hid.indexOf(n) < 0; }).map(function (n) { return SERVICES.filter(function (x) { return x[0] === n; })[0]; }).filter(Boolean);
+    }
+    function openSvcOrderModal() {
+        if (!(Lampa.Modal && Lampa.Modal.open && window.$)) return;
+        var enabled = Lampa.Controller.enabled().name, wrap = $('<div class="lmx-ord"></div>'), rowEls = {}, lastFire = 0;
+        function nameOf(n) { return (SERVICES.filter(function (x) { return x[0] === n; })[0] || [])[1] || n; }
+        function follow(el) { safe(function () { if (window.Navigator && Navigator.focus) Navigator.focus(el); else $(el).trigger('hover:focus'); }); }
+        function bind(btn, name, act) {
+            btn.on('hover:enter click', function () {
+                var now = Date.now(); if (now - lastFire < 250) return; lastFire = now;
+                apply(name, act, this);
+            });
+        }
+        function mkRow(n) {
+            var off = readJson('lmx_svc_hidden').indexOf(n) >= 0, row = $('<div class="lmx-ord__row"></div>'), nm = $('<div class="lmx-ord__name"></div>');
+            nm.append($('<span></span>').text(nameOf(n)));
+            row.append(nm);
+            [['up', CHEV_UP], ['down', CHEV_DOWN], ['toggle', off ? BOX_OFF : BOX_ON]].forEach(function (b) {
+                var btn = $('<div class="lmx-ord__btn selector"></div>').html(b[1]);
+                if (b[0] === 'toggle' && off) btn.addClass('lmx-ord__off');
+                bind(btn, n, b[0]); row.append(btn);
+            });
+            rowEls[n] = row; return row;
+        }
+        function buildAll() {
+            wrap.empty(); rowEls = {};
+            svcOrderIds().forEach(function (n) { wrap.append(mkRow(n)); });
+            var reset = $('<div class="lmx-ord__reset selector">Скинути порядок і показати все</div>');
+            bind(reset, null, 'reset'); wrap.append(reset);
+        }
+        function apply(name, act, btnEl) {
+            var order = svcOrderIds(), i = order.indexOf(name);
+            if (act === 'up' && i > 0) { order.splice(i, 1); order.splice(i - 1, 0, name); Lampa.Storage.set('lmx_svc_order', order); rowEls[name].insertBefore(rowEls[order[i]]); follow(btnEl); }
+            else if (act === 'down' && i >= 0 && i < order.length - 1) { order.splice(i, 1); order.splice(i + 1, 0, name); Lampa.Storage.set('lmx_svc_order', order); rowEls[name].insertAfter(rowEls[order[i]]); follow(btnEl); }
+            else if (act === 'toggle') {
+                var h = readJson('lmx_svc_hidden'), k = h.indexOf(name);
+                if (k >= 0) h.splice(k, 1); else h.push(name);
+                Lampa.Storage.set('lmx_svc_hidden', h);
+                var off = h.indexOf(name) >= 0;
+                rowEls[name].find('.lmx-ord__btn').eq(2).html(off ? BOX_OFF : BOX_ON).toggleClass('lmx-ord__off', off);
+            } else if (act === 'reset') {
+                Lampa.Storage.set('lmx_svc_order', []); Lampa.Storage.set('lmx_svc_hidden', []);
+                buildAll(); var first = wrap.find('.lmx-ord__btn')[0]; if (first) follow(first);
+            }
+        }
+        buildAll();
+        Lampa.Modal.open({ title: 'Порядок каталогів', html: wrap, size: 'medium', mask: true,
+            onBack: function () { Lampa.Modal.close(); Lampa.Controller.toggle(enabled); notifySaved(); } });
+    }
+
     // ===== СТОРІНКА НАЛАШТУВАНЬ =====
     function addSettings() {
         var S = Lampa.SettingsApi;
@@ -543,6 +607,7 @@
         // ---- Головна ----
         H.title('lmx_t_home', 'Головна сторінка');
         H.button('lmx_order_btn', 'Порядок і видимість рядів', 'Переставити або сховати Афішу, каталоги та будь-яку підбірку', openOrderModal);
+        H.button('lmx_svc_order_btn', 'Порядок каталогів', 'Переставити або сховати плитки HBO, Netflix, Apple TV+… у ряду «Каталоги»', openSvcOrderModal);
         H.trigger('lmx_stats_menu', true, 'Пункт «Статистика» в меню', 'Години перегляду, улюблені жанри, мови й роки за вашою історією. Пункт з\u2019являється в лівому меню після перезапуску', restart);
         H.trigger('lmx_only_mine', true, 'Лише наші підбірки', 'Ховає стандартні ряди Lampa та ряди інших плагінів. Діє, коли ви повертаєтесь на головну', null);
 
@@ -1786,7 +1851,7 @@
         return function (call) {
             var logos = {};
             function done() {
-                var items = SERVICES.map(function (x) {
+                var items = svcList().map(function (x) {
                     return {
                         id: 'lmxstudio' + x[2], title: x[1], params: {
                             createInstance: makeInstance,
@@ -6678,7 +6743,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.597';
+    var VERSION = '10.598';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
