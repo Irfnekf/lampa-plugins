@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.46';
+    var VERSION = '3.47';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1124,15 +1124,26 @@
     // Інколи джерело віддає той самий список двічі (стара й нова відповідь після швидкого перемикання) і серії лягають одна за одною.
     // Серія визначається сезоном, номером і озвучкою; дублікати прибираємо, лишаючи свіжіший (останній) екземпляр
     function dedupeEps(els) {
-        var seen = {}, drop = [], i, j, key;
+        var seen = {}, seenT = {}, drop = [], i, j, key, hasKey, txt, sn, prev;
         for (i = els.length - 1; i >= 0; i--) {
-            j = jd(els[i]);
-            if (!j || j.episode === undefined || j.episode === null || j.episode === '') continue;
-            key = [j.season || '', j.episode, j.voice || j.translate || j.balanser || '', j.quality ? JSON.stringify(j.quality) : ''].join('|');
-            // джерело може віддати ту саму серію з іншими службовими полями (якість, озвучка) — тоді дублікат видно лише за самою карткою:
-            // однаковий видимий текст (номер, назва, тривалість) = та сама серія
-            var tk = 'T|' + (j.season || '') + '|' + String(els[i].textContent || '').replace(/\s+/g, ' ').trim();
-            if (seen[key] || (tk.length > 8 && seen[tk])) drop.push(els[i]); else { seen[key] = 1; seen[tk] = 1; }
+            j = jd(els[i]) || {};
+            hasKey = j.episode !== undefined && j.episode !== null && j.episode !== '';
+            sn = String(j.season || '');
+            txt = String(els[i].textContent || '').replace(/\s+/g, ' ').trim();
+            // джерело може віддати ту саму серію з іншими службовими полями (якість, озвучка, сезон, а іноді взагалі без номера серії в json) —
+            // тоді дублікат видно лише за самою карткою: однаковий видимий текст (номер, назва, тривалість) = та сама серія
+            // (Phantom віддавав 1-й сезон двічі: 16 карток замість 8, і Lampa прокручувала список до другої копії «останньої серії»)
+            var dupe = false;
+            if (hasKey) {
+                key = [j.season || '', j.episode, j.voice || j.translate || j.balanser || '', j.quality ? JSON.stringify(j.quality) : ''].join('|');
+                if (seen[key]) dupe = true; else seen[key] = 1;
+            }
+            if (!dupe && txt.length > 8) {
+                prev = seenT[txt];
+                // сезони різні й обидва відомі — це справді різні серії з однаковою назвою
+                if (prev !== undefined && (prev === sn || !prev || !sn)) dupe = true; else if (prev === undefined) seenT[txt] = sn;
+            }
+            if (dupe) drop.push(els[i]);
         }
         if (!drop.length) return els;
         drop.forEach(function (e) { try { if (e.parentNode) e.parentNode.removeChild(e); } catch (x) {} });
@@ -1146,7 +1157,15 @@
             if (!body || body.children.length === dupN) return;
             var kids = body.children, list = [], i, el;
             for (i = 0; i < kids.length; i++) { el = kids[i]; if (el.classList && el.classList.contains('lmx-onl-item') && hasEp(el)) list.push(el); }
-            if (list.length > 1) dedupeEps(list);
+            if (list.length > 1 && dedupeEps(list).length < list.length) {
+                // після прибирання дублів Lampa лишає список прокрученим до видаленої копії — повертаємо нагору й фокус на головну кнопку
+                var f0 = act.querySelector('.focus');
+                resetScroll(act);
+                if (!f0 || !document.body.contains(f0) || f0.classList.contains('lmx-onl-item')) {
+                    var tg0 = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
+                    if (tg0 && window.Navigator && Navigator.focus && Date.now() - (window.__lmxKeyT || 0) > 1500) { ctlContent(); Navigator.focus(tg0); }
+                }
+            }
             dupN = body.children.length;
         } catch (e) {}
     }, 1500);
