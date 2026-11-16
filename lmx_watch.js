@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.47';
+    var VERSION = '3.48';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3635,6 +3635,18 @@
         }).observe(host, { childList: true, subtree: true });
     }
 
+    // Нові картки джерела з'являються «сирими» (широкий список: картинка ліворуч, назва праворуч) і лише за чверть секунди (пауза перед buildHero)
+    // отримують наш клас — на відео це видно як миттєве перетворення сітки на список і назад. Мітимо синхронно, до першої відрисовки
+    var QM_SKIP = /videos__button|simple-button|videos__season|folder|lmx-onl-btn/;
+    function quickMark(body) {
+        var kids = body.children, i, el, grid = body.classList.contains('lmx-onl-grid');
+        if (!grid) return;
+        for (i = 0; i < kids.length; i++) {
+            el = kids[i];
+            if (!el.classList || el.classList.contains('lmx-onl-item') || !el.classList.contains('selector') || QM_SKIP.test(String(el.className))) continue;
+            if (hasEp(el)) el.classList.add('lmx-onl-item');
+        }
+    }
     var obs = null, obsTarget = null, tm = 0, actT0 = 0;
     function arm() {
         var act = document.querySelector('.activity--active');
@@ -3643,7 +3655,7 @@
         if (obs) obs.disconnect();
         obsTarget = body;
         // плагін-джерело перемальовує список (зміна сезону, джерела, озвучки) — оновлюємо шапку з паузою, щоб не заважати
-        obs = new MutationObserver(function () { var a1 = document.querySelector('.activity--active'); if (a1 && a1.querySelector('.explorer.lmx-onl')) safe(function () { hideJunk(a1); }); clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) { resync(a2); recover(a2); } }, 250); });
+        obs = new MutationObserver(function () { var a1 = document.querySelector('.activity--active'); if (a1 && a1.querySelector('.explorer.lmx-onl')) safe(function () { quickMark(body); hideJunk(a1); }); clearTimeout(tm); tm = setTimeout(function () { safe(buildHero); var a2 = document.querySelector('.activity--active'); if (a2) { resync(a2); recover(a2); } }, 250); });
         obs.observe(body, { childList: true });
     }
 
