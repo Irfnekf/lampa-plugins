@@ -6744,13 +6744,34 @@
         });
         V.listener.follow('play', stop);
         V.listener.follow('ended', stop);
+        // Страховка автоперемикання: серія скінчилась, у плейлисті є наступна, але вона не стартує (джерело не віддало посилання, мережа) —
+        // Lampa лишається на чорному екрані, і доводилось перезаходити. Якщо за 25 с відтворення не пішло, закриваємо плеєр і кажемо про це
+        var endT = 0;
+        function endClear() { clearTimeout(endT); endT = 0; }
+        V.listener.follow('ended', function () {
+            endClear();
+            safe(function () {
+                var pl = Lampa.PlayerPlaylist && Lampa.PlayerPlaylist.get ? (Lampa.PlayerPlaylist.get() || []) : [], pos = Lampa.PlayerPlaylist.position();
+                if (!pl || pl.length < 2 || pos + 1 >= pl.length) return;
+                endT = setTimeout(function () {
+                    endT = 0;
+                    safe(function () {
+                        if (!Lampa.Player || !Lampa.Player.opened || !Lampa.Player.opened()) return;
+                        if (Lampa.Noty) Lampa.Noty.show('Наступна серія не запустилась — повертаю до списку');
+                        Lampa.Player.close();
+                    });
+                }, 25000);
+            });
+        });
+        ['play', 'playing', 'canplay', 'timeupdate'].forEach(function (ev) { V.listener.follow(ev, function () { if (endT) endClear(); }); });
+        try { Lampa.Player.listener.follow('start', endClear); Lampa.Player.listener.follow('destroy', endClear); } catch (e) {}
         try { Lampa.Player.listener.follow('destroy', stop); } catch (e) {}
     }
 
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.599';
+    var VERSION = '10.600';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
