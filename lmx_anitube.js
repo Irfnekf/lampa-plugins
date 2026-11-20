@@ -8,7 +8,7 @@
     'use strict';
     if (window.__lmxAnitube3) return;
     window.__lmxAnitube3 = true;
-    var VERSION = '3.1';
+    var VERSION = '3.2';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
 
@@ -46,8 +46,8 @@
         var list = hostsGet().slice(), i;
         // 'lampac' — це й плагін з lam.maxvol.pro, що скоро перестане працювати: інші знайдені — першими
         list.sort(function (a, b) { return (a === 'lampac' ? 1 : 0) - (b === 'lampac' ? 1 : 0); });
-        for (i = 0; i < list.length; i++) if (safe(function () { return Lampa.Component.get(list[i]); })) return list[i];
-        if (safe(function () { return Lampa.Component.get('lampac'); })) return 'lampac';
+        for (i = 0; i < list.length; i++) if (isOnlineComp(list[i])) return list[i];
+        if (isOnlineComp('lampac')) return 'lampac';
         return '';
     }
 
@@ -122,9 +122,26 @@
             'year=' + String(card.release_date || card.first_air_date || '').slice(0, 4), 'serial=' + (isSerial(card) ? 1 : 0)];
         return host() + '/lite/anitube?' + q.join('&');
     }
-    function open(card) {
-        var comp = hostComponent();
-        if (!comp) return noty('Спочатку відкрийте «Онлайн» будь-якого тайтлу — Anitube відкривається на тому ж екрані');
+    // екран онлайн-плагіна з вибором джерела (Lampac-подібний) — лише такий уміє відкрити одне задане джерело
+    function isOnlineComp(name) { try { var f = Lampa.Component.get(name); return !!f && String(f).indexOf('changeBalanser') >= 0; } catch (e) { return false; } }
+    // Ще не знаємо, який онлайн-плагін тут стоїть: тихо «натискаємо» його кнопку «Онлайн» на цій сторінці й забираємо назву екрана,
+    // нічого не відкриваючи (перехоплюємо відкриття на мить)
+    function learnFromButtons(render) {
+        var found = '';
+        if (!render || !render.length) return '';
+        render.find('.view--online').not('.lmxat--button').each(function () {
+            if (found) return;
+            var A = Lampa.Activity, realPush = A.push, got = null, btn = $(this);
+            A.push = function (o) { got = o; };
+            try { btn.trigger('hover:enter'); } catch (e) {} finally { A.push = realPush; }
+            if (got && got.component && got.component !== 'torrents' && isOnlineComp(got.component)) found = got.component;
+        });
+        if (found) hostsNote(found);
+        return found;
+    }
+    function open(card, render) {
+        var comp = hostComponent() || learnFromButtons(render);
+        if (!comp) return noty('Не знайдено онлайн-плагін (lampaua тощо): Anitube відкривається на його екрані');
         Lampa.Activity.push({
             url: liteUrl(card), title: 'Anitube', component: comp, movie: card, page: 1,
             balanser: KEY, search: card.title || card.name, search_one: card.title || card.name, search_two: card.original_title || card.original_name, clarification: false
@@ -139,7 +156,7 @@
         var render = e.object && e.object.activity && e.object.activity.render();
         if (!render || !render.length || render.find('.lmxat--button').length) return;
         var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Anitube · LMX">' + ICON + '<span>Anitube</span></div>');
-        btn.on('hover:enter', function () { safe(function () { open(card); }); });
+        btn.on('hover:enter', function () { safe(function () { open(card, render); }); });
         var tor = render.find('.view--torrent').last();
         if (tor.length) tor.after(btn);
         else { var box = render.find('.buttons--container, .full-start-new__buttons, .full-start__buttons').eq(0); if (box.length) box.append(btn); }
