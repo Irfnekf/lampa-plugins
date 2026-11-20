@@ -8,7 +8,7 @@
     'use strict';
     if (window.__lmxAnitube3) return;
     window.__lmxAnitube3 = true;
-    var VERSION = '3.0';
+    var VERSION = '3.1';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
 
@@ -79,6 +79,12 @@
             }, function () { end(fail); }, false, { dataType: 'text' });
         } catch (e) { end(fail); }
     }
+    function addCss() {
+        if (document.getElementById('lmxat-css')) return;
+        var st = document.createElement('style'); st.id = 'lmxat-css';
+        st.textContent = '.lmxat-act .online-prestige__img{display:block !important}';
+        document.head.appendChild(st);
+    }
     function playerOf(url) { var m = String(url || '').match(/\/lite\/anitube\/video\?u=([^&]+)/); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } }
 
     // Екран онлайн-плагіна, відкритий нашою кнопкою: посилання на серії розбираємо на пристрої, а не через Worker
@@ -93,6 +99,8 @@
                 if (!(object && object.balanser === KEY)) { hostsNote(object && object.component); return; }
                 if (typeof comp.getFileUrl !== 'function' || comp.__lmxAt3) return;
                 comp.__lmxAt3 = 1;
+                // екран з одним заданим джерелом онлайн-плагін малює без кадрів серій (ховає їх) — повертаємо кадри, як на звичайному «Онлайн»
+                safe(function () { addCss(); var r = comp.render && comp.render(); if (r && r.addClass) r.addClass('lmxat-act'); });
                 var realGet = comp.getFileUrl;
                 comp.getFileUrl = function (file, call) {
                     var self = this, args = arguments, u = playerOf(file && file.url);
