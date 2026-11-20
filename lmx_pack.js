@@ -4237,6 +4237,34 @@
         }
         return '';
     }
+    // Текст «Наступна серія: через 3 дні (С2Е8)»; дата, що вже минула, вважається застарілою (див. nextStale)
+    function nextText(n) {
+        var d = dayDiff(n.air_date);
+        var extra = (d !== null && d > 1 ? fmtShort(n.air_date) + ', ' : '') + code(n.season_number, n.episode_number);
+        return 'Наступна серія: ' + rel(n.air_date) + ' (' + extra + ')';
+    }
+    function nextStale(m) {
+        var n = m && m.next_episode_to_air, d = n && n.air_date ? dayDiff(n.air_date) : null;
+        return d !== null && d < 0;
+    }
+    // Справжня наступна серія: у списку серій сезону (TMDB /tv/{id}/season/{N}) беремо найближчу, що ще не вийшла. Робимо раз на картку
+    function fixNextEp(m, r) {
+        if (!m || !m.id || m.__lmxNF || !m.next_episode_to_air) return;
+        m.__lmxNF = 1;
+        var sn = m.next_episode_to_air.season_number;
+        function put(txt) { safe(function () { r.find('.lmx-ip.lmx-nfix').text(txt).removeClass('lmx-nfix'); }); }
+        function unknown() { put('Виходить, дата наступної серії невідома'); }
+        tget('tv/' + m.id + '/season/' + sn, {}, function (j) {
+            var best = null;
+            ((j && j.episodes) || []).forEach(function (e) {
+                var d = e && e.air_date ? dayDiff(e.air_date) : null;
+                if (d !== null && d >= 0 && (!best || e.air_date < best.air_date)) best = e;
+            });
+            if (!best) return unknown();
+            m.next_episode_to_air = { season_number: best.season_number, episode_number: best.episode_number, air_date: best.air_date };
+            put(nextText(m.next_episode_to_air));
+        }, unknown);
+    }
     function infoPills(m) {
         var p = [];
         var tv = typeOf(m) === 'tv';
@@ -4252,10 +4280,11 @@
             else if (st === 'Canceled') p.push({ t: 'Скасовано', c: 'lmx-bad' });
             else if (st === 'Returning Series') {
                 var n = m.next_episode_to_air;
-                if (n && n.air_date) {
-                    var d = dayDiff(n.air_date);
-                    var extra = (d !== null && d > 1 ? fmtShort(n.air_date) + ', ' : '') + code(n.season_number, n.episode_number);
-                    p.push({ t: 'Наступна серія: ' + rel(n.air_date) + ' (' + extra + ')', c: 'lmx-next' });
+                if (n && n.air_date && nextStale(m)) {
+                    // TMDB (або кеш картки) лишив у «наступній серії» дату, що вже минула: показувати її не можна. Підставляємо чесний текст і уточнюємо за списком серій сезону
+                    p.push({ t: 'Наступна серія: уточнюємо дату…', c: 'lmx-next lmx-nfix' });
+                } else if (n && n.air_date) {
+                    p.push({ t: nextText(n), c: 'lmx-next' });
                 } else {
                     p.push({ t: 'Виходить, дата наступної серії невідома', c: 'lmx-next' });
                 }
@@ -5438,6 +5467,7 @@
         else r.find('.full-start-new__right, .full-start__right').eq(0).append(html);
         moveHead(r);
         safe(function () { hideDupes(r); });
+        safe(function () { if (nextStale(m)) fixNextEp(m, r); });
         // Рідний статус Lampa («Скасовано», «Завершено»…) дублює нашу плашку — лишаємо одну
         if (pills.some(function (x) { return /lmx-(done|bad|next|soon)/.test(x.c || ''); })) r.find('.full-start__status').addClass('hide');
     }
@@ -6828,7 +6858,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.603';
+    var VERSION = '10.604';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
