@@ -564,6 +564,20 @@ async function handleAnitube(url, env, ctx) {
   ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) keep.set(k, p[k]); });
   const link = (extra) => { const q = new URLSearchParams(keep); Object.keys(extra).forEach((k) => q.set(k, extra[k])); return self + '?' + q.toString(); };
   const serial = p.serial === '1';
+  // JSON для плагіна LMX Anitube (власна кнопка й екран): fmt=json → сезони/фільм; fmt=json&ath=… → озвучки й серії
+  if (url.searchParams.get('fmt') === 'json') {
+    try {
+      const ath = url.searchParams.get('ath') || '';
+      if (ath) {
+        if (!/^https:\/\/anitube\.in\.ua\/\d+-/.test(ath)) return json({ error: 'bad_href' }, 400);
+        const voices = await atVoicesFor(ath, ctx);
+        return json({ voices: voices.map((v) => ({ name: v.name, sub: v.sub, eps: v.eps.map((e) => ({ n: e.n, file: e.file })) })) });
+      }
+      const f = await atFind(p, env, ctx);
+      if (!serial) return json({ film: f.film ? { href: f.film.href, title: f.film.title } : null });
+      return json({ seasons: Object.keys(f.seasons).map(Number).sort((a, b) => a - b).map((n) => ({ n, href: f.seasons[n].href, title: f.seasons[n].title })) });
+    } catch (e) { return json({ error: 'unavailable' }, 502); }
+  }
   try {
     let href = url.searchParams.get('ath') || '';
     let season = parseInt(url.searchParams.get('ats') || '0', 10) || 0;
