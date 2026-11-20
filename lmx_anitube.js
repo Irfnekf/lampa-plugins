@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '4.1';
+    var VERSION = '4.2';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1861,6 +1861,17 @@
     this.doesNotAnswer = function (er) {
       var _this9 = this;
       this.reset();
+      // одне задане джерело (Anitube): перемикати нема на що — просте повідомлення без таймера й кнопок
+      if (object.balanser) {
+        var one = Lampa.Template.get('lmxat_does_not_answer', {});
+        one.find('.online-empty__buttons').remove();
+        one.find('.online-empty__title').text('На Anitube цього тайтлу не знайдено');
+        one.find('.online-empty__time').text('Можливо, там він під іншою назвою або ще без озвучки');
+        scroll.clear();
+        scroll.append(one);
+        this.loading(false);
+        return;
+      }
       var html = Lampa.Template.get('lmxat_does_not_answer', {
         balanser: balanser
       });

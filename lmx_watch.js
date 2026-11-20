@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.55';
+    var VERSION = '3.56';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1326,7 +1326,7 @@
         if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = seTitle(si.title); if (vi && vi.title) voice = vi.title; }
         want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         var srcIt = SG && curSrc(act, SG.sort), srcLbl = (srcIt && srcIt.title) ? String(srcIt.title).trim() : '';
-        if (ref) want.push(group(act, 'src', 'Джерело', srcLbl || (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
+        if (ref && !singleSrc()) want.push(group(act, 'src', 'Джерело', srcLbl || (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
         // є дані фільтра — працюємо напряму з ними (кнопки лише там, де такий вибір справді є); немає — старий запасний шлях
         if (SG ? SG.season : (season || /сезон|season/i.test(txt))) want.push(group(act, 'season', 'Сезон', season || 'Сезон', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'season')) openFilterItem(act, RX_SEASON); }));
         if (SG ? SG.voice : act.querySelector('.filter--filter')) want.push(group(act, 'voice', 'Озвучка', voice || 'Обрати', function () { act.__lmxSA = 2; if (!toggleDrop(act, 'voice')) openFilterItem(act, RX_VOICE); }));
@@ -1657,7 +1657,50 @@
         return pool[0] || null;
     }
     // Нічого не знайшли: «Спробувати <джерело>», «Усі джерела», «Повторити», «Уточнити пошук» (як панель-нотатка в Nova)
+    // Екран з одним заданим джерелом (кнопка Anitube та подібні): обирати й перебирати нема що — без підбору, кнопки «Джерело» і «Спробувати інше»
+    function singleSrc() { try { var a = Lampa.Activity.active(); return !!(a && a.balanser); } catch (e) { return false; } }
+    function singleWatch(act, h) {
+        act.__lmxSingle = 1; act.classList.add('lmx-onl-single');
+        if (!document.getElementById('lmx-onl-single-css')) {
+            var st = document.createElement('style'); st.id = 'lmx-onl-single-css';
+            st.textContent = '.lmx-onl-single .filter--sort,.lmx-onl-single .filter--search{display:none !important}.lmx-onl-single.lmx-onl-nothing .torrent-filter,.lmx-onl-single.lmx-onl-nothing .explorer__files-body [class*="online-empty"]{display:none !important}';
+            document.head.appendChild(st);
+        }
+        var t0 = Date.now(), iv = setInterval(function () {
+            safe(function () {
+                if (!document.body.contains(act)) return clearInterval(iv);
+                var body = act.querySelector('.explorer__files-body .scroll__body');
+                if (!body) return;
+                var found = freshEps(body).length || nativeList(body) || act.querySelector('.lmx-onl-item');
+                var empty = !found && (!!body.querySelector('[class*="online-empty"]') || /не дав результат|нічого не знайдено|не знайдено|помилка/i.test(body.textContent || ''));
+                var late = Date.now() - t0 > 30000;
+                if (!found && !empty && !late) return;
+                clearInterval(iv);
+                act.__lmxProbing = false;
+                act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load');
+                var hs = h.querySelector('.lmx-onl-hero__s'), pr = act.querySelector('.lmx-onl-prog');
+                if (found) {
+                    settleHold(act);
+                    if (hs && hs.parentNode) hs.parentNode.removeChild(hs);
+                    if (pr && pr.parentNode) pr.parentNode.removeChild(pr);
+                    safe(buildHero);
+                    return;
+                }
+                if (hs) hs.textContent = '';
+                act.classList.add('lmx-onl-nothing');
+                if (pr) {
+                    pr.classList.add('lmx-onl-prog--end');
+                    var ps = pr.querySelector('.lmx-onl-prog__s');
+                    var t = '';
+                    try { var tt = body.querySelector('.online-empty__title'); t = tt ? String(tt.textContent || '').trim() : ''; } catch (e) {}
+                    if (ps) ps.textContent = late && !empty ? 'Джерело довго не відповідає. Спробуйте пізніше' : (t || 'Тут цього тайтлу не знайдено');
+                }
+                safe(function () { hideJunk(act); });
+            });
+        }, 300);
+    }
     function deadActions(act) {
+        if (singleSrc()) return;
         var pr = act.querySelector('.lmx-onl-prog');
         if (!pr || pr.querySelector('.lmx-onl-dead')) return;
         var row = document.createElement('div'), inst = instFor(act), next = nextSourceFor(act), manySrc = false;
@@ -3519,9 +3562,10 @@
         if (scanning()) safe(function () { heroStatus(act, '', false, 0); });
         var ex2 = act.querySelector('.explorer'); if (ex2) ex2.classList.add('lmx-onl');
         putLogo(h, card);
-        if (autoOn()) watchSources(act, card);
+        if (singleSrc()) { var hs0 = h.querySelector('.lmx-onl-hero__s'), ps0 = pr.querySelector('.lmx-onl-prog__s'); if (hs0) hs0.textContent = 'Завантажуємо…'; if (ps0) ps0.textContent = 'Завантажуємо…'; singleWatch(act, h); }
+        else if (autoOn()) watchSources(act, card);
         // якщо джерел так і не знайшлось, переливання не вічне
-        setTimeout(function () { act.__lmxProbing = false; safe(buildHero); setTimeout(function () { settleHold(act); act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); var bd = act.querySelector('.explorer__files-body .scroll__body'); if (q && bd && nativeList(bd)) { var hs = act.querySelector('.lmx-onl-hero__s'); if (hs && hs.parentNode) hs.parentNode.removeChild(hs); q.parentNode.removeChild(q); } else if (q && !act.querySelector('.lmx-onl-item')) { q.classList.add('lmx-onl-prog--end'); var ps = q.querySelector('.lmx-onl-prog__s'); if (ps) ps.textContent = 'Джерела не відповіли. Оберіть джерело вручну'; } else if (q) q.parentNode.removeChild(q); }, 50); }, (probeOn() ? 130000 : (qTarget() >= 4 ? 65000 : 30000)));
+        setTimeout(function () { if (act.__lmxSingle) return; act.__lmxProbing = false; safe(buildHero); setTimeout(function () { settleHold(act); act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load'); var q = act.querySelector('.lmx-onl-prog'); var bd = act.querySelector('.explorer__files-body .scroll__body'); if (q && bd && nativeList(bd)) { var hs = act.querySelector('.lmx-onl-hero__s'); if (hs && hs.parentNode) hs.parentNode.removeChild(hs); q.parentNode.removeChild(q); } else if (q && !act.querySelector('.lmx-onl-item')) { q.classList.add('lmx-onl-prog--end'); var ps = q.querySelector('.lmx-onl-prog__s'); if (ps) ps.textContent = 'Джерела не відповіли. Оберіть джерело вручну'; } else if (q) q.parentNode.removeChild(q); }, 50); }, (probeOn() ? 130000 : (qTarget() >= 4 ? 65000 : 30000)));
     }
 
     // Як у Nova: коли джерело відкрите, читаємо якість з реальних серій (1080p, 4K…) і запам'ятовуємо найвищу — бейдж у списку джерел стає точним

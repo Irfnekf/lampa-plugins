@@ -362,6 +362,8 @@ async function atFetch(url, opt, ttl, ctx) {
 }
 
 async function atSearch(q, ctx) {
+  // японські ієрогліфи й знаки на зразок «－» пошук anitube не розуміє — лишаємо літери й цифри
+  q = String(q || '').replace(/[\u3000-\u30ff\u3400-\u9fff\uff00-\uffef]/g, ' ').replace(/[^0-9A-Za-z\u0400-\u04ff!?' -]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!q || q.length < 2) return [];
   const body = new URLSearchParams({ do: 'search', subaction: 'search', search_start: '1', full_search: '0', result_from: '1', story: q }).toString();
   const html = await atFetch(AT_BASE + '/index.php?do=search', { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }, 1800, ctx);
@@ -379,9 +381,18 @@ async function atSearch(q, ctx) {
   return out;
 }
 
-// схожість назви результату з назвами картки: точний збіг, входження або спільні слова
-function atScore(title, names) {
+// схожість назви результату з назвами картки: точний збіг, входження або спільні слова (з урахуванням закінчень: «темний/темна», «бог/богиня»)
+function atTokEq(a, b) {
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false;
+  let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i >= Math.min(4, a.length, b.length);
+}
+function atScore(title, names, href) {
   const parts = String(title).split(/\s+\/\s+|\s*\|\s*/).map(atNorm).filter(Boolean);
+  // латинська назва часто є лише в адресі сторінки: /2977-virodok-bastard-bastard.html
+  const slug = (String(href || '').match(/\/\d+-([a-z0-9-]+)\.html/i) || [])[1];
+  if (slug) parts.push(slug.replace(/-/g, ' '));
   let best = 0;
   names.forEach((n) => {
     if (!n) return;
@@ -390,10 +401,15 @@ function atScore(title, names) {
       if (p === n) s = 1;
       else if ((p.indexOf(n) === 0 || n.indexOf(p) === 0) && Math.min(p.length, n.length) / Math.max(p.length, n.length) > 0.55) s = 0.85;
       else {
-        const A = p.split(' '), B = n.split(' ');
-        const inter = A.filter((w) => w.length > 1 && B.indexOf(w) >= 0).length;
-        const j = inter / Math.max(A.length, B.length);
+        const A = p.split(' ').filter((w) => w.length > 1), B = n.split(' ').filter((w) => w.length > 1);
+        if (!A.length || !B.length) return;
+        const used = {};
+        let inter = 0;
+        B.forEach((w) => { for (let k = 0; k < A.length; k++) if (!used[k] && atTokEq(A[k], w)) { used[k] = 1; inter++; break; } });
+        const j = inter / Math.max(A.length, B.length), cover = inter / B.length;
         if (j >= 0.6) s = 0.6 + j * 0.2;
+        // назва картки цілком є в назві чи адресі сторінки (адреса буває довшою: «virodok bastard bastard»)
+        else if (cover === 1 && B.join('').length >= 5) s = 0.7;
       }
       if (s > best) best = s;
     });
@@ -419,13 +435,15 @@ async function atFind(p, env, ctx) {
   const serial = p.serial === '1';
   const names = [p.title, p.original_title].concat(await atTmdbNames(env, p.id, serial, ctx));
   const uniq = [];
-  names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && !/^[぀-ヿ一-鿿\s]+$/.test(n)) uniq.push(n); });
+  names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-z\u0400-\u04ff]{2}/.test(n)) uniq.push(n); });
   const normNames = uniq.map(atNorm);
   const seen = {}, found = [];
   const lists = await Promise.all(uniq.slice(0, 3).map((q) => atSearch(q, ctx).catch(() => [])));
   lists.forEach((l) => l.forEach((r) => { if (!seen[r.href]) { seen[r.href] = 1; found.push(r); } }));
   const year = parseInt(p.year, 10) || 0;
-  const good = found.map((r) => Object.assign(r, { score: atScore(r.title, normNames) })).filter((r) => r.score >= 0.6);
+  const good = found.map((r) => Object.assign(r, { score: atScore(r.title, normNames, r.href) })).filter((r) => r.score >= 0.6)
+    // серіал: старіші за картку тайтли з такою ж назвою (давня OVA 1992 року при серіалі 2022-го) — не його сезони
+    .filter((r) => !serial || !year || !r.year || r.year >= year - 1);
   if (!serial) {
     good.forEach((r) => { if (year && r.year && Math.abs(r.year - year) <= 1) r.score += 0.3; if (atIsExtra(r.title)) r.score += 0.1; });
     good.sort((a, b) => b.score - a.score);
