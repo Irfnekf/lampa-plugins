@@ -541,9 +541,10 @@ async function handleAnitube(url, env, ctx) {
     const u = url.searchParams.get('u') || '';
     if (!atPlayable(u)) return json({ error: 'bad_player' }, 400);
     try {
-      const page = await atFetch(u, { headers: { Referer: AT_BASE + '/' } }, 1800, ctx);
-      const raw = (page.match(/file\s*:\s*"([^"]+)"/) || page.match(/file\s*:\s*'([^']+)'/) || page.match(/src="([^"]+\.m3u8[^"]*)"/) || [])[1];
-      if (!raw) return json({ error: 'no_file' }, 404);
+      const page = await atFetch(u, { headers: { Referer: AT_BASE + '/' } }, 0, ctx);
+      const raw = (page.match(/\bfile\s*:\s*"([^"]+)"/) || page.match(/\bfile\s*:\s*'([^']+)'/) || page.match(/["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/) || [])[1];
+      // діагностика: що віддав плеєр, якщо посилання на відео не знайшли (заголовок сторінки й розмір)
+      if (!raw) return json({ error: 'no_file', len: page.length, title: ((page.match(/<title[^>]*>([^<]*)/i) || [])[1] || '').slice(0, 80), head: page.replace(/\s+/g, ' ').slice(0, 200) }, 404);
       const fix = (s) => (s.indexOf('//') === 0 ? 'https:' + s : s).trim();
       const quality = {};
       let main = '';
