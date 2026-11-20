@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '4.0';
+    var VERSION = '4.1';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
 
@@ -986,7 +986,6 @@
                 if (first.url) {
                   var element = first;
                   element.isonline = true;
-                  {player-inner}
                   Lampa.Player.play(element);
                   Lampa.Player.playlist(playlist);
                   if (element.subtitles_call) _this5.loadSubtitles(element.subtitles_call);
