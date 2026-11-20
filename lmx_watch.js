@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.51';
+    var VERSION = '3.52';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2767,11 +2767,33 @@
         if (nx && nx !== cur || !document.querySelector('.lmx-onl-drop--pop .focus')) { syncNav(a, nx || cur); popReveal(nx || cur); }
         return true;
     }
+    // «Вліво/вправо» по кнопках героя, панелі (Сортувати · Джерело · Сезон · Озвучка · …) і кнопках «Повторити»: йдемо на сусідню кнопку того ж ряду.
+    // Раніше це віддавалось рідній навігації Lampa, яка шукає за геометрією і з кнопки «Сезон» могла стрибнути на картки під панеллю.
+    // Картки серій (сітка) лишаються за рідною навігацією; з крайньої лівої кнопки «вліво» відкриває бокове меню, праворуч — нікуди
+    function navSide(goR) {
+        var a = document.querySelector('.activity--active'), cur = null;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen() || selCtl() || a.__lmxOpen) return false;
+        try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
+        if (!(cur && cur.nodeType === 1 && a.contains(cur) && document.body.contains(cur))) cur = a.querySelector('.focus');
+        if (!cur || !cur.closest || !cur.closest('.lmx-onl-hero, .lmx-onl-bar, .lmx-onl-dead')) return false;
+        var rows = navRows(a), k, row = null, ix;
+        for (k = 0; k < rows.length; k++) if (rows[k].indexOf(cur) >= 0) { row = rows[k]; break; }
+        if (!row) return false;
+        row = row.slice().sort(function (p, q) { return p.getBoundingClientRect().left - q.getBoundingClientRect().left; });
+        ix = row.indexOf(cur);
+        var nx = row[ix + (goR ? 1 : -1)];
+        window.__lmxKeyT = Date.now();
+        if (!nx) return goR;                                  // правий край — «проковтуємо»; лівий — віддаємо Lampa (бокове меню)
+        syncNav(a, nx);
+        return true;
+    }
     function navKeys(e) {
         if (popKeys(e)) return;
         var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
         if (!up && !dn) {
             navCx = null;
+            var isL = e.keyCode === 37 || e.key === 'ArrowLeft', isR = e.keyCode === 39 || e.key === 'ArrowRight';
+            if ((isL || isR) && navSide(isR)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
             // у відкритому списку вліво/вправо нікуди не веде
             if (e.keyCode === 37 || e.keyCode === 39 || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 var fo = document.querySelector('.activity--active .lmx-onl-drop--pop .focus');
