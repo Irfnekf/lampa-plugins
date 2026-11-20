@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.48';
+    var VERSION = '3.49';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2717,6 +2717,17 @@
         if (ti < 0) return false;                            // вище героя — шапка Lampa
         if (ti >= rows.length) return true;                  // нижче немає нічого
         var row = rows[ti], cr = cur.getBoundingClientRect(), now = Date.now();
+        // З панелі/героя «вниз» веде в ПЕРШИЙ ВИДИМИЙ ряд серій, а не в перший ряд списку. Рідний Lampa при відкритті прокручує список до серії,
+        // що продовжується (ряд 4 з 5), а перші ряди лишаються прихованими вище; раніше фокус стрибав на «01» чи на сусідній прихований ряд,
+        // і весь список різко їхав нагору (видно покадрово: ряд 16–19 → ряд 01–04)
+        if (!up && !(cur.classList && cur.classList.contains('lmx-onl-item')) && row[0] && row[0].classList && row[0].classList.contains('lmx-onl-item')) {
+            for (var j = ti; j < rows.length; j++) {
+                var r0 = rows[j][0];
+                if (!r0 || !r0.classList || !r0.classList.contains('lmx-onl-item')) break;
+                var rr = r0.getBoundingClientRect();
+                if (rr.top >= cr.bottom - rr.height * 0.5) { row = rows[j]; break; }
+            }
+        }
         if (navCx === null || now - navT > 1500) navCx = cr.left + cr.width / 2;
         navT = now;
         var best = null, bd = 1e9;
