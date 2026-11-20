@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.49';
+    var VERSION = '3.50';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3563,6 +3563,26 @@
             var autoOwns = !!(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000);
             if ((!window.__lmxKeyT || window.__lmxKeyT < Date.now() - 1500) && !(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000)) holdFocus(act, 'hero', 1800);
             var tk0 = window.__lmxKeyT || 0;
+            // Синхронний сторож: щойно рідний фокус Lampa падає на картку серії (до малювання кадру), повертаємо його на кнопку шапки.
+            // Опитування раз на 90 мс пропускало кадри — на відео фокус «Продовжити → картка → Продовжити» тривав ~1 с
+            if (window.MutationObserver && !act.__lmxFGmo) {
+                var fgFix = false, fgT0 = Date.now();
+                var fgRun = function () {
+                    if (fgFix) return;
+                    if (!document.body.contains(act) || Date.now() - fgT0 > 3500 || (window.__lmxKeyT || 0) > tk0 || (window.__lmxTouchT || 0) > fgT0 - 1) { try { act.__lmxFGmo.disconnect(); } catch (e) {} return; }
+                    if (selOpen() || act.__lmxOpen) return;
+                    var f = act.querySelector('.focus');
+                    if (!f || !f.classList.contains('lmx-onl-item')) return;
+                    var hk = act.__lmxHold && act.__lmxHold.key, tg = (hk && hk !== 'hero' && act.querySelector('.lmx-onl-g--' + hk + ' .selector')) || act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
+                    if (!tg || !(tg.offsetWidth || tg.offsetHeight)) return;
+                    var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
+                    fgFix = true;
+                    try { if (window.Navigator && Navigator.focus) Navigator.focus(tg); resetScroll(act); } finally { fgFix = false; }
+                };
+                act.__lmxFGmo = new MutationObserver(function () { safe(fgRun); });
+                act.__lmxFGmo.observe(act, { attributes: true, attributeFilter: ['class'], subtree: true });
+                setTimeout(function () { try { act.__lmxFGmo.disconnect(); } catch (e) {} }, 3600);
+            }
             [0, 60, 150, 300, 500].forEach(function (d) {
                 setTimeout(function () {
                     safe(function () {
