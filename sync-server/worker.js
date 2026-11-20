@@ -319,10 +319,296 @@ export async function runNotify(env, nowMs, fetchFn) {
   return { jobs: jobs.length, checked, sent: sentN };
 }
 
+// ───────── Anitube: джерело для LMX Watch (аніме з українською озвучкою з anitube.in.ua) ─────────
+// Відповідає у форматі «lite» (як джерела онлайн-плагінів Lampa): сезони, кнопки озвучок, серії. Плеєр Ashdi/Tortuga розбираємо до прямого m3u8.
+// Працює лише з anitube.in.ua та відомими плеєрами — це не відкритий проксі.
+const AT_BASE = 'https://anitube.in.ua';
+const AT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+const AT_PLAYER_HOST = /(^|\.)(ashdi\.vip|tortuga\.(wtf|tw|lol))$/i;
+const AT_PLAYER_RANK = [/ashdi/i, /tortuga/i];
+
+function atEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function atHtml(body) { return new Response(body, { headers: Object.assign({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, CORS) }); }
+function atDecode(s) {
+  return String(s || '').replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+}
+function atNorm(s) {
+  return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[’'`ʼ]/g, '')
+    .replace(/\(?\s*(\d+)\s*(сезон|season|частина|part)\s*\)?/gi, ' ').replace(/\(?\s*(сезон|season|частина|part)\s*(\d+)\s*\)?/gi, ' ')
+    .replace(/[^a-z0-9а-яіїєґ]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+function atSeasonOf(t) {
+  const m = String(t || '').match(/(\d+)\s*(?:-?й\s*)?(?:сезон|season)/i) || String(t || '').match(/(?:сезон|season)\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : 1;
+}
+function atIsExtra(t) { return /(фільм|movie|ova|ona|спешл|special|спецвипуск|рекап|recap)/i.test(String(t || '')); }
+
+// запит до anitube з кешем Cloudflare (щоб не смикати сайт на кожне відкриття)
+async function atFetch(url, opt, ttl, ctx) {
+  opt = opt || {};
+  const cache = caches.default;
+  const key = new Request('https://at-cache.local/' + encodeURIComponent((opt.method || 'GET') + ' ' + url + ' ' + (opt.body || '')));
+  if (ttl) { const hit = await cache.match(key); if (hit) return hit.text(); }
+  const headers = Object.assign({ 'User-Agent': AT_UA, 'Accept-Language': 'uk-UA,uk;q=0.9,en;q=0.5', 'Referer': AT_BASE + '/' }, opt.headers || {});
+  const r = await fetch(url, { method: opt.method || 'GET', headers, body: opt.body, redirect: 'follow' });
+  const text = await r.text();
+  if (!r.ok) throw new Error('http ' + r.status);
+  if (ttl && text) {
+    const put = cache.put(key, new Response(text, { headers: { 'Cache-Control': 'max-age=' + ttl } }));
+    if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put;
+  }
+  return text;
+}
+
+async function atSearch(q, ctx) {
+  if (!q || q.length < 2) return [];
+  const body = new URLSearchParams({ do: 'search', subaction: 'search', search_start: '1', full_search: '0', result_from: '1', story: q }).toString();
+  const html = await atFetch(AT_BASE + '/index.php?do=search', { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }, 1800, ctx);
+  const out = [];
+  html.split(/<article\b/i).slice(1).forEach((chunk) => {
+    const a = chunk.match(/<h2[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) return;
+    const href = a[1].indexOf('http') === 0 ? a[1] : AT_BASE + a[1];
+    if (!/anitube\.in\.ua\/\d+-/.test(href)) return;
+    const title = atDecode(a[2].replace(/<[^>]+>/g, ''));
+    const y = chunk.match(/Рік випуску[^:]*:[\s\S]{0,300}?(\d{4})/i);
+    const kind = (chunk.match(/class="(ukr|sub|dubsub)"/i) || [])[1] || '';
+    out.push({ href, title, year: y ? parseInt(y[1], 10) : 0, kind });
+  });
+  return out;
+}
+
+// схожість назви результату з назвами картки: точний збіг, входження або спільні слова
+function atScore(title, names) {
+  const parts = String(title).split(/\s+\/\s+|\s*\|\s*/).map(atNorm).filter(Boolean);
+  let best = 0;
+  names.forEach((n) => {
+    if (!n) return;
+    parts.forEach((p) => {
+      let s = 0;
+      if (p === n) s = 1;
+      else if ((p.indexOf(n) === 0 || n.indexOf(p) === 0) && Math.min(p.length, n.length) / Math.max(p.length, n.length) > 0.55) s = 0.85;
+      else {
+        const A = p.split(' '), B = n.split(' ');
+        const inter = A.filter((w) => w.length > 1 && B.indexOf(w) >= 0).length;
+        const j = inter / Math.max(A.length, B.length);
+        if (j >= 0.6) s = 0.6 + j * 0.2;
+      }
+      if (s > best) best = s;
+    });
+  });
+  return best;
+}
+
+// додаткові назви з TMDB (англійська й альтернативні), якщо у Worker є ключ TMDB_KEY
+async function atTmdbNames(env, id, serial, ctx) {
+  if (!env || !env.TMDB_KEY || !/^\d+$/.test(String(id || ''))) return [];
+  const kind = serial ? 'tv' : 'movie';
+  try {
+    const txt = await atFetch('https://api.themoviedb.org/3/' + kind + '/' + id + '?api_key=' + env.TMDB_KEY + '&language=en-US&append_to_response=alternative_titles', { headers: { Referer: '' } }, 86400, ctx);
+    const j = JSON.parse(txt), out = [];
+    if (j.name || j.title) out.push(j.name || j.title);
+    const alt = (j.alternative_titles && (j.alternative_titles.results || j.alternative_titles.titles)) || [];
+    alt.forEach((a) => { if (a && a.title && /^(US|GB|UA|JP)$/.test(a.iso_3166_1 || '') && /[a-zа-яіїєґ]/i.test(a.title)) out.push(a.title); });
+    return out.slice(0, 4);
+  } catch (e) { return []; }
+}
+
+async function atFind(p, env, ctx) {
+  const serial = p.serial === '1';
+  const names = [p.title, p.original_title].concat(await atTmdbNames(env, p.id, serial, ctx));
+  const uniq = [];
+  names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && !/^[぀-ヿ一-鿿\s]+$/.test(n)) uniq.push(n); });
+  const normNames = uniq.map(atNorm);
+  const seen = {}, found = [];
+  const lists = await Promise.all(uniq.slice(0, 3).map((q) => atSearch(q, ctx).catch(() => [])));
+  lists.forEach((l) => l.forEach((r) => { if (!seen[r.href]) { seen[r.href] = 1; found.push(r); } }));
+  const year = parseInt(p.year, 10) || 0;
+  const good = found.map((r) => Object.assign(r, { score: atScore(r.title, normNames) })).filter((r) => r.score >= 0.6);
+  if (!serial) {
+    good.forEach((r) => { if (year && r.year && Math.abs(r.year - year) <= 1) r.score += 0.3; if (atIsExtra(r.title)) r.score += 0.1; });
+    good.sort((a, b) => b.score - a.score);
+    return { film: good[0] || null };
+  }
+  const seasons = {};
+  good.filter((r) => !atIsExtra(r.title)).forEach((r) => {
+    const s = atSeasonOf(r.title), cur = seasons[s];
+    if (!cur || r.score > cur.score) seasons[s] = r;
+  });
+  return { seasons };
+}
+
+// розбір списку серій anitube: дерево «тип → студія → плеєр → серії» з playlists.php або старий RalodePlayer
+function atPlayerName(labels, file) {
+  for (let i = 0; i < labels.length; i++) if (/ashdi|tortuga|moon|monstro|mp4|sibnet|kodik|csst|плеєр|player/i.test(labels[i])) return labels[i];
+  try { return new URL(file.indexOf('//') === 0 ? 'https:' + file : file).hostname; } catch (e) { return ''; }
+}
+function atFileUrl(f) { f = atDecode(f); return f.indexOf('//') === 0 ? 'https:' + f : f; }
+function atPlayable(file) { try { return AT_PLAYER_HOST.test(new URL(file).hostname); } catch (e) { return false; } }
+function atEpNum(name, idx) { const m = String(name || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : idx + 1; }
+
+function atParseTree(html) {
+  const labels = {}, eps = [];
+  const re = /<li\b([^>]*)>([\s\S]*?)<\/li>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const attrs = m[1], text = atDecode(m[2].replace(/<[^>]+>/g, ''));
+    const id = (attrs.match(/data-id="([^"]+)"/) || [])[1];
+    if (!id) continue;
+    const file = (attrs.match(/data-file="([^"]+)"/) || [])[1];
+    if (file) eps.push({ id, file: atFileUrl(file), name: text }); else labels[id] = text;
+  }
+  const voices = {};
+  eps.forEach((e, i) => {
+    const parts = e.id.split('_'), path = [];
+    for (let k = 2; k <= parts.length; k++) { const l = labels[parts.slice(0, k).join('_')]; if (l) path.push(l); }
+    const sub = path.some((l) => /субтитр/i.test(l));
+    const player = atPlayerName(path, e.file);
+    const vname = path.filter((l) => l !== player && !/^(озвуч(ення|ування)|субтитри|дубляж|багатоголос\S*)$/i.test(l)).join(' ') || (sub ? 'Субтитри' : 'Озвучення');
+    const key = (sub ? 'sub:' : 'dub:') + vname;
+    const v = voices[key] || (voices[key] = { name: sub ? vname + ' (субтитри)' : vname, sub, players: {} });
+    (v.players[player] || (v.players[player] = [])).push({ n: atEpNum(e.name, i), name: e.name, file: e.file });
+  });
+  return voices;
+}
+function atParseRalode(page) {
+  const m = page.match(/RalodePlayer\.init\(([\s\S]*?)\);\s*(?:<\/script>|\n)/);
+  if (!m) return {};
+  let args;
+  try { args = JSON.parse('[' + m[1] + ']'); } catch (e) { return {}; }
+  const voices = {};
+  (args[0] || []).forEach((label, p) => {
+    const list = (args[1] && args[1][p]) || [];
+    const name = atDecode(String(label));
+    const sub = /субтитр/i.test(name);
+    const key = (sub ? 'sub:' : 'dub:') + name;
+    const v = voices[key] || (voices[key] = { name, sub, players: {} });
+    list.forEach((it, i) => {
+      const src = (String(it.code || '').match(/src=["']([^"']+)["']/) || [])[1];
+      if (!src) return;
+      const file = atFileUrl(src), pl = atPlayerName([], file);
+      (v.players[pl] || (v.players[pl] = [])).push({ n: atEpNum(it.name, i), name: atDecode(it.name), file });
+    });
+  });
+  return voices;
+}
+// для кожної озвучки — один плеєр, який ми вміємо програти (Ashdi, далі Tortuga); озвучки без такого плеєра пропускаємо
+function atPickVoices(voices) {
+  const out = [];
+  Object.keys(voices).forEach((k) => {
+    const v = voices[k], names = Object.keys(v.players);
+    let best = null, bestRank = 99;
+    names.forEach((pn) => {
+      const list = v.players[pn].filter((e) => atPlayable(e.file));
+      if (!list.length) return;
+      let r = AT_PLAYER_RANK.findIndex((rx) => rx.test(pn) || rx.test(list[0].file));
+      if (r < 0) r = 50;
+      if (r < bestRank || (r === bestRank && list.length > best.length)) { best = list; bestRank = r; }
+    });
+    if (!best) return;
+    const byN = {};
+    best.forEach((e) => { if (!byN[e.n]) byN[e.n] = e; });
+    out.push({ name: v.name, sub: v.sub, eps: Object.keys(byN).map((n) => byN[n]).sort((a, b) => a.n - b.n) });
+  });
+  out.sort((a, b) => (a.sub ? 1 : 0) - (b.sub ? 1 : 0));
+  return out;
+}
+async function atVoicesFor(href, ctx) {
+  const page = await atFetch(href, {}, 1800, ctx);
+  const newsId = (href.match(/\/(\d+)-/) || [])[1];
+  const hash = (page.match(/dle_login_hash\s*=\s*['"]([^'"]*)['"]/) || [])[1] || '';
+  let voices = {};
+  if (newsId) {
+    try {
+      const txt = await atFetch(AT_BASE + '/engine/ajax/playlists.php?news_id=' + newsId + '&xfield=playlist&user_hash=' + encodeURIComponent(hash),
+        { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, text/javascript, */*; q=0.01', 'Referer': href } }, 900, ctx);
+      const j = JSON.parse(txt);
+      if (j && j.success && j.response) voices = atParseTree(String(j.response));
+    } catch (e) {}
+  }
+  if (!Object.keys(voices).length) voices = atParseRalode(page);
+  return atPickVoices(voices);
+}
+
+function atItem(cls, json, attrs, inner) {
+  return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + atEsc(JSON.stringify(json)) + '">' + inner + '</div>';
+}
+
+async function handleAnitube(url, env, ctx) {
+  const self = url.origin + '/lite/anitube';
+  if (url.pathname === '/lite/anitube/video') {
+    const u = url.searchParams.get('u') || '';
+    if (!atPlayable(u)) return json({ error: 'bad_player' }, 400);
+    try {
+      const page = await atFetch(u, { headers: { Referer: AT_BASE + '/' } }, 1800, ctx);
+      const raw = (page.match(/file\s*:\s*"([^"]+)"/) || page.match(/file\s*:\s*'([^']+)'/) || page.match(/src="([^"]+\.m3u8[^"]*)"/) || [])[1];
+      if (!raw) return json({ error: 'no_file' }, 404);
+      const fix = (s) => (s.indexOf('//') === 0 ? 'https:' + s : s).trim();
+      const quality = {};
+      let main = '';
+      if (/^\s*\[/.test(raw)) {
+        raw.split(',').forEach((part) => { const q = part.match(/^\s*\[([^\]]+)\]\s*(\S+)/); if (q) quality[q[1]] = fix(q[2]); });
+        const ks = Object.keys(quality).sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
+        main = ks.length ? quality[ks[0]] : '';
+      } else main = fix(raw);
+      if (!main) return json({ error: 'no_file' }, 404);
+      return json({ method: 'play', url: main, quality: Object.keys(quality).length ? quality : undefined, title: url.searchParams.get('t') || '' });
+    } catch (e) { return json({ error: 'player_unreachable' }, 502); }
+  }
+
+  const p = {};
+  ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
+  const keep = new URLSearchParams();
+  ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) keep.set(k, p[k]); });
+  const link = (extra) => { const q = new URLSearchParams(keep); Object.keys(extra).forEach((k) => q.set(k, extra[k])); return self + '?' + q.toString(); };
+  const serial = p.serial === '1';
+  try {
+    let href = url.searchParams.get('ath') || '';
+    let season = parseInt(url.searchParams.get('ats') || '0', 10) || 0;
+    if (href && !/^https:\/\/anitube\.in\.ua\/\d+-/.test(href)) href = '';
+    if (!href) {
+      const f = await atFind(p, env, ctx);
+      if (!serial) {
+        if (!f.film) return atHtml('<div class="online-empty">Нічого не знайдено на Anitube</div>');
+        href = f.film.href;
+      } else {
+        const ss = Object.keys(f.seasons).map(Number).sort((a, b) => a - b);
+        if (!ss.length) return atHtml('<div class="online-empty">Нічого не знайдено на Anitube</div>');
+        if (ss.length > 1) {
+          return atHtml(ss.map((s) => atItem('videos__item videos__season', { method: 'link', url: link({ ath: f.seasons[s].href, ats: String(s) }) }, '',
+            '<div class="videos__season-layers"></div><div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">' + s + ' сезон</div></div>')).join(''));
+        }
+        season = ss[0];
+        href = f.seasons[ss[0]].href;
+      }
+    }
+    if (!season) season = serial ? 1 : 0;
+    const voices = await atVoicesFor(href, ctx);
+    if (!voices.length) return atHtml('<div class="online-empty">Нічого не знайдено на Anitube (немає серій у підтримуваному плеєрі)</div>');
+    const want = url.searchParams.get('atv');
+    let vi = want == null ? 0 : Math.max(0, Math.min(voices.length - 1, parseInt(want, 10) || 0));
+    const callUrl = (e, v) => url.origin + '/lite/anitube/video?u=' + encodeURIComponent(e.file) + '&t=' + encodeURIComponent(v.name);
+    if (!serial) {
+      return atHtml(voices.map((v) => atItem('videos__item videos__movie', { method: 'call', url: callUrl(v.eps[0], v), title: v.name, voice_name: v.name }, ' media=""',
+        '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(v.name) + '</div>')).join(''));
+    }
+    const buttons = voices.length > 1 ? voices.map((v, i) => '<div class="videos__button selector' + (i === vi ? ' active' : '') + '" data-json="' +
+      atEsc(JSON.stringify({ method: 'link', url: link({ ath: href, ats: String(season), atv: String(i) }) })) + '">' + atEsc(v.name) + '</div>').join('') : '';
+    const v = voices[vi];
+    const eps = v.eps.map((e) => atItem('videos__item videos__movie', { method: 'call', url: callUrl(e, v), title: 'Серія ' + e.n, voice_name: v.name }, ' media="" s="' + season + '" e="' + e.n + '"',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + e.n + '</div>')).join('');
+    return atHtml(buttons + eps);
+  } catch (e) {
+    return atHtml('<div class="online-empty">Anitube зараз недоступний</div>');
+  }
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
+    if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}

@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.53';
+    var VERSION = '3.54';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1470,7 +1470,7 @@
                         try {
                             if (!inst.__lmxProbe) {
                                 var v = String(url == null ? '' : url);
-                                if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0) {
+                                if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0 && v.indexOf('/lite/anitube') < 0) {
                                     var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
                                     window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
                                 }
@@ -1585,7 +1585,7 @@
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
         job.stop = function () { job.stopped = true; nets.forEach(function (n) { try { n.clear(); } catch (e) {} }); };
-        function urlFor(src) { return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
+        function urlFor(src) { if (String(src).toLowerCase() === AT_KEY) return atUrlFor(job.url); return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
         function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
         function step() {
             if (job.stopped || idx >= job.items.length) return;
@@ -1781,6 +1781,25 @@
             return gen && ja;
         } catch (e) { return false; }
     }
+    // ---- Власне джерело «Anitube» (аніме з українською озвучкою з anitube.in.ua через наш Cloudflare Worker) ----
+    // Додаємо його в список джерел онлайн-плагіна лише на картках аніме; решту джерел і їхній порядок не чіпаємо
+    var AT_KEY = 'anitube';
+    function atHost() { var s = ''; try { s = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {} return (s || 'https://lmx-sync.vladshkaraputa07.workers.dev').replace(/\/+$/, ''); }
+    function atCardOk(c) {
+        try {
+            if (!c) return false;
+            var gen = (c.genres || []).some(function (g) { return g && (g.id === 16 || /анімац|animation|аніме/i.test(String(g.name || ''))); }) || (c.genre_ids || []).indexOf(16) >= 0;
+            var asia = /^(ja|zh)$/.test(String(c.original_language || '')) || (c.origin_country || []).some(function (x) { return x === 'JP' || x === 'CN'; });
+            return gen && asia;
+        } catch (e) { return false; }
+    }
+    function atAdd(list) {
+        if (!Array.isArray(list)) return list;
+        var has = list.some(function (j) { return j && (String(j.balanser || '').toLowerCase() === AT_KEY || /^anitube\b/i.test(String(j.name || ''))); });
+        if (!has) list = list.concat([{ name: 'Anitube', url: atHost() + '/lite/anitube', balanser: AT_KEY, show: true }]);
+        return list;
+    }
+    function atUrlFor(learned) { var q = String(learned || ''), i = q.indexOf('?'); return atHost() + '/lite/anitube' + (i >= 0 ? q.slice(i) : ''); }
     function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && (ANIME_SRC.test(String(k || '')) || (HINT[k] && HINT[k].a) || learnedAnime(k)) && isAnimeCard() ? 4 : 0; }
     // Універсальність: плагін не прив'язаний до назв конкретного онлайн-плагіна. Окрім списків слів, діють ще два шари:
     // (1) значки в назві джерела (🌸/🎌 — аніме, 🇺🇦 — українське): запам'ятовуємо їх із сирої назви, бо в ключі значки відкидаються;
@@ -2364,7 +2383,7 @@
     function learnUrl(url) {
         try {
             var v = String(url == null ? '' : url);
-            if (!/\/lite\/[^\/?&]+/.test(v) || v.indexOf('lite/events') >= 0 || v.indexOf('lite/withsearch') >= 0) return;
+            if (!/\/lite\/[^\/?&]+/.test(v) || v.indexOf('lite/events') >= 0 || v.indexOf('lite/withsearch') >= 0 || v.indexOf('/lite/anitube') >= 0) return;
             var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
             window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
         } catch (e) {}
@@ -2390,6 +2409,15 @@
                                 return out;
                             };
                         });
+                        // Anitube у списку джерел — лише для аніме (жанр «Анімація», японське чи китайське походження)
+                        if (typeof comp.startSource === 'function' && !(object && object.component === 'torrents') && atCardOk(object && (object.movie || object.card))) {
+                            var realSS = comp.startSource;
+                            comp.startSource = function (json) {
+                                var a = arguments;
+                                try { if (Array.isArray(json)) { a = [].slice.call(arguments); a[0] = atAdd(json); } } catch (e) {}
+                                return realSS.apply(this, a);
+                            };
+                        }
                         var realCB = comp.changeBalanser;
                         comp.changeBalanser = function () {
                             if (!inplaceOn() || !reloadable(comp) || !isOn()) return realCB.apply(comp, arguments);
