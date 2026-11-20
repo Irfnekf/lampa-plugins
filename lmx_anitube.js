@@ -8,7 +8,7 @@
     'use strict';
     if (window.__lmxAnitube2) return;
     window.__lmxAnitube2 = true;
-    var VERSION = '2.0';
+    var VERSION = '2.1';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
 
@@ -27,7 +27,8 @@
             return gen && asia;
         } catch (e) { return false; }
     }
-    function isSerial(c) { return !!(c && (c.name || c.number_of_seasons || c.first_air_date) && !c.title); }
+    // Lampa дописує серіалам і поле title, тож серіал впізнаємо за ознаками TMDB-серіалу
+    function isSerial(c) { return !!(c && (c.number_of_seasons || c.first_air_date || c.original_name || (c.seasons && c.seasons.length) || c.media_type === 'tv')); }
 
     // ───────── запити до Worker (кеш на час сесії) ─────────
     var cache = {};
@@ -38,7 +39,7 @@
         fetch(url).then(function (r) { return r.json(); })
             .then(function (j) {
                 if (done) return; done = true; clearTimeout(timer);
-                if (!j || j.error) return fail(j && j.error === 'no_file' ? 'Плеєр не віддав відео' : 'Anitube зараз недоступний');
+                if (!j || j.error) return fail(j && j.error === 'no_file' ? (/країн/i.test(j.title || '') ? 'Плеєр Anitube доступний лише з України' : 'Плеєр не віддав відео') : 'Anitube зараз недоступний');
                 cache[url] = { t: Date.now(), d: j }; ok(j);
             })
             .catch(function () { if (done) return; done = true; clearTimeout(timer); fail('Немає зв’язку з LMX Worker'); });
@@ -51,6 +52,32 @@
     }
     function voicesUrl(href) { return host() + '/lite/anitube?fmt=json&ath=' + encodeURIComponent(href); }
     function videoUrl(file, voice) { return host() + '/lite/anitube/video?u=' + encodeURIComponent(file) + '&t=' + encodeURIComponent(voice || ''); }
+    function parsePlayer(page) {
+        var raw = (String(page || '').match(/\bfile\s*:\s*"([^"]+)"/) || String(page || '').match(/\bfile\s*:\s*'([^']+)'/) || String(page || '').match(/["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/) || [])[1];
+        if (!raw) return null;
+        var fix = function (u) { u = String(u).trim(); return u.indexOf('//') === 0 ? 'https:' + u : u; }, quality = {}, main = '';
+        if (/^\s*\[/.test(raw)) {
+            raw.split(',').forEach(function (part) { var q = part.match(/^\s*\[([^\]]+)\]\s*(\S+)/); if (q) quality[q[1]] = fix(q[2]); });
+            var ks = Object.keys(quality).sort(function (a, b) { return parseInt(b, 10) - parseInt(a, 10); });
+            main = ks.length ? quality[ks[0]] : '';
+        } else main = fix(raw);
+        return main ? { url: main, quality: Object.keys(quality).length ? quality : null } : null;
+    }
+    var vcache = {};
+    function direct(file, ok, fail) {
+        var hit = vcache[file];
+        if (hit && Date.now() - hit.t < 20 * 60000) return ok(hit.d);
+        var net, done = false;
+        function end(f, a) { if (done) return; done = true; f(a); }
+        try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return fail(); }
+        setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(fail); } }, 13000);
+        try {
+            net['native'](file, function (page) {
+                var r = parsePlayer(typeof page === 'string' ? page : '');
+                if (r) { vcache[file] = { t: Date.now(), d: r }; end(ok, r); } else end(fail);
+            }, function () { end(fail); }, false, { dataType: 'text' });
+        } catch (e) { end(fail); }
+    }
 
     // ───────── прогрес перегляду: ті самі ключі, що й в онлайн-плагінах, тож прогрес спільний ─────────
     function baseName(card) { return card.original_title || card.original_name || card.title || card.name || ''; }
@@ -72,7 +99,11 @@
     // ───────── оформлення ─────────
     function addCss() {
         if (document.getElementById('lmxat-css')) return;
-        var css = '.lmxat{padding:1.5em 3em 3em}' +
+        // затемнення поверх фонового кадру, щоб список читався на будь-якому постері
+        var css = '.lmxat-wrap{position:relative;min-height:100%}' +
+            '.lmxat-wrap::before{content:"";position:fixed;left:0;top:0;right:0;bottom:0;background:linear-gradient(90deg,rgba(10,10,12,.94) 0%,rgba(10,10,12,.86) 45%,rgba(10,10,12,.6) 100%);pointer-events:none;z-index:0}' +
+            '.lmxat-wrap .scroll{position:relative;z-index:1}' +
+            '.lmxat{padding:3em 3em 3em;max-width:62em}' +
             '.lmxat__head{display:flex;align-items:baseline;gap:.8em;margin-bottom:1.2em}' +
             '.lmxat__title{font-size:2.2em;font-weight:700;line-height:1.15}' +
             '.lmxat__src{font-size:1em;opacity:.55;letter-spacing:.06em;text-transform:uppercase}' +
@@ -184,7 +215,11 @@
             last = firstNew || list.find('.selector')[0] || bar.find('.selector')[0] || null;
             toggle();
         }
-        function resolve(e, voice, ok, fail) { getJson(videoUrl(e.file, voice), ok, fail); }
+        // Плеєр Ashdi показує відео лише глядачам з України, а Worker працює з-за кордону (Польща) — тож посилання беремо прямо з пристрою;
+        // Worker — запасний шлях для плеєрів без такого обмеження
+        function resolve(e, voice, ok, fail) {
+            direct(e.file, function (j) { ok(j); }, function () { getJson(videoUrl(e.file, voice), ok, fail); });
+        }
         function play(idx) {
             var v = voices[vi], sn = serial ? season.n : 0;
             setChoice(card.id, serial ? { voice: v.name, season: season.n } : { voice: v.name });
