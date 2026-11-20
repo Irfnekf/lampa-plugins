@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.50';
+    var VERSION = '3.51';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2167,7 +2167,7 @@
             var K = Lampa.Controller;
             if (!K || K.__lmxCtl || typeof K.add !== 'function') return;
             var realAdd = K.add;
-            if (!window.__lmxFocusTrack) { window.__lmxFocusTrack = 1; $(document).on('hover:focus', function (e) { if (e && e.target && e.target.nodeType === 1) lastFocusEl = e.target; }); }
+            if (!window.__lmxFocusTrack) { window.__lmxFocusTrack = 1; $(document).on('hover:focus', function (e) { if (e && e.target && e.target.nodeType === 1 && e.target.closest && e.target.closest('.activity--active .explorer.lmx-onl')) lastFocusEl = e.target; }); }   // пункти бокового меню/шапки не запам'ятовуємо — інакше після закриття меню фокус летить на першу кнопку («Сортувати»), а не на картку, звідки пішли
             K.add = function (name, object) {
                 try {
                     // як у Nova: перехоплюємо up/down самого контролера «content» (їх викликають і стрілки, і колесо миші, і геймпад — не лише keydown)
