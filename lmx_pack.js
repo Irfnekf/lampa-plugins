@@ -43,6 +43,37 @@
         try { fn(); } catch (e) { console.error('LMX', e); }
     }
 
+    // ===== Два Lampac-плагіни «Онлайн» разом =====
+    // Плагіни онлайн (lam.maxvol.pro/online.js, beta.l-vid.online/online.js, lampaua тощо) — форки Lampac з однаковим захистом від подвійного запуску:
+    //   if (!window.lampac_plugin) startPlugin();   а startPlugin першим ділом ставить window.lampac_plugin = true
+    // Тож той, що завантажився другим, мовчки не стартує, і його кнопки «Онлайн» на картці немає. Тримаємо прапорець окремо для кожного скрипта:
+    // власний скрипт, що вже стартував, бачить true (подвійного запуску немає), а інший скрипт бачить false і спокійно стартує.
+    // Працює лише під час завантаження плагінів (перша хвилина); далі прапорець звичайний. Для кожного плагіна свій компонент (lampac, alcopac…)
+    safe(function () {
+        var d = Object.getOwnPropertyDescriptor(window, 'lampac_plugin');
+        if ((d && d.configurable === false) || window.__lmxLpGuard) return;
+        window.__lmxLpGuard = 1;
+        var val = d && 'value' in d ? d.value : undefined, started = {}, t0 = Date.now();
+        function owner() {
+            var u = '', st, m, re = /(https?:\/\/[^\s)'"]+?\.js)/g;
+            try { st = String(new Error().stack || ''); while ((m = re.exec(st))) { if (!/lmx_[a-z]+\.js/i.test(m[1])) { u = m[1]; break; } } } catch (e) {}
+            if (!u) { try { u = (document.currentScript && document.currentScript.src) || ''; } catch (e) {} }
+            return String(u).split('?')[0].split('#')[0];
+        }
+        Object.defineProperty(window, 'lampac_plugin', {
+            configurable: true, enumerable: true,
+            get: function () {
+                if (Date.now() - t0 > 60000) return val;
+                var o = owner();
+                return o ? !!started[o] : val;
+            },
+            set: function (v) {
+                val = v;
+                if (v) { var o = owner(); if (o) started[o] = 1; }
+            }
+        });
+    });
+
     var RGB = { green: '46,158,91', orange: '224,123,32', blue: '48,112,220', red: '192,57,43', purple: '130,80,200', gray: '110,110,120' };
     var COLORS = {};
     Object.keys(RGB).forEach(function (k) { COLORS[k] = 'rgba(' + RGB[k] + ',.94)'; });
@@ -6791,7 +6822,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.601';
+    var VERSION = '10.602';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
