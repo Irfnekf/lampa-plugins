@@ -5695,26 +5695,46 @@
 
     // Фокус на сторінці фільму: Lampa в перші 2 с ставить його на першу кнопку в DOM, а не на першу на екрані (порядок задає CSS order);
     // далі контролер чіпаємо лише якщо фокус загубився
+    // Перша на екрані кнопка (за CSS order), а не перша в DOM
+    function btnVisFirst(c0) {
+        var best = null, bo = 1e9, i, e, o;
+        for (i = 0; i < c0.children.length; i++) {
+            e = c0.children[i];
+            if (!e.classList.contains('selector') || e.classList.contains('lmx-edit') || e.offsetWidth <= 0) continue;
+            o = parseInt(e.style.order, 10); if (isNaN(o)) o = i;
+            if (o < bo) { bo = o; best = e; }
+        }
+        return best;
+    }
     function btnFocusFix(cont) {
         // Контролер чіпаємо лише якщо фокус загубився: інакше фокус і прокрутка «стрибають» при кожному оновленні рядка
-        // Lampa при відкритті фокусує першу в DOM кнопку, а не першу на екрані (порядок задає CSS order) — у перші 2 с ставимо фокус на візуально першу
+        // Lampa при відкритті (і щоразу, коли догружаються ряди під кнопками) фокусує першу в DOM кнопку, а не першу на екрані (порядок задає CSS order):
+        // на відео «Дивитись» кілька секунд поспіль то світилась, то гасла. Тому, поки пульт ніхто не чіпав (до 8 с), повертаємо фокус на візуально першу
+        // кнопку СИНХРОННО в момент, коли Lampa його збила (спостерігач класів) — кадр із чужим фокусом браузер не встигає намалювати
         safe(function () {
             var c0 = cont[0];
             if (!c0.__lmxT0) c0.__lmxT0 = Date.now();
             if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; ['keydown', 'mousedown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { window.__lmxKeyT = Date.now(); }, true); }); }
-            if (Date.now() - c0.__lmxT0 > 2000 || (window.__lmxKeyT || 0) > c0.__lmxT0) return;
-            if (Lampa.Controller.enabled().name !== 'full_start') return;
-            var best = null, bo = 1e9, i, e, o;
-            for (i = 0; i < c0.children.length; i++) {
-                e = c0.children[i];
-                if (!e.classList.contains('selector') || e.classList.contains('lmx-edit') || e.offsetWidth <= 0) continue;
-                o = parseInt(e.style.order, 10); if (isNaN(o)) o = i;
-                if (o < bo) { bo = o; best = e; }
+            function fixNow() {
+                if (Date.now() - c0.__lmxT0 > 8000 || (window.__lmxKeyT || 0) > c0.__lmxT0) return false;
+                if (!document.body.contains(c0) || Lampa.Controller.enabled().name !== 'full_start') return false;
+                var best = btnVisFirst(c0), cf = c0.querySelector('.focus');
+                if (best && cf && cf !== best && c0.contains(cf)) {
+                    c0.__lmxFixing = true;
+                    try { Lampa.Controller.collectionFocus(best, c0.closest('.scroll') || c0.parentNode); } finally { c0.__lmxFixing = false; }
+                    return true;
+                }
+                return false;
             }
-            var cf = c0.querySelector('.focus');
-            if (best && cf && cf !== best && c0.contains(cf)) {
-                // пульт уже рухали вручну — не чіпаємо
-                Lampa.Controller.collectionFocus(best, c0.closest('.scroll') || c0.parentNode);
+            fixNow();
+            if (!c0.__lmxFocusMo && window.MutationObserver) {
+                c0.__lmxFocusMo = new MutationObserver(function () {
+                    if (c0.__lmxFixing) return;
+                    if (Date.now() - c0.__lmxT0 > 8000) { try { c0.__lmxFocusMo.disconnect(); } catch (e) {} return; }
+                    safe(fixNow);
+                    try { c0.__lmxFocusMo.takeRecords(); } catch (e) {}
+                });
+                c0.__lmxFocusMo.observe(c0, { attributes: true, attributeFilter: ['class'], subtree: true });
             }
         });
         safe(function () {
@@ -6771,7 +6791,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.600';
+    var VERSION = '10.601';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
