@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.56';
+    var VERSION = '3.57';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1666,34 +1666,40 @@
             st.textContent = '.lmx-onl-single .filter--sort,.lmx-onl-single .filter--search{display:none !important}.lmx-onl-single.lmx-onl-nothing .torrent-filter,.lmx-onl-single.lmx-onl-nothing .explorer__files-body [class*="online-empty"]{display:none !important}';
             document.head.appendChild(st);
         }
-        var t0 = Date.now(), iv = setInterval(function () {
+        var t0 = Date.now(), shown = '', iv = setInterval(function () {
             safe(function () {
-                if (!document.body.contains(act)) return clearInterval(iv);
+                if (!document.body.contains(act) || Date.now() - t0 > 180000) return clearInterval(iv);
                 var body = act.querySelector('.explorer__files-body .scroll__body');
                 if (!body) return;
                 var found = freshEps(body).length || nativeList(body) || act.querySelector('.lmx-onl-item');
-                var empty = !found && (!!body.querySelector('[class*="online-empty"]') || /не дав результат|нічого не знайдено|не знайдено|помилка/i.test(body.textContent || ''));
-                var late = Date.now() - t0 > 30000;
-                if (!found && !empty && !late) return;
-                clearInterval(iv);
-                act.__lmxProbing = false;
-                act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load');
+                // заготовка завантаження джерела теж має клас online-empty — «нічого немає» лише там, де є заголовок повідомлення
+                var et = body.querySelector('.online-empty__title');
+                var empty = !found && !!et;
+                var late = !found && !empty && !shown && Date.now() - t0 > 30000;
                 var hs = h.querySelector('.lmx-onl-hero__s'), pr = act.querySelector('.lmx-onl-prog');
                 if (found) {
+                    if (shown === 'found') return;
+                    shown = 'found';
+                    act.__lmxProbing = false;
+                    act.classList.remove('lmx-onl-load', 'lmx-onl-nothing'); h.classList.remove('lmx-onl-hero--load');
                     settleHold(act);
                     if (hs && hs.parentNode) hs.parentNode.removeChild(hs);
                     if (pr && pr.parentNode) pr.parentNode.removeChild(pr);
                     safe(buildHero);
-                    return;
+                    return clearInterval(iv);
                 }
+                if (!empty && !late) return;
+                if (shown === 'empty') return;
+                shown = 'empty';
+                act.__lmxProbing = false;
+                act.classList.remove('lmx-onl-load'); h.classList.remove('lmx-onl-hero--load');
                 if (hs) hs.textContent = '';
                 act.classList.add('lmx-onl-nothing');
+                pr = pr || ensureProg(act);
                 if (pr) {
                     pr.classList.add('lmx-onl-prog--end');
                     var ps = pr.querySelector('.lmx-onl-prog__s');
-                    var t = '';
-                    try { var tt = body.querySelector('.online-empty__title'); t = tt ? String(tt.textContent || '').trim() : ''; } catch (e) {}
-                    if (ps) ps.textContent = late && !empty ? 'Джерело довго не відповідає. Спробуйте пізніше' : (t || 'Тут цього тайтлу не знайдено');
+                    if (ps) ps.textContent = empty ? (String(et.textContent || '').trim() || 'Тут цього тайтлу не знайдено') : 'Джерело довго не відповідає. Спробуйте пізніше';
                 }
                 safe(function () { hideJunk(act); });
             });
