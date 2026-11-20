@@ -637,11 +637,211 @@ async function handleAnitube(url, env, ctx) {
   }
 }
 
+// ───────── LMX UA: кілька українських джерел в одному екрані «Онлайн» (Anitube, AnimeON, Mikai — аніме; Eneyida — фільми й серіали) ─────────
+// Екран (стандартний «Онлайн» з LMX Anitube) питає /lite/events — список джерел, потім /lite/<джерело> — сезони, озвучки, серії.
+// Плеєри Ashdi/Tortuga показують відео лише для України, тож сторінку плеєра розбирає сам пристрій: такі посилання ведуть на /lite/video і /lite/pl.
+const UA_SOURCES = {
+  anitube: { name: 'Anitube', anime: true },
+  animeon: { name: 'AnimeON', anime: true },
+  mikai: { name: 'Mikai', anime: true },
+  eneyida: { name: 'Eneyida', anime: false }
+};
+function uaIsAnime(p) { return p.anime === '1' || /^(ja|zh)$/.test(p.original_language || ''); }
+function uaParams(url) {
+  const p = {};
+  ['id', 'title', 'original_title', 'year', 'serial', 'original_language', 'anime', 'imdb_id'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
+  return p;
+}
+async function uaNames(p, env, ctx) {
+  const names = [p.title, p.original_title].concat(await atTmdbNames(env, p.id, p.serial === '1', ctx));
+  const uniq = [];
+  names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-zЀ-ӿ]{2}/.test(n)) uniq.push(n); });
+  return uniq;
+}
+function uaLink(self, p, extra) {
+  const q = new URLSearchParams();
+  ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) q.set(k, p[k]); });
+  Object.keys(extra).forEach((k) => q.set(k, extra[k]));
+  return self + '?' + q.toString();
+}
+function uaEmpty(name) { return atHtml('<div class="online-empty">Нічого не знайдено на ' + atEsc(name) + '</div>'); }
+function uaSeasons(list, mk) {
+  return atHtml(list.map((s) => atItem('videos__item videos__season', { method: 'link', url: mk(s) }, '',
+    '<div class="videos__season-layers"></div><div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">' + s.n + ' сезон</div></div>')).join(''));
+}
+// voices: [{ name, eps: [{ n, file }] }] → кнопки озвучок + серії (відео — через /lite/video, його розбере пристрій)
+function uaEpisodes(origin, self, p, voices, vi, season, extra, serial) {
+  if (!voices.length) return null;
+  vi = Math.max(0, Math.min(voices.length - 1, vi || 0));
+  const callUrl = (e, v) => origin + '/lite/video?u=' + encodeURIComponent(e.file) + '&t=' + encodeURIComponent(v.name);
+  if (!serial) {
+    return atHtml(voices.map((v) => atItem('videos__item videos__movie', { method: 'call', url: callUrl(v.eps[0], v), title: v.name, voice_name: v.name }, ' media=""',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(v.name) + '</div>')).join(''));
+  }
+  const buttons = voices.length > 1 ? voices.map((v, i) => '<div class="videos__button selector' + (i === vi ? ' active' : '') + '" data-json="' +
+    atEsc(JSON.stringify({ method: 'link', url: uaLink(self, p, Object.assign({}, extra, { atv: String(i) })) })) + '">' + atEsc(v.name) + '</div>').join('') : '';
+  const v = voices[vi];
+  return atHtml(buttons + v.eps.map((e) => atItem('videos__item videos__movie', { method: 'call', url: callUrl(e, v), title: 'Серія ' + e.n, voice_name: v.name }, ' media="" s="' + season + '" e="' + e.n + '"',
+    '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + e.n + '</div>')).join(''));
+}
+async function uaJson(url, ctx, ttl, headers) { return JSON.parse(await atFetch(url, { headers: Object.assign({ Accept: 'application/json', Referer: '' }, headers || {}) }, ttl, ctx)); }
+
+// ── AnimeON (https://animeon.club): відкритий API; кожен сезон — окремий тайтл ──
+async function uaAnimeon(url, env, ctx) {
+  const self = url.origin + '/lite/animeon', p = uaParams(url), serial = p.serial === '1';
+  const aid = parseInt(url.searchParams.get('aid') || '0', 10) || 0;
+  if (!aid) {
+    const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
+    const seen = {}, found = [];
+    const lists = await Promise.all(names.slice(0, 2).map((q) => uaJson('https://animeon.club/api/anime/search?text=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
+    const good = found.map((r) => {
+      let sc = Math.max(atScore(r.titleUa || '', norm), atScore(r.titleEn || '', norm));
+      if (p.imdb_id && r.imdbId && r.imdbId === p.imdb_id) sc = Math.max(sc, 0.95);
+      return { id: r.id, n: r.season || atSeasonOf(r.titleUa || r.titleEn || ''), y: parseInt(String(r.releaseDate || '').slice(0, 4), 10) || 0, sc };
+    }).filter((r) => r.sc >= 0.6 && (!serial || !year || !r.y || r.y >= year - 1));
+    if (!good.length) return uaEmpty('AnimeON');
+    if (!serial) { good.sort((a, b) => (b.sc + (year && Math.abs(b.y - year) <= 1 ? 0.3 : 0)) - (a.sc + (year && Math.abs(a.y - year) <= 1 ? 0.3 : 0))); return uaAnimeonTitle(url, p, good[0].id, 0, ctx); }
+    const bySeason = {};
+    good.forEach((r) => { const n = r.n || 1; if (!bySeason[n] || r.sc > bySeason[n].sc) bySeason[n] = r; });
+    const ss = Object.keys(bySeason).map(Number).sort((a, b) => a - b);
+    if (ss.length > 1) return uaSeasons(ss.map((n) => ({ n, id: bySeason[n].id })), (s) => uaLink(self, p, { aid: String(s.id), ats: String(s.n) }));
+    return uaAnimeonTitle(url, p, bySeason[ss[0]].id, ss[0], ctx);
+  }
+  return uaAnimeonTitle(url, p, aid, parseInt(url.searchParams.get('ats') || '1', 10) || 1, ctx);
+}
+async function uaAnimeonTitle(url, p, aid, season, ctx) {
+  const self = url.origin + '/lite/animeon', serial = p.serial === '1';
+  const tr = await uaJson('https://animeon.club/api/player/' + aid + '/translations', ctx, 1800).catch(() => null);
+  const opts = [];
+  ((tr && tr.translations) || []).forEach((node) => {
+    const t = node && node.translation, pl = ((node && node.player) || []).filter((x) => x && /ashdi/i.test(x.name || ''))[0];
+    if (t && t.id && pl && pl.id) opts.push({ name: t.name || 'Ashdi', tid: t.id, pid: pl.id });
+  });
+  if (!opts.length) return uaEmpty('AnimeON');
+  const want = parseInt(url.searchParams.get('atv') || '0', 10) || 0;
+  // серії потрібні для обраної озвучки, а для фільму — для кожної (у фільмі озвучки — це пункти списку)
+  const need = serial ? [Math.max(0, Math.min(opts.length - 1, want))] : opts.map((o, i) => i);
+  const voices = opts.map((o) => ({ name: o.name, eps: [] }));
+  await Promise.all(need.map(async (i) => {
+    const o = opts[i];
+    const j = await uaJson('https://animeon.club/api/player/' + aid + '/episodes?take=100&skip=-1&playerId=' + o.pid + '&translationId=' + o.tid, ctx, 1200).catch(() => null);
+    ((j && j.episodes) || []).forEach((e, k) => { if (e && e.fileUrl) voices[i].eps.push({ n: e.episode || k + 1, file: e.fileUrl }); });
+    voices[i].eps.sort((a, b) => a.n - b.n);
+  }));
+  const usable = serial ? voices : voices.filter((v) => v.eps.length);
+  if (serial && !voices[need[0]].eps.length) return uaEmpty('AnimeON');
+  if (!usable.length) return uaEmpty('AnimeON');
+  return uaEpisodes(url.origin, self, p, usable, serial ? need[0] : 0, season || 1, { aid: String(aid), ats: String(season || 1) }, serial);
+}
+
+// ── Mikai (https://mikai.me): API з командами озвучки; беремо плеєр ASHDI ──
+async function uaMikai(url, env, ctx) {
+  const self = url.origin + '/lite/mikai', p = uaParams(url), serial = p.serial === '1';
+  let aid = parseInt(url.searchParams.get('aid') || '0', 10) || 0, season = parseInt(url.searchParams.get('ats') || '0', 10) || 0;
+  const nameOf = (r) => { const n = (r && r.details && r.details.names) || {}; return [n.name, n.nameEnglish, n.nameNative, r && r.slug].filter(Boolean); };
+  const seasonOf = (r) => { for (const s of nameOf(r)) { const m = String(s).match(/(?:^|\D)(\d{1,2})\s*[- ]?(?:сезон|sezon|season)/i); if (m) return parseInt(m[1], 10); } return 1; };
+  if (!aid) {
+    const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
+    const seen = {}, found = [];
+    const lists = await Promise.all(names.slice(0, 2).map((q) => uaJson('https://api.mikai.me/v1/anime/search?page=1&limit=24&sort=year&order=desc&name=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
+    const good = found.map((r) => ({ id: r.id, y: r.year || 0, n: seasonOf(r), sc: Math.max.apply(null, [0].concat(nameOf(r).map((s) => atScore(String(s).replace(/-/g, ' '), norm)))) }))
+      .filter((r) => r.sc >= 0.6 && (!serial || !year || !r.y || r.y >= year - 1));
+    if (!good.length) return uaEmpty('Mikai');
+    if (!serial) { good.sort((a, b) => b.sc - a.sc); aid = good[0].id; season = 0; }
+    else {
+      const bySeason = {};
+      good.forEach((r) => { if (!bySeason[r.n] || r.sc > bySeason[r.n].sc) bySeason[r.n] = r; });
+      const ss = Object.keys(bySeason).map(Number).sort((a, b) => a - b);
+      if (ss.length > 1) return uaSeasons(ss.map((n) => ({ n, id: bySeason[n].id })), (s) => uaLink(self, p, { aid: String(s.id), ats: String(s.n) }));
+      aid = bySeason[ss[0]].id; season = ss[0];
+    }
+  }
+  const j = await uaJson('https://api.mikai.me/v1/anime/' + aid, ctx, 1800).catch(() => null);
+  const players = (j && j.result && j.result.players) || [];
+  const voices = [];
+  players.forEach((pl) => {
+    const prov = ((pl && pl.providers) || []).filter((x) => x && /ashdi/i.test(x.name || ''))[0];
+    const eps = ((prov && prov.episodes) || []).filter((e) => e && e.playLink).map((e, k) => ({ n: e.number || k + 1, file: e.playLink })).sort((a, b) => a.n - b.n);
+    if (eps.length) voices.push({ name: (pl.team && pl.team.name) || 'Mikai', eps });
+  });
+  if (!voices.length) return uaEmpty('Mikai');
+  return uaEpisodes(url.origin, self, p, voices, parseInt(url.searchParams.get('atv') || '0', 10) || 0, season || 1, { aid: String(aid), ats: String(season || 1) }, serial);
+}
+
+// ── Eneyida (https://eneyida.tv): сайт на DLE; сторінка тайтлу містить плеєр Ashdi або Tortuga ──
+async function uaEneyida(url, env, ctx) {
+  const p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
+  const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
+  const seen = {}, found = [];
+  for (const q0 of names.slice(0, 2)) {
+    const q = String(q0).replace(/[　-ヿ㐀-鿿＀-￯]/g, ' ').trim();
+    if (q.length < 2) continue;
+    const body = new URLSearchParams({ do: 'search', subaction: 'search', search_start: '0', result_from: '1', story: q }).toString();
+    let html = '';
+    try { html = await atFetch('https://eneyida.tv/index.php?do=search', { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { continue; }
+    html.split(/<article\s/i).slice(1).forEach((row) => {
+      if (/>Анонс<\/div>|>Трейлер<\/div>/.test(row)) return;
+      const link = (row.match(/href="(https?:\/\/[^\/]+\/[^"]+\.html)"/) || [])[1];
+      if (!link || seen[link]) return;
+      seen[link] = 1;
+      const sub = row.match(/class="short_subtitle">(?:<a [^>]+>(\d{4})<\/a>)?([^<]*)<\/div>/);
+      const ua = atDecode((row.match(/id="short_title"[^>]*>([^<]+)</) || [])[1] || '');
+      const en = atDecode(sub ? sub[2].replace(/&bull;/g, '') : '');
+      found.push({ link, y: sub && sub[1] ? parseInt(sub[1], 10) : 0, sc: Math.max(atScore(ua, norm), atScore(en, norm)) });
+    });
+  }
+  const good = found.filter((r) => r.sc >= 0.6).map((r) => Object.assign(r, { sc: r.sc + (year && r.y && Math.abs(r.y - year) <= 1 ? 0.3 : (year && r.y ? -0.4 : 0)) })).filter((r) => r.sc >= 0.6);
+  if (!good.length) return uaEmpty('Eneyida');
+  good.sort((a, b) => b.sc - a.sc);
+  let page = '';
+  try { page = await atFetch(good[0].link, { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { return atHtml('<div class="online-empty">Eneyida зараз недоступний</div>'); }
+  const iframe = (page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+)\/[^"]+)"/i) || [])[1];
+  if (!iframe) return uaEmpty('Eneyida');
+  if (!serial) {
+    return atHtml(atItem('videos__item videos__movie', { method: 'call', url: url.origin + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: p.title || 'Eneyida', voice_name: 'Eneyida' }, ' media=""',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(p.title || 'Дивитись') + '</div>'));
+  }
+  // серіал: сезони, озвучки й серії записані в самому плеєрі — їх розбере пристрій (посилання /lite/pl)
+  return atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + '/lite/pl?u=' + encodeURIComponent(iframe) }, '',
+    '<div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">Eneyida</div></div>'));
+}
+
+function uaEvents(url) {
+  const p = uaParams(url), anime = uaIsAnime(p);
+  const list = Object.keys(UA_SOURCES).filter((k) => !UA_SOURCES[k].anime || anime).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
+  return json(list);
+}
+async function handleUa(url, env, ctx) {
+  const path = url.pathname;
+  try {
+    if (path === '/lite/events') return uaEvents(url);
+    if (path === '/lite/withsearch') return json([]);
+    if (path === '/externalids') return json({});
+    if (path === '/lite/video') {
+      // запасний шлях: пристрій не зміг сам — пробуємо з Worker (для плеєрів без обмеження за країною)
+      const u = url.searchParams.get('u') || '';
+      if (/\.m3u8(\?|$)/i.test(u)) return json({ method: 'play', url: u });
+      url.pathname = '/lite/anitube/video';
+      return handleAnitube(url, env, ctx);
+    }
+    if (path === '/lite/pl') return atHtml('<div class="online-empty">Плеєр відкривається лише на пристрої з України</div>');
+    if (path === '/lite/animeon') return await uaAnimeon(url, env, ctx);
+    if (path === '/lite/mikai') return await uaMikai(url, env, ctx);
+    if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
+  } catch (e) {
+    return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
+  }
+  return null;
+}
+
 export default {
   async fetch(req, env, ctx) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}

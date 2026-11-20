@@ -1,8 +1,8 @@
 /*
- * LMX Anitube — кнопка «Anitube» на сторінці аніме: перегляд з anitube.in.ua з українською озвучкою (FanVoxUA, Рідний Голос та ін.)
- *  • Самостійний плагін: має власний стандартний екран «Онлайн» (його оформлює LMX Watch), інші онлайн-плагіни не потрібні
- *  • Кнопка з’являється лише на аніме (жанр «Анімація», японське чи китайське походження)
- *  • Пошук, сезони, озвучки й серії віддає LMX Worker; посилання на відео бере сам пристрій (плеєр Ashdi працює лише для України)
+ * LMX UA (файл lmx_anitube.js) — кнопка «LMX UA» на сторінці фільму чи серіалу: українська озвучка з кількох сайтів
+ *  • Аніме: Anitube, AnimeON, Mikai (FanVoxUA, Рідний Голос та ін.); фільми й серіали: Eneyida
+ *  • Самостійний плагін: власний стандартний екран «Онлайн» з вибором джерела (його оформлює й автопідбором керує LMX Watch)
+ *  • Пошук, сезони, озвучки й серії віддає LMX Worker; плеєри Ashdi/Tortuga працюють лише для України, тож їх розбирає сам пристрій
  *
  *  Екран «Онлайн» узято з відкритого проєкту Lampac (https://github.com/immisterio/Lampac, ліцензія AGPL-3.0);
  *  тож і цей файл поширюється на умовах AGPL-3.0 з відкритим кодом.
@@ -11,57 +11,123 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '4.2';
+    var VERSION = '5.0';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
-    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Anitube', description: 'Кнопка Anitube на сторінці аніме: українська озвучка з anitube.in.ua', author: 'Irfnekf' }; } catch (e) {}
+    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
     var DEFAULT_HOST = 'https://lmx-sync.vladshkaraputa07.workers.dev';
-    var KEY = 'anitube';
     var COMP = 'lmx_anitube_online';
 
-    function safe(fn) { try { return fn(); } catch (e) { try { console.log('LMX Anitube', e); } catch (x) {} } }
+    function safe(fn) { try { return fn(); } catch (e) { try { console.log('LMX UA', e); } catch (x) {} } }
     function host() { var s = ''; try { s = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {} return (s || DEFAULT_HOST).replace(/\/+$/, ''); }
+    function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-    function isAnime(c) {
+    // ───────── сторінки плеєрів (Ashdi, Tortuga) — з самого пристрою ─────────
+    function fixUrl(u) { u = String(u || '').trim(); if (u.indexOf('//') === 0) u = 'https:' + u; return u.replace('0yql3tj', 'oyql3tj'); }
+    // Tortuga ховає дані плеєра: base64, перший байт — ключ, далі XOR (як у Lampac)
+    function tortugaDecode(b64) {
         try {
-            if (!c) return false;
-            var gen = (c.genres || []).some(function (g) { return g && (g.id === 16 || /анімац|animation|аніме/i.test(String(g.name || ''))); }) || (c.genre_ids || []).indexOf(16) >= 0;
-            var asia = /^(ja|zh)$/.test(String(c.original_language || '')) || (c.origin_country || []).some(function (x) { return x === 'JP' || x === 'CN'; });
-            return gen && asia;
-        } catch (e) { return false; }
+            var s = String(b64 || '').replace(/[^A-Za-z0-9+\/=]/g, ''); while (s.length % 4) s += '=';
+            var bin = atob(s), out = [], seed = bin.charCodeAt(0), i;
+            for (i = 1; i < bin.length; i++) out.push(bin.charCodeAt(i) ^ ((seed + 7 * (i - 1) + 13) & 255));
+            var str = ''; for (i = 0; i < out.length; i++) str += String.fromCharCode(out[i]);
+            try { return decodeURIComponent(escape(str)); } catch (e) { return str; }
+        } catch (e) { return ''; }
     }
-    // Lampa дописує серіалам і поле title, тож серіал впізнаємо за ознаками TMDB-серіалу
-    function isSerial(c) { return !!(c && (c.number_of_seasons || c.first_air_date || c.original_name || (c.seasons && c.seasons.length) || c.media_type === 'tv')); }
-
-    // ───────── посилання на відео — з самого пристрою ─────────
-    function parsePlayer(page) {
+    // файл плеєра: пряме посилання, список якостей, серіал (JSON) або закодовані дані Tortuga
+    function playerData(page) {
         page = String(page || '');
+        var m = page.match(/\bfile\s*:\s*'(\[\{[\s\S]*?\}\])'\s*,/) || page.match(/\bfile\s*:\s*"(\[\{[\s\S]*?\}\])"\s*,/);
+        if (m) { try { return { serial: JSON.parse(m[1].replace(/,\s*([\]}])/g, '$1')), kind: 'ashdi' }; } catch (e) {} }
+        m = page.match(/\bfile\s*:\s*"([A-Za-z0-9+\/]{24,}={0,2})"/);
+        if (m && !/^https?:/i.test(m[1])) {
+            var dec = tortugaDecode(m[1]);
+            if (/^https?:/i.test(dec)) return { file: dec };
+            if (/^\s*\[/.test(dec)) { try { return { serial: JSON.parse(dec.replace(/,\s*([\]}])/g, '$1')), kind: 'tortuga' }; } catch (e) {} }
+        }
         var raw = (page.match(/\bfile\s*:\s*"([^"]+)"/) || page.match(/\bfile\s*:\s*'([^']+)'/) || page.match(/["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/) || [])[1];
-        if (!raw) return null;
-        var fix = function (u) { u = String(u).trim(); return u.indexOf('//') === 0 ? 'https:' + u : u; }, quality = {}, main = '';
+        return raw ? { file: raw } : null;
+    }
+    function playFrom(raw) {
+        var quality = {}, main = '';
         if (/^\s*\[/.test(raw)) {
-            raw.split(',').forEach(function (part) { var q = part.match(/^\s*\[([^\]]+)\]\s*(\S+)/); if (q) quality[q[1]] = fix(q[2]); });
+            raw.split(',').forEach(function (part) { var q = part.match(/^\s*\[([^\]]+)\]\s*(\S+)/); if (q) quality[q[1]] = fixUrl(q[2]); });
             var ks = Object.keys(quality).sort(function (a, b) { return parseInt(b, 10) - parseInt(a, 10); });
             main = ks.length ? quality[ks[0]] : '';
-        } else main = fix(raw);
+        } else main = fixUrl(raw);
         return main ? { method: 'play', url: main, quality: Object.keys(quality).length ? quality : undefined } : null;
     }
-    var vcache = {};
-    function direct(file, ok, fail) {
-        var hit = vcache[file];
+    var pcache = {};
+    function fetchPage(url, ok, fail) {
+        var hit = pcache[url];
         if (hit && Date.now() - hit.t < 20 * 60000) return ok(hit.d);
         var net, done = false;
         function end(f, a) { if (done) return; done = true; f(a); }
         try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return fail(); }
         setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(fail); } }, 13000);
         try {
-            net['native'](file, function (page) {
-                var r = parsePlayer(typeof page === 'string' ? page : '');
-                if (r) { vcache[file] = { t: Date.now(), d: r }; end(ok, r); } else end(fail);
+            net['native'](url, function (page) {
+                page = typeof page === 'string' ? page : '';
+                if (page.indexOf('file') < 0) return end(fail);
+                pcache[url] = { t: Date.now(), d: page }; end(ok, page);
             }, function () { end(fail); }, false, { dataType: 'text' });
         } catch (e) { end(fail); }
     }
-    function playerOf(url) { var m = String(url || '').match(/\/lite\/anitube\/video\?u=([^&]+)/); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } }
+    function direct(u, ok, fail) {
+        if (/\.m3u8(\?|$)/i.test(u)) return ok({ method: 'play', url: fixUrl(u) });
+        fetchPage(u, function (page) { var d = playerData(page), r = d && d.file ? playFrom(d.file) : null; if (r) ok(r); else fail(); }, fail);
+    }
+    function qget(url, k) { var m = String(url || '').match(new RegExp('[?&]' + k + '=([^&]*)')); try { return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : ''; } catch (e) { return ''; } }
+    function playerOf(url) { return /\/lite\/(?:anitube\/)?video\?/.test(String(url || '')) ? qget(url, 'u') : ''; }
+
+    // Серіал у плеєрі Ashdi/Tortuga: сезони → озвучки → серії, у тій самій розмітці, що віддають джерела онлайн-плагіна
+    function serialModel(d) {
+        var seasons = {};
+        function sea(n) { return seasons[n] || (seasons[n] = { n: n, voices: {}, order: [] }); }
+        function add(n, voice, e, url, sub) {
+            if (!url) return;
+            var S = sea(n), V = S.voices[voice] || (S.voices[voice] = (S.order.push(voice), { name: voice, eps: [] }));
+            V.eps.push({ n: e, url: fixUrl(url) });
+        }
+        function num(t, def) { var m = String(t || '').match(/(\d+)\s*$/) || String(t || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : def; }
+        if (d.kind === 'ashdi') {
+            d.serial.forEach(function (v) { (v.folder || []).forEach(function (s, si) { (s.folder || []).forEach(function (e, ei) { add(num(s.title, si + 1), v.title || 'Озвучка', num(e.title, ei + 1), e.file); }); }); });
+        } else {
+            d.serial.forEach(function (s, si) {
+                var n = parseInt(s.season, 10) || num(s.title, si + 1);
+                (s.folder || []).forEach(function (e, ei) {
+                    var en = parseInt(e.number, 10) || num(e.title, ei + 1);
+                    if (e.folder) e.folder.forEach(function (v) { add(n, v.title || 'Озвучка', en, v.file); });
+                    else { var rx = /\{([^}]+)\}(https?:\/\/[^{\n\r\t"; ]+\.m3u8)/g, m; while ((m = rx.exec(e.file || ''))) add(n, m[1], en, m[2]); if (/^https?:/.test(e.file || '')) add(n, 'Озвучка', en, e.file); }
+                });
+            });
+        }
+        return Object.keys(seasons).map(function (k) { return seasons[k]; }).sort(function (a, b) { return a.n - b.n; });
+    }
+    function plHtml(page, plUrl) {
+        var d = playerData(page);
+        if (!d) return '';
+        var base = plUrl.split('?')[0] + '?u=' + encodeURIComponent(qget(plUrl, 'u'));
+        function item(cls, json, attrs, inner) { return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + esc(JSON.stringify(json)) + '">' + inner + '</div>'; }
+        if (d.file) {
+            var r = playFrom(d.file);
+            return r ? item('videos__item videos__movie', { method: 'play', url: r.url, quality: r.quality, title: 'Дивитись' }, ' media=""', '<div class="videos__item-title">Дивитись</div>') : '';
+        }
+        var seasons = serialModel(d);
+        if (!seasons.length) return '';
+        var s = parseInt(qget(plUrl, 's'), 10);
+        if (!s) {
+            if (seasons.length > 1) return seasons.map(function (x) { return item('videos__item videos__season', { method: 'link', url: base + '&s=' + x.n }, '', '<div class="videos__item-title videos__season-title">' + x.n + ' сезон</div>'); }).join('');
+            s = seasons[0].n;
+        }
+        var S = seasons.filter(function (x) { return x.n === s; })[0] || seasons[0];
+        var t = parseInt(qget(plUrl, 't'), 10) || 0; if (t >= S.order.length) t = 0;
+        var btn = S.order.length > 1 ? S.order.map(function (name, i) { return '<div class="videos__button selector' + (i === t ? ' active' : '') + '" data-json="' + esc(JSON.stringify({ method: 'link', url: base + '&s=' + S.n + '&t=' + i })) + '">' + esc(name) + '</div>'; }).join('') : '';
+        var V = S.voices[S.order[t]];
+        return btn + V.eps.map(function (e) {
+            return item('videos__item videos__movie', { method: 'play', url: e.url, title: 'Серія ' + e.n, voice_name: V.name }, ' media="" s="' + S.n + '" e="' + e.n + '"', '<div class="videos__item-title">Серія ' + e.n + '</div>');
+        }).join('');
+    }
 
     // ───────── оформлення ─────────
     // стилі екрана «Онлайн» додаємо лише якщо їх ще немає (інакше вони вже є від іншого онлайн-плагіна — не перебиваємо)
@@ -75,14 +141,9 @@
     }
     function ensureCss() {
         if (!document.getElementById('lmxat-base-css') && !hasPrestigeCss() && window.__lmxatCss) safe(window.__lmxatCss);
-        if (document.getElementById('lmxat-css')) return;
-        var st = document.createElement('style'); st.id = 'lmxat-css';
-        // екран з одним заданим джерелом малює серії без кадрів (ховає їх) — повертаємо кадри, як на звичайному «Онлайн»
-        st.textContent = '.lmxat-act .online-prestige__img{display:block !important}';
-        document.head.appendChild(st);
     }
 
-    // Наш екран: посилання на серії розбираємо на пристрої, а не через Worker; кадри серій показуємо
+    // Наш екран: посилання на відео й серіали в плеєрах Ashdi/Tortuga розбираємо на пристрої, а не через Worker
     function hookCreate() {
         var C = Lampa.Component;
         if (!C || typeof C.create !== 'function' || C.__lmxAt4) return;
@@ -92,7 +153,6 @@
             safe(function () {
                 if (!comp || !(object && object.component === COMP) || typeof comp.getFileUrl !== 'function' || comp.__lmxAt4) return;
                 comp.__lmxAt4 = 1;
-                safe(function () { var r = comp.render && comp.render(); if (r && r.addClass) r.addClass('lmxat-act'); });
                 var realGet = comp.getFileUrl;
                 comp.getFileUrl = function (file, call) {
                     var self = this, args = arguments, u = playerOf(file && file.url);
@@ -102,34 +162,38 @@
                         call(out, { quality: r.quality });
                     }, function () { realGet.apply(self, args); });
                 };
+                var realReq = comp.request;
+                if (typeof realReq === 'function') comp.request = function (url) {
+                    var self = this, args = arguments;
+                    if (!/\/lite\/pl\?/.test(String(url || ''))) return realReq.apply(self, args);
+                    fetchPage(qget(url, 'u'), function (page) {
+                        var html = '';
+                        try { html = plHtml(page, String(url)); } catch (e) {}
+                        if (html) comp.parse(html); else realReq.apply(self, args);
+                    }, function () { realReq.apply(self, args); });
+                };
             });
             return comp;
         };
         C.__lmxAt4 = 1;
     }
 
-    function liteUrl(card) {
-        var q = ['id=' + encodeURIComponent(card.id || ''), 'title=' + encodeURIComponent(card.title || card.name || ''),
-            'original_title=' + encodeURIComponent(card.original_title || card.original_name || ''),
-            'year=' + String(card.release_date || card.first_air_date || '').slice(0, 4), 'serial=' + (isSerial(card) ? 1 : 0)];
-        return host() + '/lite/anitube?' + q.join('&');
-    }
     function open(card) {
         ensureCss();
         Lampa.Activity.push({
-            url: liteUrl(card), title: 'Anitube', component: COMP, movie: card, page: 1,
-            balanser: KEY, search: card.title || card.name, search_one: card.title || card.name, search_two: card.original_title || card.original_name, clarification: false
+            url: '', title: 'LMX UA', component: COMP, movie: card, page: 1,
+            search: card.title || card.name, search_one: card.title || card.name, search_two: card.original_title || card.original_name, clarification: false
         });
     }
 
-    // ───────── кнопка на сторінці аніме (поруч з іншими кнопками «Онлайн») ─────────
+    // ───────── кнопка на сторінці (поруч з іншими кнопками «Онлайн») ─────────
     var ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.8c1.6 2.3 4.4 2.8 6.3 1.6-.1 2.8 1.7 5 4.1 5.6-2 1.6-2.7 4.4-1.4 6.7-2.8-.4-5.2 1.2-5.9 3.8-1.6-2.3-4.5-3-6.9-1.7.5-2.8-1.1-5.3-3.7-6.1 2.2-1.4 3-4.2 1.9-6.6 2.6.6 5-.5 5.6-3.3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/></svg>';
     function addButton(e) {
         var card = e.data && e.data.movie;
-        if (!isAnime(card)) return;
+        if (!card || !card.id) return;
         var render = e.object && e.object.activity && e.object.activity.render();
         if (!render || !render.length || render.find('.lmxat--button').length) return;
-        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Anitube · LMX">' + ICON + '<span>Anitube</span></div>');
+        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="LMX UA">' + ICON + '<span>LMX UA</span></div>');
         btn.on('hover:enter', function () { safe(function () { open(card); }); });
         var tor = render.find('.view--torrent').last();
         if (tor.length) tor.after(btn);
@@ -139,8 +203,8 @@
     function settings() {
         var S = Lampa.SettingsApi;
         if (!S || !S.addComponent) return;
-        S.addComponent({ component: 'lmx_anitube', name: 'LMX Anitube', icon: ICON });
-        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX Anitube v' + VERSION + ' · кнопка з’являється лише на аніме' } });
+        S.addComponent({ component: 'lmx_anitube', name: 'LMX UA', icon: ICON });
+        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX UA v' + VERSION + ' · Anitube, AnimeON, Mikai, Eneyida' } });
     }
 
   // ===== Стандартний екран «Онлайн» (із відкритого Lampac, immisterio/Lampac, AGPL-3.0), під власними назвами шаблонів, щоб не чіпати інші онлайн-плагіни =====
