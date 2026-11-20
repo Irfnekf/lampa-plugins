@@ -5534,6 +5534,12 @@
                 var sv = el.querySelector('svg');
                 el.__lmxS = sv ? sv.outerHTML : '';
                 var id = btnIdOf(el);
+                // Друга й далі кнопка «Онлайн» (інший плагін): id за підписом плагіна, а не за порядком у DOM («#»). Раніше збережене «сховати/порядок/режим» для «#»-кнопки
+                // потрапляло на ту, що опинилась другою після появи нового плагіна, — і нова кнопка зникала
+                if (seen[id] && /(^|\s)view--online(\s|$)/.test(String(el.className || ''))) {
+                    var sb2 = String(el.getAttribute('data-subtitle') || '').toLowerCase().replace(/[\d.]+/g, '').replace(/\s+/g, ' ').trim();
+                    if (sb2 && !seen[id + '|p' + strHash(sb2)]) id += '|p' + strHash(sb2);
+                }
                 while (seen[id]) id += '#';
                 seen[id] = 1;
                 el.__lmxId = id;
@@ -6822,7 +6828,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.602';
+    var VERSION = '10.603';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
