@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.52';
+    var VERSION = '3.53';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1845,6 +1845,9 @@
         if (mem.h && (mem.h[k] || 0) >= 3) { s += W.hab; why.push('ваш звичний вибір'); }
         g = mem.g && mem.g[k];
         if (g && failEff(g) > (g.ok || 0)) s -= Math.min(1.5, (failEff(g) - (g.ok || 0)) * 0.25);
+        // реальні запуски (а не лише відповідь джерела): стабільно відтворюється — трохи вище, не стартує — нижче
+        var pd = playDelta(mem, playKeyS(playType(), k));
+        if (pd >= 2) { s += 0.4; why.push('стабільно відтворюється'); } else if (pd < 0) s -= Math.min(1.5, -pd * 0.6);
         ms = (pe && pe.ms) || (g && g.ms) || 0;
         if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
         return { s: s, why: why, ua: ua, ms: ms };
@@ -2074,16 +2077,127 @@
         [200, 700, 1600].forEach(function (d) { markT.push(setTimeout(function () { safe(refreshMarks); }, d)); });
     }
     var outsidePl = false;
+    // ---- Досвід відтворення (як у Smart Online): чи потік справді запустився ----
+    // Раніше досвід джерел (mem.g) збирався лише з фонової перевірки («відповіло / не відповіло»). Тепер, окрім цього, рахуємо реальні запуски:
+    // окремо для джерела й для озвучки та окремо для фільмів і серіалів (mem.p). Озвучка/джерело, що не стартують, опускаються в підборі;
+    // стабільні — трохи піднімаються. Якщо потік не стартував за 25 с або плеєр видав помилку — закриваємо плеєр, пишемо збій і вмикаємо наступну озвучку
+    // (запускати серію знову користувач натискає сам: автозапуску без вибору немає)
+    var playCtx = null;
+    function playType() { try { var c = Lampa.Activity.active(), m = c && (c.movie || c.card); return m && (m.name || m.number_of_seasons || (m.first_air_date && !m.release_date)) ? 'tv' : 'movie'; } catch (e) { return 'movie'; } }
+    function playKeyS(type, src) { return 's|' + type + '|' + src; }
+    function playKeyV(type, vn) { return 'v|' + type + '|' + vn; }
+    // Різниця «успіхи − свіжі збої» для ключа; 0, якщо досвіду немає
+    function playDelta(mem, key) { var p = mem && mem.p && mem.p[key]; return p ? (p.ok || 0) - failEff(p) : 0; }
+    function playNote(ctx, ok) {
+        try {
+            var mem = memGet(); mem.p = mem.p || {};
+            [ctx.src && playKeyS(ctx.type, ctx.src), ctx.voice && playKeyV(ctx.type, ctx.voice)].forEach(function (k) {
+                if (!k) return;
+                var p = mem.p[k] || (mem.p[k] = { ok: 0, fail: 0 });
+                if (ok) { p.ok = Math.min(50, (p.ok || 0) + 1); p.ot = Date.now(); if (p.fail) p.fail = Math.max(0, p.fail - 1); }   // успіх «лікує» один збій
+                else { p.fail = Math.min(20, (p.fail || 0) + 1); p.ft = Date.now(); }
+            });
+            var ks = Object.keys(mem.p);
+            if (ks.length > 300) {
+                ks.sort(function (a, b) { return Math.max(mem.p[a].ot || 0, mem.p[a].ft || 0) - Math.max(mem.p[b].ot || 0, mem.p[b].ft || 0); });
+                ks.slice(0, ks.length - 250).forEach(function (k) { delete mem.p[k]; });
+            }
+            memSet(mem);
+        } catch (e) {}
+    }
+    function playerOpen() { try { return !!(Lampa.Player && typeof Lampa.Player.opened === 'function' && Lampa.Player.opened()); } catch (e) { return false; } }
+    function playBegin() {
+        try {
+            if (playCtx) clearTimeout(playCtx.timer);
+            playCtx = null;
+            var a = document.querySelector('.activity--active');
+            if (!isOn() || !a || !a.querySelector('.explorer.lmx-onl')) return;
+            var inst = instFor(a), S = inst && readSets(inst), cs = S && S.sort && curSrc(a, S.sort);
+            if (cs && isTorSrc(cs)) return;   // торенти стартують повільно й мають власну логіку
+            var pv = S && S.voice && selItem(S.voice);
+            var ctx = { t: Date.now(), type: playType(), src: cs && cs.title ? srcName(cs.title) : '', voice: pv && pv.title ? vnorm(pv.title) : '', ok: false, done: false, timer: 0 };
+            if (!ctx.src && !ctx.voice) return;
+            playCtx = ctx;
+            ctx.timer = setTimeout(function () {
+                if (playCtx !== ctx || ctx.ok || ctx.done || outsidePl || !playerOpen()) return;
+                // Звичайний плеєр Lampa — це <video>. Якщо його немає (нативний плеєр ТВ, зовнішній) — подій відтворення ми не бачимо, тож збій не фіксуємо.
+                // Якщо відео вже грає або має дані (події могли пройти до підписки) — це успіх
+                var v = document.querySelector('video');
+                if (!v) return;
+                if (v.currentTime > 0.5 || v.readyState >= 3 || (!v.paused && v.readyState >= 2)) { playOk(); return; }
+                playFail(ctx, 'timeout');
+            }, 25000);
+        } catch (e) {}
+    }
+    function playOk() {
+        var ctx = playCtx;
+        if (!ctx || ctx.ok || ctx.done) return;
+        ctx.ok = true; clearTimeout(ctx.timer);
+        playNote(ctx, true);
+    }
+    function playError() {
+        var ctx = playCtx;
+        if (!ctx || ctx.ok || ctx.done) return;
+        // помилка могла бути миттєвою й виправитись самою (інша якість) — даємо півтори секунди
+        setTimeout(function () {
+            if (playCtx !== ctx || ctx.ok || ctx.done || outsidePl || !playerOpen()) return;
+            var v = document.querySelector('video');
+            if (v && (v.currentTime > 0.5 || v.readyState >= 3)) { playOk(); return; }
+            playFail(ctx, 'error');
+        }, 1500);
+    }
+    // Наступна озвучка після збою: спершу українська з кращим досвідом, потім решта; озвучку, що щойно впала, пропускаємо
+    function nextVoiceAfterFail(ctx) {
+        try {
+            var a = document.querySelector('.activity--active');
+            if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen()) return '';
+            var inst = instFor(a), S = inst && readSets(inst), g = S && S.voice;
+            if (!g || !g.items || g.items.length < 2) return '';
+            var cur = selItem(g), curN = cur && cur.title ? vnorm(cur.title) : ctx.voice, mem = memGet(), vc = vcGet(), best = null, bs = -1e9, i, t, n, sc;
+            for (i = 0; i < g.items.length; i++) {
+                if (!g.items[i] || !g.items[i].title) continue;
+                t = String(g.items[i].title); n = vnorm(t);
+                if (n === curN || n === ctx.voice || isSubOnly(t) || /оригінал|original/i.test(t)) continue;
+                sc = (isUaVoice(t) ? 5 : 0) + (vc[n] || 0) * 2 + playDelta(mem, playKeyV(ctx.type, n)) * 1.5 - i * 0.01;
+                if (sc > bs) { bs = sc; best = g.items[i]; }
+            }
+            if (!best) return '';
+            window.__lmxUserVoiceT = Date.now();   // як вибір користувача: voiceGate не повертає попередню озвучку
+            selIn(inst, 'filter', { stype: g.stype }, { index: idxOf(g, best) });
+            return String(best.title).replace(/<[^>]*>/g, '').trim();
+        } catch (e) { return ''; }
+    }
+    function playFail(ctx, why) {
+        if (!ctx || ctx.done) return;
+        ctx.done = true; clearTimeout(ctx.timer);
+        playNote(ctx, false);
+        try { if (playerOpen()) Lampa.Player.close(); } catch (e) {}
+        setTimeout(function () {
+            safe(function () {
+                var nv = Date.now() - (window.__lmxPFAt || 0) > 20000 ? nextVoiceAfterFail(ctx) : '';
+                window.__lmxPFAt = Date.now();
+                if (Lampa.Noty) Lampa.Noty.show(nv ? 'Потік не запустився — увімкнено іншу озвучку: ' + nv + '. Запустіть серію знову' : 'Потік не запустився — оберіть іншу озвучку або джерело');
+            });
+        }, 700);
+    }
     function hookPlayerMarks() {
         if (window.__lmxPlMarks) return;
         window.__lmxPlMarks = 1;
         try {
+            var PV = Lampa.PlayerVideo;
+            if (PV && PV.listener && PV.listener.follow) {
+                ['canplay', 'loadeddata', 'play', 'playing', 'timeupdate'].forEach(function (ev) { PV.listener.follow(ev, function () { playOk(); }); });
+                PV.listener.follow('error', function () { playError(); });
+            }
+        } catch (e) {}
+        try {
             if (Lampa.Player && Lampa.Player.listener) {
-                Lampa.Player.listener.follow('destroy', function () { outsidePl = false; refreshBurst(); });
+                Lampa.Player.listener.follow('destroy', function () { if (playCtx) { clearTimeout(playCtx.timer); playCtx = null; } outsidePl = false; refreshBurst(); });
                 Lampa.Player.listener.follow('external', function () { outsidePl = true; });
                 // як у Nova (hookQuality): при старті відтворення обираємо з доступних потоків найближчий до бажаної якості, але не вищий за неї
                 Lampa.Player.listener.follow('start', function (data) {
                     safe(warmNext);
+                    safe(playBegin);
                     // озвучка, з якою ви справді дивитесь серіал, запам'ятовується для нього (навіть якщо ви її не вибирали вручну): наступного разу відкриється вона
                     try {
                         var pa = document.querySelector('.activity--active'), pc = Lampa.Activity.active(), pm = pc && (pc.movie || pc.card);
@@ -2402,15 +2516,17 @@
     function vnorm(t) { return String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
     // Яку озвучку відкрити першою: збережений вибір для цього серіалу → найчастіше обирана українська → дубляж → багатоголосий → перша українська зі списку
     function pickVoice(cid, items) {
-        var vp = vpGet(), ve = vp[String(cid)], rem = ve && vnorm(ve.t), vc = vcGet(), best = null, bs = -1, i, t, sc;
+        var vp = vpGet(), ve = vp[String(cid)], rem = ve && vnorm(ve.t), vc = vcGet(), best = null, bs = -1e9, i, t, sc, pm = memGet(), pty = playType();
         // автоматично запам'ятована НЕ українська озвучка не заважає відкрити українську, якщо вона з'явилась; вручну обрану поважаємо завжди
         if (ve && ve.a && !isUaVoice(ve.t) && items.some(function (x) { return x && x.title && isUaVoice(String(x.title)); })) rem = '';
         for (i = 0; i < items.length; i++) {
             if (!items[i] || !items[i].title) continue;
             t = String(items[i].title); var n = vnorm(t);
-            if (rem && n === rem) return items[i];
+            // озвучка для цього серіалу, яка нещодавно не запускалась (свіжі збої перевищують успіхи), не обирається автоматично, навіть якщо була запам'ятована
+            var pdv = playDelta(pm, playKeyV(pty, n));
+            if (rem && n === rem && pdv >= 0) return items[i];
             if (!isUaVoice(t)) continue;
-            sc = 1 + (vc[n] || 0) * 10 + (/дубл|dub/i.test(t) ? 3 : 0) + (/багатоголос|multi|2\+|різноголос/i.test(t) ? 2 : 0) + (/укр|ukr/i.test(t) ? 1 : 0) - i * 0.001;
+            sc = 1 + (vc[n] || 0) * 10 + (/дубл|dub/i.test(t) ? 3 : 0) + (/багатоголос|multi|2\+|різноголос/i.test(t) ? 2 : 0) + (/укр|ukr/i.test(t) ? 1 : 0) - i * 0.001 + (pdv >= 2 ? 0.5 : pdv < 0 ? Math.max(-6, pdv * 2.5) : 0);
             if (sc > bs) { bs = sc; best = items[i]; }
         }
         return best;
