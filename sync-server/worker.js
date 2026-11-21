@@ -771,13 +771,96 @@ async function uaMikai(url, env, ctx) {
   return uaEpisodes(url.origin, self, p, voices, parseInt(url.searchParams.get('atv') || '0', 10) || 0, season || 1, { aid: String(aid), ats: String(season || 1) }, serial);
 }
 
-// ── Eneyida (https://eneyida.tv): сайт не пускає сервери (Worker отримує відмову), тож пошук і сторінку відкриває сам пристрій:
-// тут лише посилання /lite/ey з назвою й роком — його перехоплює плагін LMX UA
-async function uaEneyida(url) {
-  const p = uaParams(url), q = new URLSearchParams();
-  ['title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) q.set(k, p[k]); });
-  return atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + '/lite/ey?' + q.toString() }, '',
+// ── Eneyida (https://eneyida.tv): сайт на DLE; плеєр на сторінці — HDVB UA (зараз основний), Ashdi або Tortuga ──
+// Пошук і плеєр HDVB розбираємо тут, у Worker (тоді працює й у браузері); якщо сайт чи плеєр не пустили Worker —
+// віддаємо посилання, яке відкриє сам пристрій (/lite/ey — пошук, /lite/pl — плеєр); Ashdi і Tortuga — лише для України, їх завжди пристрій
+function uaPlNum(t, def) { const m = String(t || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : def; }
+// дані плеєра у вигляді «сезони → озвучки → серії»; буває і «озвучки → сезони → серії» — розрізняємо за назвами верхнього рівня
+function uaPlModel(list) {
+  const seasons = {};
+  const add = (sn, voice, en, file) => {
+    if (!file) return;
+    const S = seasons[sn] || (seasons[sn] = { n: sn, order: [], voices: {} });
+    const V = S.voices[voice] || (S.voices[voice] = (S.order.push(voice), { name: voice, eps: [] }));
+    V.eps.push({ n: en, url: String(file).replace('0yql3tj', 'oyql3tj') });
+  };
+  const topIsSeason = list.length && list.every((x) => /сезон|season/i.test(String(x && x.title || '')));
+  list.forEach((a, ai) => (a.folder || []).forEach((b, bi) => (b.folder || []).forEach((e, ei) => {
+    if (topIsSeason) add(uaPlNum(a.title, ai + 1), b.title || 'Озвучка', uaPlNum(e.title, ei + 1), e.file);
+    else add(uaPlNum(b.title, bi + 1), a.title || 'Озвучка', uaPlNum(e.title, ei + 1), e.file);
+  })));
+  return Object.keys(seasons).map((k) => seasons[k]).sort((x, y) => x.n - y.n);
+}
+function uaPlHtml(seasons, link, s, t) {
+  if (!seasons.length) return '';
+  if (!s) {
+    if (seasons.length > 1) return seasons.map((x) => atItem('videos__item videos__season', { method: 'link', url: link({ ats: String(x.n) }) }, '',
+      '<div class="videos__season-layers"></div><div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">' + x.n + ' сезон</div></div>')).join('');
+    s = seasons[0].n;
+  }
+  const S = seasons.filter((x) => x.n === s)[0] || seasons[0];
+  if (t >= S.order.length) t = 0;
+  const btn = S.order.length > 1 ? S.order.map((name, i) => '<div class="videos__button selector' + (i === t ? ' active' : '') + '" data-json="' +
+    atEsc(JSON.stringify({ method: 'link', url: link({ ats: String(S.n), atv: String(i) }) })) + '">' + atEsc(name) + '</div>').join('') : '';
+  const V = S.voices[S.order[t]];
+  return btn + V.eps.map((e) => atItem('videos__item videos__movie', { method: 'play', url: e.url, title: 'Серія ' + e.n, voice_name: V.name }, ' media="" s="' + S.n + '" e="' + e.n + '"',
+    '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + e.n + '</div>')).join('');
+}
+async function uaEneyida(url, env, ctx) {
+  const self = url.origin + '/lite/eneyida', p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
+  const devQ = new URLSearchParams(); ['title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) devQ.set(k, p[k]); });
+  const toDevice = (path, extra) => atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + path + (extra || devQ.toString()) }, '',
     '<div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">Eneyida</div></div>'));
+  let iframe = url.searchParams.get('eyf') || '';
+  if (iframe && !/^https:\/\/(hdvbua\.[a-z]+|ashdi\.vip|tortuga\.[a-z]+)\//.test(iframe)) iframe = '';
+  if (!iframe) {
+    const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
+    const found = [], seen = {};
+    let reached = false;
+    for (const q0 of names.slice(0, 3)) {
+      const q = String(q0).replace(/[　-ヿ㐀-鿿＀-￯]/g, ' ').trim();
+      if (q.length < 2) continue;
+      let html = '';
+      try { html = await atFetch('https://eneyida.tv/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); reached = true; } catch (e) { continue; }
+      html.split(/<article\s/i).slice(1).forEach((row) => {
+        const link = (row.match(/href="(https?:\/\/[^\/"]+\/\d+[^"]*\.html)"/) || [])[1];
+        if (!link || seen[link]) return;
+        seen[link] = 1;
+        const ua = atDecode((row.match(/id="short_title"[^>]*>([^<]+)</) || [])[1] || '');
+        const sub = row.match(/class="short_subtitle">(?:<a [^>]+>(\d{4})<\/a>)?([^<]*)<\/div>/);
+        const y = sub && sub[1] ? parseInt(sub[1], 10) : 0;
+        let sc = Math.max(atScore(ua, norm), atScore(atDecode(sub ? sub[2] : '').replace(/[•·]/g, ' '), norm));
+        if (sc < 0.6) return;
+        if (year && y) sc += Math.abs(y - year) <= 1 ? 0.3 : -0.4;
+        if (sc >= 0.6) found.push({ link, sc });
+      });
+      if (found.length) break;
+    }
+    if (!reached) return toDevice('/lite/ey?');
+    if (!found.length) return uaEmpty('Eneyida');
+    found.sort((a, b) => b.sc - a.sc);
+    let page = '';
+    try { page = await atFetch(found[0].link, { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { return toDevice('/lite/ey?'); }
+    iframe = (page.match(/<iframe[^>]+src="(https?:\/\/hdvbua\.[a-z]+\/(?:embed|embd)\/[^"]+)"/i) || page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+|hdvbua\.[a-z]+)\/(?!vid\/)[^"]+)"/i) || [])[1] || '';
+    if (!iframe) return uaEmpty('Eneyida');
+  }
+  // Ashdi і Tortuga — лише для України: їх відкриває пристрій
+  if (!/hdvbua\./.test(iframe)) return toDevice('/lite/pl?u=', encodeURIComponent(iframe));
+  let pl = '';
+  try { pl = await atFetch(iframe, { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { pl = ''; }
+  const mSer = pl.match(/\bfile\s*:\s*'(\[\{[\s\S]*?\}\])'\s*,/);
+  const mMov = pl.match(/\bfile\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/);
+  if (!mSer && !mMov) return toDevice('/lite/pl?u=', encodeURIComponent(iframe));
+  if (mMov && !mSer) {
+    return atHtml(atItem('videos__item videos__movie', { method: 'play', url: mMov[1], title: p.title || 'Eneyida', voice_name: 'Eneyida' }, ' media=""',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(p.title || 'Дивитись') + '</div>'));
+  }
+  let list = [];
+  try { list = JSON.parse(mSer[1].replace(/,\s*([\]}])/g, '$1')); } catch (e) { return toDevice('/lite/pl?u=', encodeURIComponent(iframe)); }
+  const seasons = uaPlModel(list);
+  const link = (extra) => uaLink(self, p, Object.assign({ eyf: iframe }, extra));
+  const html = uaPlHtml(seasons, link, parseInt(url.searchParams.get('ats') || '0', 10) || 0, parseInt(url.searchParams.get('atv') || '0', 10) || 0);
+  return html ? atHtml(html) : uaEmpty('Eneyida');
 }
 
 function uaEvents(url) {
@@ -812,7 +895,7 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/pl') return atHtml('<div class="online-empty">Плеєр відкривається лише на пристрої з України</div>');
     if (path === '/lite/animeon') return await uaAnimeon(url, env, ctx);
     if (path === '/lite/mikai') return await uaMikai(url, env, ctx);
-    if (path === '/lite/eneyida') return await uaEneyida(url);
+    if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
     if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');

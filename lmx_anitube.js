@@ -165,7 +165,12 @@
         }
         function num(t, def) { var m = String(t || '').match(/(\d+)\s*$/) || String(t || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : def; }
         if (d.kind === 'ashdi') {
-            d.serial.forEach(function (v) { (v.folder || []).forEach(function (s, si) { (s.folder || []).forEach(function (e, ei) { add(num(s.title, si + 1), v.title || 'Озвучка', num(e.title, ei + 1), e.file); }); }); });
+            // буває «озвучки → сезони → серії» (Ashdi) і «сезони → озвучки → серії» (HDVB UA) — розрізняємо за назвами верхнього рівня
+            var topSeason = d.serial.length && d.serial.every(function (x) { return /сезон|season/i.test(String(x && x.title || '')); });
+            d.serial.forEach(function (v, vi) { (v.folder || []).forEach(function (s, si) { (s.folder || []).forEach(function (e, ei) {
+                if (topSeason) add(num(v.title, vi + 1), s.title || 'Озвучка', num(e.title, ei + 1), e.file);
+                else add(num(s.title, si + 1), v.title || 'Озвучка', num(e.title, ei + 1), e.file);
+            }); }); });
         } else {
             d.serial.forEach(function (s, si) {
                 var n = parseInt(s.season, 10) || num(s.title, si + 1);
