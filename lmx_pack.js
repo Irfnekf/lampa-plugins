@@ -6587,17 +6587,15 @@
         if (neCache && Date.now() - neCache.t < 7200000) return cb(neCache.data);
         if (neBusy) return cb(neCache ? neCache.data : []);
         var seen = {}, list = [];
-        // історія перегляду теж (серіал, який просто дивишся, не обов'язково в закладках): 15 останніх серіалів з неї + закладки
-        ['history', 'look', 'like', 'book', 'wath'].forEach(function (t) {
-            var a = [], n = 0; try { a = Lampa.Favorite.get({ type: t }) || []; } catch (e) {}
+        ['look', 'like', 'book', 'wath'].forEach(function (t) {
+            var a = []; try { a = Lampa.Favorite.get({ type: t }) || []; } catch (e) {}
             a.forEach(function (c) {
                 if (!c || !c.id || seen[c.id]) return;
                 if (!(c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons)) return;
-                if (t === 'history' && n >= 15) return;
-                seen[c.id] = 1; list.push(c); n++;
+                seen[c.id] = 1; list.push(c);
             });
         });
-        list = list.slice(0, 40);
+        list = list.slice(0, 30);
         if (!list.length) { neCache = { t: Date.now(), data: [] }; return cb([]); }
         neBusy = true;
         var lo = dayStr(-7), hi = dayStr(0), out = [], qi = 0, left = list.length;
