@@ -410,6 +410,9 @@ function atScore(title, names, href) {
         if (j >= 0.6) s = 0.6 + j * 0.2;
         // назва картки цілком є в назві чи адресі сторінки (адреса буває довшою: «virodok bastard bastard»)
         else if (cover === 1 && B.join('').length >= 5) s = 0.7;
+        // назва на сайті може бути зовсім іншим перекладом («Фрірен: після кінця пригоди» / «Фрірен, що проводжає в останню путь»):
+        // збіг першого слова (від 4 літер) — слабка ознака; рік і сезон далі відсіють зайве
+        else if (A[0] && B[0] && B[0].length >= 4 && atTokEq(A[0], B[0])) s = 0.62;
       }
       if (s > best) best = s;
     });
@@ -433,12 +436,13 @@ async function atTmdbNames(env, id, serial, ctx) {
 
 async function atFind(p, env, ctx) {
   const serial = p.serial === '1';
-  const names = [p.title, p.original_title].concat(await atTmdbNames(env, p.id, serial, ctx));
+  const alt = String(p.alt || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 6).sort((a, b) => (/[\u0400-\u04ff]/.test(b) ? 1 : 0) - (/[\u0400-\u04ff]/.test(a) ? 1 : 0));
+  const names = [p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, serial, ctx));
   const uniq = [];
   names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-z\u0400-\u04ff]{2}/.test(n)) uniq.push(n); });
   const normNames = uniq.map(atNorm);
   const seen = {}, found = [];
-  const lists = await Promise.all(uniq.slice(0, 3).map((q) => atSearch(q, ctx).catch(() => [])));
+  const lists = await Promise.all(uaQueries(uniq).map((q) => atSearch(q, ctx).catch(() => [])));
   lists.forEach((l) => l.forEach((r) => { if (!seen[r.href]) { seen[r.href] = 1; found.push(r); } }));
   const year = parseInt(p.year, 10) || 0;
   const good = found.map((r) => Object.assign(r, { score: atScore(r.title, normNames, r.href) })).filter((r) => r.score >= 0.6)
@@ -577,7 +581,7 @@ async function handleAnitube(url, env, ctx) {
   }
 
   const p = {};
-  ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
+  ['id', 'title', 'original_title', 'year', 'serial', 'alt'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
   const keep = new URLSearchParams();
   ['id', 'title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) keep.set(k, p[k]); });
   const link = (extra) => { const q = new URLSearchParams(keep); Object.keys(extra).forEach((k) => q.set(k, extra[k])); return self + '?' + q.toString(); };
@@ -649,11 +653,25 @@ const UA_SOURCES = {
 function uaIsAnime(p) { return p.anime === '1' || /^(ja|zh)$/.test(p.original_language || ''); }
 function uaParams(url) {
   const p = {};
-  ['id', 'title', 'original_title', 'year', 'serial', 'original_language', 'anime', 'imdb_id'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
+  ['id', 'title', 'original_title', 'year', 'serial', 'original_language', 'anime', 'imdb_id', 'alt'].forEach((k) => { p[k] = url.searchParams.get(k) || ''; });
   return p;
 }
+// що шукати на сайтах: повні назви, а для довгих — ще й коротка частина (до двокрапки чи перше слово): пошук сайтів на DLE не знаходить довгих чужих перекладів
+function uaQueries(names) {
+  const out = [];
+  const push = (q) => { q = String(q || '').replace(/[\u3000-\u30ff\u3400-\u9fff\uff00-\uffef]/g, ' ').replace(/\s+/g, ' ').trim(); if (q.length >= 2 && out.indexOf(q) < 0) out.push(q); };
+  names.forEach(push);
+  names.slice(0, 1).concat(names.filter((n) => /[A-Za-z]/.test(n)).slice(0, 1)).forEach((n) => {
+    const head = String(n || '').split(/[:,.(—–-]/)[0].trim();
+    if (head && head !== n) push(head);
+    const w = head.split(/\s+/)[0];
+    if (w && w.length >= 4 && w !== head) push(w);
+  });
+  return out.slice(0, 6);
+}
 async function uaNames(p, env, ctx) {
-  const names = [p.title, p.original_title].concat(await atTmdbNames(env, p.id, p.serial === '1', ctx));
+  const alt = String(p.alt || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 6).sort((a, b) => (/[\u0400-\u04ff]/.test(b) ? 1 : 0) - (/[\u0400-\u04ff]/.test(a) ? 1 : 0));
+  const names = [p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, p.serial === '1', ctx));
   const uniq = [];
   names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-zЀ-ӿ]{2}/.test(n)) uniq.push(n); });
   return uniq;
@@ -693,7 +711,7 @@ async function uaAnimeon(url, env, ctx) {
   if (!aid) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
     const seen = {}, found = [];
-    const lists = await Promise.all(names.slice(0, 2).map((q) => uaJson('https://animeon.club/api/anime/search?text=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    const lists = await Promise.all(uaQueries(names).map((q) => uaJson('https://animeon.club/api/anime/search?text=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
     lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
     const good = found.map((r) => {
       let sc = Math.max(atScore(r.titleUa || '', norm), atScore(r.titleEn || '', norm));
@@ -745,7 +763,7 @@ async function uaMikai(url, env, ctx) {
   if (!aid) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
     const seen = {}, found = [];
-    const lists = await Promise.all(names.slice(0, 2).map((q) => uaJson('https://api.mikai.me/v1/anime/search?page=1&limit=24&sort=year&order=desc&name=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    const lists = await Promise.all(uaQueries(names).map((q) => uaJson('https://api.mikai.me/v1/anime/search?page=1&limit=24&sort=year&order=desc&name=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
     lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
     const good = found.map((r) => ({ id: r.id, y: r.year || 0, n: seasonOf(r), sc: Math.max.apply(null, [0].concat(nameOf(r).map((s) => atScore(String(s).replace(/-/g, ' '), norm)))) }))
       .filter((r) => r.sc >= 0.6 && (!serial || !year || !r.y || r.y >= year - 1));
@@ -817,7 +835,7 @@ async function uaEneyida(url, env, ctx) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
     const found = [], seen = {};
     let reached = false;
-    for (const q0 of names.slice(0, 3)) {
+    for (const q0 of uaQueries(names)) {
       const q = String(q0).replace(/[　-ヿ㐀-鿿＀-￯]/g, ' ').trim();
       if (q.length < 2) continue;
       let html = '';

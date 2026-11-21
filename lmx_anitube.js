@@ -267,8 +267,29 @@
         C.__lmxAt4 = 1;
     }
 
+    // англійська назва й альтернативні назви (латиницею чи українською) з TMDB — один запит, не довше 2,5 с
+    function altNames(card, done) {
+        if (card.lmx_alt || !card.id || (card.source && card.source !== 'tmdb')) return done();
+        var fin = false, t = setTimeout(function () { if (!fin) { fin = true; done(); } }, 2500);
+        try {
+            Lampa.Api.sources.tmdb.get((card.name || card.first_air_date ? 'tv/' : 'movie/') + card.id + '?language=en-US&append_to_response=alternative_titles', {}, function (j) {
+                if (fin) return; fin = true; clearTimeout(t);
+                var out = [];
+                try {
+                    if (j.name || j.title) out.push(j.name || j.title);
+                    var alt = (j.alternative_titles && (j.alternative_titles.results || j.alternative_titles.titles)) || [];
+                    alt.forEach(function (a) { if (a && a.title && /^(US|GB|UA|JP)$/.test(a.iso_3166_1 || '') && /[A-Za-zА-Яа-яІіЇїЄєҐґ]{2}/.test(a.title) && out.indexOf(a.title) < 0) out.push(a.title); });
+                } catch (e) {}
+                card.lmx_alt = out.slice(0, 6);
+                done();
+            }, function () { if (fin) return; fin = true; clearTimeout(t); done(); });
+        } catch (e) { if (!fin) { fin = true; clearTimeout(t); done(); } }
+    }
     function open(card) {
         ensureCss();
+        altNames(card, function () { push(card); });
+    }
+    function push(card) {
         Lampa.Activity.push({
             url: '', title: 'LMX UA', component: COMP, movie: card, page: 1,
             search: card.title || card.name, search_one: card.title || card.name, search_two: card.original_title || card.original_name, clarification: false
@@ -743,6 +764,8 @@
       query.push('original_title=' + encodeURIComponent(object.movie.original_title || object.movie.original_name));
       query.push('serial=' + (object.movie.name ? 1 : 0));
       query.push('original_language=' + (object.movie.original_language || ''));
+      // LMX UA: англійська й альтернативні назви з TMDB — сайти часто називають тайтл інакше, ніж український TMDB
+      if (object.movie.lmx_alt && object.movie.lmx_alt.length) query.push('alt=' + encodeURIComponent(object.movie.lmx_alt.join('|')));
       query.push('year=' + ((object.movie.release_date || object.movie.first_air_date || '0000') + '').slice(0, 4));
       query.push('source=' + card_source);
       query.push('clarification=' + (object.clarification ? 1 : 0));
