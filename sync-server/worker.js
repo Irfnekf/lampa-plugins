@@ -434,10 +434,22 @@ async function atTmdbNames(env, id, serial, ctx) {
   } catch (e) { return []; }
 }
 
+// «ВАН ПІС (ЄДИНИЙ СКАРБ)» — дві назви в одній: додаємо й частину до дужок, і ту, що в дужках (інакше довга назва не збігалася з жодним результатом)
+function atSplitNames(list) {
+  const out = [];
+  list.forEach((n) => {
+    n = String(n || '').trim();
+    if (!n) return;
+    out.push(n);
+    const m = n.match(/^(.*?)\s*[(\[]([^)\]]+)[)\]]\s*$/);
+    if (m) { if (m[1].trim()) out.push(m[1].trim()); if (m[2].trim()) out.push(m[2].trim()); }
+  });
+  return out;
+}
 async function atFind(p, env, ctx) {
   const serial = p.serial === '1';
   const alt = String(p.alt || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 6).sort((a, b) => (/[\u0400-\u04ff]/.test(b) ? 1 : 0) - (/[\u0400-\u04ff]/.test(a) ? 1 : 0));
-  const names = [p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, serial, ctx));
+  const names = atSplitNames([p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, serial, ctx)));
   const uniq = [];
   names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-z\u0400-\u04ff]{2}/.test(n)) uniq.push(n); });
   const normNames = uniq.map(atNorm);
@@ -664,7 +676,8 @@ function uaParams(url) {
 // що шукати на сайтах: повні назви, а для довгих — ще й коротка частина (до двокрапки чи перше слово): пошук сайтів на DLE не знаходить довгих чужих перекладів
 function uaQueries(names) {
   const out = [];
-  const push = (q) => { q = String(q || '').replace(/[\u3000-\u30ff\u3400-\u9fff\uff00-\uffef]/g, ' ').replace(/\s+/g, ' ').trim(); if (q.length >= 2 && out.indexOf(q) < 0) out.push(q); };
+  const low = [];
+  const push = (q) => { q = String(q || '').replace(/[\u3000-\u30ff\u3400-\u9fff\uff00-\uffef]/g, ' ').replace(/\s+/g, ' ').trim(); if (q.length >= 2 && low.indexOf(q.toLowerCase()) < 0) { low.push(q.toLowerCase()); out.push(q); } };
   names.forEach(push);
   names.slice(0, 1).concat(names.filter((n) => /[A-Za-z]/.test(n)).slice(0, 1)).forEach((n) => {
     const head = String(n || '').split(/[:,.(—–-]/)[0].trim();
@@ -676,7 +689,7 @@ function uaQueries(names) {
 }
 async function uaNames(p, env, ctx) {
   const alt = String(p.alt || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 6).sort((a, b) => (/[\u0400-\u04ff]/.test(b) ? 1 : 0) - (/[\u0400-\u04ff]/.test(a) ? 1 : 0));
-  const names = [p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, p.serial === '1', ctx));
+  const names = atSplitNames([p.title, p.original_title].concat(alt, alt.length ? [] : await atTmdbNames(env, p.id, p.serial === '1', ctx)));
   const uniq = [];
   names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-zЀ-ӿ]{2}/.test(n)) uniq.push(n); });
   return uniq;
