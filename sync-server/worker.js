@@ -648,8 +648,11 @@ const UA_SOURCES = {
   anitube: { name: 'Anitube', anime: true },
   animeon: { name: 'AnimeON', anime: true },
   mikai: { name: 'Mikai', anime: true },
-  eneyida: { name: 'Eneyida', anime: false }
+  eneyida: { name: 'Eneyida', anime: false },
+  bamboo: { name: 'BambooUA', anime: false, asia: true }
 };
+// дорами (BambooUA): лише азійські мови оригіналу
+function uaIsAsia(p) { return /^(ko|zh|cn|th|vi|tl|ja|id|ms|tw)$/.test(p.original_language || ''); }
 function uaIsAnime(p) { return p.anime === '1' || /^(ja|zh)$/.test(p.original_language || ''); }
 function uaParams(url) {
   const p = {};
@@ -884,9 +887,76 @@ async function uaEneyida(url, env, ctx) {
   return html ? atHtml(html) : uaEmpty('Eneyida');
 }
 
+// ── BambooUA (https://bambooua.com): дорами українською (озвучка й субтитри). Сайт на DLE; у пошуку лише українська назва,
+// тож кандидатів перевіряємо на сторінці («Оригінальна назва», рік). Плеєр — список «озвучка → серії» з прямими m3u8.
+const BB = 'https://bambooua.com';
+function bbVoices(pl) {
+  // дубляж/озвучка — першими, субтитри — після
+  const sub = (v) => /субтит/i.test(v.name) ? 1 : 0;
+  return pl.sort((a, b) => sub(a) - sub(b));
+}
+async function uaBamboo(url, env, ctx) {
+  const self = url.origin + '/lite/bamboo', p = uaParams(url), year = parseInt(p.year, 10) || 0;
+  let page = url.searchParams.get('bbf') || '';
+  if (page && page.indexOf(BB + '/') !== 0) page = '';
+  let html = '';
+  if (!page) {
+    const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
+    const cand = [], seen = {};
+    for (const q of uaQueries(names)) {
+      let res = '';
+      try { res = await atFetch(BB + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), { headers: { Referer: BB + '/' } }, 1800, ctx); } catch (e) { continue; }
+      res.split(/<article\s/i).slice(1).forEach((row) => {
+        const link = (row.match(/href="(https?:\/\/bambooua\.com\/(?!blog\/)[^"]+\.html)"/) || [])[1];
+        if (!link || seen[link]) return;
+        seen[link] = 1;
+        const t = atDecode((row.match(/<h2[^>]*>([^<]+)<\/h2>/) || [])[1] || '');
+        cand.push({ link, sc: atScore(t, norm, link) });   // латинська назва часто є в адресі: /cinema/506-ditto.html
+      });
+      if (cand.some((c) => c.sc >= 0.8)) break;
+    }
+    if (!cand.length) return uaEmpty('BambooUA');
+    cand.sort((a, b) => b.sc - a.sc);
+    let best = null;
+    for (const c of cand.slice(0, 4)) {
+      let h = '';
+      try { h = await atFetch(c.link, { headers: { Referer: BB + '/' } }, 1800, ctx); } catch (e) { continue; }
+      const orig = atDecode((h.match(/Оригінальна назва:<\/span>\s*<span[^>]*>([^<]+)/) || [])[1] || '');
+      const y = parseInt((h.match(/xfsearch\/year\/(\d{4})/) || [])[1] || '0', 10);
+      let sc = c.sc;
+      orig.split(/[\/|]/).forEach((o) => { sc = Math.max(sc, atScore(o.trim(), norm)); });
+      if (year && y) sc += Math.abs(y - year) <= 1 ? 0.3 : -0.5;
+      if (sc >= 0.6 && (!best || sc > best.sc)) best = { link: c.link, sc, h };
+    }
+    if (!best) return uaEmpty('BambooUA');
+    page = best.link; html = best.h;
+  }
+  if (!html) { try { html = await atFetch(page, { headers: { Referer: BB + '/' } }, 1800, ctx); } catch (e) { return uaEmpty('BambooUA'); } }
+  const m = html.match(/const playlist = (\[[\s\S]*?\]);\s*\n/);
+  let pl = [];
+  try { pl = JSON.parse(m[1]); } catch (e) { return uaEmpty('BambooUA'); }
+  const sn = parseInt((((html.match(/<title>([^<]+)<\/title>/) || [])[1] || '').match(/(\d{1,2})\s*сезон/i) || [])[1] || '1', 10);
+  const voices = bbVoices(pl.map((v, i) => ({ name: String(v.title || ('Варіант ' + (i + 1))), folder: v.folder, file: v.file })));
+  if (!voices.some((v) => Array.isArray(v.folder))) {
+    const mv = voices.filter((v) => v.file);
+    if (!mv.length) return uaEmpty('BambooUA');
+    return atHtml(mv.map((v) => atItem('videos__item videos__movie', { method: 'play', url: v.file, title: p.title || v.name, voice_name: v.name }, ' media=""',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(v.name) + '</div>')).join(''));
+  }
+  const S = { n: sn, order: [], voices: {} };
+  voices.forEach((v) => {
+    const eps = (v.folder || []).filter((e) => e && e.file).map((e, i) => ({ n: uaPlNum(e.title, i + 1), url: e.file }));
+    if (!eps.length || S.voices[v.name]) return;
+    S.order.push(v.name); S.voices[v.name] = { name: v.name, eps };
+  });
+  if (!S.order.length) return uaEmpty('BambooUA');
+  const link = (extra) => uaLink(self, p, Object.assign({ bbf: page }, extra));
+  return atHtml(uaPlHtml([S], link, sn, parseInt(url.searchParams.get('atv') || '0', 10) || 0));
+}
+
 function uaEvents(url) {
   const p = uaParams(url), anime = uaIsAnime(p);
-  const list = Object.keys(UA_SOURCES).filter((k) => !UA_SOURCES[k].anime || anime).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
+  const list = Object.keys(UA_SOURCES).filter((k) => (!UA_SOURCES[k].anime || anime) && (!UA_SOURCES[k].asia || uaIsAsia(p))).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
   return json(list);
 }
 async function handleUa(url, env, ctx) {
@@ -917,6 +987,7 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/animeon') return await uaAnimeon(url, env, ctx);
     if (path === '/lite/mikai') return await uaMikai(url, env, ctx);
     if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
+    if (path === '/lite/bamboo') return await uaBamboo(url, env, ctx);
     if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
@@ -929,7 +1000,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}

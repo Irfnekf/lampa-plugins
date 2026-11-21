@@ -1,6 +1,6 @@
 /*
  * LMX UA (файл lmx_anitube.js) — кнопка «LMX UA» на сторінці фільму чи серіалу: українська озвучка з кількох сайтів
- *  • Аніме: Anitube, AnimeON, Mikai (FanVoxUA, Рідний Голос та ін.); фільми й серіали: Eneyida
+ *  • Аніме: Anitube, AnimeON, Mikai (FanVoxUA, Рідний Голос та ін.); фільми й серіали: Eneyida; дорами: BambooUA
  *  • Самостійний плагін: власний стандартний екран «Онлайн» з вибором джерела (його оформлює й автопідбором керує LMX Watch)
  *  • Пошук, сезони, озвучки й серії віддає LMX Worker; сайти й плеєри, що не пускають сервери чи працюють лише для України (Eneyida, HDVB UA, Ashdi, Tortuga), відкриває сам пристрій
  *
@@ -11,9 +11,9 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.5';
+    var VERSION = '5.6';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
-    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
+    try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
     var DEFAULT_HOST = 'https://lmx-sync.vladshkaraputa07.workers.dev';
     var COMP = 'lmx_anitube_online';
@@ -317,7 +317,7 @@
         var S = Lampa.SettingsApi;
         if (!S || !S.addComponent) return;
         S.addComponent({ component: 'lmx_anitube', name: 'LMX UA', icon: ICON });
-        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX UA v' + VERSION + ' · Anitube, AnimeON, Mikai, Eneyida' } });
+        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX UA v' + VERSION + ' · Anitube, AnimeON, Mikai, Eneyida, BambooUA' } });
     }
 
   // ===== Стандартний екран «Онлайн» (із відкритого Lampac, immisterio/Lampac, AGPL-3.0), під власними назвами шаблонів, щоб не чіпати інші онлайн-плагіни =====
