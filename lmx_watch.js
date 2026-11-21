@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.57';
+    var VERSION = '3.58';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1472,7 +1472,7 @@
                                 var v = String(url == null ? '' : url);
                                 if (/\/lite\/[^\/?&]+/.test(v) && v.indexOf('lite/events') < 0 && v.indexOf('lite/withsearch') < 0 && v.indexOf('/lite/anitube') < 0) {
                                     var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
-                                    window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
+                                    window.__lmxProbeUrl = { u: v, cid: cidKey(c), t: Date.now() };
                                 }
                             }
                         } catch (e) {}
@@ -1734,7 +1734,7 @@
                     return;
                 }
                 var cid = '', card = null;
-                try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); cid = String(card && card.id || ''); } catch (e) {}
+                try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); cid = cidKey(card); } catch (e) {}
                 var o = pcGet(); delete o[cid]; pcSet(o);
                 window.__lmxProbe = null; window.__lmxBad = null; act.__lmxHop = null;
                 if (row.parentNode) row.parentNode.removeChild(row);
@@ -1777,7 +1777,9 @@
         return { g: {}, t: {} };
     }
     // досвід джерел (успіхи, швидкість, звичний вибір) ведемо окремо для BWA, щоб він не впливав на підбір у lampaua
-    function memKey() { return isBwa() ? 'lmx_online_mem_bwa' : 'lmx_online_mem'; }
+    function memKey() { return isBwa() ? 'lmx_online_mem_bwa' : isUa() ? 'lmx_online_mem_ua' : 'lmx_online_mem'; }
+    // LMX UA — окремий досвід джерел: збої його джерел (напр. anitube) не знижують однойменні джерела в lampaua
+    function isUa() { try { var a = Lampa.Activity.active(); return !!(a && /^lmx_anitube/.test(a.component || '')); } catch (e) { return false; } }
     function memSet(mem) {
         try {
             var ks = Object.keys(mem.t);
@@ -2418,7 +2420,7 @@
             var v = String(url == null ? '' : url);
             if (!/\/lite\/[^\/?&]+/.test(v) || v.indexOf('lite/events') >= 0 || v.indexOf('lite/withsearch') >= 0 || v.indexOf('/lite/anitube') >= 0) return;
             var a = Lampa.Activity.active(), c = a && (a.movie || a.card);
-            window.__lmxProbeUrl = { u: v, cid: String(c && c.id || ''), t: Date.now() };
+            window.__lmxProbeUrl = { u: v, cid: cidKey(c), t: Date.now() };
         } catch (e) {}
     }
     // Створення компонента: гасимо стандартний екран ще до першої відмальовки, підслуховуємо адреси запитів і не даємо перестворювати екран
@@ -2496,6 +2498,13 @@
         } catch (e) {}
     }
     // Екземпляр фільтра, що належить цьому екрану; якщо привʼязати до DOM не вдалось — найновіший, який уже отримав списки
+    // ключ стану картки: LMX UA має власний стан, щоб не змішуватись із пробами lampaua для того ж тайтлу
+    function cidKey(card) {
+        var id = String(card && card.id || '');
+        if (!id) return '';
+        if (isUa()) return id + '@ua';
+        return id;
+    }
     function instFor(act) {
         var i, el, inst;
         for (i = 0; i < FILTERS.length; i++) {
@@ -2592,7 +2601,7 @@
             if (!man && !(card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)))) return false;   // для фільмів озвучку не підбираємо
             var inst = instFor(act), S = inst && readSets(inst), g = S && S.voice;
             if (!g || !g.items || g.items.length < 2) return false;
-            var cid = String(card && card.id || ''), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
+            var cid = cidKey(card), sel = S.sort && curSrc(act, S.sort), sn = S.season && selItem(S.season);
             if (Date.now() - (window.__lmxPickT || 0) < 30000 && /jac|torrent|jackett|torr|magnet/i.test(window.__lmxPickKey || '')) return false;   // щойно вручну відкрили торентне джерело
             if ((sel && isTorSrc(sel)) || (list || []).some(function (e) { return /torrent/i.test(e.className) || e.querySelector('[class*="torrent"], [class*="seed"]'); })) return false;   // торенти мають власну систему вибору озвучок — не чіпаємо
             var key = cid + '|' + (sel ? srcName(sel.title) : '') + '|' + (sn ? seTitle(sn.title) : '');
@@ -2641,7 +2650,7 @@
     function seSet(cid, key, v) { if (!cid || !key) return; var m = window.__lmxSE || (window.__lmxSE = {}); m[cid + '|' + key + '|' + curSeason()] = v; }
     function srcState(name) {
         var gs = window.__lmxProbe, bad = window.__lmxBad, cid = '', i;
-        try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = String(c && c.id || ''); } catch (e) {}
+        try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card); cid = cidKey(c); } catch (e) {}
         var se = seGet(cid, name); if (se) return se;
         var pe = pcEntry(cid, name);
         if (pe && pe.s === 'ok') return 'ok';
@@ -2716,7 +2725,7 @@
             var hidden = 0, anyOk = false;
             var allSrc = S.sortAll || S.sort, lifeFlags = allSrc.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
             allSrc.forEach(function (it) { if (it && !unbound(it) && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
-            var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = String(cd0 && cd0.id || ''); } catch (e) {}
+            var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = cidKey(cd0); } catch (e) {}
             var seenLook = {}, mem1 = memGet(), curS = curSrc(act, allSrc);
             allSrc.forEach(function (it) {
                 if (!it) return;
@@ -3157,7 +3166,7 @@
     function watchSources(act, card) {
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
-        var cid = String(card && card.id || ''), mem = memGet(), t = Date.now();
+        var cid = cidKey(card), mem = memGet(), t = Date.now();
         var wantHi = qTarget() >= 4, allSrc = probeOn(), maxTry = longSeries(card) ? 3 : allSrc ? 40 : (wantHi ? 10 : 5), budget = allSrc ? 30000 : (wantHi ? 25000 : 20000);
         var gs = window.__lmxProbe;
         if (!gs || gs.cid !== cid || t - gs.t00 > 150000 || (lastEnter.on && lastEnter.t > gs.t00 + 800 && gs.done)) gs = window.__lmxProbe = { cid: cid, t00: t, tried: [], results: [], tq: {}, switches: 0, started: false, cur: '', since: t, done: false };
@@ -3175,6 +3184,8 @@
             if (msg) heroStatus(act, msg, true); else safe(buildHero);
         }
         function userStop() { finish(); }
+        // LMX UA: запобіжник — підбір ніколи не висить довше за бюджет (навіть якщо екран перестворився і тік зупинився)
+        if (isUa()) setTimeout(function () { if (!gs.done) safe(function () { finish(); }); }, budget + 4000);
         EV.forEach(function (ev) { document.addEventListener(ev, userStop, true); });
         function save(name, rank) {
             var g = mem.g[name] || (mem.g[name] = { ok: 0, fail: 0, q: 0 });
@@ -3420,7 +3431,7 @@
         if (act.__lmxEG) return;
         act.__lmxEG = 1;
         var card = null; try { var a0 = Lampa.Activity.active(); card = a0 && (a0.movie || a0.card); } catch (e) {}
-        var cid = String(card && card.id || ''), bad = window.__lmxBad;
+        var cid = cidKey(card), bad = window.__lmxBad;
         if (!bad || bad.cid !== cid) bad = window.__lmxBad = { cid: cid, names: [] };
         act.classList.add('lmx-onl-eg');
         var natT = 0, since = Date.now(), lastKey = null, cd = 0, cand = null, t0 = Date.now(), EV = ['keydown', 'mousedown', 'touchstart'], iv = 0;
@@ -3576,7 +3587,7 @@
 
     // Як у Nova: коли джерело відкрите, читаємо якість з реальних серій (1080p, 4K…) і запам'ятовуємо найвищу — бейдж у списку джерел стає точним
     function learnQuality(act, list, card) {
-        var cid = String(card && card.id || ''), inst = instFor(act), S = inst && readSets(inst), sel = null, best = 0, i, m, n, t;
+        var cid = cidKey(card), inst = instFor(act), S = inst && readSets(inst), sel = null, best = 0, i, m, n, t;
         if (!cid || !S) return;
         S.sort.forEach(function (x) { if (x && x.selected) sel = x; });
         var key = sel ? srcName(sel.title) : '';
