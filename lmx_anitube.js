@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.14';
+    var VERSION = '5.15';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1150,6 +1150,43 @@
       }
     };
     // ── play / quality ──
+    // Phantom/Spectre віддають 1440p/2160p у кодеку AV1 (буває й HEVC): пристрій, що його не декодує, показує «не вдалося декодувати».
+    // Перед запуском читаємо заголовки високих якостей і прибираємо ті, що цей пристрій не відтворить
+    function canCodec(c) {
+      try {
+        var t = 'video/mp4; codecs="' + c + '"';
+        if (window.MediaSource && MediaSource.isTypeSupported && MediaSource.isTypeSupported(t)) return true;
+        var v = document.createElement('video');
+        return !!(v.canPlayType && v.canPlayType(t));
+      } catch (e) { return true; }
+    }
+    function codecFilter(json, done) {
+      var q = json && json.quality, keys = q && typeof q === 'object' ? Object.keys(q) : [];
+      var hi = keys.filter(function (k) { return (parseInt(k, 10) || 0) > 1080 && typeof q[k] === 'string' && /\.m3u8/.test(q[k]); });
+      if (!hi.length) return done();
+      var left = hi.length, fin = false, bad = {};
+      function end() {
+        if (fin) return; fin = true;
+        var drop = Object.keys(bad);
+        if (drop.length && drop.length < keys.length) {
+          var was = json.url;
+          drop.forEach(function (k) { if (json.url === q[k]) json.url = ''; delete q[k]; });
+          if (!json.url) {
+            var best = Object.keys(q).sort(function (a, b) { return (parseInt(b, 10) || 0) - (parseInt(a, 10) || 0); })[0];
+            json.url = best ? q[best] : was;
+          }
+        }
+        done();
+      }
+      setTimeout(end, 3000);
+      hi.forEach(function (k) {
+        fetchText(q[k], function (m3u) {
+          var cs = (String(m3u).match(/CODECS="([^"]+)"/) || [])[1];
+          if (cs) { var v = cs.split(',').filter(function (c) { return /^(av01|hev1|hvc1|dvh1|dvhe|vp09)/.test(c.trim()); })[0]; if (v && !canCodec(v.trim())) bad[k] = 1; }
+          if (--left === 0) end();
+        }, function () { if (--left === 0) end(); });
+      });
+    }
     this.getFileUrl = function (file, call, waiting_rch) {
       var _this = this;
 
@@ -1182,8 +1219,10 @@
                 });
               }
             } else {
-              Lampa.Loading.stop();
-              call(json, json);
+              codecFilter(json, function () {
+                Lampa.Loading.stop();
+                call(json, json);
+              });
             }
           },
           function () {
