@@ -2,7 +2,7 @@
  * LMX UA (файл lmx_anitube.js) — кнопка «LMX UA» на сторінці фільму чи серіалу: українська озвучка з кількох сайтів
  *  • Аніме: Anitube, AnimeON, Mikai (FanVoxUA, Рідний Голос та ін.); фільми й серіали: Eneyida
  *  • Самостійний плагін: власний стандартний екран «Онлайн» з вибором джерела (його оформлює й автопідбором керує LMX Watch)
- *  • Пошук, сезони, озвучки й серії віддає LMX Worker; плеєри Ashdi/Tortuga працюють лише для України, тож їх розбирає сам пристрій
+ *  • Пошук, сезони, озвучки й серії віддає LMX Worker; сайти й плеєри, що не пускають сервери чи працюють лише для України (Eneyida, HDVB UA, Ashdi, Tortuga), відкриває сам пристрій
  *
  *  Екран «Онлайн» узято з відкритого проєкту Lampac (https://github.com/immisterio/Lampac, ліцензія AGPL-3.0);
  *  тож і цей файл поширюється на умовах AGPL-3.0 з відкритим кодом.
@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.0';
+    var VERSION = '5.1';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -57,6 +57,67 @@
         } else main = fixUrl(raw);
         return main ? { method: 'play', url: main, quality: Object.keys(quality).length ? quality : undefined } : null;
     }
+    var tcache = {};
+    function fetchText(url, ok, fail) {
+        var hit = tcache[url];
+        if (hit && Date.now() - hit.t < 20 * 60000) return ok(hit.d);
+        var net, done = false;
+        function end(f, a) { if (done) return; done = true; f(a); }
+        try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return fail(); }
+        setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(fail); } }, 13000);
+        try {
+            net['native'](url, function (t) { t = typeof t === 'string' ? t : ''; if (!t) return end(fail); tcache[url] = { t: Date.now(), d: t }; end(ok, t); }, function () { end(fail); }, false, { dataType: 'text' });
+        } catch (e) { end(fail); }
+    }
+
+    // ── Eneyida (eneyida.tv): сайт не пускає сервери, тож пошук і сторінку тайтлу відкриває сам пристрій ──
+    function nrm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[’'`ʼ]/g, '').replace(/[^a-z0-9а-яіїєґ]+/gi, ' ').replace(/\s+/g, ' ').trim(); }
+    function tokEq(a, b) { if (a === b) return true; if (a.length < 3 || b.length < 3) return false; var i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i >= Math.min(4, a.length, b.length); }
+    function score(t, names) {
+        var p = nrm(t), best = 0;
+        if (!p) return 0;
+        names.forEach(function (n) {
+            if (!n) return;
+            if (p === n) { best = 1; return; }
+            var A = p.split(' '), B = n.split(' '), used = {}, inter = 0;
+            B.forEach(function (w) { for (var k = 0; k < A.length; k++) if (!used[k] && tokEq(A[k], w)) { used[k] = 1; inter++; break; } });
+            var j = inter / Math.max(A.length, B.length);
+            if (j >= 0.6 && 0.6 + j * 0.3 > best) best = 0.6 + j * 0.3;
+        });
+        return best;
+    }
+    function eyFind(url, done) {
+        var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0;
+        var names = [nrm(title), nrm(orig)].filter(Boolean), qs = [title, orig].filter(function (q, i, a) { return q && /[0-9A-Za-zА-Яа-яІіЇїЄєҐґ]{2}/.test(q) && a.indexOf(q) === i; });
+        var found = [], left = qs.length;
+        if (!left) return done(null);
+        qs.forEach(function (q) {
+            fetchText('https://eneyida.tv/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), function (html) {
+                html.split(/<article\s/i).slice(1).forEach(function (row) {
+                    var link = (row.match(/href="(https?:\/\/[^\/"]+\/\d+[^"]*\.html)"/) || [])[1];
+                    if (!link || found.some(function (f) { return f.link === link; })) return;
+                    var ua = (row.match(/id="short_title"[^>]*>([^<]+)</) || [])[1] || '';
+                    var sub = row.match(/class="short_subtitle">(?:<a [^>]+>(\d{4})<\/a>)?([^<]*)<\/div>/);
+                    var y = sub && sub[1] ? parseInt(sub[1], 10) : 0;
+                    var sc = Math.max(score(ua, names), score(sub ? sub[2] : '', names));
+                    if (year && y) sc += Math.abs(y - year) <= 1 ? 0.3 : -0.4;
+                    if (sc >= 0.6) found.push({ link: link, sc: sc });
+                });
+                if (--left === 0) next();
+            }, function () { if (--left === 0) next(); });
+        });
+        function next() {
+            if (!found.length) return done(null);
+            found.sort(function (a, b) { return b.sc - a.sc; });
+            fetchText(found[0].link, function (page) {
+                // плеєр: HDVB UA (зараз основний на Eneyida), Ashdi або Tortuga; /vid/ — це трейлер, його пропускаємо
+                var m = page.match(/<iframe[^>]+src="(https?:\/\/hdvbua\.[a-z]+\/embd\/[^"]+)"/i) || page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+|hdvbua\.[a-z]+)\/(?!vid\/)[^"]+)"/i);
+                done(m ? m[1] : null);
+            }, function () { done(null); });
+        }
+    }
+    function emptyHtml(t) { return '<div class="online-empty"><div class="online-empty__title">' + esc(t) + '</div></div>'; }
+
     var pcache = {};
     function fetchPage(url, ok, fail) {
         var hit = pcache[url];
@@ -165,6 +226,16 @@
                 var realReq = comp.request;
                 if (typeof realReq === 'function') comp.request = function (url) {
                     var self = this, args = arguments;
+                    if (/\/lite\/ey\?/.test(String(url || ''))) {
+                        var serial = qget(url, 'serial') === '1';
+                        eyFind(url, function (iframe) {
+                            if (!iframe) return comp.parse(emptyHtml('На Eneyida цього тайтлу не знайдено'));
+                            if (serial) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
+                            var t = qget(url, 'title') || 'Дивитись';
+                            comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: t, voice_name: 'Eneyida' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
+                        });
+                        return;
+                    }
                     if (!/\/lite\/pl\?/.test(String(url || ''))) return realReq.apply(self, args);
                     fetchPage(qget(url, 'u'), function (page) {
                         var html = '';

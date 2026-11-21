@@ -770,41 +770,12 @@ async function uaMikai(url, env, ctx) {
   return uaEpisodes(url.origin, self, p, voices, parseInt(url.searchParams.get('atv') || '0', 10) || 0, season || 1, { aid: String(aid), ats: String(season || 1) }, serial);
 }
 
-// ── Eneyida (https://eneyida.tv): сайт на DLE; сторінка тайтлу містить плеєр Ashdi або Tortuga ──
-async function uaEneyida(url, env, ctx) {
-  const p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
-  const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
-  const seen = {}, found = [];
-  for (const q0 of names.slice(0, 2)) {
-    const q = String(q0).replace(/[　-ヿ㐀-鿿＀-￯]/g, ' ').trim();
-    if (q.length < 2) continue;
-    const body = new URLSearchParams({ do: 'search', subaction: 'search', search_start: '0', result_from: '1', story: q }).toString();
-    let html = '';
-    try { html = await atFetch('https://eneyida.tv/index.php?do=search', { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { continue; }
-    html.split(/<article\s/i).slice(1).forEach((row) => {
-      if (/>Анонс<\/div>|>Трейлер<\/div>/.test(row)) return;
-      const link = (row.match(/href="(https?:\/\/[^\/]+\/[^"]+\.html)"/) || [])[1];
-      if (!link || seen[link]) return;
-      seen[link] = 1;
-      const sub = row.match(/class="short_subtitle">(?:<a [^>]+>(\d{4})<\/a>)?([^<]*)<\/div>/);
-      const ua = atDecode((row.match(/id="short_title"[^>]*>([^<]+)</) || [])[1] || '');
-      const en = atDecode(sub ? sub[2].replace(/&bull;/g, '') : '');
-      found.push({ link, y: sub && sub[1] ? parseInt(sub[1], 10) : 0, sc: Math.max(atScore(ua, norm), atScore(en, norm)) });
-    });
-  }
-  const good = found.filter((r) => r.sc >= 0.6).map((r) => Object.assign(r, { sc: r.sc + (year && r.y && Math.abs(r.y - year) <= 1 ? 0.3 : (year && r.y ? -0.4 : 0)) })).filter((r) => r.sc >= 0.6);
-  if (!good.length) return uaEmpty('Eneyida');
-  good.sort((a, b) => b.sc - a.sc);
-  let page = '';
-  try { page = await atFetch(good[0].link, { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { return atHtml('<div class="online-empty">Eneyida зараз недоступний</div>'); }
-  const iframe = (page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+)\/[^"]+)"/i) || [])[1];
-  if (!iframe) return uaEmpty('Eneyida');
-  if (!serial) {
-    return atHtml(atItem('videos__item videos__movie', { method: 'call', url: url.origin + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: p.title || 'Eneyida', voice_name: 'Eneyida' }, ' media=""',
-      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">' + atEsc(p.title || 'Дивитись') + '</div>'));
-  }
-  // серіал: сезони, озвучки й серії записані в самому плеєрі — їх розбере пристрій (посилання /lite/pl)
-  return atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + '/lite/pl?u=' + encodeURIComponent(iframe) }, '',
+// ── Eneyida (https://eneyida.tv): сайт не пускає сервери (Worker отримує відмову), тож пошук і сторінку відкриває сам пристрій:
+// тут лише посилання /lite/ey з назвою й роком — його перехоплює плагін LMX UA
+async function uaEneyida(url) {
+  const p = uaParams(url), q = new URLSearchParams();
+  ['title', 'original_title', 'year', 'serial'].forEach((k) => { if (p[k]) q.set(k, p[k]); });
+  return atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + '/lite/ey?' + q.toString() }, '',
     '<div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">Eneyida</div></div>'));
 }
 
@@ -829,7 +800,8 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/pl') return atHtml('<div class="online-empty">Плеєр відкривається лише на пристрої з України</div>');
     if (path === '/lite/animeon') return await uaAnimeon(url, env, ctx);
     if (path === '/lite/mikai') return await uaMikai(url, env, ctx);
-    if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
+    if (path === '/lite/eneyida') return await uaEneyida(url);
+    if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
   }
@@ -841,7 +813,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
