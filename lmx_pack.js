@@ -74,6 +74,58 @@
         });
     });
 
+    // ===== Різні підписи однакових кнопок «Онлайн» =====
+    // Форки Lampac (lam.maxvol.pro, lampac.pakmar.uk тощо) малюють однакову кнопку: «Онлайн», значок UA, підпис «Lampac v1.9.2» — у меню «Дивитись»
+    // не відрізнити, де який. Запам'ятовуємо, який скрипт підписався на подію картки, і після його обробника дописуємо до підпису назву сайту:
+    // «Lampac v1.9.2 · maxvol». Чіпаємо лише кнопки з типовим підписом «Lampac …»; власні підписи плагінів (lampaua тощо) не змінюються
+    safe(function () {
+        var L = window.Lampa && Lampa.Listener;
+        if (!L || typeof L.follow !== 'function' || L.__lmxSrcTag) return;
+        L.__lmxSrcTag = 1;
+        function scriptOf() {
+            var st = '', m, re = /(https?:\/\/[^\s)'"]+?\.js)/g;
+            try { st = String(new Error().stack || ''); } catch (e) {}
+            while ((m = re.exec(st))) { if (!/lmx_[a-z]+\.js|\/lampa[^\/]*\/app[^\/]*\.js|lampa\.mx\//i.test(m[1])) return m[1]; }
+            try { return (document.currentScript && document.currentScript.src) || ''; } catch (e) { return ''; }
+        }
+        function label(u) {
+            var h = '';
+            try { h = new URL(u).hostname; } catch (e) { return ''; }
+            var parts = h.split('.').filter(function (x) { return !/^(www|lam|lampa|lampac|beta|app|api|cdn|online)$/i.test(x); });
+            return parts.length > 1 ? parts[0] : (parts[0] || h);
+        }
+        // підписуємо лише кнопки, що з'явилися саме під час обробника цього скрипта
+        function tag(src, before) {
+            var lb = label(src);
+            if (!lb) return;
+            $('.full-start__button.view--online').each(function () {
+                if (before.indexOf(this) >= 0 || this.__lmxSrc) return;
+                var sub = String($(this).data('subtitle') || this.getAttribute('data-subtitle') || '');
+                this.__lmxSrc = lb;
+                if (!/^\s*lampac\b/i.test(sub) || sub.indexOf(' · ') >= 0) return;
+                var nv = sub + ' · ' + lb;
+                this.setAttribute('data-subtitle', nv);
+                $(this).data('subtitle', nv);
+            });
+        }
+        var real = L.follow;
+        L.follow = function (name, cb) {
+            if (name === 'full' && typeof cb === 'function') {
+                var src = scriptOf();
+                if (src && !/lmx_[a-z]+\.js/i.test(src)) {
+                    var orig = cb;
+                    cb = function (e) {
+                        var done = !(e && e.type === 'complite'), before = done ? null : $('.full-start__button.view--online').toArray();
+                        var r = orig.apply(this, arguments);
+                        if (!done) safe(function () { tag(src, before); });
+                        return r;
+                    };
+                }
+            }
+            return real.apply(this, [name, cb].concat([].slice.call(arguments, 2)));
+        };
+    });
+
     var RGB = { green: '46,158,91', orange: '224,123,32', blue: '48,112,220', red: '192,57,43', purple: '130,80,200', gray: '110,110,120' };
     var COLORS = {};
     Object.keys(RGB).forEach(function (k) { COLORS[k] = 'rgba(' + RGB[k] + ',.94)'; });
@@ -6871,7 +6923,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.605';
+    var VERSION = '10.606';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
