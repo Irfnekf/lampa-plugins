@@ -82,11 +82,22 @@
         var L = window.Lampa && Lampa.Listener;
         if (!L || typeof L.follow !== 'function' || L.__lmxSrcTag) return;
         L.__lmxSrcTag = 1;
+        // який плагін зараз виконується: перша адреса зі стеку викликів, що є серед встановлених плагінів Lampa (інакше — будь-яка стороння)
+        function plugUrls() {
+            var out = [];
+            try { (Lampa.Storage.get('plugins', '[]') || []).forEach(function (p) { var u = typeof p === 'string' ? p : (p && p.url); if (u) out.push(String(u).split('?')[0]); }); } catch (e) {}
+            return out;
+        }
         function scriptOf() {
-            var st = '', m, re = /(https?:\/\/[^\s)'"]+?\.js)/g;
+            var st = '', m, re = /(https?:\/\/[^\s)'"]+?\.js)/g, list = plugUrls(), any = '';
             try { st = String(new Error().stack || ''); } catch (e) {}
-            while ((m = re.exec(st))) { if (!/lmx_[a-z]+\.js|\/lampa[^\/]*\/app[^\/]*\.js|lampa\.mx\//i.test(m[1])) return m[1]; }
-            try { return (document.currentScript && document.currentScript.src) || ''; } catch (e) { return ''; }
+            while ((m = re.exec(st))) {
+                if (/lmx_[a-z]+\.js/i.test(m[1])) continue;
+                if (list.indexOf(m[1]) >= 0) return m[1];
+                if (!any && !/\/lampa[^\/]*\/app[^\/]*\.js|lampa\.mx\/|\/vender\//i.test(m[1])) any = m[1];
+            }
+            if (any) return any;
+            try { return (document.currentScript && document.currentScript.src || '').split('?')[0]; } catch (e) { return ''; }
         }
         function label(u) {
             var h = '';
@@ -107,6 +118,36 @@
                 this.setAttribute('data-subtitle', nv);
                 $(this).data('subtitle', nv);
             });
+        }
+        // Форки Lampac реєструють екран під тією самою назвою «lampac»: пізніший плагін перезаписував попередній, і обидві кнопки «Онлайн»
+        // відкривали той самий (останній) плагін. Другий і наступні отримують власну назву екрана (lampac__pakmar), а їхні кнопки — свій екран
+        var C = Lampa.Component, A = Lampa.Activity, compOwner = {}, aliasOf = {};
+        if (C && typeof C.add === 'function' && !C.__lmxAlias) {
+            C.__lmxAlias = 1;
+            var realAdd = C.add;
+            C.add = function (name, comp) {
+                var own = scriptOf();
+                if (name && own && compOwner[name] && compOwner[name] !== own) {
+                    var al = name + '__' + (label(own) || 'x').replace(/[^a-z0-9]/gi, '');
+                    (aliasOf[own] || (aliasOf[own] = {}))[name] = al;
+                    return realAdd.call(this, al, comp);
+                }
+                if (name && own && !compOwner[name]) compOwner[name] = own;
+                return realAdd.apply(this, arguments);
+            };
+        }
+        if (A && typeof A.push === 'function' && !A.__lmxAlias) {
+            A.__lmxAlias = 1;
+            var realPush = A.push;
+            A.push = function (o) {
+                safe(function () {
+                    if (o && o.component && Object.keys(aliasOf).length) {
+                        var own = scriptOf(), m = own && aliasOf[own];
+                        if (m && m[o.component]) o.component = m[o.component];
+                    }
+                });
+                return realPush.apply(this, arguments);
+            };
         }
         var real = L.follow;
         L.follow = function (name, cb) {
@@ -6923,7 +6964,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.606';
+    var VERSION = '10.607';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
