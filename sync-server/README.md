@@ -36,5 +36,5 @@
 
 ## LMX UA — кілька українських джерел (оновлення Anitube)
 Плагін `lmx_anitube.js` тепер показує на кожній картці кнопку «LMX UA» зі стандартним екраном «Онлайн» і вибором джерела:
-Anitube, AnimeON, Mikai, Unimay (лише для аніме) та Eneyida (фільми й серіали), BambooUA (дорами — лише для азійських мов оригіналу). Worker відповідає на `/lite/events`, `/lite/<джерело>`, `/lite/video`, `/externalids`.
+Anitube, AnimeON, Mikai, Unimay (лише для аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами — лише для азійських мов оригіналу). Worker відповідає на `/lite/events`, `/lite/<джерело>`, `/lite/video`, `/externalids`.
 Плеєри Ashdi/Tortuga віддають відео лише для України, тож їхні сторінки (і списки серій серіалів з Eneyida) розбирає сам пристрій.

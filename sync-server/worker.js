@@ -650,7 +650,8 @@ const UA_SOURCES = {
   mikai: { name: 'Mikai', anime: true },
   eneyida: { name: 'Eneyida', anime: false },
   bamboo: { name: 'BambooUA', anime: false, asia: true },
-  unimay: { name: 'Unimay', anime: true }
+  unimay: { name: 'Unimay', anime: true },
+  uafix: { name: 'UAFlix', anime: false }
 };
 // дорами (BambooUA): лише азійські мови оригіналу
 function uaIsAsia(p) { return /^(ko|zh|cn|th|vi|tl|ja|id|ms|tw)$/.test(p.original_language || ''); }
@@ -1016,6 +1017,87 @@ async function uaUnimay(url, env, ctx) {
   }).join(''));
 }
 
+// ── UAFlix (https://uafix.net): фільми й серіали з власною українською озвучкою. Сайт на DLE, плеєр — zetvideo.net/vod/ID
+// (усередині прямий m3u8). Серія серіалу — окрема сторінка, її плеєр розбираємо лише коли серію відкривають (/lite/ufv).
+const UF = 'https://uafix.net';
+async function ufM3u8(vod, ctx) {
+  const h = await atFetch(vod, { headers: { Referer: UF + '/' } }, 3600, ctx);
+  return (h.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/) || [])[1] || '';
+}
+function ufVod(page) { return (page.match(/<iframe[^>]+src=["'](https:\/\/zetvideo\.net\/vod\/\d+)["']/i) || [])[1] || ''; }
+async function uaUafixPlay(url, ctx) {
+  const u = url.searchParams.get('u') || '';
+  if (!/^https:\/\/(uafix\.net|zetvideo\.net)\//.test(u)) return json({ error: 'bad_url' }, 400);
+  let vod = /zetvideo\.net/.test(u) ? u : '';
+  if (!vod) { const pg = await atFetch(u, { headers: { Referer: UF + '/' } }, 1800, ctx).catch(() => ''); vod = ufVod(pg); }
+  const m = vod ? await ufM3u8(vod, ctx).catch(() => '') : '';
+  return m ? json({ method: 'play', url: m, title: url.searchParams.get('t') || '' }) : json({ error: 'no_file' }, 404);
+}
+async function uaUafix(url, env, ctx) {
+  const self = url.origin + '/lite/uafix', p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
+  let page = url.searchParams.get('uf') || '', html = '';
+  if (page && page.indexOf(UF + '/') !== 0) page = '';
+  if (!page) {
+    const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
+    const cand = [], seen = {};
+    for (const q of uaQueries(names)) {
+      let res = '';
+      try { res = await atFetch(UF + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), { headers: { Referer: UF + '/' } }, 1800, ctx); } catch (e) { continue; }
+      res.replace(/<a class="sres-wrap[^"]*" href="(https:\/\/uafix\.net\/[^"]+)">[\s\S]*?<h2>([^<]+)<\/h2>/g, (m, link, t) => {
+        if (seen[link]) return m;
+        seen[link] = 1;
+        const isSer = /\/serials\//.test(link);
+        if (isSer !== serial && /\/(films|serials)\//.test(link)) return m;
+        const sc = atScore(atDecode(t), norm, link);
+        if (sc >= 0.6) cand.push({ link, sc });
+        return m;
+      });
+      if (cand.some((c) => c.sc >= 0.85)) break;
+    }
+    if (!cand.length) return uaEmpty('UAFlix');
+    cand.sort((a, b) => b.sc - a.sc);
+    let best = null;
+    for (const c of cand.slice(0, 3)) {
+      let h = '';
+      try { h = await atFetch(c.link, { headers: { Referer: UF + '/' } }, 1800, ctx); } catch (e) { continue; }
+      const y = parseInt((h.match(/Рік виходу:<\/span>[\s\S]{0,200}?(\d{4})/) || [])[1] || '0', 10);
+      let sc = c.sc;
+      if (year && y) { if (Math.abs(y - year) > 1) continue; sc += 0.3; }
+      if (!best || sc > best.sc) best = { link: c.link, sc, h };
+    }
+    if (!best) return uaEmpty('UAFlix');
+    page = best.link; html = best.h;
+  }
+  if (!html) { try { html = await atFetch(page, { headers: { Referer: UF + '/' } }, 1800, ctx); } catch (e) { return uaEmpty('UAFlix'); } }
+  const callUrl = (u, t) => url.origin + '/lite/ufv?u=' + encodeURIComponent(u) + '&t=' + encodeURIComponent(t);
+  if (!serial) {
+    const vod = ufVod(html);
+    if (!vod) return uaEmpty('UAFlix');
+    const m = await ufM3u8(vod, ctx).catch(() => '');
+    const it = m ? { method: 'play', url: m, title: p.title || 'UAFlix', voice_name: 'UAFlix' } : { method: 'call', url: callUrl(vod, p.title || ''), title: p.title || 'UAFlix', voice_name: 'UAFlix' };
+    return atHtml(atItem('videos__item videos__movie', it, ' media=""', '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">UAFlix</div>'));
+  }
+  // серії: …/season-02-episode-10/
+  const eps = {}, base = page.replace(/\/+$/, '');
+  html.replace(/href="(https:\/\/uafix\.net\/[^"]+?\/season-(\d+)-episode-(\d+)\/?)"/g, (m, link, sn, en) => {
+    if (link.indexOf(base + '/') !== 0) return m;
+    sn = parseInt(sn, 10); en = parseInt(en, 10);
+    (eps[sn] || (eps[sn] = {}))[en] = link;
+    return m;
+  });
+  const sns = Object.keys(eps).map(Number).sort((a, b) => a - b);
+  if (!sns.length) return uaEmpty('UAFlix');
+  let s = parseInt(url.searchParams.get('ufs') || '0', 10) || 0;
+  if (!s && sns.length > 1) {
+    return atHtml(sns.map((n) => atItem('videos__item videos__season', { method: 'link', url: uaLink(self, p, { uf: page, ufs: String(n) }) }, '',
+      '<div class="videos__season-layers"></div><div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">' + n + ' сезон</div></div>')).join(''));
+  }
+  if (!eps[s]) s = sns[0];
+  const list = Object.keys(eps[s]).map(Number).sort((a, b) => a - b);
+  return atHtml(list.map((n) => atItem('videos__item videos__movie', { method: 'call', url: callUrl(eps[s][n], 'Серія ' + n), title: 'Серія ' + n, voice_name: 'UAFlix' }, ' media="" s="' + s + '" e="' + n + '"',
+    '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + n + '</div>')).join(''));
+}
+
 function uaEvents(url) {
   const p = uaParams(url), anime = uaIsAnime(p);
   const list = Object.keys(UA_SOURCES).filter((k) => (!UA_SOURCES[k].anime || anime) && (!UA_SOURCES[k].asia || uaIsAsia(p))).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
@@ -1051,6 +1133,8 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
     if (path === '/lite/bamboo') return await uaBamboo(url, env, ctx);
     if (path === '/lite/unimay') return await uaUnimay(url, env, ctx);
+    if (path === '/lite/uafix') return await uaUafix(url, env, ctx);
+    if (path === '/lite/ufv') return await uaUafixPlay(url, ctx);
     if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
@@ -1063,7 +1147,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
