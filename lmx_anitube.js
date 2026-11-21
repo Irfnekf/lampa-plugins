@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.11';
+    var VERSION = '5.12';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -874,6 +874,9 @@
     };
     // ── source & life events ──
     this.startSource = function (json) {
+      var comp = this;
+      // міст для LMX Watch: повна адреса будь-якого джерела цього тайтла (свій хост і токен), щоб фоново порівняти джерела, як у lampaua
+      window.__lmxUaBridge = { t: Date.now(), urlFor: function (k) { var x = sources[k]; return x && x.url ? account(comp.requestParams(x.url)) : ''; }, fix: function (u) { return account(u); } };
       return new Promise(function (resolve, reject) {
         json.forEach(function (j) {
           var name = balanserName(j);

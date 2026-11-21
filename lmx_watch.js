@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.61';
+    var VERSION = '3.62';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1596,14 +1596,25 @@
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
         job.stop = function () { job.stopped = true; nets.forEach(function (n) { try { n.clear(); } catch (e) {} }); };
-        function urlFor(src) { if (String(src).toLowerCase() === AT_KEY && atBridge()) return atBridge().urlFor(job.url); return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
+        function urlFor(src) { if (job.urlFor) return job.urlFor(src); if (String(src).toLowerCase() === AT_KEY && atBridge()) return atBridge().urlFor(job.url); return job.url.replace(/(\/lite\/)[^\/?&]+/, '$1' + encodeURIComponent(src)); }
         function fin() { finished++; if (finished >= job.items.length && !job.stopped) job.onEnd(); }
         function step() {
             if (job.stopped || idx >= job.items.length) return;
             var it = job.items[idx++], net = null, ended = false, t1 = Date.now();
             try { net = new Lampa.Reguest(); } catch (e) { net = null; }
+            var deepT = 0;
             function end(ans) {
                 if (ended || job.stopped) return;
+                // LMX UA: серіал віддає спершу список сезонів без озвучок — заглядаємо в перший сезон, щоб знати, чи є там українська
+                if (job.deep && !deepT && net) {
+                    var b0 = typeof ans === 'string' ? ans : '', m0 = b0.length < 350000 && !/"(?:voice_name|translate|translation)"\s*:/.test(b0) && b0.match(/videos__season[^>]*data-json='([^']+)'/);
+                    if (m0) {
+                        try {
+                            var su = JSON.parse(m0[1].replace(/&quot;/g, '"')).url;
+                            if (su) { deepT = 1; var fu = job.fix ? job.fix(su) : su; try { net.timeout(it.to || job.timeout); } catch (e) {} net['native'](fu, function (a2) { deepT = 2; end(b0 + '\n' + (typeof a2 === 'string' ? a2 : '')); }, function () { deepT = 2; end(b0); }, false, { dataType: 'text' }); return; }
+                        } catch (e) {}
+                    }
+                }
                 ended = true;
                 var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') { msNote(it.key, r.ms); if (r.uv > 0) uaNote(it.key); }
                 try { job.onEach(it, r); } catch (e) {}
@@ -3185,8 +3196,10 @@
         act.__lmxProbing = true;
         safe(function () { showScan(card); });
         var t0 = Date.now(), lastSig = '', stableAt = 0, EV = ['keydown', 'mousedown', 'touchstart'];
+        var uaM = isUa();
+        function tQ(t) { return uaM ? 0 : titleQ(t); }   // LMX UA: «4K» у назві джерела — не обіцянка якості для тайтла, рахуємо лише реальну
         function keyOf(it) { return srcName(it && it.title); }
-        function scOf(it) { var k = keyOf(it); return srcScore(k, { q: titleQ(it.title), pe: null }, mem).s; }
+        function scOf(it) { var k = keyOf(it); return srcScore(k, { q: tQ(it.title), pe: null }, mem).s; }
         // порядок обходу — за єдиним рейтингом (якість + українська озвучка за назвою джерела + досвід), а не лише за якістю в назві
         function cmp(a, b) { return (scOf(b) - scOf(a)) || (gscore(mem.g[keyOf(b)]) - gscore(mem.g[keyOf(a)])); }
         function stop() { clearInterval(iv); EV.forEach(function (ev) { document.removeEventListener(ev, userStop, true); }); if (gs.done) hideScanLater(); }
@@ -3256,18 +3269,18 @@
             var curKey = curIt ? keyOf(curIt) : '';
             // LMX UA: усі джерела — українська озвучка з нашого сервера, якість у назвах не вказана, тож перебір нічого не покращить, лише затримає
             // показ на кілька секунд. Є серії на відкритому джерелі — одразу показуємо; порожнє джерело перемикає сам екран (і запобіжник нижче)
-            if (isUa() && curKey) {
+            if (uaM && curKey && (!window.__lmxUaBridge || !probeOn())) {
                 if (freshEps(body).length) { gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
                 // джерело відповіло «не знайдено» — не перебираємо всі джерела у фоні (кілька секунд), а одразу віддаємо запобіжнику порожніх: він перемкне на наступне за ~0,6 с
                 if (/не дав результат|не дал результат|нічого не знайд|ничего не найд/i.test(body.textContent || '')) return finish();
             }
-            sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); noteHints(x); });
+            sort.forEach(function (x) { gs.tq[keyOf(x)] = tQ(x.title); noteHints(x); });
             if (gs.bg !== 'run') gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;   // під час фонової перевірки лічильник показує, скільки джерел справді перевіряємо
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:
             // беремо живі джерела, сортуємо за якістю в назві і відкриваємо найкраще (торентні нарівні з рештою, як у Nova)
             var prof = profileOf(gs), bwa = prof.simple;
             if (bwa) gs.bwa = true;   // раз розпізнали — вважаємо BWA до кінця підбору (ознаки не мають «мигати»)
-            var life = !bwa && sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            var life = !bwa && !(uaM && window.__lmxUaBridge) && sort.some(function (x) { return x && typeof x.ghost !== 'undefined'; });   // LMX UA: джерела з різних серверів — порівнюємо фоновою перевіркою через міст плагіна
             if (bwa && !gs.bg) gs.bg = 'off';
             if (life && allSrc && !gs.bg && !gs.lifeOff) {
                 var live = sort.map(function (x, ix) { return x && !x.ghost && keyOf(x) ? { it: x, ix: ix, tor: isTorSrc(x), q: titleQ(x.title), g: gscore(mem.g[keyOf(x)]) } : null; }).filter(Boolean);
@@ -3313,7 +3326,8 @@
             }
             if (allSrc && !gs.bg && !life && Date.now() - t0 < 1200) return;
             if (allSrc && !gs.bg) {
-                var pu = window.__lmxProbeUrl;
+                var pu = window.__lmxProbeUrl, ub = uaM && window.__lmxUaBridge;
+                if (uaM) pu = ub ? { cid: cid, u: '', ua: ub } : null;
                 if (pu && pu.cid === cid && sort.length > 1) {
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
@@ -3326,17 +3340,17 @@
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
                         // очікування за досвідом: швидке джерело — 3 с, повільне, але робоче — до 8 с (пропорційно його звичному часу відповіді); невідоме — стандартні 4,5 с
                         var gms = gq && gq.ms || 0;
-                        items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: titleQ(x.title), tor: isTor, to: isTor ? 5000 : gms ? Math.max(3000, Math.min(8000, Math.round(gms * 2.2))) : 0 });
+                        items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: tQ(x.title), tor: isTor, to: isTor ? 5000 : gms ? Math.max(3000, Math.min(8000, Math.round(gms * 2.2))) : 0 });
                     });
                     // спершу ймовірно найкращі: висока якість у назві й джерела, що раніше спрацьовували; стабільно порожні — в кінець черги
                     function pri(x) { var g = mem.g[x.key]; return (g && failEff(g) >= 2 && !g.ok ? -100 : 0) + x.q * 3 + uaBonus(x.key, null) * 3 + animeBonus(x.key) * 3 + Math.max(-3, Math.min(6, gscore(g) / 4)); }
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     if (longSeries(card)) items = items.slice(0, 5);   // довгий серіал: відповіді джерел важкі — питаємо лише кількох найімовірніших
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, urlFor: pu.ua ? pu.ua.urlFor : null, deep: !!pu.ua, fix: pu.ua ? pu.ua.fix : null, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
-                        if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget()) { gs.early = true; gs.bg = 'done'; }
+                        if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget() && (!uaM || !uaOn() || balMode() === 'quality' || r.uv > 0)) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
                     gs.bgDeadline = Date.now() + (longSeries(card) ? 9000 : 14000);
                     bgProbe(gs.job);
@@ -3356,7 +3370,7 @@
                 sort.forEach(function (x) {
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
-                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || titleQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: titleQ(x.title), pe: pe }, mem).s });
+                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
                     else if (!pe || pe.s === 'skip') skipN++;
                 });
                 if (!okL.length) {
