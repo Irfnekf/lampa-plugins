@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.10';
+    var VERSION = '5.11';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -439,6 +439,7 @@
     return $('<div></div>').text(text == null ? '' : text).html();
   }
 
+  var hostTokens = {};
   function account(url) {
     url = url + '';
     if (url.indexOf('account_email=') == -1) {
@@ -449,9 +450,11 @@
       var uid = Lampa.Storage.get('lmxat_unic_id', '');
       if (uid) url = Lampa.Utils.addUrlComponent(url, 'uid=' + encodeURIComponent(uid));
     }
-    if (url.indexOf('token=') == -1) {
-      var token = '';
-      if (token != '') url = Lampa.Utils.addUrlComponent(url, 'token=');
+    var hm = url.match(/^https?:\/\/([^\/?#]+)/i);
+    if (hm) {
+      var tm = url.match(/[?&]token=([^&#]+)/);
+      if (tm) hostTokens[hm[1]] = tm[1];
+      else if (hostTokens[hm[1]]) url = Lampa.Utils.addUrlComponent(url, 'token=' + hostTokens[hm[1]]);
     }
     if (url.indexOf('nws_id=') == -1) {
       var nws_id = Lampa.Storage.get('lmxat_nws_id', '');

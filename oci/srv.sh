@@ -29,6 +29,7 @@ cat > /opt/lampac/init.conf <<CONF
   },
   "chromium": { "enable": true, "executablePath": "$CHR" },
   "accsdb": { "enable": true, "accounts": { "$LMX_SECRET": "2099-12-31T00:00:00" } },
+  "Spectre": { "enable": true },
   "online": { "name": "LMX", "version": true }
 }
 CONF

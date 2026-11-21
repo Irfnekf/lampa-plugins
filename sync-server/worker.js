@@ -1123,15 +1123,29 @@ async function uaUafix(url, env, ctx) {
     '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + n + '</div>')).join(''));
 }
 
-function uaEvents(url) {
+// Джерела з власного сервера Lampac (Oracle Cloud, Always Free): там є Chromium, тож працюють Phantom/Spectre (4K), UAKino, Moon.
+// Адреса й ключ доступу — у змінній Worker LMX_ORACLE ("https://host|ключ"), не в коді (репозиторій публічний)
+const ORA_SOURCES = [
+  { k: 'phantom', name: 'Phantom 4K' },
+  { k: 'spectre', name: 'Spectre' },
+  { k: 'uakino', name: 'UAKino' },
+  { k: 'moonanime', name: 'Moon', anime: true }
+];
+function uaEvents(url, env) {
   const p = uaParams(url), anime = uaIsAnime(p);
   const list = Object.keys(UA_SOURCES).filter((k) => (!UA_SOURCES[k].anime || anime) && (!UA_SOURCES[k].asia || uaIsAsia(p))).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
+  const ora = String((env && env.LMX_ORACLE) || '').split('|');
+  if (/^https:\/\/[a-z0-9.-]+$/i.test(ora[0] || '') && ora[1]) {
+    ORA_SOURCES.filter((o) => !o.anime || anime).forEach((o) => {
+      list.push({ name: o.name, url: ora[0] + '/lite/' + o.k + '?token=' + encodeURIComponent(ora[1]), balanser: o.k, show: true });
+    });
+  }
   return json(list);
 }
 async function handleUa(url, env, ctx) {
   const path = url.pathname;
   try {
-    if (path === '/lite/events') return uaEvents(url);
+    if (path === '/lite/events') return uaEvents(url, env);
     if (path === '/lite/withsearch') return json([]);
     if (path === '/externalids') return json({});
     if (path === '/lite/video') {
