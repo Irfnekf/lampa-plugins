@@ -120,6 +120,75 @@
             }, function () { done(null); });
         }
     }
+
+    // ── UAFlix (uafix.net): якщо сайт не пустив Worker — шукає й розбирає сам пристрій; відео — плеєр zetvideo з прямим m3u8 ──
+    var UF = 'https://uafix.net';
+    function ufVod(page) { return (String(page || '').match(/<iframe[^>]+src=["'](https:\/\/zetvideo\.net\/vod\/\d+)["']/i) || [])[1] || ''; }
+    function ufPlay(u, ok, fail) {
+        function fromVod(vod) {
+            fetchText(vod, function (h) { var m = (h.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/) || [])[1]; if (m) ok({ method: 'play', url: m }); else fail(); }, fail);
+        }
+        if (/^https:\/\/zetvideo\.net\//.test(u)) return fromVod(u);
+        fetchText(u, function (pg) { var v = ufVod(pg); if (v) fromVod(v); else fail(); }, fail);
+    }
+    function ufItem(cls, json, attrs, inner) { return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + esc(JSON.stringify(json)) + '">' + inner + '</div>'; }
+    function ufPageHtml(url, page, html) {
+        var serial = qget(url, 'serial') === '1', title = qget(url, 'title') || 'UAFlix';
+        var call = function (u, t) { return host() + '/lite/ufv?u=' + encodeURIComponent(u) + '&t=' + encodeURIComponent(t); };
+        if (!serial) {
+            var vod = ufVod(html);
+            return vod ? ufItem('videos__item videos__movie', { method: 'call', url: call(vod, title), title: title, voice_name: 'UAFlix' }, ' media=""', '<div class="videos__item-title">UAFlix</div>') : '';
+        }
+        var eps = {}, base = page.replace(/\/+$/, '');
+        html.replace(/href="(https:\/\/uafix\.net\/[^"]+?\/season-(\d+)-episode-(\d+)\/?)"/g, function (m, link, sn, en) {
+            if (link.indexOf(base + '/') !== 0) return m;
+            (eps[+sn] || (eps[+sn] = {}))[+en] = link; return m;
+        });
+        var sns = Object.keys(eps).map(Number).sort(function (a, b) { return a - b; });
+        if (!sns.length) return '';
+        var s = parseInt(qget(url, 'ufs'), 10) || 0;
+        var self = url.split('?')[0] + '?' + ['title', 'original_title', 'year', 'serial'].map(function (k) { return k + '=' + encodeURIComponent(qget(url, k)); }).join('&') + '&uf=' + encodeURIComponent(page);
+        if (!s && sns.length > 1) return sns.map(function (n) { return ufItem('videos__item videos__season', { method: 'link', url: self + '&ufs=' + n }, '', '<div class="videos__item-title videos__season-title">' + n + ' сезон</div>'); }).join('');
+        if (!eps[s]) s = sns[0];
+        return Object.keys(eps[s]).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
+            return ufItem('videos__item videos__movie', { method: 'call', url: call(eps[s][n], 'Серія ' + n), title: 'Серія ' + n, voice_name: 'UAFlix' }, ' media="" s="' + s + '" e="' + n + '"', '<div class="videos__item-title">Серія ' + n + '</div>');
+        }).join('');
+    }
+    function ufDevice(url, done) {
+        var page = qget(url, 'uf');
+        if (page && page.indexOf(UF + '/') === 0) return fetchText(page, function (h) { done(ufPageHtml(url, page, h)); }, function () { done('', 'blocked'); });
+        var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0, serial = qget(url, 'serial') === '1';
+        var names = [nrm(title), nrm(orig)].filter(Boolean), qs = [title, orig].filter(function (q, i, a) { return q && /[0-9A-Za-zА-Яа-яІіЇїЄєҐґ]{2}/.test(q) && a.indexOf(q) === i; });
+        var cand = [], left = qs.length, reached = false;
+        if (!left) return done('');
+        qs.forEach(function (q) {
+            fetchText(UF + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), function (res) {
+                reached = true;
+                res.replace(/<a class="sres-wrap[^"]*" href="(https:\/\/uafix\.net\/[^"]+)">[\s\S]*?<h2>([^<]+)<\/h2>/g, function (m, link, t) {
+                    if (cand.some(function (c) { return c.link === link; })) return m;
+                    if (/\/(films|serials)\//.test(link) && /\/serials\//.test(link) !== serial) return m;
+                    var sc = 0; String(t).replace(/&#0?39;/g, "'").split(/\s+\/\s+/).forEach(function (x) { sc = Math.max(sc, score(x, names)); });
+                    if (sc >= 0.6) cand.push({ link: link, sc: sc });
+                    return m;
+                });
+                if (--left === 0) next();
+            }, function () { if (--left === 0) next(); });
+        });
+        function next() {
+            if (!reached) return done('', 'blocked');
+            cand.sort(function (a, b) { return b.sc - a.sc; });
+            var list = cand.slice(0, 3), i = 0;
+            (function tryNext() {
+                if (i >= list.length) return done('');
+                var c = list[i++];
+                fetchText(c.link, function (h) {
+                    var y = parseInt((h.match(/Рік виходу:<\/span>[\s\S]{0,200}?(\d{4})/) || [])[1] || '0', 10);
+                    if (year && y && Math.abs(y - year) > 1) return tryNext();
+                    done(ufPageHtml(url, c.link, h));
+                }, tryNext);
+            })();
+        }
+    }
     function emptyHtml(t) { return '<div class="online-empty"><div class="online-empty__title">' + esc(t) + '</div></div>'; }
 
     var pcache = {};
@@ -139,6 +208,7 @@
         } catch (e) { end(fail); }
     }
     function direct(u, ok, fail) {
+        if (/^https:\/\/(uafix\.net|zetvideo\.net)\//.test(u)) return ufPlay(u, ok, fail);
         if (/\.m3u8(\?|$)/i.test(u)) return ok({ method: 'play', url: fixUrl(u) });
         // AnimeON: спершу питаємо Worker, яка сторінка плеєра в цієї серії, далі — як звичайно
         if (/^aoep:\d+$/.test(u)) {
@@ -153,7 +223,7 @@
         fetchPage(u, function (page) { var d = playerData(page), r = d && d.file ? playFrom(d.file) : null; if (r) ok(r); else fail(); }, fail);
     }
     function qget(url, k) { var m = String(url || '').match(new RegExp('[?&]' + k + '=([^&]*)')); try { return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : ''; } catch (e) { return ''; } }
-    function playerOf(url) { return /\/lite\/(?:anitube\/)?video\?/.test(String(url || '')) ? qget(url, 'u') : ''; }
+    function playerOf(url) { return /\/lite\/(?:(?:anitube\/)?video|ufv)\?/.test(String(url || '')) ? qget(url, 'u') : ''; }
 
     // Серіал у плеєрі Ashdi/Tortuga: сезони → озвучки → серії, у тій самій розмітці, що віддають джерела онлайн-плагіна
     function serialModel(d) {
@@ -252,6 +322,12 @@
                             if (serial) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
                             var t = qget(url, 'title') || 'Дивитись';
                             comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: t, voice_name: 'Eneyida' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
+                        });
+                        return;
+                    }
+                    if (/\/lite\/ufd\?/.test(String(url || ''))) {
+                        ufDevice(String(url), function (html, why) {
+                            comp.parse(html || emptyHtml(why === 'blocked' ? 'UAFlix працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері його блокує' : 'На UAFlix цього тайтлу не знайдено'));
                         });
                         return;
                     }

@@ -1033,6 +1033,11 @@ async function uaUafixPlay(url, ctx) {
   const m = vod ? await ufM3u8(vod, ctx).catch(() => '') : '';
   return m ? json({ method: 'play', url: m, title: url.searchParams.get('t') || '' }) : json({ error: 'no_file' }, 404);
 }
+function ufToDevice(url, p) {
+  const q = new URLSearchParams(); ['title', 'original_title', 'year', 'serial', 'alt'].forEach((k) => { if (p[k]) q.set(k, p[k]); });
+  return atHtml(atItem('videos__item videos__season', { method: 'link', url: url.origin + '/lite/ufd?' + q.toString() }, '',
+    '<div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">UAFlix</div></div>'));
+}
 async function uaUafix(url, env, ctx) {
   const self = url.origin + '/lite/uafix', p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
   let page = url.searchParams.get('uf') || '', html = '';
@@ -1040,9 +1045,10 @@ async function uaUafix(url, env, ctx) {
   if (!page) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm);
     const cand = [], seen = {};
+    let reached = false, why = '';
     for (const q of uaQueries(names)) {
       let res = '';
-      try { res = await atFetch(UF + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), { headers: { Referer: UF + '/' } }, 1800, ctx); } catch (e) { continue; }
+      try { res = await atFetch(UF + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), { headers: { Referer: UF + '/' } }, 1800, ctx); reached = true; } catch (e) { why = String(e && e.message || e); continue; }
       res.replace(/<a class="sres-wrap[^"]*" href="(https:\/\/uafix\.net\/[^"]+)">[\s\S]*?<h2>([^<]+)<\/h2>/g, (m, link, t) => {
         if (seen[link]) return m;
         seen[link] = 1;
@@ -1054,6 +1060,9 @@ async function uaUafix(url, env, ctx) {
       });
       if (cand.some((c) => c.sc >= 0.85)) break;
     }
+    if (url.searchParams.get('diag')) return json({ reached, why, cand });
+    // сайт не пустив Worker — пошук робить сам пристрій (/lite/ufd)
+    if (!reached) return ufToDevice(url, p);
     if (!cand.length) return uaEmpty('UAFlix');
     cand.sort((a, b) => b.sc - a.sc);
     let best = null;
@@ -1135,6 +1144,7 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/unimay') return await uaUnimay(url, env, ctx);
     if (path === '/lite/uafix') return await uaUafix(url, env, ctx);
     if (path === '/lite/ufv') return await uaUafixPlay(url, ctx);
+    if (path === '/lite/ufd') return atHtml('<div class="online-empty">UAFlix відкривається лише на пристрої</div>');
     if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
@@ -1147,7 +1157,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv|ufd)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
