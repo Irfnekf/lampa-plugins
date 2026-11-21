@@ -725,7 +725,7 @@ async function uaAnimeonTitle(url, p, aid, season, ctx) {
   const voices = opts.map((o) => ({ name: o.name, eps: [] }));
   await Promise.all(need.map(async (i) => {
     const o = opts[i];
-    const j = await uaJson('https://animeon.club/api/player/' + aid + '/episodes?take=100&skip=-1&playerId=' + o.pid + '&translationId=' + o.tid, ctx, 1200).catch(() => null);
+    const j = await uaJson('https://animeon.club/api/player/' + aid + '/episodes?take=500&skip=-1&playerId=' + o.pid + '&translationId=' + o.tid, ctx, 1200).catch(() => null);
     // посилання на відео AnimeON віддає окремим запитом на кожну серію (/api/player/<id серії>/episode) — робимо його, лише коли серію вмикають
     ((j && j.episodes) || []).forEach((e, k) => { if (e && (e.fileUrl || e.id)) voices[i].eps.push({ n: e.episode || k + 1, file: e.fileUrl || ('aoep:' + e.id) }); });
     voices[i].eps.sort((a, b) => a.n - b.n);
