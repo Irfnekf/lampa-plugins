@@ -5924,6 +5924,19 @@
         if (!Lampa.Select || !Lampa.Select.show || Lampa.Select.__lmxP) return;
         var orig = Lampa.Select.show;
         Lampa.Select.show = function (o) {
+            // Shots (CUB): пункт у меню кнопки «Дивитись» знімаємо ще до побудови списку, а не після: інакше він на мить з'являється й зникає
+            safe(function () {
+                if (!o || !o.items || o.items.length < 2) return;
+                var sv = Lampa.Storage.get('nocub_shots', 'true');
+                if (sv !== true && sv !== 'true') return;
+                var l = o.items.filter(function (it) {
+                    if (!it) return true;
+                    var b = it.btn && it.btn[0], cn = b && b.className ? String(b.className) : '';
+                    if (/(^|[\s-])shots?([\s-]|$)/i.test(cn)) return false;
+                    return !(it.title && /^\s*(shots|шотс|шорт)/i.test(String(it.title).replace(/<[^>]*>/g, '')));
+                });
+                if (l.length && l.length < o.items.length) o.items = l;
+            });
             if (watchCap) { watchCap.o = o; return; }
             try {
                 if (o && o.items && o.items.length > 1 && Lampa.Controller.enabled().name === 'full_start') {
@@ -6858,7 +6871,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.604';
+    var VERSION = '10.605';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
