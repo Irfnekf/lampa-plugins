@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.12';
+    var VERSION = '5.13';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -321,6 +321,18 @@
                         var out = Object.assign({}, r, { title: file.title, voice_name: file.voice_name });
                         call(out, { quality: r.quality });
                     }, function () { realGet.apply(self, args); });
+                };
+                // UAFlix: Worker віддає заглушку-«сезон» UAFlix (сайт пускає лише пристрій) — одразу відкриваємо її, щоб у фільтрі «Сезон» не було «UAFlix»
+                var realParse = comp.parse;
+                if (typeof realParse === 'function') comp.parse = function (str) {
+                    try {
+                        var s0 = typeof str === 'string' ? str : '';
+                        if (s0.indexOf('/lite/ufd?') >= 0 && (s0.match(/videos__item/g) || []).length === 1) {
+                            var m0 = s0.match(/data-json="([^"]+)"/), j0 = m0 && JSON.parse(m0[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+                            if (j0 && j0.url) return comp.request(j0.url);
+                        }
+                    } catch (e) {}
+                    return realParse.apply(this, arguments);
                 };
                 var realReq = comp.request;
                 if (typeof realReq === 'function') comp.request = function (url) {
