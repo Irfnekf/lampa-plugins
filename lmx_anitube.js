@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.4';
+    var VERSION = '5.5';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -689,10 +689,9 @@
     // ── RCH & external IDs ──
     this.rch = function (json, noreset) {
       var _this2 = this;
-      rchRun(json, function () {
-        if (!noreset) _this2.find();
-        else noreset();
-      });
+      // LMX UA: RCH не використовується — просто повторюємо запит
+      if (!noreset) _this2.find();
+      else noreset();
     };
     this.externalids = function () {
       return new Promise(function (resolve, reject) {
@@ -773,14 +772,7 @@
       query.push('source=' + card_source);
       query.push('clarification=' + (object.clarification ? 1 : 0));
       query.push('similar=' + (object.similar ? true : false));
-      query.push(
-        'rchtype=' +
-        ((window.rch_nws && window.rch_nws[hostkey]
-          ? window.rch_nws[hostkey].type
-          : window.rch && window.rch[hostkey]
-            ? window.rch[hostkey].type
-            : '') || '')
-      );
+      query.push('rchtype=');   // LMX UA: без RCH (інші Lampac-плагіни задають window.rch — тут він не потрібен)
       if (Lampa.Storage.get('account_email', ''))
         query.push('cub_id=' + Lampa.Utils.hash(Lampa.Storage.get('account_email', '')));
       return url + (url.indexOf('?') >= 0 ? '&' : '?') + query.join('&');
