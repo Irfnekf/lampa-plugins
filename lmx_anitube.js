@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.3';
+    var VERSION = '5.4';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -113,9 +113,10 @@
             if (!found.length) return done(null);
             found.sort(function (a, b) { return b.sc - a.sc; });
             fetchText(found[0].link, function (page) {
-                // плеєр: HDVB UA (зараз основний на Eneyida), Ashdi або Tortuga; /vid/ — це трейлер, його пропускаємо
-                var m = page.match(/<iframe[^>]+src="(https?:\/\/hdvbua\.[a-z]+\/embd\/[^"]+)"/i) || page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+|hdvbua\.[a-z]+)\/(?!vid\/)[^"]+)"/i);
-                done(m ? m[1] : null);
+                // плеєр: HDVB UA (серіал — /embed/, фільм — /vid/), Ashdi або Tortuga; адреса з ?tr=1 — трейлер, її пропускаємо
+                var frames = [];
+                page.replace(/<iframe[^>]+src="(https?:\/\/(?:hdvbua\.[a-z]+|ashdi\.vip|tortuga\.[a-z]+)\/[^"]+)"/gi, function (m, u) { if (!/[?&]tr=1\b/.test(u)) frames.push(u); return m; });
+                done(frames.filter(function (u) { return /hdvbua\.[a-z]+\/(?:embed|embd)\//.test(u); })[0] || frames[0] || null);
             }, function () { done(null); });
         }
     }
@@ -272,7 +273,9 @@
         if (card.lmx_alt || !card.id || (card.source && card.source !== 'tmdb')) return done();
         var fin = false, t = setTimeout(function () { if (!fin) { fin = true; done(); } }, 2500);
         try {
-            Lampa.Api.sources.tmdb.get((card.name || card.first_air_date ? 'tv/' : 'movie/') + card.id + '?language=en-US&append_to_response=alternative_titles', {}, function (j) {
+            // власний запит (спільний мережевий об'єкт Lampa для TMDB тут обривався) — через адресу TMDB з налаштувань Lampa (з її проксі)
+            var net = new Lampa.Reguest(); net.timeout(2400);
+            net.silent(Lampa.TMDB.api((card.name || card.first_air_date ? 'tv/' : 'movie/') + card.id + '?api_key=' + Lampa.TMDB.key() + '&language=en-US&append_to_response=alternative_titles'), function (j) {
                 if (fin) return; fin = true; clearTimeout(t);
                 var out = [];
                 try {
@@ -282,7 +285,7 @@
                 } catch (e) {}
                 card.lmx_alt = out.slice(0, 6);
                 done();
-            }, function () { if (fin) return; fin = true; clearTimeout(t); done(); });
+            }, function () { if (fin) return; fin = true; clearTimeout(t); done(); }, false, { dataType: 'json' });
         } catch (e) { if (!fin) { fin = true; clearTimeout(t); done(); } }
     }
     function open(card) {

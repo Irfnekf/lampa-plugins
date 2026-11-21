@@ -859,7 +859,10 @@ async function uaEneyida(url, env, ctx) {
     found.sort((a, b) => b.sc - a.sc);
     let page = '';
     try { page = await atFetch(found[0].link, { headers: { Referer: 'https://eneyida.tv/' } }, 1800, ctx); } catch (e) { return toDevice('/lite/ey?'); }
-    iframe = (page.match(/<iframe[^>]+src="(https?:\/\/hdvbua\.[a-z]+\/(?:embed|embd)\/[^"]+)"/i) || page.match(/<iframe[^>]+src="(https?:\/\/(?:ashdi\.vip|tortuga\.[a-z]+|hdvbua\.[a-z]+)\/(?!vid\/)[^"]+)"/i) || [])[1] || '';
+    // плеєр: серіал — hdvbua …/embed/ (або embd), фільм — hdvbua …/vid/; адреса з ?tr=1 — трейлер, її пропускаємо
+    const frames = [];
+    page.replace(/<iframe[^>]+src="(https?:\/\/(?:hdvbua\.[a-z]+|ashdi\.vip|tortuga\.[a-z]+)\/[^"]+)"/gi, (m, u) => { if (!/[?&]tr=1\b/.test(u)) frames.push(u); return m; });
+    iframe = frames.filter((u) => /hdvbua\.[a-z]+\/(?:embed|embd)\//.test(u))[0] || frames[0] || '';
     if (!iframe) return uaEmpty('Eneyida');
   }
   // Ashdi і Tortuga — лише для України: їх відкриває пристрій
