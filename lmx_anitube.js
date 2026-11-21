@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.8';
+    var VERSION = '5.9';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -394,9 +394,15 @@
         if (!render || !render.length || render.find('.lmxat--button').length) return;
         var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="LMX UA">' + ICON + '<span>LMX UA</span></div>');
         btn.on('hover:enter', function () { safe(function () { open(card); }); });
-        var tor = render.find('.view--torrent').last();
-        if (tor.length) tor.after(btn);
-        else { var box = render.find('.buttons--container, .full-start-new__buttons, .full-start__buttons').eq(0); if (box.length) box.append(btn); }
+        // кнопка завжди на виду: у видимому ряду кнопок, одразу після «Дивитись» (у прихованому .buttons--container Lampa ховає її в меню «Дивитись»)
+        var row = render.find('.full-start-new__buttons').eq(0), play = row.find('.button--play').eq(0);
+        if (play.length) play.after(btn);
+        else if (row.length) row.prepend(btn);
+        else {
+            var tor = render.find('.view--torrent').last();
+            if (tor.length) tor.after(btn);
+            else { var box = render.find('.buttons--container, .full-start__buttons').eq(0); if (box.length) box.append(btn); }
+        }
     }
 
     function settings() {
