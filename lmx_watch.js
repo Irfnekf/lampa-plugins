@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.59';
+    var VERSION = '3.60';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1089,13 +1089,23 @@
                 }, 80);
             });
         }
-        [250, 900, 1800].forEach(function (d) { setTimeout(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, d); });
+        [250, 900, 1800].forEach(function (d) { resizeSoon(d); });
         act.__lmxRS = setTimeout(function () { pass(false); act.__lmxRS2 = setTimeout(function () { pass(true); }, 900); }, 220);
     }
     // Після вибору сезону/озвучки/джерела список перемальовується не одразу (чекає відповіді джерела), і Lampa лишає керування на видалених
     // вузлах. Не покладаємось на назву контролера: поки йде завантаження чекаємо, а як з'явились кнопки/серії — примусово повертаємо
     // 'content', перебираємо колекцію й ставимо фокус на видимий елемент
     // Фокус «живий», лише якщо стоїть на видимому нашому елементі; старі кнопки джерела (озвучка серії тощо), що блимають на мить, не підходять
+    // Подія resize змушує Lampa перераховувати розмітку всієї сторінки (на ТВ — помітна пауза). Кілька перемальовувань поспіль просили її
+    // по 3 рази кожне; тепер запити, що припадають на ті самі ~350 мс, зливаються в одну подію (моменти 250/900/1800 мс лишаються)
+    var rzAt = [];
+    function resizeSoon(d) {
+        var at = Date.now() + d, now = Date.now(), i;
+        rzAt = rzAt.filter(function (t) { return t > now; });
+        for (i = 0; i < rzAt.length; i++) if (Math.abs(rzAt[i] - at) < 350) return;
+        rzAt.push(at);
+        setTimeout(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, d);
+    }
     function okFocus(act) {
         var f = act.querySelector('.focus');
         if (!f || !document.body.contains(f)) return false;
@@ -3244,6 +3254,9 @@
             var i, curIt = null;
             for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
             var curKey = curIt ? keyOf(curIt) : '';
+            // LMX UA: усі джерела — українська озвучка з нашого сервера, якість у назвах не вказана, тож перебір нічого не покращить, лише затримає
+            // показ на кілька секунд. Є серії на відкритому джерелі — одразу показуємо; порожнє джерело перемикає сам екран (і запобіжник нижче)
+            if (isUa() && curKey && freshEps(body).length) { gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
             sort.forEach(function (x) { gs.tq[keyOf(x)] = titleQ(x.title); noteHints(x); });
             if (gs.bg !== 'run') gs.total = sort.filter(function (x) { return x && !x.ghost; }).length;   // під час фонової перевірки лічильник показує, скільки джерел справді перевіряємо
             // Сам онлайн-плагін позначає джерела прапорцем ghost (нема результатів / не відповідає) — як і Nova, довіряємо цьому і не перевіряємо вдруге:

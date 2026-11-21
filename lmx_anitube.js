@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.9';
+    var VERSION = '5.10';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -547,7 +547,7 @@
     }
 
     function filmChoice() {
-      return Lampa.Storage.cache('online_last_balanser', 3000, {})[object.movie.id];
+      return Lampa.Storage.cache('lmxat_last_balanser', 3000, {})[object.movie.id];
     }
 
     function hasProgress(name) {
@@ -556,22 +556,22 @@
     }
 
     function addHabit(name) {
-      var habits = Lampa.Storage.get('online_balanser_habits', '{}');
+      var habits = Lampa.Storage.get('lmxat_balanser_habits', '{}');
       for (var k in habits) {
         habits[k] *= 0.85;
         if (habits[k] < 0.05) delete habits[k];
       }
       habits[name] = (habits[name] || 0) + 1;
-      Lampa.Storage.set('online_balanser_habits', habits);
+      Lampa.Storage.set('lmxat_balanser_habits', habits);
     }
 
     function getHabits() {
-      var habits = Lampa.Storage.get('online_balanser_habits', '{}');
+      var habits = Lampa.Storage.get('lmxat_balanser_habits', '{}');
       // перенос старого глобального выбора, чтобы любимый балансер не потерялся после обновления
-      var legacy = Lampa.Storage.get('online_balanser', '');
+      var legacy = '';   // LMX UA: власні звички, без чужого глобального вибору (інакше джерела інших плагінів впливали на наш вибір)
       if (legacy && !Lampa.Arrays.getKeys(habits).length) {
         habits[legacy] = 1;
-        Lampa.Storage.set('online_balanser_habits', habits);
+        Lampa.Storage.set('lmxat_balanser_habits', habits);
       }
       return habits;
     }
@@ -817,10 +817,10 @@
     // ── balanser ──
     // вызывается только при запуске видео
     this.updateBalanser = function (balanser_name) {
-      var last_select_balanser = Lampa.Storage.cache('online_last_balanser', 3000, {});
+      var last_select_balanser = Lampa.Storage.cache('lmxat_last_balanser', 3000, {});
       if (last_select_balanser[object.movie.id] !== balanser_name) addHabit(balanser_name);
       last_select_balanser[object.movie.id] = balanser_name;
-      Lampa.Storage.set('online_last_balanser', last_select_balanser);
+      Lampa.Storage.set('lmxat_last_balanser', last_select_balanser);
     };
     // смена в рамках этой карточки: в предпочтения не пишем, выбор переживает Activity.replace через object
     this.changeBalanser = function (balanser_name, auto) {
@@ -886,7 +886,7 @@
           balanser = auto_pick || autoPick({ head: true }, true);
           if (!sources[balanser]) balanser = filter_sources[0];
           source = sources[balanser].url;
-          Lampa.Storage.set('active_balanser', balanser);
+          Lampa.Storage.set('lmxat_active_balanser', balanser);
           resolve(json);
         } else {
           reject();
@@ -1466,7 +1466,7 @@
     };
     // ── choice & storage ──
     this.getChoice = function (for_balanser) {
-      var data = Lampa.Storage.cache('online_choice_' + (for_balanser || balanser), 3000, {});
+      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 3000, {});
       var save = data[object.movie.id] || {};
       Lampa.Arrays.extend(save, {
         season: 0,
@@ -1479,9 +1479,9 @@
       return save;
     };
     this.saveChoice = function (choice, for_balanser) {
-      var data = Lampa.Storage.cache('online_choice_' + (for_balanser || balanser), 3000, {});
+      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 3000, {});
       data[object.movie.id] = choice;
-      Lampa.Storage.set('online_choice_' + (for_balanser || balanser), data);
+      Lampa.Storage.set('lmxat_choice_' + (for_balanser || balanser), data);
     };
     this.replaceChoice = function (choice, for_balanser) {
       var to = this.getChoice(for_balanser);
@@ -2140,7 +2140,8 @@
       });
       if (er && er.accsdb) html.find('.online-empty__title').html(er.msg);
 
-      var tic = er && er.accsdb ? 10 : 5;
+      // LMX UA: порожнє джерело — це «не знайдено», а не збій мережі: на наступне переходимо за 1 с, а не за 5
+      var tic = er && er.accsdb ? 10 : 1;
       html.find('.cancel').on('hover:enter', function () {
         stopBalanserTimer();
       });
