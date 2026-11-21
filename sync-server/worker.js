@@ -649,7 +649,8 @@ const UA_SOURCES = {
   animeon: { name: 'AnimeON', anime: true },
   mikai: { name: 'Mikai', anime: true },
   eneyida: { name: 'Eneyida', anime: false },
-  bamboo: { name: 'BambooUA', anime: false, asia: true }
+  bamboo: { name: 'BambooUA', anime: false, asia: true },
+  unimay: { name: 'Unimay', anime: true }
 };
 // дорами (BambooUA): лише азійські мови оригіналу
 function uaIsAsia(p) { return /^(ko|zh|cn|th|vi|tl|ja|id|ms|tw)$/.test(p.original_language || ''); }
@@ -954,6 +955,67 @@ async function uaBamboo(url, env, ctx) {
   return atHtml(uaPlHtml([S], link, sn, parseInt(url.searchParams.get('atv') || '0', 10) || 0));
 }
 
+// ── Unimay (https://unimay.media): студія озвучення аніме з відкритим API. Каталог невеликий (кілька десятків релізів),
+// тож беремо весь список і шукаємо в ньому самі; сезони серіалу — окремі релізи (jobless-reincarnation, jobless-reincarnation-2)
+const UM = 'https://api.unimay.media/v1';
+async function umList(ctx) {
+  let all = [];
+  for (let pg = 0; pg < 10; pg++) {
+    const j = await uaJson(UM + '/release/search?page=' + pg + '&page_size=12', ctx, 43200);
+    const c = (j && j.content) || [];
+    all = all.concat(c);
+    if (c.length < 12) break;
+  }
+  return all;
+}
+// номер сезону — з кінця назви чи коду релізу («… 2», jobless-reincarnation-2), інакше за порядком
+function umSeason(f, i) { const m = String(f.name).match(/\s(\d{1,2})$/) || String(f.code).match(/-(\d{1,2})$/); return m ? parseInt(m[1], 10) : i + 1; }
+async function uaUnimay(url, env, ctx) {
+  const self = url.origin + '/lite/unimay', p = uaParams(url), serial = p.serial === '1', year = parseInt(p.year, 10) || 0;
+  let code = String(url.searchParams.get('umc') || '').replace(/[^a-z0-9-]/g, '');
+  if (!code) {
+    const names = (await uaNames(p, env, ctx)).map(atNorm);
+    const list = await umList(ctx);
+    const found = [];
+    list.forEach((r) => {
+      if (!r || !r.code || r.adult) return;
+      if ((r.type === 'Фільм') === serial) return;
+      const n = r.names || {};
+      let sc = 0;
+      [n.ukr, n.eng, n.romaji, String(r.code).replace(/-\d+$/, '').replace(/-/g, ' ')].forEach((t) => { if (t) sc = Math.max(sc, atScore(t, names)); });
+      if (sc < 0.6) return;
+      if (year && r.year) {
+        if (!serial && Math.abs(r.year - year) > 1) return;
+        if (serial && r.year < year - 1) return;
+      }
+      found.push({ code: r.code, name: n.ukr || n.eng || r.code, year: r.year || 0, sc });
+    });
+    if (!found.length) return uaEmpty('Unimay');
+    if (!serial) { found.sort((a, b) => b.sc - a.sc); code = found[0].code; }
+    else if (found.length === 1) code = found[0].code;
+    else {
+      // кілька релізів одного серіалу (сезони, арки) — показуємо їх як сезони, за роком
+      found.sort((a, b) => (a.year - b.year) || a.code.localeCompare(b.code));
+      return atHtml(found.map((f, i) => atItem('videos__item videos__season', { method: 'link', url: uaLink(self, p, { umc: f.code, ums: String(umSeason(f, i)) }) }, '',
+        '<div class="videos__season-layers"></div><div class="videos__item-imgbox videos__season-imgbox"><div class="videos__item-title videos__season-title">' + atEsc(f.name) + '</div></div>')).join(''));
+    }
+  }
+  const r = await uaJson(UM + '/release?code=' + encodeURIComponent(code), ctx, 3600).catch(() => null);
+  const eps = ((r && r.playlist) || []).filter((e) => e && !e.premium && e.hls && (e.hls.master || (e.hls.qualities && (e.hls.qualities.fhd || e.hls.qualities.hd))));
+  if (!eps.length) return uaEmpty('Unimay');
+  const file = (e) => e.hls.master || e.hls.qualities.fhd || e.hls.qualities.hd;
+  if (!serial) {
+    return atHtml(atItem('videos__item videos__movie', { method: 'play', url: file(eps[0]), title: p.title || 'Unimay', voice_name: 'Unimay' }, ' media=""',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Unimay</div>'));
+  }
+  const sn = parseInt(url.searchParams.get('ums') || '1', 10) || 1;
+  return atHtml(eps.map((e, i) => {
+    const n = parseInt(e.number, 10) || i + 1;
+    return atItem('videos__item videos__movie', { method: 'play', url: file(e), title: 'Серія ' + n + (e.title ? ' · ' + e.title : ''), voice_name: 'Unimay' }, ' media="" s="' + sn + '" e="' + n + '"',
+      '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + n + '</div>');
+  }).join(''));
+}
+
 function uaEvents(url) {
   const p = uaParams(url), anime = uaIsAnime(p);
   const list = Object.keys(UA_SOURCES).filter((k) => (!UA_SOURCES[k].anime || anime) && (!UA_SOURCES[k].asia || uaIsAsia(p))).map((k) => ({ name: UA_SOURCES[k].name, url: url.origin + '/lite/' + k, balanser: k, show: true }));
@@ -988,6 +1050,7 @@ async function handleUa(url, env, ctx) {
     if (path === '/lite/mikai') return await uaMikai(url, env, ctx);
     if (path === '/lite/eneyida') return await uaEneyida(url, env, ctx);
     if (path === '/lite/bamboo') return await uaBamboo(url, env, ctx);
+    if (path === '/lite/unimay') return await uaUnimay(url, env, ctx);
     if (path === '/lite/ey') return atHtml('<div class="online-empty">Eneyida відкривається лише на пристрої</div>');
   } catch (e) {
     return atHtml('<div class="online-empty">Джерело зараз недоступне</div>');
@@ -1000,7 +1063,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
