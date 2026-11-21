@@ -726,7 +726,8 @@ async function uaAnimeonTitle(url, p, aid, season, ctx) {
   await Promise.all(need.map(async (i) => {
     const o = opts[i];
     const j = await uaJson('https://animeon.club/api/player/' + aid + '/episodes?take=100&skip=-1&playerId=' + o.pid + '&translationId=' + o.tid, ctx, 1200).catch(() => null);
-    ((j && j.episodes) || []).forEach((e, k) => { if (e && e.fileUrl) voices[i].eps.push({ n: e.episode || k + 1, file: e.fileUrl }); });
+    // посилання на відео AnimeON віддає окремим запитом на кожну серію (/api/player/<id серії>/episode) — робимо його, лише коли серію вмикають
+    ((j && j.episodes) || []).forEach((e, k) => { if (e && (e.fileUrl || e.id)) voices[i].eps.push({ n: e.episode || k + 1, file: e.fileUrl || ('aoep:' + e.id) }); });
     voices[i].eps.sort((a, b) => a.n - b.n);
   }));
   const usable = serial ? voices : voices.filter((v) => v.eps.length);
@@ -794,8 +795,19 @@ async function handleUa(url, env, ctx) {
       // запасний шлях: пристрій не зміг сам — пробуємо з Worker (для плеєрів без обмеження за країною)
       const u = url.searchParams.get('u') || '';
       if (/\.m3u8(\?|$)/i.test(u)) return json({ method: 'play', url: u });
+      if (/^aoep:\d+$/.test(u)) {
+        const j = await uaJson('https://animeon.club/api/player/' + u.slice(5) + '/episode', ctx, 3600).catch(() => null);
+        if (!j || !j.videoUrl) return json({ error: 'no_file' }, 404);
+        url.searchParams.set('u', j.videoUrl);
+      }
       url.pathname = '/lite/anitube/video';
       return handleAnitube(url, env, ctx);
+    }
+    if (path === '/lite/aoep') {
+      const id = String(url.searchParams.get('id') || '').replace(/\D/g, '');
+      if (!id) return json({ error: 'bad_id' }, 400);
+      const j = await uaJson('https://animeon.club/api/player/' + id + '/episode', ctx, 3600).catch(() => null);
+      return j && j.videoUrl ? json({ videoUrl: j.videoUrl }) : json({ error: 'no_file' }, 404);
     }
     if (path === '/lite/pl') return atHtml('<div class="online-empty">Плеєр відкривається лише на пристрої з України</div>');
     if (path === '/lite/animeon') return await uaAnimeon(url, env, ctx);
@@ -813,7 +825,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
-    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}

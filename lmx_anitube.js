@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.1';
+    var VERSION = '5.2';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -136,6 +136,16 @@
     }
     function direct(u, ok, fail) {
         if (/\.m3u8(\?|$)/i.test(u)) return ok({ method: 'play', url: fixUrl(u) });
+        // AnimeON: спершу питаємо Worker, яка сторінка плеєра в цієї серії, далі — як звичайно
+        if (/^aoep:\d+$/.test(u)) {
+            try {
+                var net = new Lampa.Reguest(); net.timeout(10000);
+                return net.silent(host() + '/lite/aoep?id=' + u.slice(5), function (j) {
+                    try { if (typeof j === 'string') j = JSON.parse(j); } catch (e) { j = null; }
+                    if (j && j.videoUrl) direct(j.videoUrl, ok, fail); else fail();
+                }, function () { fail(); });
+            } catch (e) { return fail(); }
+        }
         fetchPage(u, function (page) { var d = playerData(page), r = d && d.file ? playFrom(d.file) : null; if (r) ok(r); else fail(); }, fail);
     }
     function qget(url, k) { var m = String(url || '').match(new RegExp('[?&]' + k + '=([^&]*)')); try { return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : ''; } catch (e) { return ''; } }
