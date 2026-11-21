@@ -733,13 +733,16 @@ async function uaAnimeon(url, env, ctx) {
     lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
     const good = found.map((r) => {
       let sc = Math.max(atScore(r.titleUa || '', norm), atScore(r.titleEn || '', norm));
-      if (p.imdb_id && r.imdbId && r.imdbId === p.imdb_id) sc = Math.max(sc, 0.95);
+      // той самий IMDb — точно наш тайтл (назва «Ван Піс» однакова в оригіналу 1999 р. і в рімейку 2027 р.)
+      if (p.imdb_id && r.imdbId && r.imdbId === p.imdb_id) sc = 2;
       return { id: r.id, n: r.season || atSeasonOf(r.titleUa || r.titleEn || ''), y: parseInt(String(r.releaseDate || '').slice(0, 4), 10) || 0, sc };
     }).filter((r) => r.sc >= 0.6 && (!serial || !year || !r.y || r.y >= year - 1));
     if (!good.length) return uaEmpty('AnimeON');
     if (!serial) { good.sort((a, b) => (b.sc + (year && Math.abs(b.y - year) <= 1 ? 0.3 : 0)) - (a.sc + (year && Math.abs(a.y - year) <= 1 ? 0.3 : 0))); return uaAnimeonTitle(url, p, good[0].id, 0, ctx); }
     const bySeason = {};
-    good.forEach((r) => { const n = r.n || 1; if (!bySeason[n] || r.sc > bySeason[n].sc) bySeason[n] = r; });
+    // однакова схожість — беремо ближчий за роком до картки
+    const yd = (r) => (year && r.y ? Math.abs(r.y - year) : 99);
+    good.forEach((r) => { const n = r.n || 1, c = bySeason[n]; if (!c || r.sc > c.sc || (r.sc === c.sc && yd(r) < yd(c))) bySeason[n] = r; });
     const ss = Object.keys(bySeason).map(Number).sort((a, b) => a - b);
     if (ss.length > 1) return uaSeasons(ss.map((n) => ({ n, id: bySeason[n].id })), (s) => uaLink(self, p, { aid: String(s.id), ats: String(s.n) }));
     return uaAnimeonTitle(url, p, bySeason[ss[0]].id, ss[0], ctx);
