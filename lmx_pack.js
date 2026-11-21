@@ -2395,7 +2395,7 @@
 
     // ===== ДОПОМІЖНЕ ДЛЯ КАРТОК =====
     var MAX_PARALLEL = 3;
-    var CACHE_MIN = 1440;
+    var CACHE_MIN = 360;   // 6 год: серія, що вийшла сьогодні, з'являється на картці того ж дня (з добовим кешем мітка «Нова серія» запізнювалась на день)
     var RE_NATIVE_TV = /^\s*(TV|ТВ)\s*$/i;
 
     var mem = {}, memKeys = [];
@@ -6587,15 +6587,17 @@
         if (neCache && Date.now() - neCache.t < 7200000) return cb(neCache.data);
         if (neBusy) return cb(neCache ? neCache.data : []);
         var seen = {}, list = [];
-        ['look', 'like', 'book', 'wath'].forEach(function (t) {
-            var a = []; try { a = Lampa.Favorite.get({ type: t }) || []; } catch (e) {}
+        // історія перегляду теж (серіал, який просто дивишся, не обов'язково в закладках): 15 останніх серіалів з неї + закладки
+        ['history', 'look', 'like', 'book', 'wath'].forEach(function (t) {
+            var a = [], n = 0; try { a = Lampa.Favorite.get({ type: t }) || []; } catch (e) {}
             a.forEach(function (c) {
                 if (!c || !c.id || seen[c.id]) return;
                 if (!(c.media_type === 'tv' || c.name || c.first_air_date || c.number_of_seasons)) return;
-                seen[c.id] = 1; list.push(c);
+                if (t === 'history' && n >= 15) return;
+                seen[c.id] = 1; list.push(c); n++;
             });
         });
-        list = list.slice(0, 30);
+        list = list.slice(0, 40);
         if (!list.length) { neCache = { t: Date.now(), data: [] }; return cb([]); }
         neBusy = true;
         var lo = dayStr(-7), hi = dayStr(0), out = [], qi = 0, left = list.length;
@@ -6964,7 +6966,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.607';
+    var VERSION = '10.608';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
