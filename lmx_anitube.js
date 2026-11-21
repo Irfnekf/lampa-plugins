@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.7';
+    var VERSION = '5.8';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -123,10 +123,20 @@
 
     // ── UAFlix (uafix.net): якщо сайт не пустив Worker — шукає й розбирає сам пристрій; відео — плеєр zetvideo з прямим m3u8 ──
     var UF = 'https://uafix.net';
-    function ufVod(page) { return (String(page || '').match(/<iframe[^>]+src=["'](https:\/\/zetvideo\.net\/vod\/\d+)["']/i) || [])[1] || ''; }
+    function ufVod(page) { var m = String(page || '').match(/(?:https?:)?\/\/zetvideo\.net\/vod\/\d+/i); return m ? ('https:' + m[0].replace(/^https?:/, '')) : ''; }
     function ufPlay(u, ok, fail) {
+        // посилання на відео з плеєра zetvideo дістає Worker (його zetvideo пускає), а сторінку серії на uafix — пристрій (Worker сайт не пускає)
         function fromVod(vod) {
-            fetchText(vod, function (h) { var m = (h.match(/file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/) || [])[1]; if (m) ok({ method: 'play', url: m }); else fail(); }, fail);
+            var viaDevice = function () {
+                fetchText(vod, function (h) { var m = (h.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/) || [])[1]; if (m) ok({ method: 'play', url: m }); else fail(); }, fail);
+            };
+            try {
+                var net = new Lampa.Reguest(); net.timeout(10000);
+                net.silent(host() + '/lite/ufv?u=' + encodeURIComponent(vod), function (j) {
+                    try { if (typeof j === 'string') j = JSON.parse(j); } catch (e) { j = null; }
+                    if (j && j.url) ok({ method: 'play', url: j.url }); else viaDevice();
+                }, viaDevice);
+            } catch (e) { viaDevice(); }
         }
         if (/^https:\/\/zetvideo\.net\//.test(u)) return fromVod(u);
         fetchText(u, function (pg) { var v = ufVod(pg); if (v) fromVod(v); else fail(); }, fail);
