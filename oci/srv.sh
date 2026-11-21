@@ -28,7 +28,7 @@ cat > /opt/lampac/init.conf <<CONF
       "SISI", "OnlineENG", "OnlineGEO", "OnlinePaid" ]
   },
   "chromium": { "enable": true, "executablePath": "$CHR" },
-  "accsdb": { "enable": true, "users": [ { "id": "$LMX_SECRET", "expires": "2099-12-31" } ] },
+  "accsdb": { "enable": true, "accounts": { "$LMX_SECRET": "2099-12-31T00:00:00" } },
   "online": { "name": "LMX", "version": true }
 }
 CONF

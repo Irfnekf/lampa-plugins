@@ -5,7 +5,7 @@ set -e
 C=${OCI_TENANCY:?no tenancy}
 log() { echo "== $*"; }
 AD=$(oci iam availability-domain list -c "$C" --query 'data[0].name' --raw-output)
-[ -f ~/.ssh/lmx ] || ssh-keygen -t ed25519 -N '' -f ~/.ssh/lmx -q
+[ -f ~/.ssh/lmx ] || ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/lmx -q   # ed25519 у Cloud Shell заборонений (FIPS)
 nz() { [ -n "$1" ] && [ "$1" != "None" ] && [ "$1" != "null" ]; }
 VCN=$(oci network vcn list -c "$C" --display-name lmx-vcn --query 'data[0].id' --raw-output 2>/dev/null || true)
 nz "$VCN" || VCN=$(oci network vcn create -c "$C" --cidr-block 10.0.0.0/16 --display-name lmx-vcn --dns-label lmxvcn --wait-for-state AVAILABLE --query data.id --raw-output)
