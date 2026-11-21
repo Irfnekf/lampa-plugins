@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.2';
+    var VERSION = '5.3';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai (аніме) та Eneyida (фільми й серіали)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -89,10 +89,11 @@
     function eyFind(url, done) {
         var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0;
         var names = [nrm(title), nrm(orig)].filter(Boolean), qs = [title, orig].filter(function (q, i, a) { return q && /[0-9A-Za-zА-Яа-яІіЇїЄєҐґ]{2}/.test(q) && a.indexOf(q) === i; });
-        var found = [], left = qs.length;
+        var found = [], left = qs.length, reached = false;
         if (!left) return done(null);
         qs.forEach(function (q) {
             fetchText('https://eneyida.tv/index.php?do=search&subaction=search&story=' + encodeURIComponent(q), function (html) {
+                reached = true;
                 html.split(/<article\s/i).slice(1).forEach(function (row) {
                     var link = (row.match(/href="(https?:\/\/[^\/"]+\/\d+[^"]*\.html)"/) || [])[1];
                     if (!link || found.some(function (f) { return f.link === link; })) return;
@@ -107,6 +108,8 @@
             }, function () { if (--left === 0) next(); });
         });
         function next() {
+            // сайт зовсім не відповів (браузер на комп'ютері блокує такі запити) — це не «немає тайтлу»
+            if (!reached) return done(null, 'blocked');
             if (!found.length) return done(null);
             found.sort(function (a, b) { return b.sc - a.sc; });
             fetchText(found[0].link, function (page) {
@@ -238,8 +241,8 @@
                     var self = this, args = arguments;
                     if (/\/lite\/ey\?/.test(String(url || ''))) {
                         var serial = qget(url, 'serial') === '1';
-                        eyFind(url, function (iframe) {
-                            if (!iframe) return comp.parse(emptyHtml('На Eneyida цього тайтлу не знайдено'));
+                        eyFind(url, function (iframe, why) {
+                            if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'Eneyida працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері її блокує' : 'На Eneyida цього тайтлу не знайдено'));
                             if (serial) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
                             var t = qget(url, 'title') || 'Дивитись';
                             comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: t, voice_name: 'Eneyida' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
