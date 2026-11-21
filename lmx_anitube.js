@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.13';
+    var VERSION = '5.14';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -118,6 +118,43 @@
                 page.replace(/<iframe[^>]+src="(https?:\/\/(?:hdvbua\.[a-z]+|ashdi\.vip|tortuga\.[a-z]+)\/[^"]+)"/gi, function (m, u) { if (!/[?&]tr=1\b/.test(u)) frames.push(u); return m; });
                 done(frames.filter(function (u) { return /hdvbua\.[a-z]+\/(?:embed|embd)\//.test(u); })[0] || frames[0] || null);
             }, function () { done(null); });
+        }
+    }
+
+    // ── UAKino (uakino.cx): сервер Oracle сайт не відкриває — шукає й розбирає сам пристрій; плеєр той самий HDVB UA, що й в Eneyida ──
+    function ukFind(url, done) {
+        var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0, serial = qget(url, 'serial') === '1';
+        var names = [nrm(title), nrm(orig)].filter(Boolean), qs = [title, orig].filter(function (q, i, a) { return q && /[0-9A-Za-zА-Яа-яІіЇїЄєҐґ]{2}/.test(q) && a.indexOf(q) === i; });
+        var found = [], left = qs.length, reached = false;
+        if (!left) return done(null);
+        qs.forEach(function (q) {
+            fetchText('https://uakino.cx/index.php?do=search&subaction=search&search_start=0&full_search=0&story=' + encodeURIComponent(q), function (html) {
+                reached = true;
+                html.split(/<div class="item expand-link grid-items__item/).slice(1).forEach(function (row) {
+                    var m = row.match(/<a class="item__title[^"]*" href="(https?:\/\/[^"]+\.html)">([^<]+)<\/a>/);
+                    if (!m || found.some(function (f) { return f.link === m[1]; })) return;
+                    var lab = (row.match(/class="item__label">([^<]*)</) || [])[1] || '';
+                    if (/сезон|серія/i.test(lab) !== serial && lab) return;
+                    var sc = score(m[2].replace(/&#0?39;/g, "'"), names);
+                    if (sc >= 0.6) found.push({ link: m[1], sc: sc });
+                });
+                if (--left === 0) next();
+            }, function () { if (--left === 0) next(); });
+        });
+        function next() {
+            if (!reached) return done(null, 'blocked');
+            if (!found.length) return done(null);
+            found.sort(function (a, b) { return b.sc - a.sc; });
+            var list = found.slice(0, 3), i = 0;
+            (function tryNext() {
+                if (i >= list.length) return done(null);
+                fetchText(list[i++].link, function (page) {
+                    var y = parseInt((page.match(/Рік виходу:<\/span>[\s\S]{0,120}?(\d{4})/) || [])[1] || '0', 10);
+                    if (year && y && Math.abs(y - year) > 1) return tryNext();
+                    var fr = (page.match(/<iframe[^>]+src="(https?:\/\/hdvbua\.[a-z]+\/(?:embed|embd|vid)\/[^"]+)"/i) || [])[1];
+                    if (fr && !/[?&]tr=1\b/.test(fr)) done(fr); else tryNext();
+                }, tryNext);
+            })();
         }
     }
 
@@ -344,6 +381,16 @@
                             if (serial) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
                             var t = qget(url, 'title') || 'Дивитись';
                             comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=Eneyida', title: t, voice_name: 'Eneyida' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
+                        });
+                        return;
+                    }
+                    if (/\/lite\/uakino\?/.test(String(url || '')) && !/[?&]href=/.test(String(url))) {
+                        var serialU = qget(url, 'serial') === '1';
+                        ukFind(String(url), function (iframe, why) {
+                            if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'UAKino працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері його блокує' : 'На UAKino цього тайтлу не знайдено'));
+                            if (serialU) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
+                            var t = qget(url, 'title') || 'Дивитись';
+                            comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=UAKino', title: t, voice_name: 'UAKino' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
                         });
                         return;
                     }
