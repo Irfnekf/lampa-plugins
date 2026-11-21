@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.58';
+    var VERSION = '3.59';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1324,7 +1324,8 @@
         }
         var ref = findRef(act), want = [], inst = instFor(act), SG = inst ? readSets(inst) : null;
         if (SG) { var si = selItem(SG.season), vi = selItem(SG.voice); if (si && si.title) season = seTitle(si.title); if (vi && vi.title) voice = vi.title; }
-        want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
+        // LMX UA: окремої «Сортувати» немає — вибір джерела вже є в «Джерело» (інакше кнопка дублювала б його або підхоплювала список іншого плагіна)
+        if (!isUa()) want.push(group(act, 'sort', 'Сортувати', 'Сортувати', function () { var f = findSort(act); if (f) press(f); }));
         var srcIt = SG && curSrc(act, SG.sort), srcLbl = (srcIt && srcIt.title) ? String(srcIt.title).trim() : '';
         if (ref && !singleSrc()) want.push(group(act, 'src', 'Джерело', srcLbl || (ref.textContent || '').replace(/^\s*(джерело|source)\s*/i, '').trim() || 'Джерело', function () { if (!toggleDrop(act, 'src')) press(ref); }));
         // є дані фільтра — працюємо напряму з ними (кнопки лише там, де такий вибір справді є); немає — старий запасний шлях
