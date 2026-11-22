@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.77';
+    var VERSION = '3.78';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1250,7 +1250,7 @@
                 else if (okFocus(act) && (nm === 'content' || (window.__lmxKeyT || 0) > rt0)) { if (++okTicks >= 2) clearInterval(act.__lmxRC); return; }   // користувач уже сам пересунув фокус (напр. на «Озвучка») — не повертаємо його на джерело
                 hideJunk(act);
                 okTicks = 0;
-                ctlContent();
+                if (!ctlContent()) return;   // пульт зараз в іншому місці (пошук, меню) — не чіпаємо
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
                 try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
                 if (window.Navigator && Navigator.focus) Navigator.focus(listOff(act) ? act.querySelector('.lmx-onl-item') || tg : tg);
@@ -2361,7 +2361,28 @@
         try {
             var R = Lampa.Scroll;
             if (!R || R.__lmxScroll) return;
-            function Wrapped(params) { var inst = new R(params); scrollList.unshift(inst); if (scrollList.length > 8) scrollList.pop(); return inst; }
+            function Wrapped(params) {
+                var inst = new R(params); scrollList.unshift(inst); if (scrollList.length > 8) scrollList.pop();
+                // Картки в ряду бувають різної висоти (назва в 1 чи 2 рядки), а Lampa центрує список по кожній картці окремо — тож при русі
+                // вліво/вправо в межах ряду весь ряд «гуляв» на кілька пікселів. Той самий ряд і картку повністю видно — прокрутку не чіпаємо
+                if (!(params && params.horizontal) && typeof inst.update === 'function') {
+                    var upd = inst.update, lastRow = null;
+                    inst.update = function (el) {
+                        try {
+                            var n = el && (el.jquery ? el[0] : el);
+                            if (n && n.classList && n.classList.contains('lmx-onl-item')) {
+                                var r = n.getBoundingClientRect(), box = inst.render && inst.render()[0], b = box && box.getBoundingClientRect();
+                                var same = lastRow && lastRow !== n && document.body.contains(lastRow) && Math.abs(lastRow.getBoundingClientRect().top - r.top) < 8;
+                                var shown = b && r.height && r.top >= b.top - 1 && r.bottom <= b.bottom + 1;
+                                lastRow = n;
+                                if (same && shown) return;
+                            }
+                        } catch (e) {}
+                        return upd.apply(this, arguments);
+                    };
+                }
+                return inst;
+            }
             for (var k in R) { try { Wrapped[k] = R[k]; } catch (e) {} }
             Wrapped.prototype = R.prototype;
             Wrapped.__lmxScroll = 1;
@@ -2369,6 +2390,8 @@
         } catch (e) {}
     }
     function scrollFor(node) {
+        // найближча прокрутка навколо елемента — інакше могла рушити зовнішня, і разом з карткою їхав увесь ряд/екран
+        try { var own = $(node).closest('.scroll')[0]; for (var j = 0; j < scrollList.length; j++) { var rr = scrollList[j].render(); if (rr && rr[0] === own) return scrollList[j]; } } catch (e) {}
         for (var i = 0; i < scrollList.length; i++) {
             try { var r = scrollList[i].render(); if (r && r.length && $.contains(r[0], node)) return scrollList[i]; } catch (e) {}
         }
@@ -2394,7 +2417,7 @@
     }
     function keepFocus() {
         var act = document.querySelector('.activity--active');
-        if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.classList.contains('lmx-onl-rl') || selOpen()) return;
+        if (!act || !act.querySelector('.explorer.lmx-onl') || act.__lmxProbing || act.classList.contains('lmx-onl-rl') || selOpen() || !ctlFree()) return;
         hideJunk(act);
         var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
         try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
@@ -2615,6 +2638,8 @@
     // ---- Власний випадний ряд вибору (джерело / сезон / озвучка): рядок кнопок під панеллю, без рідних меню Lampa ----
     // Колекцію фокусованих елементів перебираємо самі (Controller.collectionSet) і явно ставимо фокус — так керування не губиться
     function syncNav(act, el) {
+        // пульт не на екрані «Онлайн» (пошук, меню, налаштування): колекцію навігатора не перебираємо — інакше стрілки там перестають працювати
+        if (!ctlFree()) return;
         safe(function () {
             var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
             try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
@@ -3225,7 +3250,7 @@
                 if (++bad < 2) return;
                 bad = 0;
                 hideJunk(act);
-                ctlContent();
+                if (!ctlContent()) return;
                 var sc = act.querySelector('.explorer__files-body .scroll'), fl = act.querySelector('.explorer__files');
                 try { Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false); } catch (e) {}
                 if (window.Navigator && Navigator.focus) Navigator.focus(tg);
