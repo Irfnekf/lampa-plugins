@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.34';
+    var VERSION = '5.35';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -3530,12 +3530,124 @@
         }, 3000);
     }
 
+    // ── Пропуск заставки й титрів: мітки часу з відкритої бази TheIntroDB (за TMDB ID; для серіалів — ще сезон і серія) передаємо рідному
+    //    модулю «Сегменти» плеєра Lampa — він сам малює їх на шкалі й показує кнопку «Пропустити» ──
+    var segCache = {}, segCur = null;
+    function segListener() {
+        try {
+            var L = Lampa.Player.listener._listeners, st = L && L.start;
+            if (!st) return null;
+            for (var i = 0; i < st.length; i++) if (/data\.segments\)\s*set/.test(String(st[i]))) return st[i];
+        } catch (e) {}
+        return null;
+    }
+    function segIds(d) {
+        var c = null;
+        try { var a = Lampa.Activity.active(); c = a && (a.movie || a.card); } catch (e) {}
+        if (!c || !c.id) return null;
+        if (c.source && !/^(tmdb|cub)$/.test(String(c.source))) return null;
+        var tv = !!(c.name || c.original_name || c.number_of_seasons);
+        if (!tv) return { id: c.id, tv: false, k: 'm' + c.id };                                   // фільм: заставка студій, титри (і сцена після титрів лишається)
+        var s = parseInt(d && d.season, 10), e = parseInt(d && d.episode, 10);
+        if (!(s >= 0) || !(e > 0)) return null;
+        return { id: c.id, tv: true, s: s, e: e, k: c.id + ':' + s + ':' + e };
+    }
+    function segBuild(j, dur, tv) {
+        var out = { skip: [] };
+        function add(list, isCredits) {
+            (list || []).forEach(function (x) {
+                var a = x.start_ms == null ? 0 : x.start_ms / 1000, b = x.end_ms == null ? (dur > 0 ? dur : a + 600) : x.end_ms / 1000;
+                if (b - a < 8 || (isCredits && dur > 0 && a > dur - 3)) return;
+                // фільм: титри пропускаємо, лише якщо після них ще щось є (сцена після титрів)
+                if (isCredits && !tv && (x.end_ms == null || (dur > 0 && b > dur - 20))) return;
+                out.skip.push({ start: Math.max(0, a), end: b });
+            });
+        }
+        add(j.recap); add(j.intro); add(j.credits, true);
+        return out.skip.length ? out : null;
+    }
+    // Титри наприкінці Lampa називає «Наступна серія» і за натисканням вмикає наступну. Якщо наступної немає (фільм, остання серія),
+    // кнопка зветься «Пропустити» й перемотує на кінець титрів — напр., до сцени після титрів
+    function segNoNext() { try { return !(Lampa.PlayerPlaylist && Lampa.PlayerPlaylist.canNext && Lampa.PlayerPlaylist.canNext()); } catch (e) { return false; } }
+    function segPatch() {
+        try {
+            var T = Lampa.Lang, P = Lampa.PlayerPlaylist;
+            if (T && typeof T.translate === 'function' && !T.__lmxSeg) {
+                T.__lmxSeg = 1;
+                var tr = T.translate;
+                T.translate = function (k) {
+                    if ((k === 'player_segments_next' || k === 'player_segments_next_in') && segCur && segNoNext()) arguments[0] = k === 'player_segments_next' ? 'player_segments_skip_now' : 'player_segments_skip_in';
+                    return tr.apply(this, arguments);
+                };
+            }
+            if (P && typeof P.next === 'function' && !P.__lmxSeg) {
+                P.__lmxSeg = 1;
+                var nx = P.next;
+                P.next = function () {
+                    if (segCur && segCur.segments && segNoNext()) {
+                        var v = Lampa.PlayerVideo.video(), t = v ? v.currentTime : 0, hit = null;
+                        (segCur.segments.skip || []).forEach(function (g) { if (t >= g.start - 6 && t <= g.end) hit = g; });
+                        if (hit) { Lampa.PlayerVideo.to(hit.end); return; }
+                    }
+                    return nx.apply(this, arguments);
+                };
+            }
+        } catch (e) {}
+    }
+    function segLoad(ids, cb) {
+        if (segCache[ids.k] !== undefined) return cb(segCache[ids.k]);
+        try {
+            var n = new Lampa.Reguest(); n.timeout(6000);
+            n.silent('https://api.theintrodb.org/v3/media?tmdb_id=' + ids.id + (ids.tv ? '&season=' + ids.s + '&episode=' + ids.e : ''), function (j) {
+                try { if (typeof j === 'string') j = JSON.parse(j); } catch (e) { j = null; }
+                if (j && j.type && j.type !== (ids.tv ? 'tv' : 'movie')) j = null;   // номери фільмів і серіалів у TMDB перетинаються
+                if (Object.keys(segCache).length > 200) segCache = {};
+                segCache[ids.k] = j && (j.intro || j.recap || j.credits) ? j : null;
+                cb(segCache[ids.k]);
+            }, function () { segCache[ids.k] = null; cb(null); });
+        } catch (e) { cb(null); }
+    }
+    function segApply(d) {
+        if (!d || d.segments) return;                    // джерело вже дало свої сегменти — не чіпаємо
+        var ids = segIds(d);
+        if (!ids) return;
+        if (segCur && segCur.__lmxSegK === ids.k && segCur.__lmxSegU === d.url) { d.segments = segCur.segments; return; }   // те саме відео (Lampa віддала копію даних)
+        segCur = d; d.__lmxSegK = ids.k; d.__lmxSegU = d.url;
+        segLoad(ids, function (j) {
+            if (!j || segCur !== d) return;
+            var v = null; try { v = Lampa.PlayerVideo.video(); } catch (e) {}
+            var seg = segBuild(j, v && isFinite(v.duration) ? v.duration : 0, ids.tv);
+            if (!seg) return;
+            d.segments = seg;
+            var f = segListener();
+            if (f) try { f({ segments: seg }); } catch (e) {}
+        });
+    }
+    function segWatch() {
+        if (window.__lmxSeg) return;
+        window.__lmxSeg = 1;
+        // за замовчуванням Lampa пропускає сегменти мовчки; для заставок і титрів зручніше кнопка (поки користувач сам не обрав інакше)
+        try { if (localStorage.getItem('player_segments_skip') === null) Lampa.Storage.set('player_segments_skip', 'user'); } catch (e) {}
+        segPatch();
+        try {
+            Lampa.Player.listener.follow('start', function (d) { safe(function () { segApply(d); }); });
+            Lampa.Player.listener.follow('destroy', function () { segCur = null; });
+            // наступна серія з плейлиста — нові мітки
+            var lastPd = null;
+            Lampa.PlayerVideo.listener.follow('timeupdate', function () {
+                var pd = null; try { pd = Lampa.Player.playdata && Lampa.Player.playdata(); } catch (e) {}
+                if (pd && pd !== lastPd) { lastPd = pd; if (pd !== segCur) safe(function () { segApply(pd); }); }
+            });
+        } catch (e) {}
+    }
+
     function start() {
         if (window.__lmxAnitubeOn4) return;
         window.__lmxAnitubeOn4 = true;
         safe(function () { lmxatEmbed(host); });
         safe(hookCreate);
         safe(playerWatch);
+        safe(segWatch);
         Lampa.Listener.follow('full', function (e) { if (e.type === 'complite') safe(function () { addButton(e); }); });
         safe(settings);
         setTimeout(function () { safe(function () { oraCheck(true); }); }, 4000);
