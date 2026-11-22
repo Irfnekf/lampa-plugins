@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.17';
+    var VERSION = '5.18';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -240,7 +240,7 @@
     }
     function ptHtml(url, done) {
         var ts = tsHost();
-        if (!ts) return done(emptyHtml('PidTor дивиться торренти через TorrServer — вкажіть його адресу в Налаштування → TorrServer'));
+        if (!ts) { try { Lampa.Noty.show('PidTor: вкажіть адресу TorrServer у Налаштування → TorrServer'); } catch (e) {} return done(emptyHtml('PidTor дивиться торренти через TorrServer — вкажіть його адресу в Налаштування → TorrServer')); }
         var serial = qget(url, 'serial') === '1', sP = parseInt(qget(url, 's'), 10) || 0, tP = parseInt(qget(url, 't'), 10) || 0;
         var base = url.replace(/[?&](s|t)=[^&]*/g, '');
         function item(cls, json, attrs, inner) { return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + esc(JSON.stringify(json)) + '">' + inner + '</div>'; }
@@ -496,9 +496,12 @@
                 var realReq = comp.request;
                 if (typeof realReq === 'function') comp.request = function (url) {
                     var self = this, args = arguments;
+                    // запит, що приходить із запізненням (торенти, пошук на сайті), не має потрапити в список іншого джерела, обраного тим часом
+                    var seq = comp.__lmxSeq = (comp.__lmxSeq || 0) + 1;
+                    var live = function () { return comp.__lmxSeq === seq; };
                     if (/\/lite\/ey\?/.test(String(url || ''))) {
                         var serial = qget(url, 'serial') === '1';
-                        eyFind(url, function (iframe, why) {
+                        eyFind(url, function (iframe, why) { if (!live()) return;
                             if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'Eneyida працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері її блокує' : 'На Eneyida цього тайтлу не знайдено'));
                             if (serial) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
                             var t = qget(url, 'title') || 'Дивитись';
@@ -513,17 +516,19 @@
                     };
                     if (/\/lite\/uakino\?/.test(String(url || '')) && !/[?&]href=/.test(String(url))) {
                         ukFind(String(url), function (iframe, why) {
+                            if (!live()) return;
                             if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'UAKino працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері його блокує' : 'На UAKino цього тайтлу не знайдено'));
                             playFrame(iframe, 'UAKino');
                         });
                         return;
                     }
                     if (/\/lite\/pidtor\?/.test(String(url || ''))) {
-                        ptHtml(String(url), function (html) { comp.parse(html); });
+                        ptHtml(String(url), function (html) { if (live()) comp.parse(html); });
                         return;
                     }
                     if (/\/lite\/kinoukr\?/.test(String(url || ''))) {
                         kuFind(String(url), function (iframe) {
+                            if (!live()) return;
                             if (!iframe) return comp.parse(emptyHtml('У KinoUkr цього тайтлу немає'));
                             playFrame(iframe, 'KinoUkr');
                         });
