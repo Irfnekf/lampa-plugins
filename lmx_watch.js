@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.78';
+    var VERSION = '3.79';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1191,8 +1191,10 @@
             if (list.length > 1 && dedupeEps(list).length < list.length) {
                 // після прибирання дублів Lampa лишає список прокрученим до видаленої копії — повертаємо нагору й фокус на головну кнопку
                 var f0 = act.querySelector('.focus');
-                resetScroll(act);
-                if (!f0 || !document.body.contains(f0) || f0.classList.contains('lmx-onl-item')) {
+                // список скидаємо нагору лише якщо користувач ще не ходить по картках (інакше ряд «стрибав» з-під фокуса)
+                var onCard = f0 && document.body.contains(f0) && f0.classList.contains('lmx-onl-item') && (window.__lmxKeyT || 0) > Date.now() - 8000;
+                if (!onCard) resetScroll(act);
+                if (!onCard && (!f0 || !document.body.contains(f0) || f0.classList.contains('lmx-onl-item'))) {
                     var tg0 = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
                     if (tg0 && window.Navigator && Navigator.focus && Date.now() - (window.__lmxKeyT || 0) > 1500 && !(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000) && ctlContent()) Navigator.focus(tg0);
                 }
@@ -3237,6 +3239,7 @@
                 if ((window.__lmxKeyT || 0) > Date.now() - 900 || (window.__lmxTouchT || 0) > Date.now() - 60000) { bad = 0; return; }
                 var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item');
                 if (!tg) { bad = 0; return; }
+                if (!ctlFree()) { bad = 0; return; }   // пульт у пошуку/меню — список не чіпаємо
                 var cn = Lampa.Controller.enabled(), nm = cn && cn.name;
                 if (listOff(act)) {
                     resetScroll(act);
