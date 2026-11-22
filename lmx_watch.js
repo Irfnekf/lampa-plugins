@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.64';
+    var VERSION = '3.65';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1577,7 +1577,10 @@
         if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
         if (PAYWALL.test(b)) return { s: 'skip', acc: 1 };
         if (NOSEASON.test(b) && !/videos__item|"method"/i.test(b)) return { s: 'empty', c: 0 };
-        var c = (b.match(/videos__item/g) || []).length || (b.match(/"method"\s*:\s*"(play|call|link)"/g) || []).length;
+        // лише «схожі» назви (пошук не знайшов точного збігу) — це не «є фільм»: не підсвічуємо зеленим і не обираємо автоматично
+        var simN = (b.match(/"similar"\s*:\s*true/g) || []).length, allN = (b.match(/data-json=/g) || []).length;
+        if (simN && simN >= allN) return { s: 'empty', c: 0, sim: 1 };
+        var c = (b.match(/class="videos__item /g) || []).length || (b.match(/videos__item/g) || []).length || (b.match(/"method"\s*:\s*"(play|call|link)"/g) || []).length;
         var tor = /torrent-item|"magnet"|magnet:|"seeders?"|"seeds?"/i.test(b);
         if (!c && tor) c = (b.match(/torrent-item|magnet:/gi) || []).length || 1;
         if (c) {
@@ -1613,6 +1616,7 @@
                     if (m0) {
                         try {
                             var su = JSON.parse(m0[1].replace(/&quot;/g, '"')).url;
+                            if (su && job.resolve) { deepT = 1; job.resolve(su, function (a2) { deepT = 2; end(b0 + '\n' + (typeof a2 === 'string' ? a2 : '')); }); return; }
                             if (su) { deepT = 1; var fu = job.fix ? job.fix(su) : su; try { net.timeout(it.to || job.timeout); } catch (e) {} net['native'](fu, function (a2) { deepT = 2; end(b0 + '\n' + (typeof a2 === 'string' ? a2 : '')); }, function () { deepT = 2; end(b0); }, false, { dataType: 'text' }); return; }
                         } catch (e) {}
                     }
@@ -1629,7 +1633,9 @@
             try { net.timeout(it.to || job.timeout); } catch (e) {}
             var prm = { dataType: 'text' }; if (job.headers) prm.headers = job.headers;
             window.__lmxPB = true;
-            try { net['native'](urlFor(it.source), end, function () { end(''); }, false, prm); } catch (e) { end(''); }
+            // LMX UA: перевіряє сам плагін — так само, як відкриє людина (пошук на сайтах із пристрою, заглушки розкриваються); '' — тайтлу немає
+            if (job.resolve) { try { job.resolve(urlFor(it.source), function (h) { end(h === null ? '' : (h || '<div class="videos__none"></div>')); }); } catch (e) { end(''); } }
+            else try { net['native'](urlFor(it.source), end, function () { end(''); }, false, prm); } catch (e) { end(''); }
             window.__lmxPB = false;
         }
         if (!job.items.length) return job.onEnd();
@@ -3349,7 +3355,7 @@
                     items.sort(function (a, b) { return pri(b) - pri(a); });
                     if (longSeries(card)) items = items.slice(0, 5);   // довгий серіал: відповіді джерел важкі — питаємо лише кількох найімовірніших
                     gs.total = items.length + cached; gs.bgDone = cached;
-                    gs.job = { cid: cid, url: pu.u, urlFor: pu.ua ? pu.ua.urlFor : null, deep: !!pu.ua, fix: pu.ua ? pu.ua.fix : null, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: 4500, onEach: function (it, r) {
+                    gs.job = { cid: cid, url: pu.u, urlFor: pu.ua ? pu.ua.urlFor : null, deep: !!pu.ua, fix: pu.ua ? pu.ua.fix : null, resolve: pu.ua && pu.ua.resolve ? pu.ua.resolve : null, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: pu.ua && pu.ua.resolve ? 9000 : 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
                         if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget() && (!uaM || !uaOn() || balMode() === 'quality' || r.uv > 0)) { gs.early = true; gs.bg = 'done'; }

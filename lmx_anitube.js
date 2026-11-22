@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.23';
+    var VERSION = '5.24';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -295,6 +295,39 @@
             var f = files[0], nm = String(f.path).split('/').pop();
             ok({ method: 'play', url: ts + '/stream/' + encodeURIComponent(nm) + '?link=' + h + '&index=' + f.id + '&play' });
         });
+    }
+
+    // ── Перевірка джерела для LMX Watch: те саме, що побачить людина (пошук на сайті з пристрою, заглушки UAFlix/Eneyida розкриваються),
+    //    а не «сервер щось відповів». Повертає html відповіді, '' — немає тайтлу, null — не перевіряємо (торенти)
+    function movieItemHtml(url, iframe, label) {
+        var t = qget(url, 'title') || 'Дивитись';
+        return '<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=' + encodeURIComponent(label), title: t, voice_name: label })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>';
+    }
+    function resolveUrl(url, done, depth) {
+        url = String(url || ''); depth = depth || 0;
+        if (depth > 3) return done('');
+        function frame(label) { return function (iframe) {
+            if (!iframe) return done('');
+            if (qget(url, 'serial') === '1') return resolveUrl(host() + '/lite/pl?u=' + encodeURIComponent(iframe), done, depth + 1);
+            done(movieItemHtml(url, iframe, label));
+        }; }
+        if (/\/lite\/ey\?/.test(url)) return eyFind(url, frame('Eneyida'));
+        if (/\/lite\/uakino\?/.test(url) && !/[?&]href=/.test(url)) return ukFind(url, frame('UAKino'));
+        if (/\/lite\/kinoukr\?/.test(url)) return kuFind(url, frame('KinoUkr'));
+        if (/\/lite\/pidtor\?/.test(url)) return done(null);
+        if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h) { done(h || ''); });
+        if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
+        var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
+        net['native'](account(url), function (t) {
+            t = typeof t === 'string' ? t : (t ? JSON.stringify(t) : '');
+            // заглушка «відкрий на пристрої» (UAFlix, Eneyida): одна картка з посиланням на /lite/ufd або /lite/ey — розкриваємо її
+            if ((t.match(/class="videos__item /g) || []).length === 1) {
+                var m = t.match(/data-json="([^"]+)"/) || t.match(/data-json='([^']+)'/), j = null;
+                try { j = m && JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&')); } catch (e) {}
+                if (j && j.url && /\/lite\/(ufd|ey)\?/.test(j.url)) return resolveUrl(j.url, done, depth + 1);
+            }
+            done(t);
+        }, function () { done(''); }, false, { dataType: 'text' });
     }
 
     // Українські озвучки в змішаних джерелах (Phantom, Spectre, Aladin…) позначаємо 🇺🇦 — і в списку «Озвучка», і на картках фільму.
@@ -1142,7 +1175,7 @@
     this.startSource = function (json) {
       var comp = this;
       // міст для LMX Watch: повна адреса будь-якого джерела цього тайтла (свій хост і токен), щоб фоново порівняти джерела, як у lampaua
-      window.__lmxUaBridge = { t: Date.now(), urlFor: function (k) { var x = sources[k]; return x && x.url ? account(comp.requestParams(x.url)) : ''; }, fix: function (u) { return account(u); } };
+      window.__lmxUaBridge = { t: Date.now(), urlFor: function (k) { var x = sources[k]; return x && x.url ? account(comp.requestParams(x.url)) : ''; }, fix: function (u) { return account(u); }, resolve: function (u, cb) { resolveUrl(u, cb); } };
       return new Promise(function (resolve, reject) {
         json.forEach(function (j) {
           var name = balanserName(j);
