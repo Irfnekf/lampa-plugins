@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.24';
+    var VERSION = '5.25';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -318,7 +318,8 @@
         if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h) { done(h || ''); });
         if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
         var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
-        net['native'](account(url), function (t) {
+        var fx = window.__lmxUaBridge && window.__lmxUaBridge.fix;
+        net['native'](fx ? fx(url) : url, function (t) {
             t = typeof t === 'string' ? t : (t ? JSON.stringify(t) : '');
             // заглушка «відкрий на пристрої» (UAFlix, Eneyida): одна картка з посиланням на /lite/ufd або /lite/ey — розкриваємо її
             if ((t.match(/class="videos__item /g) || []).length === 1) {
@@ -1336,7 +1337,22 @@
                 if (Array.isArray(json) && json.length && !json.some(function (j) { return j && j.balanser === 'pidtor'; }))
                   json.push({ name: 'PidTor', url: host() + '/lite/pidtor', balanser: 'pidtor', show: true });
               } catch (e) {}
-              _this4.startSource(json).then(resolve)['catch'](reject);
+              // HDVB та інші джерела з сервера Oracle шукають за ID КіноПошуку, а картка TMDB його не має — питаємо сам сервер (Lampac /externalids), до 3 с
+              var go = function () { _this4.startSource(json).then(resolve)['catch'](reject); };
+              var phx = Array.isArray(json) && json.filter(function (j) { return j && /\/lite\/phantom\b/.test(String(j.url || '')); })[0];
+              if (phx && !object.movie.kinopoisk_id) {
+                var once = false, fin2 = function () { if (!once) { once = true; go(); } };
+                setTimeout(fin2, 3000);
+                try {
+                  var xh = String(phx.url).replace(/\/lite\/phantom.*$/, ''), tk = (String(phx.url).match(/[?&]token=([^&#]+)/) || [])[1] || '';
+                  var xq = 'id=' + encodeURIComponent(object.movie.id) + '&serial=' + (object.movie.name ? 1 : 0) + (object.movie.imdb_id ? '&imdb_id=' + encodeURIComponent(object.movie.imdb_id) : '') + (tk ? '&token=' + tk : '');
+                  var xn = new Lampa.Reguest(); xn.timeout(2800);
+                  xn.silent(xh + '/externalids?' + xq, function (j) {
+                    try { if (typeof j === 'string') j = JSON.parse(j); if (j && j.kinopoisk_id) object.movie.kinopoisk_id = j.kinopoisk_id; if (j && j.imdb_id && !object.movie.imdb_id) object.movie.imdb_id = j.imdb_id; } catch (e) {}
+                    fin2();
+                  }, fin2);
+                } catch (e) { fin2(); }
+              } else go();
             }
           },
           reject,
