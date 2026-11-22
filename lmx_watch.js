@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.70';
+    var VERSION = '3.71';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2297,6 +2297,13 @@
                 Lampa.Player.listener.follow('start', function (data) {
                     safe(warmNext);
                     safe(playBegin);
+                    // запам'ятовуємо джерело, на якому реально почали дивитись (для «продовження перегляду»); торенти — ні
+                    safe(function () {
+                        var la = document.querySelector('.activity--active'), lc = Lampa.Activity.active(), lm = lc && (lc.movie || lc.card);
+                        if (!isOn() || !la || !lm || !lm.id || !la.querySelector('.explorer.lmx-onl')) return;
+                        var li = instFor(la), lS = li && readSets(li), cs = lS && lS.sort && curSrc(la, lS.sort);
+                        if (cs && !isTorSrc(cs) && srcName(cs.title)) lastSrcSet(cidKey(lm), srcName(cs.title));
+                    });
                     // озвучка, з якою ви справді дивитесь серіал, запам'ятовується для нього (навіть якщо ви її не вибирали вручну): наступного разу відкриється вона
                     try {
                         var pa = document.querySelector('.activity--active'), pc = Lampa.Activity.active(), pm = pc && (pc.movie || pc.card);
@@ -3208,6 +3215,17 @@
     function memDays(card) {
         try { var tv = card && (card.name || card.number_of_seasons || (card.first_air_date && !card.release_date)); return tv && !/^(ended|canceled|cancelled)$/i.test(String(card.status || '')) ? 4 : 30; } catch (e) { return 30; }
     }
+    // Продовження перегляду: на якому джерелі ви востаннє запускали відео цього тайтлу — туди й повертаємось одразу, без нового підбору
+    function lsGet() { var o = Lampa.Storage.get('lmx_online_last', {}); return o && typeof o === 'object' ? o : {}; }
+    function lastSrcGet(cid) { var e = cid && lsGet()[cid]; return e && e.k && Date.now() - (e.t || 0) < 45 * 86400000 ? e : null; }
+    function lastSrcSet(cid, k) {
+        if (!cid || !k) return;
+        var o = lsGet(), ks;
+        o[cid] = { k: k, t: Date.now() };
+        ks = Object.keys(o);
+        if (ks.length > 300) ks.sort(function (a, b) { return (o[a].t || 0) - (o[b].t || 0); }).slice(0, ks.length - 250).forEach(function (x) { delete o[x]; });
+        Lampa.Storage.set('lmx_online_last', o);
+    }
     function watchSources(act, card) {
         if (act.__lmxWatch) return;
         act.__lmxWatch = 1;
@@ -3290,6 +3308,17 @@
             var i, curIt = null;
             for (i = 0; i < sort.length; i++) if (sort[i] && sort[i].selected) { curIt = sort[i]; break; }
             var curKey = curIt ? keyOf(curIt) : '';
+            // продовження перегляду: минулого разу дивились на джерелі X — відкриваємо його й не перебираємо інші (якщо там тайтлу вже немає — звичайний підбір)
+            if (!gs.lp) {
+                gs.lp = 1;
+                var lp = lastSrcGet(cid), li = lp && sort.filter(function (x) { return x && !x.ghost && keyOf(x) === lp.k; })[0];
+                if (li) { gs.cont = lp.k; gs.contT = Date.now(); if (!li.selected) { switchTo(inst, li, 'Продовжуємо перегляд'); return; } }
+            }
+            if (gs.cont) {
+                if (curKey === gs.cont && freshEps(body).length) { gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
+                if (/не дав результат|не дал результат|нічого не знайд|ничего не найд/i.test(body.textContent || '') && curKey === gs.cont || Date.now() - gs.contT > 9000) gs.cont = '';
+                else return;
+            }
             // LMX UA: усі джерела — українська озвучка з нашого сервера, якість у назвах не вказана, тож перебір нічого не покращить, лише затримає
             // показ на кілька секунд. Є серії на відкритому джерелі — одразу показуємо; порожнє джерело перемикає сам екран (і запобіжник нижче)
             if (uaM && curKey && (!window.__lmxUaBridge || !probeOn())) {
