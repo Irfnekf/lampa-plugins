@@ -18,6 +18,10 @@ if [ ! -d /opt/lampac ] || [ ! -f /opt/lampac/version.txt ]; then
   bash /tmp/lampac-install.sh </dev/null
 fi
 CHR=$(command -v chromium || command -v google-chrome-stable || echo /usr/bin/chromium)
+# Filmix Premium: токен пристрою (з filmix.my/consoles) приходить з Cloud Shell, у репозиторії його немає
+FXCONF=""
+if [ -n "${LMX_FILMIX:-}" ]; then FXCONF="  \"Filmix\": { \"enable\": true, \"token\": \"$LMX_FILMIX\", \"pro\": true },
+  \"FilmixTV\": { \"enable\": false }, \"FilmixPartner\": { \"enable\": false },"; else FXCONF="  \"Filmix\": { \"enable\": true }, \"FilmixTV\": { \"enable\": false }, \"FilmixPartner\": { \"enable\": false },"; fi
 cat > /opt/lampac/init.conf <<CONF
 {
   "listen": { "ip": "127.0.0.1", "port": 9118, "localhost": "127.0.0.1", "version": true },
@@ -25,12 +29,12 @@ cat > /opt/lampac/init.conf <<CONF
   "BaseModule": {
     "SkipModules": [ "Catalog", "DLNA", "JacRed", "Sync", "TimeCode", "TorrServer", "Tracks", "Transcoding", "WebLog",
       "CacheMedia", "ForkPlayerXML", "MsxNative", "Potok", "TelegramAuth", "TelegramAuthBot", "QRAuth", "SeriesNotify",
-      "SISI", "OnlineENG", "OnlineGEO", "OnlinePaid" ]
+      "SISI", "OnlineENG", "OnlineGEO" ]
   },
   "chromium": { "enable": true, "executablePath": "$CHR" },
   "accsdb": { "enable": true, "accounts": { "$LMX_SECRET": "2099-12-31T00:00:00" } },
   "Spectre": { "enable": true },
-  "online": { "name": "LMX", "version": true }
+$FXCONF  "online": { "name": "LMX", "version": true }
 }
 CONF
 chown -R lampac:lampac /opt/lampac 2>/dev/null || true

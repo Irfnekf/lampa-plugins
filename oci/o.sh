@@ -36,7 +36,23 @@ for i in $(seq 1 40); do $SSH true 2>/dev/null && break; sleep 10; done
 SECRET=$(cat ~/.lmx_secret 2>/dev/null || (head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n' | tee ~/.lmx_secret))
 curl -sL "https://irfnekf.github.io/lampa-plugins/oci/srv.sh?$(date +%s)" -o ~/srv.sh
 scp -i ~/.ssh/lmx -o StrictHostKeyChecking=no ~/srv.sh ubuntu@$IP:/tmp/srv.sh >/dev/null
-$SSH "sudo LMX_SECRET=$SECRET LMX_IP=$IP bash /tmp/srv.sh" 2>&1 | tail -25
+FX=$(cat ~/.lmx_filmix 2>/dev/null || true)
+$SSH "sudo LMX_SECRET=$SECRET LMX_IP=$IP LMX_FILMIX=$FX bash /tmp/srv.sh" 2>&1 | tail -25
+# bash o.sh fx — новий код Filmix: сервер просить код пристрою, токен зберігаємо тут і застосовуємо; код треба ввести на filmix.my/consoles
+if [ "${1:-}" = "fx" ]; then
+  sleep 15
+  P=$($SSH "curl -s http://127.0.0.1:9118/lite/filmixpro")
+  CODE=$(echo "$P" | sed -n 's/.*"token": "\([^"]*\)".*/\1/p' | head -1)
+  UCODE=$(echo "$P" | sed -n 's/.*Введите код <b>\([^<]*\)<.*/\1/p' | head -1)
+  if [ -n "$CODE" ]; then
+    echo "$CODE" > ~/.lmx_filmix
+    $SSH "sudo LMX_SECRET=$SECRET LMX_IP=$IP LMX_FILMIX=$CODE bash /tmp/srv.sh" 2>&1 | tail -3
+    echo
+    echo "FILMIX_CODE=$UCODE"
+  else
+    echo "FILMIX: no code: $P" | head -c 300
+  fi
+fi
 echo
 echo "LMX_IP=$IP"
 echo "LMX_SECRET=$SECRET"
