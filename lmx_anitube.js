@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.20';
+    var VERSION = '5.21';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -652,22 +652,22 @@
     }
 
     // ───────── кнопка на сторінці (поруч з іншими кнопками «Онлайн») ─────────
-    var ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.8c1.6 2.3 4.4 2.8 6.3 1.6-.1 2.8 1.7 5 4.1 5.6-2 1.6-2.7 4.4-1.4 6.7-2.8-.4-5.2 1.2-5.9 3.8-1.6-2.3-4.5-3-6.9-1.7.5-2.8-1.1-5.3-3.7-6.1 2.2-1.4 3-4.2 1.9-6.6 2.6.6 5-.5 5.6-3.3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/></svg>';
+    // Іконка: екран із кнопкою «грати», під ним — синьо-жовта підставка (українське онлайн)
+    var ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="3.5" width="19" height="13" rx="3" stroke="currentColor" stroke-width="1.9"/><path d="M10.2 7.4v5.2c0 .5.5.8.9.5l4-2.6c.4-.2.4-.8 0-1l-4-2.6c-.4-.3-.9 0-.9.5z" fill="currentColor"/><rect x="6" y="18.6" width="12" height="1.6" rx=".8" fill="#2f7cf6"/><rect x="6" y="20.6" width="12" height="1.6" rx=".8" fill="#ffd21f"/></svg>';
     function addButton(e) {
         var card = e.data && e.data.movie;
         if (!card || !card.id) return;
         var render = e.object && e.object.activity && e.object.activity.render();
         if (!render || !render.length || render.find('.lmxat--button').length) return;
-        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="LMX UA">' + ICON + '<span>LMX UA</span></div>');
+        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Українська озвучка · v' + VERSION + '">' + ICON + '<span>LMX UA</span></div>');
         btn.on('hover:enter', function () { safe(function () { open(card); }); });
-        // кнопка завжди на виду: у видимому ряду кнопок, одразу після «Дивитись» (у прихованому .buttons--container Lampa ховає її в меню «Дивитись»)
-        var row = render.find('.full-start-new__buttons').eq(0), play = row.find('.button--play').eq(0);
-        if (play.length) play.after(btn);
-        else if (row.length) row.prepend(btn);
+        // як інші онлайн-плагіни: кнопка в прихованому .buttons--container, тож Lampa показує її в меню «Дивитись» (поруч з «Онлайн» і «Торренти»)
+        var hid = render.find('.buttons--container').eq(0), tor = (hid.length ? hid : render).find('.view--torrent').last();
+        if (tor.length) tor.after(btn);
+        else if (hid.length) hid.append(btn);
         else {
-            var tor = render.find('.view--torrent').last();
-            if (tor.length) tor.after(btn);
-            else { var box = render.find('.buttons--container, .full-start__buttons').eq(0); if (box.length) box.append(btn); }
+            var row = render.find('.full-start-new__buttons, .full-start__buttons').eq(0), play = row.find('.button--play').eq(0);
+            if (play.length) play.after(btn); else if (row.length) row.append(btn);
         }
     }
 
