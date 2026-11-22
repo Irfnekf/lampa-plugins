@@ -755,6 +755,7 @@
         H.trigger('lmx_uac', true, 'Коментарі', 'Українські коментарі й рецензії (UaKino, UAFlix, UASerials, KinoBaza через lampaua.mooo.com) рядом під трейлерами. Вимкнено — коментарів на сторінці фільму немає взагалі (коментарі CUB завжди сховані). Якщо встановлено окремий плагін «UA Comments», наш ряд не дублюється', null);
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
+        H.trigger('lmx_imdb', true, 'Рейтинг IMDb', 'Поруч із рейтингом TMDB на сторінці фільму й серіалу. Береться з IMDb, оновлюється раз на 3 дні', null);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -4841,6 +4842,63 @@
             'body.lmx-apple .lmx-uac-hd{border-bottom-color:rgba(255,255,255,.1)}';
         (document.head || document.documentElement).appendChild(st);
     }
+    // ===== Рейтинг IMDb на сторінці фільму: заповнюємо рідний значок Lampa «IMDb» (у джерела TMDB він порожній) =====
+    // Дані — з відкритого GraphQL самого IMDb за IMDb-id; запит робить сам пристрій, кеш на 3 дні (поза синхронізацією)
+    var IMDB_CK = 'lmx_cache_imdb';
+    function imdbCache() { try { var c = Lampa.Storage.get(IMDB_CK, '{}'); if (typeof c === 'string') c = JSON.parse(c || '{}'); return c && typeof c === 'object' ? c : {}; } catch (e) { return {}; } }
+    function imdbGet(iid, done) {
+        var c = imdbCache(), hit = c[iid];
+        if (hit && Date.now() - hit[2] < 3 * 86400000) return done(hit[0], hit[1]);
+        var x = new XMLHttpRequest(), fin = false;
+        var end = function (r, v) {
+            if (fin) return; fin = true;
+            if (r) {
+                c = imdbCache(); c[iid] = [r, v || 0, Date.now()];
+                var ks = Object.keys(c); if (ks.length > 400) { ks.sort(function (a, b) { return c[a][2] - c[b][2]; }); ks.slice(0, ks.length - 300).forEach(function (k) { delete c[k]; }); }
+                try { Lampa.Storage.set(IMDB_CK, c); } catch (e) {}
+            }
+            done(r, v);
+        };
+        try {
+            x.open('POST', 'https://api.graphql.imdb.com/', true);
+            x.setRequestHeader('Content-Type', 'application/json');
+            x.timeout = 7000;
+            x.onload = function () {
+                var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
+                var rs = j && j.data && j.data.title && j.data.title.ratingsSummary;
+                end(rs && rs.aggregateRating ? rs.aggregateRating : 0, rs && rs.voteCount);
+            };
+            x.onerror = x.ontimeout = function () { end(0); };
+            x.send(JSON.stringify({ query: 'query{title(id:"' + iid + '"){ratingsSummary{aggregateRating voteCount}}}' }));
+        } catch (e) { end(0); }
+    }
+    function imdbShow(render, r) {
+        if (!render || !r) return;
+        var box = render.querySelector('.rate--imdb');
+        if (!box) {
+            var tm = render.querySelector('.rate--tmdb');
+            if (!tm || !tm.parentNode) return;
+            box = tm.cloneNode(true); box.classList.remove('rate--tmdb'); box.classList.add('rate--imdb');
+            tm.parentNode.insertBefore(box, tm.nextSibling);
+        }
+        var d = box.children;
+        if (d[0]) d[0].textContent = (Math.round(r * 10) / 10).toFixed(1);
+        if (d[1]) d[1].textContent = 'IMDb';
+        box.classList.remove('hide');
+    }
+    function imdbRate(e) {
+        var m = e.data && e.data.movie, act = e.object && e.object.activity, render = act && act.render && act.render();
+        render = render && (render.jquery ? render[0] : render);
+        if (!m || !render) return;
+        var has = render.querySelector('.rate--imdb:not(.hide)');
+        if (has && /\d/.test(has.textContent)) return;   // джерело вже дало рейтинг IMDb
+        var go = function (iid) { if (/^tt\d+$/.test(String(iid || ''))) imdbGet(iid, function (r) { if (r) imdbShow(render, r); }); };
+        if (m.imdb_id) return go(m.imdb_id);
+        var T = window.Lampa && Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
+        if (!T || !T.external_imdb_id || !m.id) return;
+        var isTv = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
+        try { T.external_imdb_id({ type: isTv ? 'tv' : 'movie', id: m.id }, function (iid) { go(iid); }); } catch (x) {}
+    }
     function uacSrcList() { return UAC_SRC.filter(function (x) { return getBool('lmx_uac_' + x[0], true); }).map(function (x) { return x[0]; }); }
     function uacFetch(m, done) {
         var srcs = uacSrcList();
@@ -6964,7 +7022,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.609';
+    var VERSION = '10.610';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7686,6 +7744,7 @@
         fxCss();
         fullScrollWatch();
         Lampa.Listener.follow('full', function (e) { if (e && e.type === 'build' && e.name === 'description') safe(function () { moreBind(e); }); });
+        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite' && getBool('lmx_imdb', true)) safe(function () { imdbRate(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
