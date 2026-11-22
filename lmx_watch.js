@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.74';
+    var VERSION = '3.75';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -35,7 +35,17 @@
             return !!(c && /^player/i.test(c.name || ''));
         } catch (e) { return false; }
     }
-    function ctlContent() { if (plyOn()) return; try { Lampa.Controller.toggle('content'); } catch (e) {} }
+    // Чи можна нашим таймерам забирати керування на екран «Онлайн»: лише коли воно й так на ньому (або «зависле» закрите меню select).
+    // Інакше (пошук, бокове меню, шапка, налаштування, вікна) службові цикли перехоплювали пульт — на екрані пошук, а стрілки «ходять» по
+    // схованому під ним списку серій, і допомагала лише кнопка «Назад»
+    function ctlFree() {
+        try {
+            var c = Lampa.Controller.enabled(), nm = c && c.name;
+            if (!nm || nm === 'content') return true;
+            return nm === 'select' && !selOpen();
+        } catch (e) { return true; }
+    }
+    function ctlContent() { if (plyOn() || !ctlFree()) return false; try { Lampa.Controller.toggle('content'); } catch (e) {} return true; }
     function selOpen() {
         try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return true; } catch (e) {}
         // у різних збірках Lampa «відкрито» позначається по-різному — дивимось на всі ознаки
@@ -194,6 +204,9 @@
         S + '.lmx-onl-g{display:inline-flex;align-items:center;gap:.4em}' +
         S + '.lmx-onl-g__l{font-size:.72em;font-weight:700;letter-spacing:.08em;opacity:.7;text-transform:uppercase}' +
         S + '.lmx-onl-pill{display:inline-flex;align-items:center;justify-content:space-between;margin:0;padding:.5em 1.3em;min-width:8.5em;font-size:.95em}' +
+        // «ОК» у випадаючому списку Lampa зараховує кнопці панелі під ним: анімація натискання, а за мить — анімація фокуса ще раз (кнопка «стрибає»).
+        // Для кнопок панелі натискання грає ту саму анімацію, що й фокус, тож нічого не перезапускається
+        'body.advanced--animation:not(.no--animation) .lmx-onl-bar .selector.focus.animate-trigger-enter,body.advanced--animation:not(.no--animation) .lmx-onl-bar .selector.animate-trigger-enter{animation:.2s ease 0s 1 normal none running animation-button-focus !important}' +
         S + '.lmx-onl-pill__c{font-style:normal;margin-left:.55em;opacity:.8}' +
         S + '.lmx-onl-pill__t{max-width:15em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         'body.lmx-onl-big ' + S.replace('body.lmx-online ', '') + '.explorer__files-body .scroll__body > .lmx-onl-item{flex:0 0 calc(33.333% - .62em) !important;width:calc(33.333% - .62em) !important}' +
@@ -1174,7 +1187,7 @@
                 resetScroll(act);
                 if (!f0 || !document.body.contains(f0) || f0.classList.contains('lmx-onl-item')) {
                     var tg0 = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
-                    if (tg0 && window.Navigator && Navigator.focus && Date.now() - (window.__lmxKeyT || 0) > 1500) { ctlContent(); Navigator.focus(tg0); }
+                    if (tg0 && window.Navigator && Navigator.focus && Date.now() - (window.__lmxKeyT || 0) > 1500 && !(act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000) && ctlContent()) Navigator.focus(tg0);
                 }
             }
             dupN = body.children.length;
@@ -2129,7 +2142,7 @@
                         hideJunk(act);
                         var fk = act.__lmxRlKey; act.__lmxRlKey = '';
                         var byUser = Date.now() - (window.__lmxManual || 0) < 20000, tg = (byUser && fk && act.querySelector('.lmx-onl-g--' + fk + ' .selector')) || act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector') || act.querySelector('.lmx-onl-g--src .selector') || act.querySelector('.lmx-onl-item');
-                        if (tg) { ctlContent(); syncNav(act, tg); }
+                        if (tg && ctlContent()) syncNav(act, tg);
                     });
                 }, 300);
             });
@@ -2983,16 +2996,6 @@
         e.preventDefault(); e.stopImmediatePropagation();
         if (ok) {
             window.__lmxPopSel = Date.now();
-            // Lampa вважає, що «ОК» натиснуто на кнопці панелі під списком, і програє на ній анімацію натискання, а за пів секунди — анімацію фокуса
-            // ще раз (кнопка «стрибає»). Фіксуємо поточну анімацію кнопки на час вибору — візуально нічого не перезапускається
-            safe(function () {
-                var pb = a.querySelector('.lmx-onl-bar .focus');
-                if (!pb || pb.__lmxAnFix) return;
-                var an = window.getComputedStyle(pb).animation;
-                if (!an) return;
-                pb.__lmxAnFix = 1; pb.style.animation = an;
-                setTimeout(function () { try { pb.style.animation = ''; pb.__lmxAnFix = 0; } catch (x) {} }, 900);
-            });
             if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {}
             return true;
         }
@@ -3891,6 +3894,9 @@
                     if (fgFix) return;
                     if (!document.body.contains(act) || Date.now() - fgT0 > 3500 || (window.__lmxKeyT || 0) > tk0 || (window.__lmxTouchT || 0) > fgT0 - 1) { try { act.__lmxFGmo.disconnect(); } catch (e) {} return; }
                     if (selOpen() || act.__lmxOpen) return;
+                    // список сам опустився до останньої переглянутої серії й поставив туди фокус — це навмисно, не повертаємо на кнопку
+                    // (раніше цей сторож і спуск до серії перетягували фокус: картка ↔ «Дивитись» кілька разів за секунду)
+                    if (act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000) return;
                     var f = act.querySelector('.focus');
                     if (!f || !f.classList.contains('lmx-onl-item')) return;
                     var hk = act.__lmxHold && act.__lmxHold.key, tg = (hk && hk !== 'hero' && act.querySelector('.lmx-onl-g--' + hk + ' .selector')) || act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
@@ -3908,7 +3914,7 @@
                     safe(function () {
                         if (!document.body.contains(act) || selOpen() || act.__lmxOpen || (window.__lmxKeyT || 0) > tk0) return;
                         var f = act.querySelector('.focus'), tg = act.querySelector('.lmx-onl-hero .lmx-onl-btn.selector');
-                        if (!tg || autoOwns || (f && !f.classList.contains('lmx-onl-item'))) return;
+                        if (!tg || autoOwns || (act.__lmxAutoT && Date.now() - act.__lmxAutoT < 4000) || (f && !f.classList.contains('lmx-onl-item'))) return;
                         var cn = Lampa.Controller.enabled(); if (cn && cn.name && cn.name !== 'content') return;
                         ctlContent();
                         if (window.Navigator && Navigator.focus) Navigator.focus(tg);
@@ -4106,6 +4112,8 @@
                 Navigator.focus = function (el) {
                     try {
                         var aa = document.querySelector('.activity--active');
+                        // керування зараз не на нашому екрані (пошук, меню…) — службові цикли не мають ставити фокус на його елементи
+                        if (el && el.nodeType === 1 && aa && aa.contains(el) && aa.querySelector('.explorer.lmx-onl') && !ctlFree()) return false;
                         // повторний фокус на тому самому елементі: Lampa знімає й знову ставить клас focus — анімація кнопки «блимає» щоразу.
                         // Якщо навігатор уже стоїть на ньому, нічого не робимо
                         if (el && el.nodeType === 1 && el.classList.contains('focus') && aa && aa.contains(el) && aa.querySelector('.explorer.lmx-onl')) {
