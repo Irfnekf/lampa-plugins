@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.21';
+    var VERSION = '5.22';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1281,6 +1281,9 @@
                 var ph = Array.isArray(json) && json.filter(function (j) { return j && /\/lite\/phantom\b/.test(String(j.url || '')); })[0];
                 if (ph && !json.some(function (j) { return j && j.balanser === 'aladin'; }))
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
+                // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
+                if (ph && !json.some(function (j) { return j && j.balanser === 'hdvb'; }))
+                  json.push({ name: 'HDVB', url: String(ph.url).replace('/lite/phantom', '/lite/hdvb'), balanser: 'hdvb', show: true });
                 if (Array.isArray(json) && json.length && !json.some(function (j) { return j && j.balanser === 'pidtor'; }))
                   json.push({ name: 'PidTor', url: host() + '/lite/pidtor', balanser: 'pidtor', show: true });
               } catch (e) {}
