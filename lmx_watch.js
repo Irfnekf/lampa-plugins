@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.79';
+    var VERSION = '3.80';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -45,7 +45,22 @@
             return nm === 'select' && !selOpen();
         } catch (e) { return true; }
     }
-    function ctlContent() { if (plyOn() || !ctlFree()) return false; try { Lampa.Controller.toggle('content'); } catch (e) {} return true; }
+    // Уже на «content» — не перемикаємо вдруге: кожне toggle('content') змушує джерело поставити фокус на «останню» картку
+    // (і прокрутити до неї список), а ми одразу повертали його назад — ряди смикались, фокус блимав. Колекцію перебирає syncNav
+    function ctlContent() {
+        if (plyOn() || !ctlFree()) return false;
+        try {
+            var c = Lampa.Controller.enabled();
+            if (!(c && c.name === 'content')) Lampa.Controller.toggle('content');
+            else {
+                // лише оновлюємо колекцію фокусу (як робить toggle), без «повернення на останню картку»
+                var a = document.querySelector('.activity--active'), sc = a && a.querySelector('.explorer__files-body .scroll'), fl = a && a.querySelector('.explorer__files');
+                if (a && a.querySelector('.explorer.lmx-onl') && (sc || fl)) Lampa.Controller.collectionSet($(sc || fl), sc && fl ? $(fl) : false);
+                else Lampa.Controller.toggle('content');
+            }
+        } catch (e) {}
+        return true;
+    }
     function selOpen() {
         try { if (window.Lampa && Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return true; } catch (e) {}
         // у різних збірках Lampa «відкрито» позначається по-різному — дивимось на всі ознаки
@@ -1097,6 +1112,9 @@
                 if (!force && ((window.__lmxKeyT || 0) > Date.now() - 400 || (window.__lmxTouchT || 0) > Date.now() - 5000)) return;
                 var c = Lampa.Controller.enabled(), nm = c && c.name;
                 // 'select' без відкритого меню — застарілий стан після вкладених меню фільтра: керування «залипло» на закритому меню
+                // керування вже на екрані й фокус на живому елементі — нічого не перемикаємо: повторне toggle('content') змушувало джерело
+                // поставити фокус на «останню» картку, і він стрибав з кнопки на картку й назад
+                if (nm === 'content' && okFocus(act)) return;
                 if (nm === 'content' || nm === 'select' || !nm) Lampa.Controller.toggle('content');
                 else if (!final) return;
                 setTimeout(function () {
