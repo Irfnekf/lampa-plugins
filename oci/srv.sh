@@ -48,6 +48,12 @@ fi
 cat > /etc/caddy/Caddyfile <<CADDY
 $HOSTN {
   encode gzip
+  # Filmix — лише з особистим ключем (Premium-акаунт власника): без ключа сервер його не віддає
+  @fx {
+    path /lite/filmix*
+    not query fxk=${LMX_FXKEY:-none-set}
+  }
+  respond @fx "filmix: private" 403
   reverse_proxy 127.0.0.1:9118 {
     header_up xscheme https
   }

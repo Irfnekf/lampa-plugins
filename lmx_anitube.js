@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.29';
+    var VERSION = '5.30';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -722,11 +722,14 @@
         });
     }
 
+    function fxKey() { try { return String(Lampa.Storage.get('lmx_fx_key', '') || '').trim().toLowerCase(); } catch (e) { return ''; } }
     function settings() {
         var S = Lampa.SettingsApi;
         if (!S || !S.addComponent) return;
         S.addComponent({ component: 'lmx_anitube', name: 'LMX UA', icon: ICON });
         S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX UA v' + VERSION + ' · Anitube, AnimeON, Mikai, Unimay, Eneyida, UAFlix, BambooUA' } });
+        // особистий ключ Filmix: лише на пристроях, де його ввели, з'являється джерело Filmix (Premium власника на нашому сервері)
+        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_fx_key', type: 'input', values: '', placeholder: '', default: '' }, field: { name: 'Ключ Filmix', description: 'Особистий ключ — тоді в джерелах з’явиться Filmix (до 4K)' } });
     }
 
   // ===== Стандартний екран «Онлайн» (із відкритого Lampac, immisterio/Lampac, AGPL-3.0), під власними назвами шаблонів, щоб не чіпати інші онлайн-плагіни =====
@@ -773,6 +776,7 @@
       if (tm) hostTokens[hm[1]] = tm[1];
       else if (hostTokens[hm[1]]) url = Lampa.Utils.addUrlComponent(url, 'token=' + hostTokens[hm[1]]);
     }
+    if (/\/lite\/filmix/.test(url) && url.indexOf('fxk=') < 0 && fxKey()) url = Lampa.Utils.addUrlComponent(url, 'fxk=' + encodeURIComponent(fxKey()));
     if (url.indexOf('nws_id=') == -1) {
       var nws_id = Lampa.Storage.get('lmxat_nws_id', '');
       if (nws_id) url = Lampa.Utils.addUrlComponent(url, 'nws_id=' + encodeURIComponent(nws_id));
@@ -1334,7 +1338,7 @@
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
                 // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
                 // Filmix (ваш Premium-акаунт на нашому сервері): до 4K, є українські озвучки
-                if (ph && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
+                if (ph && fxKey() && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
                   json.push({ name: 'Filmix', url: String(ph.url).replace('/lite/phantom', '/lite/filmix'), balanser: 'filmix', show: true });
                 if (ph && !json.some(function (j) { return j && j.balanser === 'hdvb'; }))
                   json.push({ name: 'HDVB', url: String(ph.url).replace('/lite/phantom', '/lite/hdvb'), balanser: 'hdvb', show: true });
