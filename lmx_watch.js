@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.69';
+    var VERSION = '3.70';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1162,6 +1162,7 @@
     // Дублі можуть дійти вже після оформлення списку (друга відповідь джерела) — раз на півтори секунди чистимо відкритий екран «Онлайн»
     var dupN = 0;
     setInterval(function () {
+        if (document.hidden || plyOn()) return;
         try {
             var act = document.querySelector('.activity--active'), body = act && act.querySelector('.explorer.lmx-onl .explorer__files-body .scroll__body');
             if (!body || body.children.length === dupN) return;
@@ -4069,10 +4070,10 @@
             safe(upRescue);
             safe(viewGuard);
             safe(trackPlay);
-            setInterval(function () { if (!document.hidden) safe(loadWatchdog); }, 3000);
+            setInterval(function () { if (!document.hidden && !plyOn()) safe(loadWatchdog); }, 3000);
             safe(watchInsert);
-            setInterval(function () { if (!document.hidden) safe(uakAdapt); }, 600);
-            setInterval(function () { if (!document.hidden) safe(torTick); }, 500);
+            setInterval(function () { if (!document.hidden && !plyOn()) safe(uakAdapt); }, 600);
+            setInterval(function () { if (!document.hidden && !plyOn()) safe(torTick); }, 500);   // під час перегляду відео фонові перевірки екрана не крутимо — менше навантаження на ТВ
             // після закриття будь-якого меню (власного чи рідного) повертаємо фокус на екран «Онлайн»
             try { Lampa.Select.listener.follow('hide', function () { var a = document.querySelector('.activity--active'); if (a && a.querySelector('.explorer.lmx-onl')) resync(a, true); }); } catch (e) {}
             applyView(curView());

@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.27';
+    var VERSION = '5.28';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -57,18 +57,32 @@
         } else main = fixUrl(raw);
         return main ? { method: 'play', url: main, quality: Object.keys(quality).length ? quality : undefined } : null;
     }
-    var tcache = {};
-    function fetchText(url, ok, fail) {
-        var hit = tcache[url];
-        if (hit && Date.now() - hit.t < 20 * 60000) return ok(hit.d);
-        var net, done = false;
-        function end(f, a) { if (done) return; done = true; f(a); }
-        try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return fail(); }
-        setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(fail); } }, 13000);
-        try {
-            net['native'](url, function (t) { t = typeof t === 'string' ? t : ''; if (!t) return end(fail); tcache[url] = { t: Date.now(), d: t }; end(ok, t); }, function () { end(fail); }, false, { dataType: 'text' });
-        } catch (e) { end(fail); }
+    // Кеш відповідей сайтів (20 хв): обмежений за розміром, щоб за довгий вечір на ТВ не накопичувались мегабайти сторінок.
+    // Однаковий запит, що вже в дорозі (перевірка LMX Watch і відкриття джерела йдуть паралельно), не дублюємо — чекаємо ту саму відповідь
+    function cacheGet(c, url) { var hit = c[url]; if (hit && Date.now() - hit.t < 20 * 60000) return hit; if (hit) delete c[url]; return null; }
+    function cachePut(c, url, d) {
+        c[url] = { t: Date.now(), d: d };
+        var ks = Object.keys(c);
+        if (ks.length > 40) ks.sort(function (a, b) { return c[a].t - c[b].t; }).slice(0, ks.length - 40).forEach(function (k) { delete c[k]; });
     }
+    function cachedFetch(c, fly, url, good, ok, fail) {
+        var hit = cacheGet(c, url);
+        if (hit) return ok(hit.d);
+        if (fly[url]) return fly[url].push([ok, fail]);
+        var waiters = fly[url] = [[ok, fail]], net, done = false;
+        function end(okk, a) {
+            if (done) return; done = true; delete fly[url];
+            if (okk) cachePut(c, url, a);
+            waiters.forEach(function (w) { try { okk ? w[0](a) : w[1](); } catch (e) {} });
+        }
+        try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return end(false); }
+        setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(false); } }, 13000);
+        try {
+            net['native'](url, function (t) { t = typeof t === 'string' ? t : ''; end(good(t), t); }, function () { end(false); }, false, { dataType: 'text' });
+        } catch (e) { end(false); }
+    }
+    var tcache = {}, tfly = {};
+    function fetchText(url, ok, fail) { cachedFetch(tcache, tfly, url, function (t) { return !!t; }, ok, fail); }
 
     // ── Eneyida (eneyida.tv): сайт не пускає сервери, тож пошук і сторінку тайтлу відкриває сам пристрій ──
     function nrm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[’'`ʼ]/g, '').replace(/[^a-z0-9а-яіїєґ]+/gi, ' ').replace(/\s+/g, ' ').trim(); }
@@ -203,6 +217,7 @@
         var anime = mv.original_language === 'ja';
         var key = [title, orig, year, serial].join('|');
         if (ptCache[key]) return done(ptCache[key]);
+        if (Object.keys(ptCache).length > 20) ptCache = {};
         var q = 'https://jac.red/api/v2.0/indexers/all/results?title=' + encodeURIComponent(title) + '&title_original=' + encodeURIComponent(orig) + '&year=' + encodeURIComponent(year) + '&is_serial=' + (anime ? 5 : serial ? 2 : 1);
         fetchText(q, function (t) {
             var R = []; try { R = JSON.parse(t).Results || []; } catch (e) {}
@@ -445,22 +460,8 @@
     }
     function emptyHtml(t) { return '<div class="online-empty"><div class="online-empty__title">' + esc(t) + '</div></div>'; }
 
-    var pcache = {};
-    function fetchPage(url, ok, fail) {
-        var hit = pcache[url];
-        if (hit && Date.now() - hit.t < 20 * 60000) return ok(hit.d);
-        var net, done = false;
-        function end(f, a) { if (done) return; done = true; f(a); }
-        try { net = new Lampa.Reguest(); net.timeout(12000); } catch (e) { return fail(); }
-        setTimeout(function () { if (!done) { try { net.clear(); } catch (x) {} end(fail); } }, 13000);
-        try {
-            net['native'](url, function (page) {
-                page = typeof page === 'string' ? page : '';
-                if (page.indexOf('file') < 0) return end(fail);
-                pcache[url] = { t: Date.now(), d: page }; end(ok, page);
-            }, function () { end(fail); }, false, { dataType: 'text' });
-        } catch (e) { end(fail); }
-    }
+    var pcache = {}, pfly = {};
+    function fetchPage(url, ok, fail) { cachedFetch(pcache, pfly, url, function (t) { return t.indexOf('file') >= 0; }, ok, fail); }
     function direct(u, ok, fail) {
         if (/^https:\/\/(uafix\.net|zetvideo\.net)\//.test(u)) return ufPlay(u, ok, fail);
         if (/^pt:[a-z0-9]+$/i.test(u)) return ptPlay(u.slice(3), ok, fail);
@@ -1340,6 +1341,8 @@
               // HDVB та інші джерела з сервера Oracle шукають за ID КіноПошуку, а картка TMDB його не має — питаємо сам сервер (Lampac /externalids), до 3 с
               var go = function () { _this4.startSource(json).then(resolve)['catch'](reject); };
               var phx = Array.isArray(json) && json.filter(function (j) { return j && /\/lite\/phantom\b/.test(String(j.url || '')); })[0];
+              var xk = 'x' + object.movie.id + (object.movie.name ? 't' : 'm');
+              if (phx && !object.movie.kinopoisk_id && window.__lmxKp && window.__lmxKp[xk]) object.movie.kinopoisk_id = window.__lmxKp[xk];
               if (phx && !object.movie.kinopoisk_id) {
                 var once = false, fin2 = function () { if (!once) { once = true; go(); } };
                 setTimeout(fin2, 3000);
@@ -1348,7 +1351,7 @@
                   var xq = 'id=' + encodeURIComponent(object.movie.id) + '&serial=' + (object.movie.name ? 1 : 0) + (object.movie.imdb_id ? '&imdb_id=' + encodeURIComponent(object.movie.imdb_id) : '') + (tk ? '&token=' + tk : '');
                   var xn = new Lampa.Reguest(); xn.timeout(2800);
                   xn.silent(xh + '/externalids?' + xq, function (j) {
-                    try { if (typeof j === 'string') j = JSON.parse(j); if (j && j.kinopoisk_id) object.movie.kinopoisk_id = j.kinopoisk_id; if (j && j.imdb_id && !object.movie.imdb_id) object.movie.imdb_id = j.imdb_id; } catch (e) {}
+                    try { if (typeof j === 'string') j = JSON.parse(j); if (j && j.kinopoisk_id) { object.movie.kinopoisk_id = j.kinopoisk_id; (window.__lmxKp = window.__lmxKp || {})[xk] = j.kinopoisk_id; } if (j && j.imdb_id && !object.movie.imdb_id) object.movie.imdb_id = j.imdb_id; } catch (e) {}
                     fin2();
                   }, fin2);
                 } catch (e) { fin2(); }
