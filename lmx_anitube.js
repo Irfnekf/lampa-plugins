@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.30';
+    var VERSION = '5.31';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -133,6 +133,113 @@
                 done(frames.filter(function (u) { return /hdvbua\.[a-z]+\/(?:embed|embd)\//.test(u); })[0] || frames[0] || null);
             }, function () { done(null); });
         }
+    }
+
+    // ── Filmix: кожен прив'язує СВІЙ акаунт у налаштуваннях LMX UA (як приставку на filmix.my/consoles). Ключ зберігається лише на цьому пристрої.
+    //    Запити до API Filmix — з пристрою; якщо Filmix не віддає посилань для цієї мережі — повторюємо через наш сервер (лише API, відео йде напряму)
+    var FX_HOSTS = ['http://filmixapp.cyou', 'http://filmixapp.vip', 'http://fxapp.biz'];
+    function fxAcc() { var a = null; try { a = Lampa.Storage.get('lmx_fx_acc', null); if (typeof a === 'string') a = JSON.parse(a); } catch (e) { a = null; } return a && a.token && a.dev ? a : null; }
+    function fxDev() { var d = ''; for (var i = 0; i < 16; i++) d += 'abcdef0123456789'.charAt(Math.floor(Math.random() * 16)); return d; }
+    function fxArgs(acc, dev) { return 'app_lang=ru_RU&user_dev_apk=2.2.13&user_dev_id=' + (acc ? acc.dev : dev) + '&user_dev_name=Xiaomi+24069PC21G&user_dev_os=12&user_dev_token=' + (acc ? acc.token : '') + '&user_dev_vendor=Xiaomi'; }
+    function fxNet(url, ok, fail) {
+        try {
+            var n = new Lampa.Reguest(); n.timeout(10000);
+            n['native'](url, function (t) { var j = t; if (typeof t === 'string') { try { j = JSON.parse(t); } catch (e) { j = null; } } if (j) ok(j); else fail(); }, fail, false, { dataType: 'text' });
+        } catch (e) { fail(); }
+    }
+    // шлях API → JSON; good(j) — чи відповідь корисна (інакше пробуємо наступний шлях: інші адреси Filmix, потім наш сервер)
+    function fxGet(path, good, done) {
+        var routes = FX_HOSTS.slice(); if (window.__lmxOra) routes.push(window.__lmxOra + '/fxapi');
+        var i = 0, last = null;
+        (function next() {
+            if (i >= routes.length) return done(last);
+            var base = routes[i++];
+            fxNet(base + path, function (j) { last = j; if (!good || good(j)) done(j); else next(); }, next);
+        })();
+    }
+    function fxLinks(j) { var pl = j && j.player_links; return !!(pl && ((pl.movie && pl.movie.length) || (pl.playlist && (pl.playlist.length || Object.keys(pl.playlist).length)))); }
+    function fxQmap(link, qs) {
+        var map = {}, best = '';
+        [2160, 1440, 1080, 720, 480, 360].forEach(function (q) {
+            var ok = qs ? qs.indexOf(q) >= 0 : link.indexOf(q + ',') >= 0;
+            if (!ok) return;
+            var u = qs ? link.replace('_%s.mp4', '_' + q + '.mp4') : link.replace(/_\[[0-9,]+\]\.mp4/, '_' + q + '.mp4');
+            map[q + 'p'] = u; if (!best) best = u;
+        });
+        return { map: map, best: best };
+    }
+    function fxHtml(url, done) {
+        var acc = fxAcc();
+        if (!acc) return done(emptyHtml('Filmix: прив’яжіть свій акаунт у Налаштування → LMX UA → Filmix'));
+        var A = fxArgs(acc), title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0, postid = qget(url, 'fxp');
+        var base = url.replace(/[?&](fxp|s|t)=[^&]*/g, '');
+        function item(cls, json, attrs, inner) { return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + esc(JSON.stringify(json)) + '">' + inner + '</div>'; }
+        function post(id) {
+            fxGet('/api/v2/post/' + id + '?' + A, fxLinks, function (j) {
+                var pl = j && j.player_links;
+                if (!fxLinks(j)) return done(emptyHtml('Filmix не віддав відео для цього тайтлу'));
+                if (pl.movie && pl.movie.length) {
+                    return done(pl.movie.map(function (m) {
+                        var q = fxQmap(String(m.link || '')); if (!q.best) return '';
+                        var t = String(m.translation || 'Filmix').trim();
+                        return item('videos__item videos__movie', { method: 'play', url: q.best, quality: q.map, title: t, voice_name: t }, ' media=""', '<div class="videos__item-title">' + esc(t) + '</div>');
+                    }).join(''));
+                }
+                var P = pl.playlist, seasons = Object.keys(P);
+                var sP = qget(url, 's');
+                if (!sP) {
+                    if (seasons.length > 1) return done(seasons.map(function (k) { return item('videos__item videos__season', { method: 'link', url: base + '&fxp=' + id + '&s=' + encodeURIComponent(k) }, '', '<div class="videos__item-title videos__season-title">' + esc(String(k).replace('-1', '1')) + ' сезон</div>'); }).join(''));
+                    sP = seasons[0];
+                }
+                var S = P[sP] || P[seasons[0]], voices = Object.keys(S || {}), tP = parseInt(qget(url, 't'), 10) || 0; if (tP >= voices.length) tP = 0;
+                var btn = voices.map(function (v, i) { return '<div class="videos__button selector' + (i === tP ? ' active' : '') + '" data-json="' + esc(JSON.stringify({ method: 'link', url: base + '&fxp=' + id + '&s=' + encodeURIComponent(sP) + '&t=' + i })) + '">' + esc(v) + '</div>'; }).join('');
+                var E = S[voices[tP]], eps = [];
+                if (Array.isArray(E)) E.forEach(function (e, i) { eps.push([String(i + 1), e]); }); else Object.keys(E || {}).forEach(function (k) { eps.push([k, E[k]]); });
+                var sn = parseInt(String(sP).replace('-1', '1'), 10) || 1;
+                done(btn + eps.map(function (pair) {
+                    var e = pair[1] || {}, q = fxQmap(String(e.link || ''), e.qualities || null); if (!q.best) return '';
+                    var en = parseInt(pair[0], 10) || 1;
+                    return item('videos__item videos__movie', { method: 'play', url: q.best, quality: q.map, title: 'Серія ' + en, voice_name: voices[tP] }, ' media="" s="' + sn + '" e="' + en + '"', '<div class="videos__item-title">Серія ' + en + '</div>');
+                }).join(''));
+            });
+        }
+        if (postid) return post(postid);
+        var names = [nrm(title), nrm(orig)].filter(Boolean);
+        fxGet('/api/v2/search?story=' + encodeURIComponent(orig || title) + '&' + A, function (j) { return Array.isArray(j) && j.length; }, function (list) {
+            list = Array.isArray(list) ? list : [];
+            var hit = list.filter(function (x) { return x && (!year || !x.year || Math.abs(x.year - year) <= 1) && (score(x.title, names) >= 0.8 || score(x.original_title, names) >= 0.8); });
+            if (hit.length) return post(hit.sort(function (a, b) { return Math.abs((a.year || 0) - year) - Math.abs((b.year || 0) - year); })[0].id);
+            if (!list.length) return done(emptyHtml('На Filmix цього тайтлу не знайдено'));
+            done(list.slice(0, 12).map(function (x) {
+                return item('videos__item videos__season', { method: 'link', url: base + '&fxp=' + x.id, similar: true, title: (x.title || '') + (x.original_title ? ' / ' + x.original_title : ''), year: x.year || '', details: '' }, '', '<div class="videos__item-title">' + esc(x.title || x.original_title || '') + '</div>');
+            }).join(''));
+        });
+    }
+    // прив'язка акаунта: код пристрою → людина вводить його на filmix.my/consoles → чекаємо підтвердження
+    function fxBind() {
+        var dev = fxDev(), stop = false;
+        fxGet('/api/v2/token_request?user_dev_apk=2.2.13&user_dev_id=' + dev + '&user_dev_name=Xiaomi&user_dev_os=12&user_dev_vendor=Xiaomi&user_dev_token=', function (j) { return j && j.code; }, function (j) {
+            if (!j || !j.code) { try { Lampa.Noty.show('Filmix не відповів — спробуйте пізніше'); } catch (e) {} return; }
+            var html = $('<div style="padding:1em;line-height:1.6"><div>1. На телефоні чи комп’ютері відкрийте <b>filmix.my/consoles</b> (увійдіть у свій акаунт)</div><div>2. Введіть код:</div><div style="font-size:2.6em;font-weight:700;letter-spacing:.15em;margin:.3em 0">' + esc(j.user_code) + '</div><div class="lmx-fx-st" style="opacity:.7">Чекаємо підтвердження…</div></div>');
+            try { Lampa.Modal.open({ title: 'Прив’язати Filmix', html: html, size: 'medium', onBack: function () { stop = true; Lampa.Modal.close(); Lampa.Controller.toggle('settings_component'); } }); } catch (e) {}
+            var acc = { token: j.code, dev: dev }, t0 = Date.now();
+            (function poll() {
+                if (stop) return;
+                if (Date.now() - t0 > 10 * 60000) { html.find('.lmx-fx-st').text('Час минув. Закрийте вікно й спробуйте ще раз'); return; }
+                fxGet('/api/v2/user_profile?' + fxArgs(acc), function (p) { return p && (p.user_data || p.login || p.email); }, function (p) {
+                    if (stop) return;
+                    var u = p && (p.user_data || ((p.login || p.email) ? p : null));
+                    if (u && (u.login || u.email)) {
+                        acc.login = u.login || u.email; acc.pro = !!(u.is_pro || u.is_pro_plus); acc.pro_date = u.pro_date || '';
+                        Lampa.Storage.set('lmx_fx_acc', acc);
+                        html.find('.lmx-fx-st').html('✅ Прив’язано: <b>' + esc(acc.login) + '</b>' + (acc.pro ? ' · Premium' : ' · без Premium (лише до 720p)'));
+                        setTimeout(function () { if (!stop) { stop = true; try { Lampa.Modal.close(); Lampa.Controller.toggle('settings_component'); } catch (e) {} } }, 2500);
+                        return;
+                    }
+                    setTimeout(poll, 4000);
+                });
+            })();
+        });
     }
 
     // ── UAKino (uakino.cx): сервер Oracle сайт не відкриває — шукає й розбирає сам пристрій; плеєр той самий HDVB UA, що й в Eneyida ──
@@ -330,6 +437,7 @@
         if (/\/lite\/uakino\?/.test(url) && !/[?&]href=/.test(url)) return ukFind(url, frame('UAKino'));
         if (/\/lite\/kinoukr\?/.test(url)) return kuFind(url, frame('KinoUkr'));
         if (/\/lite\/pidtor\?/.test(url)) return done(null);
+        if (/\/lite\/fxd\?/.test(url)) return fxHtml(url, function (h) { done(/online-empty/.test(h) ? '' : h); });
         if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h) { done(h || ''); });
         if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
         var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
@@ -624,6 +732,10 @@
                         });
                         return;
                     }
+                    if (/\/lite\/fxd\?/.test(String(url || ''))) {
+                        fxHtml(String(url), function (html) { if (live()) comp.parse(html); });
+                        return;
+                    }
                     if (/\/lite\/pidtor\?/.test(String(url || ''))) {
                         ptHtml(String(url), function (html) { if (live()) comp.parse(html); });
                         return;
@@ -722,14 +834,14 @@
         });
     }
 
-    function fxKey() { try { return String(Lampa.Storage.get('lmx_fx_key', '') || '').trim().toLowerCase(); } catch (e) { return ''; } }
     function settings() {
         var S = Lampa.SettingsApi;
         if (!S || !S.addComponent) return;
         S.addComponent({ component: 'lmx_anitube', name: 'LMX UA', icon: ICON });
         S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_anitube_v', type: 'title', default: '' }, field: { name: 'LMX UA v' + VERSION + ' · Anitube, AnimeON, Mikai, Unimay, Eneyida, UAFlix, BambooUA' } });
-        // особистий ключ Filmix: лише на пристроях, де його ввели, з'являється джерело Filmix (Premium власника на нашому сервері)
-        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_fx_key', type: 'input', values: '', placeholder: '', default: '' }, field: { name: 'Ключ Filmix', description: 'Особистий ключ — тоді в джерелах з’явиться Filmix (до 4K)' } });
+        // Filmix: власний акаунт кожного користувача, прив'язується тут (код на filmix.my/consoles)
+        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_fx_bind', type: 'button' }, field: { name: 'Filmix: прив’язати акаунт', description: (function () { var a = fxAcc(); return a ? 'Прив’язано: ' + (a.login || 'акаунт') + (a.pro ? ' · Premium' : '') + '. Натисніть, щоб прив’язати інший' : 'Ваш акаунт Filmix (Premium — до 4K). Після прив’язки Filmix з’явиться в джерелах'; })() }, onChange: function () { fxBind(); } });
+        S.addParam({ component: 'lmx_anitube', param: { name: 'lmx_fx_unbind', type: 'button' }, field: { name: 'Filmix: відв’язати', description: 'Прибрати акаунт Filmix з цього пристрою' }, onChange: function () { Lampa.Storage.set('lmx_fx_acc', ''); try { Lampa.Noty.show('Filmix відв’язано'); } catch (e) {} } });
     }
 
   // ===== Стандартний екран «Онлайн» (із відкритого Lampac, immisterio/Lampac, AGPL-3.0), під власними назвами шаблонів, щоб не чіпати інші онлайн-плагіни =====
@@ -776,7 +888,6 @@
       if (tm) hostTokens[hm[1]] = tm[1];
       else if (hostTokens[hm[1]]) url = Lampa.Utils.addUrlComponent(url, 'token=' + hostTokens[hm[1]]);
     }
-    if (/\/lite\/filmix/.test(url) && url.indexOf('fxk=') < 0 && fxKey()) url = Lampa.Utils.addUrlComponent(url, 'fxk=' + encodeURIComponent(fxKey()));
     if (url.indexOf('nws_id=') == -1) {
       var nws_id = Lampa.Storage.get('lmxat_nws_id', '');
       if (nws_id) url = Lampa.Utils.addUrlComponent(url, 'nws_id=' + encodeURIComponent(nws_id));
@@ -1338,8 +1449,9 @@
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
                 // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
                 // Filmix (ваш Premium-акаунт на нашому сервері): до 4K, є українські озвучки
-                if (ph && fxKey() && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
-                  json.push({ name: 'Filmix', url: String(ph.url).replace('/lite/phantom', '/lite/filmix'), balanser: 'filmix', show: true });
+                if (ph) window.__lmxOra = String(ph.url).replace(/\/lite\/phantom.*$/, '');
+                if (fxAcc() && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
+                  json.push({ name: 'Filmix', url: host() + '/lite/fxd', balanser: 'filmix', show: true });
                 if (ph && !json.some(function (j) { return j && j.balanser === 'hdvb'; }))
                   json.push({ name: 'HDVB', url: String(ph.url).replace('/lite/phantom', '/lite/hdvb'), balanser: 'hdvb', show: true });
                 if (Array.isArray(json) && json.length && !json.some(function (j) { return j && j.balanser === 'pidtor'; }))

@@ -48,14 +48,24 @@ fi
 cat > /etc/caddy/Caddyfile <<CADDY
 $HOSTN {
   encode gzip
-  # Filmix — лише з особистим ключем (Premium-акаунт власника): без ключа сервер його не віддає
+  # Filmix через сервер Lampac — лише з особистим ключем (Premium-акаунт власника)
   @fx {
     path /lite/filmix*
     not query fxk=${LMX_FXKEY:-none-set}
   }
-  respond @fx "filmix: private" 403
-  reverse_proxy 127.0.0.1:9118 {
-    header_up xscheme https
+  # прохід до API Filmix для LMX UA (кожен зі своїм акаунтом, прив'язаним у налаштуваннях плагіна): лише JSON API, без відео
+  handle_path /fxapi/* {
+    header Access-Control-Allow-Origin "*"
+    reverse_proxy http://filmixapp.cyou {
+      header_up Host filmixapp.cyou
+      header_down -Access-Control-Allow-Origin
+    }
+  }
+  handle {
+    respond @fx "filmix: private" 403
+    reverse_proxy 127.0.0.1:9118 {
+      header_up xscheme https
+    }
   }
 }
 CADDY
