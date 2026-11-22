@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.22';
+    var VERSION = '5.23';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -357,7 +357,7 @@
         var call = function (u, t) { return host() + '/lite/ufv?u=' + encodeURIComponent(u) + '&t=' + encodeURIComponent(t); };
         if (!serial) {
             var vod = ufVod(html);
-            return vod ? ufItem('videos__item videos__movie', { method: 'call', url: call(vod, title), title: title, voice_name: 'UAFlix' }, ' media=""', '<div class="videos__item-title">UAFlix</div>') : '';
+            return vod ? ufItem('videos__item videos__movie', { method: 'call', url: call(vod, title), title: title, voice_name: 'UAFlix' }, ' media=""', '<div class="videos__item-title">' + esc(title) + '</div>') : '';
         }
         var eps = {}, base = page.replace(/\/+$/, '');
         html.replace(/href="(https:\/\/uafix\.net\/[^"]+?\/season-(\d+)-episode-(\d+)\/?)"/g, function (m, link, sn, en) {
@@ -552,7 +552,7 @@
                 if (typeof realParse === 'function') comp.parse = function (str) {
                     try {
                         var s0 = typeof str === 'string' ? str : '';
-                        if (s0.indexOf('/lite/ufd?') >= 0 && (s0.match(/videos__item/g) || []).length === 1) {
+                        if (s0.indexOf('/lite/ufd?') >= 0 && (s0.match(/class="videos__item /g) || []).length === 1) {
                             var m0 = s0.match(/data-json="([^"]+)"/), j0 = m0 && JSON.parse(m0[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
                             if (j0 && j0.url) return comp.request(j0.url);
                         }
