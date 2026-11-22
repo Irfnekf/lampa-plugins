@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.63';
+    var VERSION = '3.64';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1560,6 +1560,8 @@
     // Назви озвучок із відповіді джерела (поля voice/translate… і кнопки вибору озвучки): за ними знаємо, чи є тут українська озвучка саме для цього тайтла
     function bgVoices(b) {
         var out = {}, m, rx = /"(?:voice_name|translate|translation|voice|studio|dub)"\s*:\s*"([^"]{2,80})"/gi, rb = /class="[^"]*videos__button[^"]*"[^>]*>([^<]{2,80})</gi, junk = /^\s*(\d+\s*)?(сезон|season|серія|серия|episode|дивитись|смотреть|всі|все|all|play)/i, t;
+        // Lampac пише назви озвучок у data-json як \u0423\u043a… — розкодовуємо, інакше «Украинский» не впізнається
+        if (b.indexOf('\\u04') >= 0) b = b.replace(/\\u([0-9a-fA-F]{4})/g, function (x, h) { return String.fromCharCode(parseInt(h, 16)); });
         while ((m = rx.exec(b))) { t = m[1].trim(); if (t && !junk.test(t)) out[t] = 1; }
         while ((m = rb.exec(b))) { t = m[1].trim(); if (t && !junk.test(t)) out[t] = 1; }
         return Object.keys(out).slice(0, 80);

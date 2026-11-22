@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.19';
+    var VERSION = '5.20';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -297,6 +297,40 @@
         });
     }
 
+    // Українські озвучки в змішаних джерелах (Phantom, Spectre, Aladin…) позначаємо 🇺🇦 — і в списку «Озвучка», і на картках фільму.
+    // Якщо в джерелі всі озвучки українські (Eneyida, UAKino…), нічого не позначаємо, щоб не рябіло.
+    var UA_RX = /укр|україн|ukr|\bua\b|(^|[^а-яіїєґ])уа([^а-яіїєґ]|$)|[іїєґ]/i, ORIG_RX = /оригін|оригинал|original|субтитр|subtit/i;
+    function isUaName(t) { t = String(t || ''); return UA_RX.test(t) && !ORIG_RX.test(t); }
+    function uaMark(html) {
+        if (html.indexOf('🇺🇦') >= 0) return html;
+        var btnRx = /<div class="videos__button[^"]*"[^>]*>([^<]+)<\/div>/g;
+        var movRx = /<div class="videos__item videos__movie[^>]*>(?:(?!<div class="videos__item videos__movie)[\s\S])*?<div class="videos__item-title">([^<]+)<\/div><\/div>(?:\s*<!--[^>]*-->)?/g;
+        function blocks(rx) { var out = [], m; rx.lastIndex = 0; while ((m = rx.exec(html))) out.push({ s: m.index, e: m.index + m[0].length, t: m[1], h: m[0] }); return out; }
+        var B = blocks(btnRx), M = blocks(movRx);
+        // картки фільму — це озвучки, лише якщо їх кілька й це не «Серія N»
+        var movIsVoice = M.length > 1 && !M.some(function (x) { return /^\s*(серія|серия|episode|епізод)\s*\d/i.test(x.t); });
+        var all = B.concat(movIsVoice ? M : []), ua = all.filter(function (x) { return isUaName(x.t); }).length;
+        if (!ua || ua === all.length) return html;
+        function flag(x) { return isUaName(x.t) ? x.h.replace('>' + x.t + '</div>', '>🇺🇦 ' + x.t + '</div>') : x.h; }
+        // українські — на початок списку (порядок решти не змінюємо); переставляємо лише суцільний блок, інакше тільки позначаємо
+        function apply(src, L) {
+            if (!L.length) return src;
+            var solid = L.every(function (x, i) { return !i || !src.slice(L[i - 1].e, x.s).trim(); });
+            var hs = L.map(function (x) { return { ua: isUaName(x.t), h: flag(x) }; });
+            if (solid) {
+                var sorted = hs.filter(function (x) { return x.ua; }).concat(hs.filter(function (x) { return !x.ua; }));
+                return src.slice(0, L[0].s) + sorted.map(function (x) { return x.h; }).join('') + src.slice(L[L.length - 1].e);
+            }
+            var out = '', pos = 0;
+            L.forEach(function (x, i) { out += src.slice(pos, x.s) + hs[i].h; pos = x.e; });
+            return out + src.slice(pos);
+        }
+        // спершу ті, що стоять далі в тексті, щоб не зсунути позиції
+        var groups = [B, movIsVoice ? M : []].filter(function (g) { return g.length; }).sort(function (x, y) { return y[0].s - x[0].s; });
+        groups.forEach(function (g) { html = apply(html, g); });
+        return html;
+    }
+
     // ── UAFlix (uafix.net): якщо сайт не пустив Worker — шукає й розбирає сам пристрій; відео — плеєр zetvideo з прямим m3u8 ──
     var UF = 'https://uafix.net';
     function ufVod(page) { var m = String(page || '').match(/(?:https?:)?\/\/zetvideo\.net\/vod\/\d+/i); return m ? ('https:' + m[0].replace(/^https?:/, '')) : ''; }
@@ -523,6 +557,7 @@
                             if (j0 && j0.url) return comp.request(j0.url);
                         }
                     } catch (e) {}
+                    try { if (typeof str === 'string') { arguments[0] = uaMark(str); } } catch (e) {}
                     return realParse.apply(this, arguments);
                 };
                 var realReq = comp.request;
