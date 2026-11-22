@@ -692,7 +692,7 @@
         if (!card || !card.id) return;
         var render = e.object && e.object.activity && e.object.activity.render();
         if (!render || !render.length || render.find('.lmxat--button').length) return;
-        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Українська озвучка · v' + VERSION + '">' + ICON + '<span>LMX UA</span></div>');
+        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Українська озвучка">' + ICON + '<span>LMX UA</span></div>');
         btn.on('hover:enter', function () { safe(function () { open(card); }); });
         // як інші онлайн-плагіни: кнопка в прихованому .buttons--container, тож Lampa показує її в меню «Дивитись» (поруч з «Онлайн» і «Торренти»)
         var hid = render.find('.buttons--container').eq(0), tor = (hid.length ? hid : render).find('.view--torrent').last();
@@ -702,6 +702,22 @@
             var row = render.find('.full-start-new__buttons, .full-start__buttons').eq(0), play = row.find('.button--play').eq(0);
             if (play.length) play.after(btn); else if (row.length) row.append(btn);
         }
+        // Lampa запам'ятовує «основну» кнопку (довге натискання OK у меню «Дивитись») за відбитком її розмітки, але розставляє кнопки ще до того,
+        // як плагін додав свою. Тож повторюємо це самі: якщо основною обрано LMX UA — виносимо її копію в ряд першою, як це робить Lampa
+        safe(function () {
+            var pr = String(Lampa.Storage.get('full_btn_priority', '') || '');
+            if (!pr || pr !== String(Lampa.Utils.hash(btn.clone().removeClass('focus').prop('outerHTML')))) return;
+            var cont = render.find('.full-start-new__buttons').eq(0);
+            if (!cont.length) return;
+            cont.find('.button--priority').remove();
+            var clon = btn.clone().addClass('button--priority');
+            clon.on('hover:enter', function () { btn.trigger('hover:enter'); }).on('hover:long', function () {
+                clon.remove(); Lampa.Storage.set('full_btn_priority', '');
+                try { Lampa.Controller.toggle('content'); } catch (e) {}
+            });
+            cont.prepend(clon);
+            try { Lampa.Controller.collectionSet(render); } catch (e) {}
+        });
     }
 
     function settings() {
