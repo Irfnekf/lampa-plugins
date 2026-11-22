@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.33';
+    var VERSION = '5.34';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -3469,11 +3469,73 @@
   startPlugin();
 }
 
+    // ── Плеєр: українська аудіодоріжка за замовчуванням і «оживлення» відео, що зависло на чорному екрані ──
+    var UA_TRACK = /(^|[^a-z])(uk|ukr|ua)([^a-z]|$)|укр|україн|ukrain/i, ORIG_TRACK = /оригін|original/i;
+    function trackText(t) { return [t.language, t.lang, t.label, t.name, t.title].filter(Boolean).join(' '); }
+    function pickUaTrack(e) {
+        var tr = e && e.tracks;
+        if (!tr || !tr.length || tr.length < 2) return;
+        var arr = [].slice.call(tr), cur = -1, ua = -1;
+        arr.forEach(function (t, i) { if (t && (t.selected || t.enabled) && cur < 0) cur = i; });
+        if (cur >= 0 && UA_TRACK.test(trackText(arr[cur])) && !ORIG_TRACK.test(trackText(arr[cur]))) return;   // уже українська
+        for (var i = 0; i < arr.length; i++) { var x = trackText(arr[i] || {}); if (UA_TRACK.test(x) && !ORIG_TRACK.test(x)) { ua = i; break; } }
+        if (ua < 0 || ua === cur) return;
+        arr.forEach(function (t) { try { t.enabled = false; t.selected = false; } catch (x) {} });
+        try { arr[ua].enabled = true; arr[ua].selected = true; if (typeof arr[ua].onSelect === 'function') arr[ua].onSelect(arr[ua]); } catch (x) {}
+    }
+    // Відео інколи «зависає»: картинка чорна, час не йде, хоча пауза не натиснута (обірвалось з'єднання з CDN, плеєр сам не перепідключається).
+    // Якщо так триває 15 с — перезапускаємо той самий потік з того ж місця (не частіше 3 разів за 5 хв)
+    var pw = { url: '', last: 0, lastT: 0, tries: [], busy: false };
+    function pwVideo() { try { return Lampa.PlayerVideo && Lampa.PlayerVideo.video && Lampa.PlayerVideo.video(); } catch (e) { return null; } }
+    function pwRevive() {
+        var v = pwVideo(), pos = pw.last, url = pw.url;
+        if (!v || !url || pw.busy) return;
+        var now = Date.now();
+        pw.tries = pw.tries.filter(function (t) { return now - t < 300000; });
+        if (pw.tries.length >= 3) return;
+        pw.tries.push(now); pw.busy = true; pw.lastT = now;
+        try { Lampa.Noty.show('Відео зависло — перепідключаємось…'); } catch (e) {}
+        try {
+            Lampa.PlayerVideo.destroy(true);
+            Lampa.PlayerVideo.url(url, true);
+            var nv = pwVideo(), done = false;
+            var seek = function () { if (done) return; done = true; try { if (pos > 5) nv.currentTime = pos; var pr = nv.play && nv.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} };
+            if (nv) { nv.addEventListener('loadedmetadata', seek, { once: true }); setTimeout(seek, 6000); }
+        } catch (e) {}
+        setTimeout(function () { pw.busy = false; pw.lastT = Date.now(); }, 8000);
+    }
+    function playerWatch() {
+        if (window.__lmxPW) return;
+        window.__lmxPW = 1;
+        try {
+            Lampa.PlayerVideo.listener.follow('tracks', function (e) { safe(function () { pickUaTrack(e); }); });
+            Lampa.PlayerVideo.listener.follow('timeupdate', function (e) { var c = e && +e.current; if (c > 0 && Math.abs(c - pw.last) > 0.2) { pw.last = c; pw.lastT = Date.now(); } });
+            Lampa.Player.listener.follow('start', function (d) { pw.url = d && typeof d.url === 'string' ? d.url : ''; pw.last = 0; pw.lastT = Date.now(); pw.tries = []; });
+            Lampa.Player.listener.follow('destroy', function () { pw.url = ''; });
+            // зміна якості в плеєрі підставляє інше посилання — запам'ятовуємо актуальне
+            if (typeof Lampa.PlayerVideo.url === 'function' && !Lampa.PlayerVideo.__lmxPW) {
+                Lampa.PlayerVideo.__lmxPW = 1;
+                var realUrl = Lampa.PlayerVideo.url;
+                Lampa.PlayerVideo.url = function (u) { if (typeof u === 'string' && u && pw.url) pw.url = u; return realUrl.apply(this, arguments); };
+            }
+        } catch (e) {}
+        setInterval(function () {
+            safe(function () {
+                if (!pw.url || pw.busy || document.hidden) return;
+                var v = pwVideo();
+                if (!v || v.paused || v.ended || (v.nodeType === 1 && !document.body.contains(v))) { pw.lastT = Date.now(); return; }
+                if (/^blob:/.test(pw.url) || /\/stream\/|torrserver|:8090\//i.test(pw.url)) return;   // торенти: TorrServer качає сам, перезапуск лише зашкодить
+                if (Date.now() - pw.lastT > 15000) pwRevive();
+            });
+        }, 3000);
+    }
+
     function start() {
         if (window.__lmxAnitubeOn4) return;
         window.__lmxAnitubeOn4 = true;
         safe(function () { lmxatEmbed(host); });
         safe(hookCreate);
+        safe(playerWatch);
         Lampa.Listener.follow('full', function (e) { if (e.type === 'complite') safe(function () { addButton(e); }); });
         safe(settings);
         setTimeout(function () { safe(function () { oraCheck(true); }); }, 4000);
