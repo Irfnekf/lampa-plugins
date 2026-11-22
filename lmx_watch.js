@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.66';
+    var VERSION = '3.67';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1612,7 +1612,7 @@
                 if (ended || job.stopped) return;
                 // LMX UA: серіал віддає спершу список сезонів без озвучок — заглядаємо в перший сезон, щоб знати, чи є там українська
                 if (job.deep && !deepT && net) {
-                    var b0 = typeof ans === 'string' ? ans : '', m0 = b0.length < 350000 && !/"(?:voice_name|translate|translation)"\s*:/.test(b0) && b0.match(/videos__season[^>]*data-json='([^']+)'/);
+                    var b0 = typeof ans === 'string' ? ans : '', m0 = b0.length < 350000 && !/"(?:voice_name|translate|translation)"\s*:/.test(b0) && !/"similar"\s*:\s*true/.test(b0) && b0.match(/videos__season[^>]*data-json='([^']+)'/);
                     if (m0) {
                         try {
                             var su = JSON.parse(m0[1].replace(/&quot;/g, '"')).url;
@@ -1629,7 +1629,8 @@
             if (!net) return end('');
             net.__lmxProbe = true; nets.push(net);
             // страховка: якщо мережа не віддала ні відповіді, ні помилки (рідний timeout не спрацював) — завершуємо самі, щоб підбір не стояв
-            setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} end(''); } }, (it.to || job.timeout) + 1500);
+            var tmo = job.resolve ? Math.max(it.to || 0, job.timeout) : (it.to || job.timeout);
+            setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} deepT = 2; end(job.resolve ? '<div class="videos__none"></div>' : ''); } }, tmo + 1500);
             try { net.timeout(it.to || job.timeout); } catch (e) {}
             var prm = { dataType: 'text' }; if (job.headers) prm.headers = job.headers;
             window.__lmxPB = true;
@@ -3380,7 +3381,7 @@
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
                     if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
-                    else if ((!pe || pe.s === 'skip') && !(uaM && isTorSrc(x))) skipN++;   // LMX UA: торенти (PidTor) автоматично не перевіряються — це не «не встигло відповісти»
+                    else if ((!pe || pe.s === 'skip') && !uaM) skipN++;   // LMX UA перевіряє все сам через плагін: «немає відповіді» = «немає тайтлу», повільний обхід по колу не потрібен   // LMX UA: торенти (PidTor) автоматично не перевіряються — це не «не встигло відповісти»
                 });
                 if (!okL.length) {
                     // жодна перевірка нічого не підтвердила, але деякі джерела не відповіли — довіряти цьому не можна: переходимо на надійний обхід через сам екран

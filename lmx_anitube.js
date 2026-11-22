@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.26';
+    var VERSION = '5.27';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -2537,6 +2537,8 @@
       this.__dna.seen[balanser] = 1;
       var dna = this.__dna;
       var leftKeys = Lampa.Arrays.getKeys(sources).filter(function (k) { return sources[k].show && !dna.seen[k] && !/pidtor/i.test(k); });
+      // з LMX Watch джерела перемикає він (за результатами перевірки) — свій таймер не запускаємо, щоб не було двох перемикачів одночасно
+      if (window.__lmxOnline && !(er && er.accsdb)) { scroll.clear(); scroll.append(html); html.find('.online-empty__time').remove(); this.loading(false); html.find('.change').on('hover:enter', function () { filter.render().find('.filter--sort').trigger('hover:enter'); }); return; }
       if (!leftKeys.length) {
         html.find('.online-empty__title').text('Нічого не знайдено: жодне джерело не дало результатів');
         html.find('.online-empty__time').remove();
