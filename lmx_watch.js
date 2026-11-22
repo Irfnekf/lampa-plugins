@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.71';
+    var VERSION = '3.72';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3619,7 +3619,7 @@
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
                     // LMX UA: джерела, де перевірка вже показала «тайтлу немає», і торенти не перебираємо — інакше обхід по колу всіх джерел
                     var uaX = isUa();
-                    var c = sort.filter(function (x) { if (!(x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0)) return false; if (!uaX) return true; if (isTorSrc(x)) return false; var pe = pcEntry(cid, srcName(x.title)); return !(pe && pe.s === 'empty'); })
+                    var c = sort.filter(function (x) { if (!(x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0)) return false; if (!uaX) return true; if (isTorSrc(x)) return false; var pe = pcEntry(cid, srcName(x.title)); return !!(pe && pe.s === 'ok'); })   // LMX UA: перемикаємо лише на джерела, де перевірка тайтл підтвердила
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
                     if (!c.length) {
                         // раніше тут усі панелі знімались, і лишався порожній екран з крихітним статусом у шапці. Тепер — видима панель із кнопками «Усі джерела» / «Повторити»
