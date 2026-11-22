@@ -1,0 +1,43 @@
+name: Minify plugins
+
+# Вихідний код плагінів живе в src/ (з коментарями). На Pages (корінь репозиторію) лежать стиснені копії
+# з тими самими іменами файлів — посилання на плагіни не змінюються, а ТВ завантажує й розбирає менше коду.
+on:
+  push:
+    branches: [main]
+    paths: ['src/*.js']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Minify
+        run: |
+          set -e
+          for f in src/*.js; do
+            n=$(basename "$f")
+            npx --yes terser@5 "$f" --compress passes=1 --mangle --keep-fnames --comments false --ecma 5 -o "$n.tmp"
+            node -e "require('vm').createScript(require('fs').readFileSync('$n.tmp','utf8'))"
+            mv "$n.tmp" "$n"
+            echo "$n: $(wc -c < "$f") -> $(wc -c < "$n")"
+          done
+      - name: Commit if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then echo "no changes"; exit 0; fi
+          git config user.name "minify-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add *.js
+          git commit -m "build: minified plugins from src/"
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" >/dev/null || true
