@@ -138,6 +138,7 @@
     // ── Filmix: кожен прив'язує СВІЙ акаунт у налаштуваннях LMX UA (як приставку на filmix.my/consoles). Ключ зберігається лише на цьому пристрої.
     //    Запити до API Filmix — з пристрою; якщо Filmix не віддає посилань для цієї мережі — повторюємо через наш сервер (лише API, відео йде напряму)
     var FX_HOSTS = ['http://filmixapp.cyou', 'http://filmixapp.vip', 'http://fxapp.biz'];
+    try { if (!window.__lmxOra) window.__lmxOra = String(Lampa.Storage.get('lmx_ora', '') || '') || ''; } catch (e) {}
     function fxAcc() { var a = null; try { a = Lampa.Storage.get('lmx_fx_acc', null); if (typeof a === 'string') a = JSON.parse(a); } catch (e) { a = null; } return a && a.token && a.dev ? a : null; }
     function fxDev() { var d = ''; for (var i = 0; i < 16; i++) d += 'abcdef0123456789'.charAt(Math.floor(Math.random() * 16)); return d; }
     function fxArgs(acc, dev) { return 'app_lang=ru_RU&user_dev_apk=2.2.13&user_dev_id=' + (acc ? acc.dev : dev) + '&user_dev_name=Xiaomi+24069PC21G&user_dev_os=12&user_dev_token=' + (acc ? acc.token : '') + '&user_dev_vendor=Xiaomi'; }
@@ -1450,7 +1451,7 @@
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
                 // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
                 // Filmix (ваш Premium-акаунт на нашому сервері): до 4K, є українські озвучки
-                if (ph) window.__lmxOra = String(ph.url).replace(/\/lite\/phantom.*$/, '');
+                if (ph) { window.__lmxOra = String(ph.url).replace(/\/lite\/phantom.*$/, ''); try { Lampa.Storage.set('lmx_ora', window.__lmxOra); } catch (e) {} }
                 if (fxAcc() && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
                   json.push({ name: 'Filmix', url: host() + '/lite/fxd', balanser: 'filmix', show: true });
                 if (ph && !json.some(function (j) { return j && j.balanser === 'hdvb'; }))
