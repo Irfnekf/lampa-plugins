@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.18';
+    var VERSION = '5.19';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -238,45 +238,62 @@
     function fetchTextNc(url, ok, fail) {
         try { var net = new Lampa.Reguest(); net.timeout(15000); net['native'](url, function (t) { ok(typeof t === 'string' ? t : JSON.stringify(t)); }, fail, false, { dataType: 'text' }); } catch (e) { fail(); }
     }
+    // Вигляд як у PidTor з Lampac: фільм — кожна роздача окремою карткою; серіал — сезон → картки роздач → серії
+    function ptLabel(x) { return (x.q ? (x.q >= 2160 ? '2160p' : x.q + 'p') : '') + (x.hdr ? ' HDR' : '') + ' / ' + (x.gb >= 1 ? x.gb.toFixed(1) + ' ГБ' : Math.round(x.gb * 1024) + ' МБ') + ' / ↑' + x.sid; }
+    function ptVoice(x) { return (x.ua ? '🇺🇦 ' : '') + (x.voices.length ? x.voices.slice(0, 6).join(', ') : 'Озвучка не вказана'); }
     function ptHtml(url, done) {
         var ts = tsHost();
         if (!ts) { try { Lampa.Noty.show('PidTor: вкажіть адресу TorrServer у Налаштування → TorrServer'); } catch (e) {} return done(emptyHtml('PidTor дивиться торренти через TorrServer — вкажіть його адресу в Налаштування → TorrServer')); }
-        var serial = qget(url, 'serial') === '1', sP = parseInt(qget(url, 's'), 10) || 0, tP = parseInt(qget(url, 't'), 10) || 0;
-        var base = url.replace(/[?&](s|t)=[^&]*/g, '');
+        var serial = qget(url, 'serial') === '1', sP = parseInt(qget(url, 's'), 10) || 0, hP = qget(url, 'h');
+        var base = url.replace(/[?&](s|h)=[^&]*/g, '');
         function item(cls, json, attrs, inner) { return '<div class="' + cls + ' selector"' + (attrs || '') + ' data-json="' + esc(JSON.stringify(json)) + '">' + inner + '</div>'; }
+        if (hP) {
+            // серії обраної роздачі
+            return ptFiles(ts, hP, function (files, why) {
+                if (!files || !files.length) return done(emptyHtml(why === 'ts' ? 'TorrServer за адресою ' + ts + ' не відповідає' : 'Ця роздача не завантажилась — поверніться й оберіть іншу'));
+                files.sort(function (a, b) { return String(a.path).localeCompare(String(b.path), undefined, { numeric: true }); });
+                var rows = files.map(function (f, i) {
+                    var nm = String(f.path).split('/').pop(), m = nm.match(/s(\d{1,2})[ ._-]*e(\d{1,3})/i) || nm.match(/(\d{1,2})x(\d{1,3})/i);
+                    return { f: f, nm: nm, s: m ? parseInt(m[1], 10) : 0, e: m ? parseInt(m[2], 10) : (parseInt((nm.match(/(?:^|[^\d])(\d{1,3})(?:[^\d]|$)/) || [])[1], 10) || i + 1) };
+                });
+                var inS = rows.filter(function (r) { return !r.s || !sP || r.s === sP; });
+                if (inS.length) rows = inS;
+                done(rows.map(function (r) {
+                    var u = ts + '/stream/' + encodeURIComponent(r.nm) + '?link=' + hP + '&index=' + r.f.id + '&play';
+                    return item('videos__item videos__movie', { method: 'play', url: u, title: 'Серія ' + r.e }, ' media="" s="' + (sP || r.s || 1) + '" e="' + r.e + '"', '<div class="videos__item-title">Серія ' + r.e + '</div>');
+                }).join(''));
+            });
+        }
         ptList(url, function (list) {
             if (list === null) return done(emptyHtml('Торрент-пошук jac.red не відповів'));
             if (!list.length) return done(emptyHtml('Роздач не знайдено'));
-            if (serial && !sP) {
+            if (!serial) {
+                return done(list.slice(0, 40).map(function (x) {
+                    return item('videos__item videos__movie', { method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent('pt:' + x.h), title: ptVoice(x), voice_name: ptLabel(x), maxquality: x.q ? (x.q >= 2160 ? '2160p' : x.q + 'p') : '' }, ' media=""', '<div class="videos__item-title">' + esc(ptVoice(x)) + '</div>');
+                }).join(''));
+            }
+            if (!sP) {
                 var ss = {}; list.forEach(function (x) { x.seasons.forEach(function (n) { ss[n] = 1; }); });
                 var nums = Object.keys(ss).map(Number).filter(Boolean).sort(function (a, b) { return a - b; });
-                if (nums.length > 1) return done(nums.map(function (n) { return item('videos__item videos__season', { method: 'link', url: base + '&s=' + n }, '', '<div class="videos__item-title videos__season-title">' + n + ' сезон</div>'); }).join(''));
-                sP = nums[0] || 1;
+                if (!nums.length) nums = [1];
+                return done(nums.map(function (n) { return item('videos__item videos__season', { method: 'link', url: base + '&s=' + n }, '', '<div class="videos__item-title videos__season-title">' + n + ' сезон</div>'); }).join(''));
             }
-            var L = serial ? list.filter(function (x) { return !x.seasons.length || x.seasons.indexOf(sP) >= 0; }) : list;
-            if (!L.length) L = list;
-            L = L.slice(0, 20); if (tP >= L.length) tP = 0;
-            var btn = L.map(function (x, i) {
-                var lab = (x.q ? (x.q >= 2160 ? '4K' : x.q + 'p') : '?') + (x.hdr ? ' HDR' : '') + (x.ua ? ' · UA' : '') + ' · ' + (x.gb >= 1 ? x.gb.toFixed(1) + ' ГБ' : Math.round(x.gb * 1024) + ' МБ') + ' · ↑' + x.sid + (x.voices.length ? ' · ' + x.voices.slice(0, 3).join(', ') : '');
-                return '<div class="videos__button selector' + (i === tP ? ' active' : '') + '" data-json="' + esc(JSON.stringify({ method: 'link', url: base + (serial ? '&s=' + sP : '') + '&t=' + i })) + '">' + esc(lab) + '</div>';
-            }).join('');
-            var T = L[tP];
-            ptFiles(ts, T.h, function (files, why) {
-                if (!files || !files.length) return done(btn + emptyHtml(why === 'ts' ? 'TorrServer за адресою ' + ts + ' не відповідає' : 'Ця роздача не завантажилась — оберіть іншу в «Озвучка»'));
-                files.sort(function (a, b) { return String(a.path).localeCompare(String(b.path), undefined, { numeric: true }); });
-                var vt = (T.q >= 2160 ? '4K' : T.q ? T.q + 'p' : '') + (T.ua ? ' UA' : '');
-                function play(f) { var nm = String(f.path).split('/').pop(); return ts + '/stream/' + encodeURIComponent(nm) + '?link=' + T.h + '&index=' + f.id + '&play'; }
-                if (!serial) {
-                    files.sort(function (a, b) { return (b.length || 0) - (a.length || 0); });
-                    var big = files.filter(function (f) { return (f.length || 0) > (files[0].length || 0) * 0.3; });
-                    return done(btn + big.map(function (f) { var t = big.length > 1 ? String(f.path).split('/').pop() : (qget(url, 'title') || 'Дивитись'); return item('videos__item videos__movie', { method: 'play', url: play(f), title: t, voice_name: vt }, ' media=""', '<div class="videos__item-title">' + esc(t) + '</div>'); }).join(''));
-                }
-                done(btn + files.map(function (f, i) {
-                    var nm = String(f.path).split('/').pop(), m = nm.match(/s(\d{1,2})[ ._-]*e(\d{1,3})/i) || nm.match(/(\d{1,2})x(\d{1,3})/i);
-                    var e = m ? parseInt(m[2], 10) : (parseInt((nm.match(/(?:^|[^\d])(\d{1,3})(?:[^\d]|$)/) || [])[1], 10) || i + 1);
-                    return item('videos__item videos__movie', { method: 'play', url: play(f), title: 'Серія ' + e, voice_name: vt }, ' media="" s="' + sP + '" e="' + e + '"', '<div class="videos__item-title">Серія ' + e + '</div>');
-                }).join(''));
-            });
+            var L = list.filter(function (x) { return !x.seasons.length || x.seasons.indexOf(sP) >= 0; });
+            if (!L.length) return done(emptyHtml('Роздач для ' + sP + ' сезону не знайдено'));
+            done(L.slice(0, 40).map(function (x) {
+                return item('videos__item videos__season', { method: 'link', url: base + '&s=' + sP + '&h=' + x.h, similar: true, title: ptVoice(x), details: ptLabel(x) + (x.seasons.length > 1 ? ' / сезони ' + x.seasons[0] + '–' + x.seasons[x.seasons.length - 1] : ''), year: '' }, '', '<div class="videos__item-title">' + esc(ptVoice(x)) + '</div>');
+            }).join(''));
+        });
+    }
+    // запуск фільму з роздачі: беремо найбільший відеофайл
+    function ptPlay(h, ok, fail) {
+        var ts = tsHost();
+        if (!ts) return fail();
+        ptFiles(ts, h, function (files) {
+            if (!files || !files.length) return fail();
+            files.sort(function (a, b) { return (b.length || 0) - (a.length || 0); });
+            var f = files[0], nm = String(f.path).split('/').pop();
+            ok({ method: 'play', url: ts + '/stream/' + encodeURIComponent(nm) + '?link=' + h + '&index=' + f.id + '&play' });
         });
     }
 
@@ -378,6 +395,7 @@
     }
     function direct(u, ok, fail) {
         if (/^https:\/\/(uafix\.net|zetvideo\.net)\//.test(u)) return ufPlay(u, ok, fail);
+        if (/^pt:[a-z0-9]+$/i.test(u)) return ptPlay(u.slice(3), ok, fail);
         if (/\.m3u8(\?|$)/i.test(u)) return ok({ method: 'play', url: fixUrl(u) });
         // AnimeON: спершу питаємо Worker, яка сторінка плеєра в цієї серії, далі — як звичайно
         if (/^aoep:\d+$/.test(u)) {
@@ -476,6 +494,20 @@
                 comp.getFileUrl = function (file, call) {
                     var self = this, args = arguments, u = playerOf(file && file.url);
                     if (!u) return realGet.apply(self, args);
+                    if (/^pt:/.test(u)) {
+                        // торент: TorrServer спершу отримує список файлів (до ~25 с) — показуємо завантаження
+                        var gone = false;
+                        try { Lampa.Loading.start(function () { gone = true; Lampa.Loading.stop(); }); } catch (e) {}
+                        return ptPlay(u.slice(3), function (r) {
+                            try { Lampa.Loading.stop(); } catch (e) {}
+                            if (!gone) call(Object.assign({}, r, { title: file.title, voice_name: file.voice_name }), {});
+                        }, function () {
+                            try { Lampa.Loading.stop(); } catch (e) {}
+                            if (gone) return;
+                            try { Lampa.Noty.show(tsHost() ? 'TorrServer не отримав файли цієї роздачі — оберіть іншу' : 'Вкажіть адресу TorrServer у Налаштування → TorrServer'); } catch (e) {}
+                            call(false, {});
+                        });
+                    }
                     direct(u, function (r) {
                         var out = Object.assign({}, r, { title: file.title, voice_name: file.voice_name });
                         call(out, { quality: r.quality });
