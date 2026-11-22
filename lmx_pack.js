@@ -6909,7 +6909,7 @@
         }
         function fill() {
             var c = null, wd = null;
-            try { var a = Lampa.Activity.active(); c = a && a.card; } catch (e) {}
+            try { var a = Lampa.Activity.active(); c = a && (a.card || a.movie); } catch (e) {}   // з екрана «Онлайн» картка лежить у movie, а не в card
             try { wd = Lampa.Player.playdata && Lampa.Player.playdata(); } catch (e) {}
             var b = build(), img = b.querySelector('.lmx-cin-p');
             var title = (c && (c.title || c.name)) || (wd && wd.title) || '';
@@ -6964,7 +6964,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.608';
+    var VERSION = '10.609';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
