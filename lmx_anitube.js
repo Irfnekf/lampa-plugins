@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.31';
+    var VERSION = '5.32';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -149,7 +149,8 @@
     }
     // шлях API → JSON; good(j) — чи відповідь корисна (інакше пробуємо наступний шлях: інші адреси Filmix, потім наш сервер)
     function fxGet(path, good, done) {
-        var routes = FX_HOSTS.slice(); if (window.__lmxOra) routes.push(window.__lmxOra + '/fxapi');
+        // спершу через наш сервер (він звертається до Filmix як застосунок — так Filmix віддає посилання), потім напряму
+        var routes = FX_HOSTS.slice(); if (window.__lmxOra) routes.unshift(window.__lmxOra + '/fxapi');
         var i = 0, last = null;
         (function next() {
             if (i >= routes.length) return done(last);
