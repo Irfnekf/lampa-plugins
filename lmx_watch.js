@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.75';
+    var VERSION = '3.76';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -132,6 +132,12 @@
         S + '.lmx-onl-drop--pop .lmx-onl-opt__s{flex:0 0 auto;margin-left:.8em;font-size:.72em;opacity:.65;white-space:nowrap}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt__q{flex:0 0 auto;margin-left:.8em;padding:.1em .5em;border-radius:.4em;background:rgba(255,255,255,.14);font-size:.72em;font-weight:700;letter-spacing:.04em}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt.focus .lmx-onl-opt__q{background:rgba(0,0,0,.12)}' +
+        S + '.lmx-onl-tag{display:inline-block;margin-left:.5em;padding:.12em .45em;border-radius:.35em;font-size:.62em;font-weight:700;letter-spacing:.04em;line-height:1.3;vertical-align:.18em}' +
+        S + '.lmx-onl-tag--anime{background:#e24b4a;color:#fff}' +
+        S + '.lmx-onl-tag--ua{background:#185fa5;color:#ffd84a}' +
+        S + '.lmx-onl-tag--k4{background:#ef9f27;color:#412402}' +
+        S + '.lmx-onl-tag--prem{background:#7f77dd;color:#fff}' +
+        S + '.lmx-onl-tag--tor{background:#444441;color:#d3d1c7}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt--ok::before{margin-right:.65em;flex:0 0 auto}' +
         S + '.lmx-onl-drop--pop .lmx-onl-sep{display:block;margin:.35em .5em .2em;padding:.35em 0 0;border-top:1px solid rgba(255,255,255,.14);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;opacity:.55}' +
         S + '.lmx-onl-drop--pop::before,' + S + '.lmx-onl-drop--pop::after{display:none;position:-webkit-sticky;position:sticky;left:0;right:0;height:1.9em;line-height:1.9em;text-align:center;font-size:.7em;font-weight:600;letter-spacing:.04em;pointer-events:none;z-index:3;color:#fff}' +
@@ -2706,6 +2712,25 @@
     function isSubOnly(t) { return /субтитр|subtitle|(^|[^a-z])subs?([^a-z]|$)/i.test(String(t || '')); }
     function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (isSubOnly(t)) return false; if (/anidub|ани ?даб|ані ?даб/i.test(t) || (/[ыэъё]/i.test(t) && !/укр|ukr/i.test(t))) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t) || (vcGet()[String(t || '').replace(/\s+/g, ' ').trim().toLowerCase()] || 0) >= 2; }
     var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|amanogawa|аманогава|fronda|фронда|freedub|фрідаб|inari ?dub|інарі ?даб|4ua|(^|[^a-z0-9])10gu|animesh|анімеш|сатурн ?юніон|\bua\b|(^|[^а-яіїєґ])уа([^а-яіїєґ]|$)|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|(^|[^а-яіїєґ])стб([^а-яіїєґ]|$)|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|(^|[^а-яіїєґ])тет([^а-яіїєґ]|$)|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|(^|[^а-яіїєґ])к1([^а-яіїєґ]|$)|(^|[^а-яіїєґ])к2([^а-яіїєґ]|$)|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
+    // Бейджі типу джерела у списку «Джерело»: АНІМЕ, UA (український сайт), 4K, PREMIUM (Filmix), ТОРЕНТ
+    var SRC_TAGS = [
+        ['anime', 'АНІМЕ', function (t) { return ANIME_SRC.test(t); }],
+        ['ua', 'UA', function (t) { return (UA_SRC.test(t) || /ене[иії]д/i.test(t)) && !/filmix|фільмікс|фильмикс/i.test(t); }],
+        ['k4', '4K', function (t) { return /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/i.test(t); }],
+        ['prem', 'PREMIUM', function (t) { return /filmix|фільмікс|фильмикс/i.test(t); }],
+        ['tor', 'ТОРЕНТ', function (t) { return isTorSrc({ title: t }); }]
+    ];
+    function srcTags(nm, title, qEl) {
+        if (!nm) return;
+        var t = String(title || ''), got = SRC_TAGS.filter(function (g) { return g[2](t); });
+        if (!got.length) return;
+        // «Phantom 4K» → «Phantom» + бейдж 4K (окремий сірий значок якості для 4K теж прибираємо)
+        if (got.some(function (g) { return g[0] === 'k4'; })) {
+            nm.textContent = nm.textContent.replace(/\s*[~\-\u2013\u2014|\u00b7]?\s*(4k|2160p?|uhd)\s*$/i, '');
+            if (qEl && /^(4K|2160|UHD)$/i.test(qEl.textContent)) qEl.parentNode.removeChild(qEl);
+        }
+        got.forEach(function (g) { var b = document.createElement('span'); b.className = 'lmx-onl-tag lmx-onl-tag--' + g[0]; b.textContent = g[1]; nm.appendChild(b); });
+    }
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet|pidtor/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
     function curSeason() {
@@ -2875,6 +2900,7 @@
                 nm0.className = 'lmx-onl-opt__n'; nm0.textContent = (o.star ? '\u2605 ' : '') + qm[1]; q0.className = 'lmx-onl-opt__q'; q0.textContent = qm[2].toUpperCase().replace(/P$/, '');
                 c.appendChild(nm0); if (o.sub) { var sb0 = document.createElement('span'); sb0.className = 'lmx-onl-opt__s'; sb0.textContent = o.sub; c.appendChild(sb0); } c.appendChild(q0);
             } else { var nm1 = document.createElement('span'); nm1.className = 'lmx-onl-opt__n'; nm1.textContent = (o.star ? '\u2605 ' : '') + o.title; c.appendChild(nm1); if (o.sub) { var sb1 = document.createElement('span'); sb1.className = 'lmx-onl-opt__s'; sb1.textContent = o.sub; c.appendChild(sb1); } }
+            if (key === 'src' && !o.sticky) safe(function () { srcTags(c.querySelector('.lmx-onl-opt__n'), o.title, c.querySelector('.lmx-onl-opt__q')); });
             $(c).on('hover:enter click', once(function () {
                 if (o.sticky) { try { o.run(); } catch (e) {} act.__lmxOpen = ''; closeDrop(act); toggleDrop(act, key); return; }
                 window.__lmxManual = Date.now();
