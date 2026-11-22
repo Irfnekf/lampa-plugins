@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.73';
+    var VERSION = '3.74';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2051,7 +2051,7 @@
     }
     function freshEps(body) { return episodeEls(body).filter(function (e) { return !e.hasAttribute('data-lmx-old'); }); }
     function afterReload(act) {
-        act.__lmxVT0 = Date.now();
+        act.__lmxVT0 = act.__lmxRlT = Date.now();
         act.classList.add('lmx-onl-rl');
         markStale(act);
         // відкрита панель вибору (джерело/сезон/озвучка) після вибору зайва — закриваємо, щоб було видно завантаження
@@ -2981,7 +2981,21 @@
         var its = [].slice.call(pop.querySelectorAll('.lmx-onl-opt')), cur = popItem(pop), ix = its.indexOf(cur);
         window.__lmxKeyT = Date.now();
         e.preventDefault(); e.stopImmediatePropagation();
-        if (ok) { window.__lmxPopSel = Date.now(); if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {} return true; }
+        if (ok) {
+            window.__lmxPopSel = Date.now();
+            // Lampa вважає, що «ОК» натиснуто на кнопці панелі під списком, і програє на ній анімацію натискання, а за пів секунди — анімацію фокуса
+            // ще раз (кнопка «стрибає»). Фіксуємо поточну анімацію кнопки на час вибору — візуально нічого не перезапускається
+            safe(function () {
+                var pb = a.querySelector('.lmx-onl-bar .focus');
+                if (!pb || pb.__lmxAnFix) return;
+                var an = window.getComputedStyle(pb).animation;
+                if (!an) return;
+                pb.__lmxAnFix = 1; pb.style.animation = an;
+                setTimeout(function () { try { pb.style.animation = ''; pb.__lmxAnFix = 0; } catch (x) {} }, 900);
+            });
+            if (cur) try { $(cur).trigger('hover:enter'); } catch (x) {}
+            return true;
+        }
         if (lr) {
             // вліво/вправо закриває список, а фокус переходить на сусідню кнопку панелі в той бік, куди натиснули
             var goR = k === 39 || nm === 'ArrowRight', key0 = a.__lmxOpen;
@@ -3016,6 +3030,22 @@
         syncNav(a, nx);
         return true;
     }
+    // Остання картка в ряду: «вправо» рідна навігація Lampa вела на найближчий за геометрією елемент — кнопку «Дивитись» у шапці,
+    // і весь список з'їжджав. Праворуч нічого немає — фокус лишається на картці
+    function cardEdge() {
+        var a = document.querySelector('.activity--active'), cur = null;
+        if (!a || !a.querySelector('.explorer.lmx-onl') || selOpen() || selCtl() || a.__lmxOpen) return false;
+        try { cur = window.Navigator && Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) { cur = null; }
+        if (!(cur && cur.nodeType === 1 && a.contains(cur))) cur = a.querySelector('.focus');
+        if (!cur || !cur.classList || !cur.classList.contains('lmx-onl-item')) return false;
+        var r = cur.getBoundingClientRect(), its = a.querySelectorAll('.lmx-onl-item'), i, q;
+        for (i = 0; i < its.length; i++) {
+            if (its[i] === cur || !its[i].offsetWidth) continue;
+            q = its[i].getBoundingClientRect();
+            if (q.left > r.left + r.width / 2 && Math.abs((q.top + q.height / 2) - (r.top + r.height / 2)) < r.height / 2) return false;
+        }
+        return true;
+    }
     function navKeys(e) {
         if (popKeys(e)) return;
         var up = e.keyCode === 38 || e.key === 'ArrowUp', dn = e.keyCode === 40 || e.key === 'ArrowDown';
@@ -3023,6 +3053,7 @@
             navCx = null;
             var isL = e.keyCode === 37 || e.key === 'ArrowLeft', isR = e.keyCode === 39 || e.key === 'ArrowRight';
             if ((isL || isR) && navSide(isR)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+            if (isR && cardEdge()) { window.__lmxKeyT = Date.now(); e.preventDefault(); e.stopImmediatePropagation(); return; }
             // у відкритому списку вліво/вправо нікуди не веде
             if (e.keyCode === 37 || e.keyCode === 39 || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 var fo = document.querySelector('.activity--active .lmx-onl-drop--pop .focus');
@@ -4074,12 +4105,50 @@
                 var realFocus = Navigator.focus;
                 Navigator.focus = function (el) {
                     try {
-                        if (!(el && el.classList && el.classList.contains('lmx-onl-item'))) return realFocus.apply(this, arguments);
-                        var aa = document.querySelector('.activity--active'), hh = aa && aa.__lmxHold;
+                        var aa = document.querySelector('.activity--active');
+                        // повторний фокус на тому самому елементі: Lampa знімає й знову ставить клас focus — анімація кнопки «блимає» щоразу.
+                        // Якщо навігатор уже стоїть на ньому, нічого не робимо
+                        if (el && el.nodeType === 1 && el.classList.contains('focus') && aa && aa.contains(el) && aa.querySelector('.explorer.lmx-onl')) {
+                            var gf = null; try { gf = Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (x) {}
+                            if (gf === el) return true;
+                            // навігатор «забув» фокус (Lampa перебудувала колекцію), а на екрані він той самий — відновлюємо тихо, без повторної анімації
+                            if (!gf && typeof Navigator.focused === 'function' && Navigator._collection && Navigator._collection.indexOf(el) >= 0) { Navigator.focused(el); return true; }
+                        }
+                        // картка серії: наш клас з'являється пізніше, а Lampa ставить фокус ще на «сиру» картку (online-prestige / videos__item), іноді до вставки в екран
+                        var isCard = !!(el && el.classList && (el.classList.contains('lmx-onl-item') || el.classList.contains('online-prestige') || (el.classList.contains('videos__item') && !el.closest('.lmx-onl-bar, .lmx-onl-hero, .lmx-onl-drop'))));
+                        if (!isCard) return realFocus.apply(this, arguments);
+                        // поки після вибору сезону/озвучки/джерела вантажиться новий список, Lampa ставить фокус на першу нову картку внизу екрана
+                        // (ще невидиму) — і одразу його повертають на кнопку панелі. Не пускаємо фокус на картки, доки користувач сам не натисне клавішу
+                        if (aa && aa.__lmxRlT && Date.now() - aa.__lmxRlT < 8000 && (window.__lmxKeyT || 0) <= aa.__lmxRlT && (window.__lmxTouchT || 0) <= aa.__lmxRlT && !(aa.__lmxAutoT > aa.__lmxRlT)) {
+                            var cf = aa.querySelector('.lmx-onl-bar .focus, .lmx-onl-hero .focus');
+                            if (aa.classList.contains('lmx-onl-rl') || (cf && cf.offsetWidth)) {
+                                // фокус лишається на кнопці панелі; навігатору тихо нагадуємо, де він (колекцію щойно перебудовано)
+                                try { if (cf && cf.offsetWidth && typeof Navigator.focused === 'function' && Navigator._collection && Navigator._collection.indexOf(cf) >= 0 && !Navigator.getFocusedElement()) Navigator.focused(cf); } catch (x) {}
+                                return;
+                            }
+                        }
+                        var hh = aa && aa.__lmxHold;
                         if (hh && hh.key !== 'hero' && Date.now() < hh.until && el && el.classList && el.classList.contains('lmx-onl-item')
                             && !((window.__lmxKeyT || 0) > (hh.t0 || 0)) && document.querySelector('.activity--active .focus') !== el) return;
                     } catch (e) {}
                     return realFocus.apply(this, arguments);
+                };
+            }
+            // Lampa перебудовує колекцію навігатора (collectionSet) щоразу, як оновлюється екран, і при цьому знімає фокус з кнопки —
+            // клас focus зникає й одразу повертається, а анімація кнопки програється наново («фокус стрибає»). Якщо елемент, що був у фокусі,
+            // лишився в новій колекції, повертаємо фокус йому в тому ж кадрі, тихо (екран нічого не помічає)
+            if (window.Navigator && typeof Navigator.setCollection === 'function' && !Navigator.__lmxSC) {
+                Navigator.__lmxSC = 1;
+                var realSC = Navigator.setCollection;
+                Navigator.setCollection = function () {
+                    var prev = this._focus, r = realSC.apply(this, arguments);
+                    try {
+                        if (prev && prev.nodeType === 1 && !this._focus && this._collection && this._collection.indexOf(prev) >= 0 && document.body.contains(prev) && (prev.offsetWidth || prev.offsetHeight)) {
+                            var pa = document.querySelector('.activity--active');
+                            if (pa && pa.contains(prev) && pa.querySelector('.explorer.lmx-onl')) { prev.classList.add('focus'); this.focused(prev); }
+                        }
+                    } catch (e) {}
+                    return r;
                 };
             }
             if (!window.__lmxKeyHook) { window.__lmxKeyHook = 1; window.__lmxKeyT = 0; document.addEventListener('keydown', function () { window.__lmxKeyT = Date.now(); }, true); }
