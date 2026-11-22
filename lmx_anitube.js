@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.25';
+    var VERSION = '5.26';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1556,6 +1556,7 @@
       }
     };
     this.display = function (videos) {
+      this.__dna = null;
       var _this5 = this;
       if (videos.length > 1 && videos.every(function (video) {
         return video.season > 0 && video.episode > 0;
@@ -2531,6 +2532,20 @@
 
       // LMX UA: порожнє джерело — це «не знайдено», а не збій мережі: на наступне переходимо за 1 с, а не за 5
       var tic = er && er.accsdb ? 10 : 1;
+      // кожне джерело пробуємо один раз за відкриття: коли всі вже порожні — зупиняємось (раніше перебір ішов по колу без кінця)
+      if (!this.__dna || Date.now() - this.__dna.t > 180000) this.__dna = { t: Date.now(), seen: {} };
+      this.__dna.seen[balanser] = 1;
+      var dna = this.__dna;
+      var leftKeys = Lampa.Arrays.getKeys(sources).filter(function (k) { return sources[k].show && !dna.seen[k] && !/pidtor/i.test(k); });
+      if (!leftKeys.length) {
+        html.find('.online-empty__title').text('Нічого не знайдено: жодне джерело не дало результатів');
+        html.find('.online-empty__time').remove();
+        scroll.clear();
+        scroll.append(html);
+        this.loading(false);
+        html.find('.change').on('hover:enter', function () { filter.render().find('.filter--sort').trigger('hover:enter'); });
+        return;
+      }
       html.find('.cancel').on('hover:enter', function () {
         stopBalanserTimer();
       });
@@ -2552,8 +2567,10 @@
           });
           if (keys.length < 2) keys = Lampa.Arrays.getKeys(sources);
           var indx = keys.indexOf(balanser);
-          var next = keys[indx + 1];
-          if (!next) next = keys[0];
+          // наступне ще не пробуване (по колу від поточного)
+          var next = null;
+          for (var ki = 1; ki <= keys.length; ki++) { var kk = keys[(indx + ki) % keys.length]; if (!dna.seen[kk] && !/pidtor/i.test(kk)) { next = kk; break; } }
+          if (!next) return;
           balanser = next;
           if (Lampa.Activity.active().activity == _this9.activity) _this9.changeBalanser(balanser, true);
         }

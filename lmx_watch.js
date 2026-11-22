@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.65';
+    var VERSION = '3.66';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2532,7 +2532,7 @@
     function cidKey(card) {
         var id = String(card && card.id || '');
         if (!id) return '';
-        if (isUa()) return id + '@ua';
+        if (isUa()) return id + '@ua2';   // ua2: перевірка через плагін — старі (неточні) результати не беремо
         return id;
     }
     function instFor(act) {
@@ -3341,6 +3341,7 @@
                     var items = [], cached = 0;
                     sort.forEach(function (x) {
                         if (!x || x.ghost || !x.source || !keyOf(x)) return;
+                        if (uaM && isTorSrc(x)) return;   // LMX UA: торенти вмикаються лише вручну
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
                         var gq = mem.g[keyOf(x)];
@@ -3379,7 +3380,7 @@
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
                     if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
-                    else if (!pe || pe.s === 'skip') skipN++;
+                    else if ((!pe || pe.s === 'skip') && !(uaM && isTorSrc(x))) skipN++;   // LMX UA: торенти (PidTor) автоматично не перевіряються — це не «не встигло відповісти»
                 });
                 if (!okL.length) {
                     // жодна перевірка нічого не підтвердила, але деякі джерела не відповіли — довіряти цьому не можна: переходимо на надійний обхід через сам екран
