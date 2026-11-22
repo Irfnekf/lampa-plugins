@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.80';
+    var VERSION = '3.81';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -208,6 +208,9 @@
         S + '.lmx-onl-prog--end::before{content:"";display:block;width:3.2em;height:3.2em;margin:0 0 .7em;opacity:.55;background:url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'1.6\' stroke-linecap=\'round\'><circle cx=\'10.5\' cy=\'10.5\' r=\'6.5\'/><path d=\'M15.5 15.5L21 21M8 8l5 5M13 8l-5 5\'/></svg>") center/contain no-repeat}' +
         S + '.lmx-onl-prog--end .lmx-onl-prog__s{font-size:1.25em;font-weight:700;opacity:1;margin:0 0 .3em;max-width:34em}' +
         S + '.lmx-onl-prog--end .lmx-onl-dead{justify-content:center;margin-top:1.1em}' +
+        S + '.lmx-onl-prog__sub{font-size:.95em;opacity:.6;margin:.1em 0 0;max-width:34em}' +
+        // порожній екран: тільки шапка і панель — без кнопок джерела/сезону, статусу в шапці й сірих заглушок
+        'body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-bar,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-hero__s,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__b,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__f,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--search,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--sort,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .torrent-filter{display:none !important}' +
         S + '.lmx-onl-prog__b{height:.28em;border-radius:99em;background:rgba(255,255,255,.14);overflow:hidden;margin-bottom:1em}' +
         S + '.lmx-onl-prog__b i{display:block;height:100%;width:8%;border-radius:99em;background:#fff;transition:width .5s ease;animation:lmxBar 1.4s ease-in-out infinite alternate}' +
         '@keyframes lmxBar{0%{opacity:.55}100%{opacity:1}}' +
@@ -1719,6 +1722,7 @@
     }
     // Нічого не знайшли: кнопки «Повторити» та «Уточнити пошук»
     // Найкраще наступне джерело (як nextSource у Nova): не пробуване, не ghost/порожнє; спершу ті, що дали результат, далі за якістю
+    function plural(n, one, few, many) { var m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? few : many); }
     function nextSourceFor(act) {
         var inst = instFor(act), S = inst && readSets(inst);
         if (!S || !S.sort) return null;
@@ -1784,22 +1788,42 @@
         var row = document.createElement('div'), inst = instFor(act), next = nextSourceFor(act), manySrc = false;
         try { manySrc = (readSets(inst).sort || []).length > 1; } catch (e) {}
         row.className = 'lmx-onl-dead';
+        // Порожній екран (варіант A): заголовок, одне речення пояснення і максимум дві дії — «Шукати в торентах» і «Перевірити ще раз».
+        // Якщо є ще неперевірене джерело — третьою пропонуємо саме його
+        var sets = null; try { sets = readSets(inst); } catch (e) {}
+        var allSrc = ((sets && sets.sort) || []).filter(function (x) { return x && !x.ghost && srcName(x.title); });
+        var tor = allSrc.filter(function (x) { return isTorSrc(x); })[0] || null;
+        var nOnl = allSrc.filter(function (x) { return !isTorSrc(x); }).length;
+        var kind = 'цього тайтлу';
+        try { var a00 = Lampa.Activity.active(), c00 = a00 && (a00.movie || a00.card); if (c00) kind = (c00.name || c00.number_of_seasons) ? 'цього серіалу' : 'цього фільму'; } catch (e) {}
+        var ps = pr.querySelector('.lmx-onl-prog__s');
+        if (ps) ps.textContent = 'Онлайн поки немає';
+        var sub = pr.querySelector('.lmx-onl-prog__sub');
+        if (!sub) { sub = document.createElement('div'); sub.className = 'lmx-onl-prog__sub'; if (ps && ps.parentNode) ps.parentNode.insertBefore(sub, ps.nextSibling); else pr.appendChild(sub); }
+        sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
-        if (next) h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="next">Спробувати «' + esc(srcName(next.title)) + '»</div>';
-        if (manySrc) h += '<div class="lmx-onl-btn selector" data-a="all">Усі джерела</div>';
-        h += '<div class="lmx-onl-btn' + (next ? '' : ' lmx-onl-btn--main') + ' selector" data-a="retry">Повторити</div>';
-        if (act.querySelector('.filter--search')) h += '<div class="lmx-onl-btn selector" data-a="clarify">Уточнити пошук</div>';
+        h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
+        h += '<div class="lmx-onl-btn selector" data-a="retry">Перевірити ще раз</div>';
+        if (next && !isTorSrc(next)) h += '<div class="lmx-onl-btn selector" data-a="next">Спробувати «' + esc(srcName(next.title)) + '»</div>';
         row.innerHTML = h;
-        if (!next && manySrc) { var ps = pr.querySelector('.lmx-onl-prog__s'); if (ps) ps.textContent = 'Жодне джерело не дало результатів'; }
+        act.classList.add('lmx-onl-nothing');
         pr.appendChild(row);
         safe(function () { hideJunk(act); });
         [].forEach.call(row.querySelectorAll('.lmx-onl-btn'), function (b) {
             $(b).on('hover:enter click', once(function () {
                 var a = b.getAttribute('data-a');
+                if (a === 'tor') {
+                    window.__lmxManual = Date.now();
+                    // торент-джерело є в списку (PidTor) — вмикаємо його тут же; інакше відкриваємо рідний пошук торентів Lampa
+                    if (tor) { if (row.parentNode) row.parentNode.removeChild(row); act.classList.remove('lmx-onl-nothing'); act.classList.add('lmx-onl-load'); act.__lmxEG = 0; act.__lmxRlKey = 'src'; selIn(inst, 'sort', tor); recover(act); return; }
+                    try { var a1 = Lampa.Activity.active(), c1 = a1 && (a1.movie || a1.card); if (c1) Lampa.Activity.push({ url: '', title: Lampa.Lang.translate('title_torrents'), component: 'torrents', search: c1.title || c1.name, search_one: c1.title || c1.name, search_two: c1.original_title || c1.original_name, movie: c1, page: 1 }); } catch (e) {}
+                    return;
+                }
                 if (a === 'clarify') { var f = act.querySelector('.filter--search'); if (f) { window.__lmxAllowSel = Date.now(); try { $(f).trigger('hover:enter'); } catch (e) {} } return; }
                 if (a === 'all') { act.__lmxAllSrc = true; act.__lmxOpen = ''; toggleDrop(act, 'src'); return; }
                 if (a === 'next' && next) {
                     window.__lmxManual = Date.now();
+                    act.classList.remove('lmx-onl-nothing');
                     if (row.parentNode) row.parentNode.removeChild(row);
                     act.classList.add('lmx-onl-load'); act.__lmxEG = 0;
                     act.__lmxRlKey = 'src'; selIn(inst, 'sort', next); recover(act); emptyGuard(act);
@@ -1810,6 +1834,7 @@
                 var o = pcGet(); delete o[cid]; pcSet(o);
                 window.__lmxProbe = null; window.__lmxBad = null; act.__lmxHop = null;
                 if (row.parentNode) row.parentNode.removeChild(row);
+                act.classList.remove('lmx-onl-nothing');
                 act.classList.add('lmx-onl-load'); act.__lmxWatch = 0; act.__lmxEG = 0; act.__lmxProbing = false;
                 var pr2 = act.querySelector('.lmx-onl-prog'); if (pr2) pr2.classList.remove('lmx-onl-prog--end');
                 window.__lmxInplace = Date.now();
@@ -3815,6 +3840,8 @@
         var act = document.querySelector('.activity--active');
         var body = act && act.querySelector('.explorer__files-body .scroll__body');
         if (!body || !isOn()) return;
+        // знайшлися серії (напр., пізня відповідь джерела або торенти) — порожній екран знімаємо, панель кнопок повертається
+        if (act.classList.contains('lmx-onl-nothing') && body.querySelector('.lmx-onl-item, .videos__item, [class*="online-prestige"]')) act.classList.remove('lmx-onl-nothing');
         // Джерела розмічають серії по-різному (.videos__item, .online-prestige, з префіксами на кшталт .onl-online-prestige…), тому не
         // покладаємось на назви класів: серією вважаємо кожен фокусований елемент списку, у якому є картинка або смужка прогресу
         var kids = body.children, list = [], i;
