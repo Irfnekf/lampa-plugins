@@ -51,8 +51,36 @@ $HOSTN {
 CADDY
 systemctl restart caddy
 sleep 20
+echo "== keepalive"
+# Oracle забирає Always Free сервер, якщо 7 днів процесор, мережа І пам'ять нижче 20%.
+# Тримаємо ~3 ГБ пам'яті зайнятими (разом з Lampac це понад 20% від 12 ГБ) і раз на хвилину їх «торкаємось», процесор майже не навантажується.
+cat > /usr/local/bin/lmx-keep.py <<'PY'
+import time
+b = bytearray(3 * 1024 ** 3)
+step = 4096
+for i in range(0, len(b), step):
+    b[i] = 1
+while True:
+    for i in range(0, len(b), step):
+        b[i] ^= 1
+    time.sleep(60)
+PY
+cat > /etc/systemd/system/lmx-keep.service <<'UNIT'
+[Unit]
+Description=LMX keep Always Free instance active
+After=network.target
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/lmx-keep.py
+Nice=19
+Restart=always
+RestartSec=30
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now lmx-keep >/dev/null 2>&1
 echo "== check"
-systemctl is-active lampac caddy
+systemctl is-active lampac caddy lmx-keep
 curl -s -o /dev/null -w "local:%{http_code}\n" "http://127.0.0.1:9118/lite/events?id=1&token=$LMX_SECRET" || true
 curl -s -o /dev/null -w "https:%{http_code}\n" "https://$HOSTN/lite/events?id=1&token=$LMX_SECRET" || true
 echo "== done $HOSTN"
