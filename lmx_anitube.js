@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.15';
+    var VERSION = '5.16';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -157,6 +157,35 @@
             })();
         }
     }
+
+    // ── KinoUkr: офлайн-база kinoukr.com (назва → плеєр Ashdi/Tortuga), лежить поруч із плагіном на GitHub Pages; плеєр відкриває сам пристрій ──
+    var kuDb = null, kuWait = null;
+    function kuFind(url, done) {
+        function go(db) {
+            var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0;
+            var n1 = nrm(title), n2 = nrm(orig), best = null, bs = -1;
+            db.forEach(function (r) {
+                var hit = (n2 && nrm(r[1]) === n2) || (n1 && nrm(r[0]) === n1);
+                if (!hit) return;
+                var sc = !year || !r[2] ? 1 : (r[2] === year ? 3 : Math.abs(r[2] - year) <= 1 ? 2 : -1);
+                if (n2 && nrm(r[1]) === n2 && n1 && nrm(r[0]) === n1) sc += 0.5;
+                if (sc > bs) { bs = sc; best = r; }
+            });
+            if (!best || bs < 0) return done(null);
+            done(best[3] ? 'https://ashdi.vip/' + best[3] : 'https://tortuga.tw/' + best[4]);
+        }
+        if (kuDb) return go(kuDb);
+        if (kuWait) return kuWait.push(go);
+        kuWait = [go];
+        fetchText(KU_DB, function (t) {
+            try { kuDb = JSON.parse(t); } catch (e) { kuDb = []; }
+            var w = kuWait; kuWait = null; w.forEach(function (f) { f(kuDb); });
+        }, function () { var w = kuWait; kuWait = null; w.forEach(function (f) { f([]); }); });
+    }
+    var KU_DB = (function () {
+        try { var sc = document.currentScript && document.currentScript.src; if (sc && /lmx_anitube\.js/.test(sc)) return sc.replace(/lmx_anitube\.js.*$/, 'kinoukr_db.json'); } catch (e) {}
+        return 'https://irfnekf.github.io/lampa-plugins/kinoukr_db.json';
+    })();
 
     // ── UAFlix (uafix.net): якщо сайт не пустив Worker — шукає й розбирає сам пристрій; відео — плеєр zetvideo з прямим m3u8 ──
     var UF = 'https://uafix.net';
@@ -384,13 +413,22 @@
                         });
                         return;
                     }
+                    var playFrame = function (iframe, label) {
+                        if (qget(url, 'serial') === '1') return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
+                        var t = qget(url, 'title') || 'Дивитись';
+                        comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=' + encodeURIComponent(label), title: t, voice_name: label })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
+                    };
                     if (/\/lite\/uakino\?/.test(String(url || '')) && !/[?&]href=/.test(String(url))) {
-                        var serialU = qget(url, 'serial') === '1';
                         ukFind(String(url), function (iframe, why) {
                             if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'UAKino працює лише в застосунку Lampa (ТВ, телефон) — браузер на комп\u2019ютері його блокує' : 'На UAKino цього тайтлу не знайдено'));
-                            if (serialU) return comp.request(host() + '/lite/pl?u=' + encodeURIComponent(iframe));
-                            var t = qget(url, 'title') || 'Дивитись';
-                            comp.parse('<div class="videos__item videos__movie selector" media="" data-json="' + esc(JSON.stringify({ method: 'call', url: host() + '/lite/video?u=' + encodeURIComponent(iframe) + '&t=UAKino', title: t, voice_name: 'UAKino' })) + '"><div class="videos__item-title">' + esc(t) + '</div></div>');
+                            playFrame(iframe, 'UAKino');
+                        });
+                        return;
+                    }
+                    if (/\/lite\/kinoukr\?/.test(String(url || ''))) {
+                        kuFind(String(url), function (iframe) {
+                            if (!iframe) return comp.parse(emptyHtml('У KinoUkr цього тайтлу немає'));
+                            playFrame(iframe, 'KinoUkr');
                         });
                         return;
                     }
@@ -1067,6 +1105,11 @@
                 );
               _this4.lifeSource().then(_this4.startSource).then(resolve)['catch'](reject);
             } else {
+              try {
+                var mv = object.movie || {}, anime = mv.original_language === 'ja' && (mv.genres || []).some(function (g) { return g && g.id === 16; });
+                if (Array.isArray(json) && json.length && !anime && !json.some(function (j) { return j && j.balanser === 'kinoukr'; }))
+                  json.push({ name: 'KinoUkr', url: host() + '/lite/kinoukr', balanser: 'kinoukr', show: true });
+              } catch (e) {}
               _this4.startSource(json).then(resolve)['catch'](reject);
             }
           },
