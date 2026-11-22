@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.68';
+    var VERSION = '3.69';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1919,6 +1919,7 @@
         o = o || {};
         var W = BAL[balMode()], pe = o.pe || null, s = 0, why = [], q = (pe && pe.q) || o.q || 0, ua = '', g, ms;
         mem = mem || memGet();
+        q = Math.min(q, qCap());   // 4K не дає переваги, якщо в ⚙ обрано FHD/HD або пристрій 4K-відео не декодує
         s += q <= 3 ? q * W.q : 3 * W.q + (q - 3) * W.qHi;
         if (uaOn()) {
             if (pe && pe.uv > 0) { s += W.ua + (pe.uv >= 3 ? 0.3 : 0); ua = 'real'; why.push('українська озвучка'); }
@@ -1937,7 +1938,19 @@
         if (ms) s += ms <= 1500 ? 0.25 : ms <= 3000 ? 0.1 : ms > 6000 ? -0.2 : 0;
         return { s: s, why: why, ua: ua, ms: ms };
     }
-    function qTarget() { var v = qPref(); return v === '4k' ? 4 : v === 'hd' ? 2 : 3; }
+    // Чи варто взагалі гнатися за 4K: обрано FHD/HD у ⚙ — ні; пристрій не декодує ні AV1, ні HEVC (у них 4K у Phantom/Spectre та ін.) — теж ні
+    var cap4k = null;
+    function dev4k() {
+        if (cap4k !== null) return cap4k;
+        cap4k = true;
+        try {
+            var ok = function (c) { var t = 'video/mp4; codecs="' + c + '"'; if (window.MediaSource && MediaSource.isTypeSupported && MediaSource.isTypeSupported(t)) return true; var v = document.createElement('video'); return !!(v.canPlayType && v.canPlayType(t)); };
+            cap4k = ok('av01.0.12M.08') || ok('hvc1.2.4.L153.B0') || ok('hev1.2.4.L153.B0');
+        } catch (e) { cap4k = true; }
+        return cap4k;
+    }
+    function qCap() { var v = qPref(); return v === 'hd' ? 2 : v === 'fhd' ? 3 : dev4k() ? 4 : 3; }
+    function qTarget() { var v = qPref(); return Math.min(v === '4k' ? 4 : v === 'hd' ? 2 : 3, qCap()); }
     function probeOn() { var v = Lampa.Storage.get('lmx_online_probe', 'true'); return v === true || v === 'true'; }
 
     // ---- Фільтр джерела: перехоплюємо екземпляри Lampa.Filter і читаємо їхні списки (джерела, сезони, озвучки) та керуємо ними напряму,
