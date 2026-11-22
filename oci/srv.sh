@@ -58,6 +58,14 @@ $HOSTN {
     header Access-Control-Allow-Origin "*"
     reverse_proxy http://filmixapp.cyou {
       header_up Host filmixapp.cyou
+      # Filmix віддає посилання на відео лише «застосунку»: без ознак браузера (Origin, Referer, cookies) і з UA як у Android-застосунку
+      header_up User-Agent "okhttp/3.10.0"
+      header_up -Origin
+      header_up -Referer
+      header_up -Cookie
+      header_up -Sec-Fetch-Site
+      header_up -Sec-Fetch-Mode
+      header_up -Sec-Fetch-Dest
       header_down -Access-Control-Allow-Origin
     }
   }
