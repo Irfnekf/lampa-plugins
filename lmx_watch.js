@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.67';
+    var VERSION = '3.68';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3346,7 +3346,7 @@
                         if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
                         var gq = mem.g[keyOf(x)];
-                        if (gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;
+                        if (!uaM && gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;   // LMX UA перевіряє кожне джерело завжди (тайтли різні, а «порожньо» тут — не збій)
                         var isTor = /jac|torrent|jackett|torr|magnet/i.test(String(x.title) + ' ' + String(x.source));
                         // очікування за досвідом: швидке джерело — 3 с, повільне, але робоче — до 8 с (пропорційно його звичному часу відповіді); невідоме — стандартні 4,5 с
                         var gms = gq && gq.ms || 0;
@@ -3574,7 +3574,9 @@
                     if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
                     if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
-                    var c = sort.filter(function (x) { return x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0; })
+                    // LMX UA: джерела, де перевірка вже показала «тайтлу немає», і торенти не перебираємо — інакше обхід по колу всіх джерел
+                    var uaX = isUa();
+                    var c = sort.filter(function (x) { if (!(x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0)) return false; if (!uaX) return true; if (isTorSrc(x)) return false; var pe = pcEntry(cid, srcName(x.title)); return !(pe && pe.s === 'empty'); })
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
                     if (!c.length) {
                         // раніше тут усі панелі знімались, і лишався порожній екран з крихітним статусом у шапці. Тепер — видима панель із кнопками «Усі джерела» / «Повторити»
