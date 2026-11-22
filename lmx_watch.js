@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.76';
+    var VERSION = '3.77';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -138,6 +138,7 @@
         S + '.lmx-onl-tag--k4{background:#ef9f27;color:#412402}' +
         S + '.lmx-onl-tag--prem{background:#7f77dd;color:#fff}' +
         S + '.lmx-onl-tag--tor{background:#444441;color:#d3d1c7}' +
+        S + '.lmx-onl-tag--mix{background:#0f6e56;color:#e1f5ee}' +
         S + '.lmx-onl-drop--pop .lmx-onl-opt--ok::before{margin-right:.65em;flex:0 0 auto}' +
         S + '.lmx-onl-drop--pop .lmx-onl-sep{display:block;margin:.35em .5em .2em;padding:.35em 0 0;border-top:1px solid rgba(255,255,255,.14);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;opacity:.55}' +
         S + '.lmx-onl-drop--pop::before,' + S + '.lmx-onl-drop--pop::after{display:none;position:-webkit-sticky;position:sticky;left:0;right:0;height:1.9em;line-height:1.9em;text-align:center;font-size:.7em;font-weight:600;letter-spacing:.04em;pointer-events:none;z-index:3;color:#fff}' +
@@ -2716,7 +2717,8 @@
     var SRC_TAGS = [
         ['anime', 'АНІМЕ', function (t) { return ANIME_SRC.test(t); }],
         ['ua', 'UA', function (t) { return (UA_SRC.test(t) || /ене[иії]д/i.test(t)) && !/filmix|фільмікс|фильмикс/i.test(t); }],
-        ['k4', '4K', function (t) { return /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/i.test(t); }],
+        ['k4', '4K', function (t) { return /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/i.test(t) || /(^|[^a-z])(spectre|aladin)([^a-z]|$)/i.test(t); }],   // Spectre і Aladin віддають 4K, хоч у назві цього немає
+        ['mix', 'МІКС', function (t) { return /(^|[^a-z])hdvb([^a-z]|$)/i.test(t) && !/hdvb\s*ua/i.test(t); }],   // збірник різних озвучок
         ['prem', 'PREMIUM', function (t) { return /filmix|фільмікс|фильмикс/i.test(t); }],
         ['tor', 'ТОРЕНТ', function (t) { return isTorSrc({ title: t }); }]
     ];
