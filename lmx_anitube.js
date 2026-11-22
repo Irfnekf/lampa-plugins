@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.32';
+    var VERSION = '5.33';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -139,6 +139,21 @@
     //    Запити до API Filmix — з пристрою; якщо Filmix не віддає посилань для цієї мережі — повторюємо через наш сервер (лише API, відео йде напряму)
     var FX_HOSTS = ['http://filmixapp.cyou', 'http://filmixapp.vip', 'http://fxapp.biz'];
     try { if (!window.__lmxOra) window.__lmxOra = String(Lampa.Storage.get('lmx_ora', '') || '') || ''; } catch (e) {}
+    // Стан сервера Oracle: якщо він не відповідає, його джерела (Phantom, Spectre, Aladin, HDVB) ховаємо, щоб не чекати на них;
+    // джерела, які відкриває сам пристрій, працюють далі. Перевірка — короткий /ping, не частіше ніж раз на 2 хв, у фоні
+    var oraSt = { down: false, t: 0, busy: false };
+    try { var os0 = Lampa.Storage.get('lmx_ora_down', 0); if (os0 && Date.now() - os0 < 10 * 60000) oraSt.down = true; } catch (e) {}
+    function oraCheck(force) {
+        var base = window.__lmxOra;
+        if (!base || oraSt.busy || (!force && Date.now() - oraSt.t < 120000)) return;
+        oraSt.busy = true;
+        var fin = function (up) {
+            oraSt.busy = false; oraSt.t = Date.now(); oraSt.down = !up;
+            try { Lampa.Storage.set('lmx_ora_down', up ? 0 : Date.now()); } catch (e) {}
+        };
+        try { var n = new Lampa.Reguest(); n.timeout(5000); n.silent(base + '/ping', function () { fin(true); }, function (a) { fin(!!(a && a.status && a.status < 500 && a.status !== 0)); }); } catch (e) { oraSt.busy = false; }
+    }
+    function oraDown() { oraCheck(); return oraSt.down; }
     function fxAcc() { var a = null; try { a = Lampa.Storage.get('lmx_fx_acc', null); if (typeof a === 'string') a = JSON.parse(a); } catch (e) { a = null; } return a && a.token && a.dev ? a : null; }
     function fxDev() { var d = ''; for (var i = 0; i < 16; i++) d += 'abcdef0123456789'.charAt(Math.floor(Math.random() * 16)); return d; }
     function fxArgs(acc, dev) { return 'app_lang=ru_RU&user_dev_apk=2.2.13&user_dev_id=' + (acc ? acc.dev : dev) + '&user_dev_name=Xiaomi+24069PC21G&user_dev_os=12&user_dev_token=' + (acc ? acc.token : '') + '&user_dev_vendor=Xiaomi'; }
@@ -151,7 +166,7 @@
     // шлях API → JSON; good(j) — чи відповідь корисна (інакше пробуємо наступний шлях: інші адреси Filmix, потім наш сервер)
     function fxGet(path, good, done) {
         // спершу через наш сервер (він звертається до Filmix як застосунок — так Filmix віддає посилання), потім напряму
-        var routes = FX_HOSTS.slice(); if (window.__lmxOra) routes.unshift(window.__lmxOra + '/fxapi');
+        var routes = FX_HOSTS.slice(); if (window.__lmxOra && !oraSt.down) routes.unshift(window.__lmxOra + '/fxapi');
         var i = 0, last = null;
         (function next() {
             if (i >= routes.length) return done(last);
@@ -310,6 +325,30 @@
         return 'https://irfnekf.github.io/lampa-plugins/kinoukr_db.json';
     })();
 
+    // ── Makhno: відкритий каталог Ashdi (LME) — за IMDb/TMDB ID віддає плеєр Ashdi; питає сам пристрій, без нашого сервера ──
+    var mkCache = {};
+    function mkFind(url, done) {
+        var imdb = qget(url, 'imdb_id'), id = qget(url, 'id'), src = qget(url, 'source') || 'tmdb', serial = qget(url, 'serial') === '1';
+        var qs = [];
+        if (/^tt\d+$/.test(imdb)) qs.push('imdb_id=' + imdb);
+        if (/^\d+$/.test(id) && /^(tmdb|cub)$/.test(src)) qs.push('tmdb_id=' + id + (serial ? '&serial=1' : ''));
+        if (!qs.length) return done(null);
+        var key = qs.join('|');
+        if (key in mkCache) return done(mkCache[key]);
+        var i = 0;
+        (function next() {
+            if (i >= qs.length) { mkCache[key] = null; return done(null); }
+            fetchTextNc('https://wh.lme.isroot.in/?' + qs[i++], function (t) {
+                var j = null; try { j = JSON.parse(t); } catch (e) {}
+                var u = j && typeof j.play === 'string' && /^https:\/\/ashdi\.vip\/(vod|serial)\/\d+/.test(j.play) ? j.play : '';
+                if (u && /\/serial\//.test(u) !== serial) u = '';
+                if (!u) return next();
+                if (Object.keys(mkCache).length > 40) mkCache = {};
+                mkCache[key] = u; done(u);
+            }, next);
+        })();
+    }
+
     // ── PidTor: торренти з jac.red, дивимось через TorrServer, указаний у налаштуваннях Lampa на цьому пристрої (сервер Oracle торренти не качає) ──
     var ptCache = {};
     function tsHost() {
@@ -438,6 +477,7 @@
         if (/\/lite\/ey\?/.test(url)) return eyFind(url, frame('Eneyida'));
         if (/\/lite\/uakino\?/.test(url) && !/[?&]href=/.test(url)) return ukFind(url, frame('UAKino'));
         if (/\/lite\/kinoukr\?/.test(url)) return kuFind(url, frame('KinoUkr'));
+        if (/\/lite\/makhno\?/.test(url)) return mkFind(url, frame('Makhno'));
         if (/\/lite\/pidtor\?/.test(url)) return done(null);
         if (/\/lite\/fxd\?/.test(url)) return fxHtml(url, function (h) { done(/online-empty/.test(h) ? '' : h); });
         if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h) { done(h || ''); });
@@ -747,6 +787,14 @@
                             if (!live()) return;
                             if (!iframe) return comp.parse(emptyHtml('У KinoUkr цього тайтлу немає'));
                             playFrame(iframe, 'KinoUkr');
+                        });
+                        return;
+                    }
+                    if (/\/lite\/makhno\?/.test(String(url || ''))) {
+                        mkFind(String(url), function (iframe) {
+                            if (!live()) return;
+                            if (!iframe) return comp.parse(emptyHtml('У Makhno цього тайтлу немає'));
+                            playFrame(iframe, 'Makhno');
                         });
                         return;
                     }
@@ -1446,7 +1494,16 @@
                 var mv = object.movie || {}, anime = mv.original_language === 'ja' && (mv.genres || []).some(function (g) { return g && g.id === 16; });
                 if (Array.isArray(json) && json.length && !anime && !json.some(function (j) { return j && j.balanser === 'kinoukr'; }))
                   json.push({ name: 'KinoUkr', url: host() + '/lite/kinoukr', balanser: 'kinoukr', show: true });
+                if (Array.isArray(json) && json.length && !json.some(function (j) { return j && j.balanser === 'makhno'; }) && (/^tt\d+$/.test(String(mv.imdb_id || '')) || /^(tmdb|cub)$/.test(String(mv.source || 'tmdb'))))
+                  json.push({ name: 'Makhno', url: host() + '/lite/makhno', balanser: 'makhno', show: true });
                 var ph = Array.isArray(json) && json.filter(function (j) { return j && /\/lite\/phantom\b/.test(String(j.url || '')); })[0];
+                // сервер Oracle не відповідає — його джерела не показуємо (Watch не чекатиме на них), решта працює як завжди
+                if (ph) { window.__lmxOra = String(ph.url).replace(/\/lite\/phantom.*$/, ''); try { Lampa.Storage.set('lmx_ora', window.__lmxOra); } catch (e) {} }
+                if (ph && oraDown()) {
+                  var ob = window.__lmxOra;
+                  for (var oi = json.length - 1; oi >= 0; oi--) if (json[oi] && String(json[oi].url || '').indexOf(ob) === 0) json.splice(oi, 1);
+                  ph = null;
+                }
                 if (ph && !json.some(function (j) { return j && j.balanser === 'aladin'; }))
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
                 // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
@@ -1474,7 +1531,7 @@
                   xn.silent(xh + '/externalids?' + xq, function (j) {
                     try { if (typeof j === 'string') j = JSON.parse(j); if (j && j.kinopoisk_id) { object.movie.kinopoisk_id = j.kinopoisk_id; (window.__lmxKp = window.__lmxKp || {})[xk] = j.kinopoisk_id; } if (j && j.imdb_id && !object.movie.imdb_id) object.movie.imdb_id = j.imdb_id; } catch (e) {}
                     fin2();
-                  }, fin2);
+                  }, function () { safe(function () { oraCheck(true); }); fin2(); });
                 } catch (e) { fin2(); }
               } else go();
             }
@@ -1713,6 +1770,27 @@
                 }
                 _this5.orUrlReserve(first);
                 _this5.setDefaultQuality(first);
+                // Підготовка наступної серії: поки йде поточна, тихо отримуємо посилання на наступну (один запит, через 25 с після старту),
+                // тож перемикання в плеєрі — миттєве. Торенти не готуємо (TorrServer почав би качати)
+                var warmT = null;
+                var warmAfter = function (cur) {
+                  clearTimeout(warmT);
+                  var i = videos.indexOf(cur), nx = i >= 0 ? videos[i + 1] : null;
+                  if (!nx || nx.method !== 'call' || nx.__lmxPre || Lampa.Storage.field('player') !== 'inner') return;
+                  var pu = typeof playerOf === 'function' ? playerOf(nx.url) : '';
+                  if (/^pt:/.test(pu) || /\/lite\/pidtor/.test(String(nx.url || ''))) return;
+                  warmT = setTimeout(function () {
+                    var keep = function (stream, js) { if (stream && stream.url) nx.__lmxPre = { t: Date.now(), stream: stream, json: js || {} }; };
+                    try {
+                      if (pu && typeof direct === 'function') return direct(pu, function (r) { keep(Object.assign({}, r, { title: nx.title, voice_name: nx.voice_name }), { quality: r.quality }); }, function () {});
+                      var wn = new Lampa.Reguest(); wn.timeout(15000);
+                      wn['native'](account(nx.url), function (json) {
+                        if (!json || json.rch || !json.url) return;
+                        codecFilter(json, function () { keep(json, json); });
+                      }, function () {});
+                    } catch (e) {}
+                  }, 25000);
+                };
                 if (item.season) {
                   videos.forEach(function (elem) {
                     var cell = _this5.toPlayElement(elem);
@@ -1724,6 +1802,21 @@
                           delete cell.quality;
                         } else {
                           cell.url = function (call) {
+                            // наступна серія вже підготовлена заздалегідь — відкриваємо одразу, без очікування
+                            var pre = elem.__lmxPre;
+                            if (pre && Date.now() - pre.t < 15 * 60000 && pre.stream && pre.stream.url) {
+                              elem.__lmxPre = null;
+                              cell.url = pre.stream.url;
+                              cell.quality = pre.json.quality || elem.qualitys;
+                              cell.segments = pre.json.segments || elem.segments;
+                              cell.subtitles = pre.stream.subtitles;
+                              _this5.orUrlReserve(cell);
+                              _this5.setDefaultQuality(cell);
+                              elem.mark();
+                              warmAfter(elem);
+                              return call();
+                            }
+                            warmAfter(elem);
                             _this5.getFileUrl(
                               elem,
                               function (stream, stream_json) {
@@ -1765,6 +1858,7 @@
                   element.isonline = true;
                   Lampa.Player.play(element);
                   Lampa.Player.playlist(playlist);
+                  if (item.season) warmAfter(item);
                   if (element.subtitles_call) _this5.loadSubtitles(element.subtitles_call);
                   item.mark();
                   _this5.updateBalanser(balanser);
@@ -3382,6 +3476,7 @@
         safe(hookCreate);
         Lampa.Listener.follow('full', function (e) { if (e.type === 'complite') safe(function () { addButton(e); }); });
         safe(settings);
+        setTimeout(function () { safe(function () { oraCheck(true); }); }, 4000);
     }
     if (window.Lampa && Lampa.Component && Lampa.Listener && Lampa.Explorer && Lampa.Filter) start();
     else { var n = 0, iv = setInterval(function () { if (window.Lampa && Lampa.Component && Lampa.Listener && Lampa.Explorer && Lampa.Filter) { clearInterval(iv); start(); } else if (++n > 300) clearInterval(iv); }, 100); }

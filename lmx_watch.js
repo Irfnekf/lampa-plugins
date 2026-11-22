@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.72';
+    var VERSION = '3.73';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -4004,7 +4004,7 @@
     }
     function warmNext() {
         try {
-            if (!prefetchOn() || !isOn()) return;
+            if (!prefetchOn() || !isOn() || isUa()) return;   // LMX UA готує наступну серію сам (повністю, з посиланням)
             var el = window.__lmxPlayEl;
             if (!el || !document.body.contains(el) || Date.now() - (window.__lmxPlayT || 0) > 20000) return;
             var nx = el.nextElementSibling;
