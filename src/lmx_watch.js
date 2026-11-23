@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.91';
+    var VERSION = '3.92';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2768,7 +2768,8 @@
             Lampa.Storage.set('lmx_watch_vp', JSON.stringify(m));
         } catch (e) {}
     }
-    function vnorm(t) { return String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
+    // прапорець 🇺🇦 джерела ставлять не завжди (лише в змішаних) — для порівняння назв озвучок його не враховуємо
+    function vnorm(t) { return String(t || '').replace(/\uD83C\uDDFA\uD83C\uDDE6/g, '').replace(/\s+/g, ' ').trim().toLowerCase(); }
     // Яку озвучку відкрити першою: збережений вибір для цього серіалу → найчастіше обирана українська → дубляж → багатоголосий → перша українська зі списку
     function pickVoice(cid, items) {
         var vp = vpGet(), ve = vp[String(cid)], rem = ve && vnorm(ve.t), vc = vcGet(), best = null, bs = -1e9, i, t, sc, pm = memGet(), pty = playType();
@@ -2826,9 +2827,16 @@
             return true;
         } catch (e) { return false; }
     }
-    function vcGet() { try { var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = parseCached(VC_SLOT, v); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+    function vcGet() {
+        try {
+            var v = Lampa.Storage.get('lmx_watch_vc', ''); if (typeof v === 'string' && v) v = parseCached(VC_SLOT, v);
+            if (!v || typeof v !== 'object') return {};
+            // старі записи з прапорцем у назві («🇺🇦 рідний голос») зводимо до однієї назви
+            var out = {}, k, n; for (k in v) { n = vnorm(k); if (n) out[n] = (out[n] || 0) + (+v[k] || 0); } return out;
+        } catch (e) { return {}; }
+    }
     function vcNote(t) {
-        try { var m = vcGet(), k = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
+        try { var m = vcGet(), k = vnorm(t); if (!k) return; m[k] = (m[k] || 0) + 1; Lampa.Storage.set('lmx_watch_vc', JSON.stringify(m)); } catch (e) {}
     }
     // Субтитри (навіть українські) озвучкою не вважаємо — лишаються в «Інших»; назва, що закінчується на «UA» (FanVoxUA, AniUA), — українська
     // субтитри (будь-де в назві: «Українські субтитри», «UA Sub») — це не озвучка: не обираються й не рахуються автоматично
@@ -3500,14 +3508,14 @@
                 if (li) { gs.cont = lp.k; gs.contT = Date.now(); if (!li.selected) { switchTo(inst, li, 'Продовжуємо перегляд'); return; } }
             }
             if (gs.cont) {
-                if (curKey === gs.cont && freshEps(body).length) { gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
+                if (curKey === gs.cont && freshEps(body).length) { if (isUa()) okNote(curKey); gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
                 if (/не дав результат|не дал результат|нічого не знайд|ничего не найд/i.test(body.textContent || '') && curKey === gs.cont || Date.now() - gs.contT > 9000) gs.cont = '';
                 else return;
             }
             // LMX UA: усі джерела — українська озвучка з нашого сервера, якість у назвах не вказана, тож перебір нічого не покращить, лише затримає
             // показ на кілька секунд. Є серії на відкритому джерелі — одразу показуємо; порожнє джерело перемикає сам екран (і запобіжник нижче)
             if (uaM && curKey && (!window.__lmxUaBridge || !probeOn())) {
-                if (freshEps(body).length) { gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
+                if (freshEps(body).length) { okNote(curKey); gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
                 // джерело відповіло «не знайдено» — не перебираємо всі джерела у фоні (кілька секунд), а одразу віддаємо запобіжнику порожніх: він перемкне на наступне за ~0,6 с
                 if (/не дав результат|не дал результат|нічого не знайд|ничего не найд/i.test(body.textContent || '')) return finish();
             }
