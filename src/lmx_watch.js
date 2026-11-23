@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.90';
+    var VERSION = '3.91';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1620,6 +1620,10 @@
         m.t = e.t = Date.now(); m.l[key] = e; pcSet(o);
     }
     // швидкість відповіді джерела (ковзне середнє, мс): при однаковій якості швидші — вище
+    // джерело відповіло і має тайтл — для статистики «Здоров'я джерел» і рейтингу (раніше для LMX UA рахувались лише промахи)
+    function okNote(key) {
+        try { var mem = memGet(), g = mem.g[key] || (mem.g[key] = { ok: 0, fail: 0, q: 0 }); g.ok = Math.min(50, (g.ok || 0) + 1); g.ot = Date.now(); if (g.fail) g.fail = Math.max(0, g.fail - 1); memSet(mem); } catch (e) {}
+    }
     function msNote(key, ms) {
         try { var mem = memGet(), g = mem.g[key] || (mem.g[key] = { ok: 0, fail: 0, q: 0 }); g.ms = g.ms ? Math.round((g.ms * 2 + ms) / 3) : ms; memSet(mem); } catch (e) {}
     }
@@ -1706,7 +1710,7 @@
                     }
                 }
                 ended = true;
-                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') { msNote(it.key, r.ms); if (r.uv > 0) uaNote(it.key); }
+                var r = bgParse(ans); r.ms = Date.now() - t1; pcPut(job.cid, it.key, r); if (r.s === 'ok') { msNote(it.key, r.ms); okNote(it.key); if (r.uv > 0) uaNote(it.key); }
                 try { job.onEach(it, r); } catch (e) {}
                 fin(); step();
             }
@@ -1916,7 +1920,7 @@
         try {
             var v = Lampa.Storage.get(memKey(), '');
             if (typeof v === 'string' && v) v = JSON.parse(v);
-            if (v && typeof v === 'object' && v.g && v.t) { if (v.hv !== 3) { v.g = {}; v.t = {}; v.h = {}; v.m = {}; v.hv = 3; } return v; }   // одноразове скидання досвіду, накопиченого під час тестів BWA
+            if (v && typeof v === 'object' && v.g && v.t) { if (v.hv !== 3 && v.hv !== 4) { v.g = {}; v.t = {}; v.h = {}; v.m = {}; v.hv = 4; } else if (v.hv === 3) { v.g = {}; v.hv = 4; } return v; }   // hv4: «промахи», хибно накопичені LMX UA, скидаємо один раз (вибір тайтлів і звички лишаються)   // одноразове скидання досвіду, накопиченого під час тестів BWA
         } catch (e) {}
         return { g: {}, t: {} };
     }
@@ -3811,7 +3815,7 @@
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
                     if (curKey && cid) seSet(cid, curKey, 'no');
                     var mem = memGet();
-                    if (curKey) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }
+                    if (curKey && !isUa()) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }   // LMX UA: «тайтлу немає» — звичайна відповідь, а не збій джерела
                     // LMX UA: джерела, де перевірка вже показала «тайтлу немає», і торенти не перебираємо — інакше обхід по колу всіх джерел
                     var uaX = isUa();
                     var c = sort.filter(function (x) { if (!(x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0)) return false; if (!uaX) return true; if (isTorSrc(x)) return false; var pe = pcEntry(cid, srcName(x.title)); return !!(pe && pe.s === 'ok'); })   // LMX UA: перемикаємо лише на джерела, де перевірка тайтл підтвердила
