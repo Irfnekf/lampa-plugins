@@ -1124,13 +1124,13 @@ async function uaUafix(url, env, ctx) {
     '<div class="videos__item-imgbox videos__movie-imgbox"></div><div class="videos__item-title">Серія ' + n + '</div>')).join(''));
 }
 
-// Джерела з власного сервера Lampac (Oracle Cloud, Always Free): там є Chromium, тож працюють Phantom/Spectre (4K), UAKino, Moon.
+// Джерела з власного сервера Lampac (Oracle Cloud, Always Free): там є Chromium, тож працюють Phantom/Spectre (4K), UAKino.
+// Moon прибрано: пошук Moon у Lampac не працює (відповідає «search», ймовірно потрібен ключ MoonAnime) — повернемо, коли буде робочий спосіб.
 // Адреса й ключ доступу — у змінній Worker LMX_ORACLE ("https://host|ключ"), не в коді (репозиторій публічний)
 const ORA_SOURCES = [
   { k: 'phantom', name: 'Phantom 4K' },
   { k: 'spectre', name: 'Spectre' },
-  { k: 'uakino', name: 'UAKino' },
-  { k: 'moonanime', name: 'Moon', anime: true }
+  { k: 'uakino', name: 'UAKino' }
 ];
 function uaEvents(url, env) {
   const p = uaParams(url), anime = uaIsAnime(p);
