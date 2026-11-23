@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.40';
+    var VERSION = '5.41';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -2098,7 +2098,7 @@
     };
     // ── choice & storage ──
     this.getChoice = function (for_balanser) {
-      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 3000, {});
+      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 300, {});
       var save = data[object.movie.id] || {};
       Lampa.Arrays.extend(save, {
         season: 0,
@@ -2111,7 +2111,7 @@
       return save;
     };
     this.saveChoice = function (choice, for_balanser) {
-      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 3000, {});
+      var data = Lampa.Storage.cache('lmxat_choice_' + (for_balanser || balanser), 300, {});
       data[object.movie.id] = choice;
       Lampa.Storage.set('lmxat_choice_' + (for_balanser || balanser), data);
     };

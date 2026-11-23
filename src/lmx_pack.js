@@ -6799,7 +6799,8 @@
                 else dd.css({ top: Math.round(br.bottom + 10) + 'px', right: Math.max(8, Math.round(window.innerWidth - br.right - 20)) + 'px' });
                 $('body').append(dd);
                 // відкрили список: усе в ньому вважаємо баченим, лічильник зникає
-                arr.forEach(function (e) { seen[e.id] = neKey(e); });
+                // зберігаємо лише поточний список (старі записи вже нічого не значать — інакше сховище росло б роками)
+                seen = {}; arr.forEach(function (e) { seen[e.id] = neKey(e); });
                 Lampa.Storage.set('lmx_ne_seen', seen);
                 badge(0);
                 var idx = 0;
@@ -7028,7 +7029,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.612';
+    var VERSION = '10.613';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

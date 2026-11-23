@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.84';
+    var VERSION = '3.85';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -624,6 +624,18 @@
     }
     function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     // розбір data-json кожної серії викликається в багатьох циклах (сотні карток) — запам'ятовуємо результат на самому елементі, поки атрибут не змінився
+    // номер серії картки: з data-json, а якщо його немає (LMX UA) — з самої картки («1086»). 0 — невідомо
+    function epNo(el) {
+        try {
+            var n = parseInt(jd(el).episode, 10);
+            if (n > 0) return n;
+            var b = el.querySelector('.online-prestige__episode-number');
+            n = parseInt(b && b.textContent, 10);
+            if (n > 0) return n;
+            var m = String((el.querySelector('.online-prestige__title') || {}).textContent || '').match(/(?:серія|серия|episode|епізод)\s*(\d+)/i);
+            return m ? parseInt(m[1], 10) : 0;
+        } catch (e) { return 0; }
+    }
     function jd(el) {
         var raw = el.getAttribute('data-json') || '{}', c = el.__lmxJ;
         if (c && c.r === raw) return c.v;
@@ -828,9 +840,15 @@
             if (Math.floor(i / size) === pg) { el.classList.remove('lmx-onl-off'); el.style.removeProperty('display'); if (!el.classList.contains('selector')) el.classList.add('selector'); if (total > 300) imgDefer(el, false); }
             else { el.classList.add('lmx-onl-off'); el.style.setProperty('display', 'none', 'important'); el.classList.remove('selector', 'focus'); if (total > 300) imgDefer(el, true); }
         }
-        act.__lmxPages = { size: size, n: n, total: total, pg: pg };
+        // номери серій для підпису сторінок: «1086–1115», а не «1–30», якщо озвучка починається не з першої серії
+        var nums = []; for (i = 0; i < total; i++) nums.push(epNo(list[i]));
+        act.__lmxPages = { size: size, n: n, total: total, pg: pg, nums: nums.every(function (x) { return x > 0; }) ? nums : null };
     }
-    function pageLabel(pgs, k) { var a = k * pgs.size + 1, b = Math.min(pgs.total, (k + 1) * pgs.size); return a + '\u2013' + b; }
+    function pageLabel(pgs, k) {
+        var a = k * pgs.size + 1, b = Math.min(pgs.total, (k + 1) * pgs.size);
+        if (pgs.nums) { var sl = pgs.nums.slice(a - 1, b); a = Math.min.apply(null, sl); b = Math.max.apply(null, sl); }
+        return a + '\u2013' + b;
+    }
     // Тривалість у картці фільму: джерела пишуть «02:32» (години:хвилини), що читається як 2 хвилини. Якщо значення збігається з тривалістю фільму
     // як Г:ХХ — показуємо «2 г 32 хв»
     // Слоган фільму («Ласкаво просимо у світ без правил.») джерело дописує в рядок інформації — ховаємо його
@@ -1005,7 +1023,7 @@
             list.forEach(function (it, idx) {
                 if (!it.parentNode || it.__lmxEI === mk || it.classList.contains('lmx-onl-off')) return;   // сховані сторінки оформимо, коли їх відкриють   // ця серія вже оформлена з цими даними — не чіпаємо (сотні серій аніме гальмували)
                 it.__lmxEI = mk;
-                var j = jd(it), num = parseInt(j.episode, 10) || (idx + 1), e = eps && eps[num], n = timeNode(it);
+                var j = jd(it), num = epNo(it) || (idx + 1), e = eps && eps[num], n = timeNode(it);
                 var run = (e && e.runtime) || (card.episode_run_time && card.episode_run_time[0]) || 0;
                 if (zero(n)) { if (run) { n.textContent = fmtRun(run); n.setAttribute('data-lmx-t', '1'); } else n.style.display = 'none'; }
                 var x = it.querySelector('.lmx-onl-epi'), full = String(it.textContent || '').toLowerCase().replace(/\s+/g, ' ');
@@ -3978,7 +3996,7 @@
         var haveProg = seen > 0 || cont > 0 || (cont === 0 && pct(list[0]) >= 1);
         var fSn = 0;
         try { var Sx = instFor(act) && readSets(instFor(act)), sg = Sx && Sx.season, si = sg && selItem(sg); if (si) { var mm = String(si.title || '').match(/\d+/); fSn = mm ? parseInt(mm[0], 10) : 0; } } catch (e) {}
-        function lab(idx) { var j = jd(list[idx]), n = j.episode || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
+        function lab(idx) { var j = jd(list[idx]), n = epNo(list[idx]) || (idx + 1), sn = j.season || curSn || fSn; return (sn ? 'S' + sn + ' ' : '') + 'E' + n; }
 
         var title = card.title || card.name || '', q = qual(list);
         var year = String(card.release_date || card.first_air_date || '').slice(0, 4);
