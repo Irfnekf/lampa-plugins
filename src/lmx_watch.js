@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.86';
+    var VERSION = '3.87';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1600,8 +1600,20 @@
         try { Lampa.Storage.set('lmx_online_qm', o); } catch (e) {}
     }
     function qmBadge(cid, key) { var m = qmGet()[cid]; return m && m.l && QB[m.l[key]] || ''; }
+    // Тайтли, де онлайн справді знайшлась українська озвучка (будь-яке джерело, хоч Filmix чи Aladin) — для мітки «UA» на картках у LMX Pack
+    function onlineUaNote(cid) {
+        try {
+            var id = String(cid || '').split('@')[0]; if (!/^\d+$/.test(id)) return;
+            var o = Lampa.Storage.get('lmx_online_ua', {}); if (typeof o === 'string') o = JSON.parse(o || '{}'); if (!o || typeof o !== 'object') o = {};
+            if (o[id] && Date.now() - o[id] < 86400000) return;
+            o[id] = Date.now();
+            var ks = Object.keys(o); if (ks.length > 600) ks.sort(function (a, b) { return o[a] - o[b]; }).slice(0, ks.length - 500).forEach(function (k) { delete o[k]; });
+            Lampa.Storage.set('lmx_online_ua', o);
+        } catch (x) {}
+    }
     function pcPut(cid, key, e) {
         if (isBwa()) return;
+        if (e && e.s === 'ok' && e.uv > 0) onlineUaNote(cid);
         if (e && e.s === 'ok' && e.q) qmPut(cid, key, e.q);
         var o = pcGet(), m = o[cid] || (o[cid] = { t: 0, l: {} });
         m.t = e.t = Date.now(); m.l[key] = e; pcSet(o);

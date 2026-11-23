@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.41';
+    var VERSION = '5.42';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -500,6 +500,16 @@
     // Якщо в джерелі всі озвучки українські (Eneyida, UAKino…), нічого не позначаємо, щоб не рябіло.
     var UA_RX = /укр|україн|ukr|\bua\b|(^|[^а-яіїєґ])уа([^а-яіїєґ]|$)|[іїєґ]/i, ORIG_RX = /оригін|оригинал|original|субтитр|subtit/i;
     function isUaName(t) { t = String(t || ''); return UA_RX.test(t) && !ORIG_RX.test(t); }
+    // Назви озвучок від джерел (Aladin, Phantom…) бувають російською — показуємо їх українською. Лише в тексті кнопок озвучок і назв варіантів фільму
+    var UA_WORDS = [[/Украинск(?:ий|ая|ое)/g, 'Українська'], [/Дублированн(?:ый|ая)/g, 'Дубляж'], [/Оригинальн(?:ый|ая)|Оригинал\b/g, 'Оригінал'],
+        [/Многоголос(?:ый|ая)/g, 'Багатоголосий'], [/Двухголос(?:ый|ая)/g, 'Двоголосий'], [/Одноголос(?:ый|ая)/g, 'Одноголосий'],
+        [/Профессиональн(?:ый|ая)/g, 'Професійний'], [/Любительск(?:ий|ая)/g, 'Аматорський'], [/Авторск(?:ий|ая)/g, 'Авторський'],
+        [/По умолчанию/g, 'За замовчуванням'], [/Субтитры/g, 'Субтитри'], [/Английск(?:ий|ая)/g, 'Англійська'], [/Японск(?:ий|ая)/g, 'Японська'], [/Корейск(?:ий|ая)/g, 'Корейська']];
+    function uaWord(t) { UA_WORDS.forEach(function (w) { t = t.replace(w[0], w[1]); }); return t; }
+    function uaWords(html) {
+        if (!/[а-яё]/i.test(html) || !/(Украинск|Дублированн|Оригинал|Многоголос|Двухголос|Одноголос|Профессиональн|Любительск|Авторск|По умолчанию|Субтитры|Английск|Японск|Корейск)/.test(html)) return html;
+        return html.replace(/(<div class="videos__(?:button|item-title)[^"]*"[^>]*>)([^<]+)(<\/div>)/g, function (m, a, t, b) { return a + uaWord(t) + b; });
+    }
     function uaMark(html) {
         if (html.indexOf('🇺🇦') >= 0) return html;
         var btnRx = /<div class="videos__button[^"]*"[^>]*>([^<]+)<\/div>/g;
@@ -742,7 +752,7 @@
                             if (j0 && j0.url) return comp.request(j0.url);
                         }
                     } catch (e) {}
-                    try { if (typeof str === 'string') { arguments[0] = uaMark(str); } } catch (e) {}
+                    try { if (typeof str === 'string') { arguments[0] = uaMark(uaWords(str)); } } catch (e) {}
                     return realParse.apply(this, arguments);
                 };
                 var realReq = comp.request;

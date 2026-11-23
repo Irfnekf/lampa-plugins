@@ -3979,10 +3979,12 @@
     var UAQ_SRC_RX = /(^|[^a-z])ua|укр|uaflix|uakino|makhno|eneyida|kinobaza|animeon|toloka|tvukr|ashdi|kinoukr|uaserial|animeua|bambooua|wormhole|kinotron|petlura|mikai|bamboo|unimay|anihub|aniworld|anitube|moonanime|kinostrain|ufdub|moviestape|[еe]н[еe][їi]д|ukr/i;
     function uaqWatch(id) {
         try {
-            var o = Lampa.Storage.get('lmx_online_qm', {}), m = o && o[String(id)];
-            if (!m || !m.l || Date.now() - (m.t || 0) > 604800000) return null;
-            var ua = 0, best = 0, k;
-            for (k in m.l) if (UAQ_SRC_RX.test(k)) { ua = 1; if (m.l[k] > best) best = m.l[k]; }
+            // LMX Watch: якість джерел (для LMX UA ключ має суфікс «@ua2») і тайтли, де онлайн знайшлась українська озвучка
+            var o = Lampa.Storage.get('lmx_online_qm', {}), m = o && (o[String(id) + '@ua2'] || o[String(id)]);
+            var ou = Lampa.Storage.get('lmx_online_ua', {}); if (typeof ou === 'string') { try { ou = JSON.parse(ou || '{}'); } catch (x) { ou = {}; } }
+            var uaOnl = ou && ou[String(id)] && Date.now() - ou[String(id)] < 30 * 86400000;
+            var ua = uaOnl ? 1 : 0, best = 0, k;
+            if (m && m.l && Date.now() - (m.t || 0) <= 604800000) for (k in m.l) { if (UAQ_SRC_RX.test(k)) ua = 1; if (ua && m.l[k] > best) best = m.l[k]; }
             return ua ? { u: 1, q: best } : null;
         } catch (e) { return null; }
     }
@@ -4034,7 +4036,7 @@
             }
             return;
         }
-        if (uaqFail[key] && now - uaqFail[key] < 600000) return;
+        if (uaqFail[key] && now - uaqFail[key] < 600000) { if (wv) uaqAdd(view, wv); return; }   // трекери не відповіли, але онлайн українська вже відома
         var date = String(d.release_date || d.first_air_date || ''), yr = parseInt(date.slice(0, 4), 10);
         if (!yr || (date.length >= 10 && Date.parse(date) > now)) return;
         var title = type === 'tv' ? (d.original_name || d.original_title || d.name) : (d.original_title || d.original_name || d.title);
@@ -7029,7 +7031,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.614';
+    var VERSION = '10.615';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
