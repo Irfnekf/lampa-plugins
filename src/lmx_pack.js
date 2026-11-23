@@ -4888,7 +4888,7 @@
         }
         var d = box.children;
         if (d[0]) d[0].textContent = (Math.round(r * 10) / 10).toFixed(1);
-        if (d[1]) d[1].textContent = 'IMDb';
+        if (d[1] && !/imdb/i.test(d[1].textContent || '')) d[1].textContent = 'IMDB';   // підпис як у самої Lampa
         box.classList.remove('hide');
     }
     function imdbRate(e) {
@@ -7028,7 +7028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.611';
+    var VERSION = '10.612';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

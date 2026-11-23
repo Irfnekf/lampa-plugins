@@ -409,7 +409,8 @@ function atScore(title, names, href) {
         const j = inter / Math.max(A.length, B.length), cover = inter / B.length;
         if (j >= 0.6) s = 0.6 + j * 0.2;
         // назва картки цілком є в назві чи адресі сторінки (адреса буває довшою: «virodok bastard bastard»)
-        else if (cover === 1 && B.join('').length >= 5) s = 0.7;
+        // (одне коротке слово-псевдонім — лише точний збіг: «TenSura» ≠ «Tensei» з «Mushoku Tensei», інакше Slime відкривав «Реінкарнацію безробітного»)
+        else if (cover === 1 && B.join('').length >= 5 && (B.length > 1 || A.indexOf(B[0]) >= 0)) s = 0.7;
         // назва на сайті може бути зовсім іншим перекладом («Фрірен: після кінця пригоди» / «Фрірен, що проводжає в останню путь»):
         // збіг першого слова (від 4 літер) — слабка ознака; рік і сезон далі відсіють зайве
         else if (A[0] && B[0] && B[0].length >= 4 && atTokEq(A[0], B[0])) s = 0.62;
