@@ -1781,7 +1781,7 @@
             (getStr('lmx_theme', 'default') === 'prem' && GENRES[(m.genre_ids || [])[0]] ? '<span>' + GENRES[(m.genre_ids || [])[0]] + '</span>' : '') +
             '</div><div class="lmx-hero__o">' + esc(ov) + '</div>' +
             ((getStr('lmx_theme', 'default') === 'apple' || (isMobile() && themeBase() === 'default')) ? '<div class="lmx-hero__acts"><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span><span class="lmx-hero__circ">+</span></div>' :
-                (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитися</span></div>' : '') + '</div>');
+                (themeBase() === 'hbo' || themeBase() === 'prem') ? '<div class="lmx-hero__acts"><span class="lmx-hero__about"><i>i</i>' + (isTv ? 'Про серіал' : 'Про фільм') + '</span><span class="lmx-hero__btn">&#9654;&#xFE0E;&nbsp; Дивитись</span></div>' : '') + '</div>');
         safe(function () { if (m && m.id && view[0]) uaqWant(view[0], m, isTv ? 'tv' : 'movie'); });
         if (phone) {
             var dh = '<div class="lmx-pdots">'; for (var di = 0; di < n; di++) dh += '<i' + (di === idx ? ' class="on"' : '') + '></i>'; dh += '</div>';
@@ -7029,7 +7029,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.613';
+    var VERSION = '10.614';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
