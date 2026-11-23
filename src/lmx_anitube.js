@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.36';
+    var VERSION = '5.37';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -843,7 +843,7 @@
     }
     function push(card) {
         Lampa.Activity.push({
-            url: '', title: 'LMX UA', component: COMP, movie: card, page: 1,
+            url: '', title: 'Онлайн', component: COMP, movie: card, page: 1,
             search: card.title || card.name, search_one: card.title || card.name, search_two: card.original_title || card.original_name, clarification: false
         });
     }
@@ -856,7 +856,8 @@
         if (!card || !card.id) return;
         var render = e.object && e.object.activity && e.object.activity.render();
         if (!render || !render.length || render.find('.lmxat--button').length) return;
-        var btn = $('<div class="full-start__button selector view--online lmxat--button" data-subtitle="Українська озвучка">' + ICON + '<span>LMX UA</span></div>');
+        var BTN = function (t) { return '<div class="full-start__button selector view--online lmxat--button" data-subtitle="Українська озвучка">' + ICON + '<span>' + t + '</span></div>'; };
+        var btn = $(BTN('Дивитись'));
         btn.on('hover:enter', function () { safe(function () { open(card); }); });
         // як інші онлайн-плагіни: кнопка в прихованому .buttons--container, тож Lampa показує її в меню «Дивитись» (поруч з «Онлайн» і «Торренти»)
         var hid = render.find('.buttons--container').eq(0), tor = (hid.length ? hid : render).find('.view--torrent').last();
@@ -870,7 +871,10 @@
         // як плагін додав свою. Тож повторюємо це самі: якщо основною обрано LMX UA — виносимо її копію в ряд першою, як це робить Lampa
         safe(function () {
             var pr = String(Lampa.Storage.get('full_btn_priority', '') || '');
-            if (!pr || pr !== String(Lampa.Utils.hash(btn.clone().removeClass('focus').prop('outerHTML')))) return;
+            var hNew = String(Lampa.Utils.hash(btn.clone().removeClass('focus').prop('outerHTML')));
+            // кнопка раніше звалась «LMX UA» — вибір основної кнопки, зроблений тоді, переносимо на нову назву
+            if (pr && pr !== hNew && pr === String(Lampa.Utils.hash($(BTN('LMX UA')).prop('outerHTML')))) { pr = hNew; Lampa.Storage.set('full_btn_priority', hNew); }
+            if (!pr || pr !== hNew) return;
             var cont = render.find('.full-start-new__buttons').eq(0);
             if (!cont.length) return;
             cont.find('.button--priority').remove();
