@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.35';
+    var VERSION = '5.36';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1791,7 +1791,9 @@
                     } catch (e) {}
                   }, 25000);
                 };
-                if (item.season) {
+                // серії: у деяких аніме-джерел немає номера сезону — плейлист (і «Наступна серія») будуємо й за самим номером серії
+                var isEp = !!item.season || (!!object.movie.name && item.episode > 0 && videos.length > 1);
+                if (isEp) {
                   videos.forEach(function (elem) {
                     var cell = _this5.toPlayElement(elem);
                     if (elem == item) cell.url = json.url;
@@ -1858,7 +1860,7 @@
                   element.isonline = true;
                   Lampa.Player.play(element);
                   Lampa.Player.playlist(playlist);
-                  if (item.season) warmAfter(item);
+                  if (isEp) warmAfter(item);
                   if (element.subtitles_call) _this5.loadSubtitles(element.subtitles_call);
                   item.mark();
                   _this5.updateBalanser(balanser);
@@ -3568,6 +3570,9 @@
     }
     // Титри наприкінці Lampa називає «Наступна серія» і за натисканням вмикає наступну. Якщо наступної немає (фільм, остання серія),
     // кнопка зветься «Пропустити» й перемотує на кінець титрів — напр., до сцени після титрів
+    function segOpen() { try { return !!(Lampa.Player.opened && Lampa.Player.opened()); } catch (e) { return false; } }
+    // сегменти поточного відео: свої (TheIntroDB) або ті, що дало джерело (аніме-джерела віддають власні)
+    function segNow() { var d = null; try { d = Lampa.Player.playdata(); } catch (e) {} return (d && d.segments) || (segCur && segCur.segments) || null; }
     function segNoNext() { try { return !(Lampa.PlayerPlaylist && Lampa.PlayerPlaylist.canNext && Lampa.PlayerPlaylist.canNext()); } catch (e) { return false; } }
     function segPatch() {
         try {
@@ -3576,7 +3581,7 @@
                 T.__lmxSeg = 1;
                 var tr = T.translate;
                 T.translate = function (k) {
-                    if ((k === 'player_segments_next' || k === 'player_segments_next_in') && segCur && segNoNext()) arguments[0] = k === 'player_segments_next' ? 'player_segments_skip_now' : 'player_segments_skip_in';
+                    if ((k === 'player_segments_next' || k === 'player_segments_next_in') && segOpen() && segNoNext()) arguments[0] = k === 'player_segments_next' ? 'player_segments_skip_now' : 'player_segments_skip_in';
                     return tr.apply(this, arguments);
                 };
             }
@@ -3584,10 +3589,11 @@
                 P.__lmxSeg = 1;
                 var nx = P.next;
                 P.next = function () {
-                    if (segCur && segCur.segments && segNoNext()) {
-                        var v = Lampa.PlayerVideo.video(), t = v ? v.currentTime : 0, hit = null;
-                        (segCur.segments.skip || []).forEach(function (g) { if (t >= g.start - 6 && t <= g.end) hit = g; });
-                        if (hit) { Lampa.PlayerVideo.to(hit.end); return; }
+                    // наступної серії в плеєрі немає (остання або джерело дало одну серію) — кнопка титрів просто перемотує їх, а не «мовчить»
+                    if (segOpen() && segNoNext()) {
+                        var v = Lampa.PlayerVideo.video(), t = v ? v.currentTime : 0, hit = null, sg = segNow();
+                        ((sg && sg.skip) || []).forEach(function (g) { if (g && t >= g.start - 6 && t <= g.end) hit = g; });
+                        if (hit) { var du = v && isFinite(v.duration) ? v.duration : 0; Lampa.PlayerVideo.to(du ? Math.min(hit.end, du - 0.5) : hit.end); return; }
                     }
                     return nx.apply(this, arguments);
                 };
