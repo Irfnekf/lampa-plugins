@@ -803,7 +803,9 @@ async function uaMikai(url, env, ctx) {
   const players = (j && j.result && j.result.players) || [];
   const voices = [];
   players.forEach((pl) => {
-    const prov = ((pl && pl.providers) || []).filter((x) => x && /ashdi/i.test(x.name || ''))[0];
+    // плеєр серій: Ashdi, а якщо озвучки там немає — Tortuga (обидва відкриті, LMX UA їх розбирає). Moon і Fenix віддають відео лише своєму плеєру — їх не беремо
+    const provs = ((pl && pl.providers) || []).filter((x) => x && (x.episodes || []).some((e) => e && e.playLink));
+    const prov = provs.filter((x) => /ashdi/i.test(x.name || ''))[0] || provs.filter((x) => /tortuga/i.test(x.name || ''))[0];
     const eps = ((prov && prov.episodes) || []).filter((e) => e && e.playLink).map((e, k) => ({ n: e.number || k + 1, file: e.playLink })).sort((a, b) => a.n - b.n);
     if (eps.length) voices.push({ name: (pl.team && pl.team.name) || 'Mikai', eps });
   });
