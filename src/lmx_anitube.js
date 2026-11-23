@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.37';
+    var VERSION = '5.38';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1776,6 +1776,23 @@
                 _this5.setDefaultQuality(first);
                 // Підготовка наступної серії: поки йде поточна, тихо отримуємо посилання на наступну (один запит, через 25 с після старту),
                 // тож перемикання в плеєрі — миттєве. Торенти не готуємо (TorrServer почав би качати)
+                // Посилання на наступну серію просто в плеєрі. Окремий запит (не спільний network екрана: його обриває reset()/фонове
+                // перезавантаження списку — тоді плеєр чекав вічно, а кнопка «Наступна серія» зникала без дії), з таймаутом і одним повтором.
+                // Плеєр Lampa ігнорує нові перемикання, поки не отримає відповідь, тож відповідаємо завжди
+                var playerFileUrl = function (file, cb) {
+                  if (file.method == 'play') return cb(file, {});
+                  var tries = 0, done = false;
+                  var fin = function (a, b) { if (done) return; done = true; clearTimeout(guard); cb(a, b); };
+                  var guard = setTimeout(function () { fin(false, {}); }, 35000);
+                  var go = function () {
+                    var n; try { n = new Lampa.Reguest(); n.timeout(15000); } catch (e) { return fin(false, {}); }
+                    n['native'](account(file.url), function (json) {
+                      if (!json || !json.url) { if (++tries < 2) return setTimeout(go, 700); return fin(json || false, json || {}); }
+                      codecFilter(json, function () { fin(json, json); });
+                    }, function () { if (++tries < 2) return setTimeout(go, 700); fin(false, {}); }, false, { headers: addHeaders() });
+                  };
+                  go();
+                };
                 var warmT = null;
                 var warmAfter = function (cur) {
                   clearTimeout(warmT);
@@ -1823,10 +1840,11 @@
                               return call();
                             }
                             warmAfter(elem);
-                            _this5.getFileUrl(
+                            playerFileUrl(
                               elem,
                               function (stream, stream_json) {
-                                if (stream.url) {
+                                stream_json = stream_json || {};
+                                if (stream && stream.url) {
                                   cell.url = stream.url;
                                   cell.quality = stream_json.quality || elem.qualitys;
                                   cell.segments = stream_json.segments || elem.segments;
