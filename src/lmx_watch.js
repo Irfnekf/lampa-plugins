@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.89';
+    var VERSION = '3.90';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1841,9 +1841,11 @@
         if (ps) ps.textContent = 'Онлайн поки немає';
         var sub = pr.querySelector('.lmx-onl-prog__sub');
         if (!sub) { sub = document.createElement('div'); sub.className = 'lmx-onl-prog__sub'; if (ps && ps.parentNode) ps.parentNode.insertBefore(sub, ps.nextSibling); else pr.appendChild(sub); }
+        var man = act.__lmxManDead;
         var soon = '';
         try { var a01 = Lampa.Activity.active(), c01 = a01 && (a01.movie || a01.card), rd = c01 && !(c01.name || c01.number_of_seasons) && c01.release_date; if (rd && Date.parse(rd) > Date.now()) var dd0 = String(rd).split('-'); soon = parseInt(dd0[2], 10) + ' ' + ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'][parseInt(dd0[1], 10) - 1] + ' ' + dd0[0]; } catch (e) {}
-        if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
+        if (man) { if (ps) ps.textContent = '«' + man.t + '» нічого не дало'; sub.textContent = man.m || 'На цьому джерелі тайтлу немає — спробуйте інше'; }
+        else if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
         else if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
@@ -2092,6 +2094,7 @@
     // Перехоплюємо це й просто скидаємо та перезапитуємо поточний компонент — екран лишається, змінюється лише список
     function selIn(inst, a, b, c) {
         window.__lmxInplace = Date.now();
+        try { var ac0 = document.querySelector('.activity--active'); if (ac0) ac0.__lmxManDead = null; } catch (e) {}
         // запам'ятовуємо, яке джерело ми щойно відкрили: прапорці selected у рідному плагіні оновлюються із запізненням (підпис і галочка розходились)
         try { if (a === 'sort' && b && b.title) { var ac = document.querySelector('.activity--active'); if (ac) ac.__lmxSel = { k: srcName(b.title), t: Date.now() }; } } catch (e) {}
         return inst.onSelect(a, b, c);
@@ -3821,10 +3824,20 @@
                         heroStatus(act, unreleased() ? 'Фільм ще не вийшов' : noneAnswered() ? 'Більшість джерел не відповіли — схоже, збій мережі' : 'Нічого не знайдено: жодне джерело не дало результатів', true);
                         act.classList.remove('lmx-onl-load'); relayout(); return stop();
                     }
+                    // джерело обрали вручну — не тікаємо з нього самі: показуємо його власне пояснення (напр. «вкажіть TorrServer») і кнопки, зокрема «Спробувати …»
+                    if (manual && !silent) {
+                        var own = ''; try { own = String($(body).find('.online-empty__title, .online-empty').first().text() || '').replace(/\s+/g, ' ').trim(); } catch (e) {}
+                        var curT = String((curIt && curIt.title) || curKey || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+                        act.__lmxProbing = false; bad.names = [];
+                        act.__lmxManDead = { t: curT, m: own && !/^нічого не знайдено/i.test(own) ? own : '' };
+                        safe(function () { ensureProg(act); });
+                        heroStatus(act, act.__lmxManDead.m || 'На «' + curT + '» нічого не знайдено', true);
+                        act.classList.remove('lmx-onl-load'); relayout(); return stop();
+                    }
                     cand = c[0]; cd = Date.now() + (silent ? 1500 : manual ? 4000 : 600);
                 }
                 var left = Math.ceil((cd - Date.now()) / 1000);
-                if (left > 0) { if (!manual) { heroStatus(act, 'Джерело «' + (curKey || '—') + '» нічого не дало. Пробуємо «' + srcName(cand.title) + '»…', false, 0.2); return; } heroStatus(act, 'Нічого не знайдено на «' + (curKey || 'цьому джерелі') + '». Перемикаємо на «' + srcName(cand.title) + '» через ' + left + ' с…', false, 1 - left / 4); return; }
+                if (left > 0) { if (!manual) { heroStatus(act, 'Джерело «' + (String((curIt && curIt.title) || curKey || '—').replace(/<[^>]*>/g, '').trim()) + '» нічого не дало. Пробуємо «' + String(cand.title || '').replace(/<[^>]*>/g, '').trim() + '»…', false, 0.2); return; } heroStatus(act, 'Нічого не знайдено на «' + (String((curIt && curIt.title) || curKey || 'цьому джерелі').replace(/<[^>]*>/g, '').trim()) + '». Перемикаємо на «' + String(cand.title || '').replace(/<[^>]*>/g, '').trim() + '» через ' + left + ' с…', false, 1 - left / 4); return; }
                 var go = cand; cd = 0; cand = null; since = Date.now(); lastKey = null;
                 if (manual) heroStatus(act, 'Відкриваємо «' + srcName(go.title) + '»…', false, 0.2);
                 try { selIn(inst, 'sort', go); } catch (e) {}

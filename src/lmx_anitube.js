@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.45';
+    var VERSION = '5.46';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -541,8 +541,19 @@
             Lampa.Storage.set('lmx_online_ua', o);
         } catch (e) {}
     }
+    // однакові назви озвучок в одному джерелі (у Mikai буває два релізи «Рідний Голос») — підписуємо другу «· 2», інакше їх не розрізнити
+    function dupLabels(html) {
+        var seen = {};
+        return html.replace(/(<div class="videos__button[^"]*"[^>]*>)([^<]+)(<\/div>)/g, function (m, a, t, b) {
+            var k = t.replace(/\s+/g, ' ').trim().toLowerCase();
+            seen[k] = (seen[k] || 0) + 1;
+            return seen[k] > 1 ? a + t + ' \u00b7 ' + seen[k] + b : m;
+        });
+    }
     function uaMark(html) {
         if (html.indexOf('🇺🇦') >= 0) return html;
+        // джерело лише з українською (Mikai, AnimeON, Eneyida…) — прапорець нічого не розрізняє, а частковий (лише назви з «і/ї/є») вводить в оману
+        if (/\/lite\/(mikai|animeon|anitube|unimay|eneyida|ey|uafix|ufd|ufv|uakino|kinoukr|makhno|bamboo|pl)\?/.test(html)) return html;
         var btnRx = /<div class="videos__button[^"]*"[^>]*>([^<]+)<\/div>/g;
         var movRx = /<div class="videos__item videos__movie[^>]*>(?:(?!<div class="videos__item videos__movie)[\s\S])*?<div class="videos__item-title">([^<]+)<\/div><\/div>(?:\s*<!--[^>]*-->)?/g;
         function blocks(rx) { var out = [], m; rx.lastIndex = 0; while ((m = rx.exec(html))) out.push({ s: m.index, e: m.index + m[0].length, t: m[1], h: m[0] }); return out; }
@@ -783,7 +794,7 @@
                             if (j0 && j0.url) return comp.request(j0.url);
                         }
                     } catch (e) {}
-                    try { if (typeof str === 'string') { arguments[0] = uaMark(uaWords(str)); onlineUa(comp, arguments[0]); } } catch (e) {}
+                    try { if (typeof str === 'string') { arguments[0] = uaMark(dupLabels(uaWords(str))); onlineUa(comp, arguments[0]); } } catch (e) {}
                     return realParse.apply(this, arguments);
                 };
                 var realReq = comp.request;
@@ -945,6 +956,8 @@
 
   var LAMPAC_VERSION = '1.9.2';
   var REQUEST_TIMEOUT = 10000;
+  // джерела, що працюють лише через RCH (Moon) — LMX UA його не використовує, тож вони ніколи нічого не віддадуть: не показуємо їх
+  function noRch(j) { return !!j && /^moonanime$/i.test(String(j.balanser || '')); }
   var BALANCER_TIMEOUT = 60000;
 
   var Defined = {
@@ -1310,10 +1323,10 @@
     };
     // ── RCH & external IDs ──
     this.rch = function (json, noreset) {
-      var _this2 = this;
-      // LMX UA: RCH не використовується — просто повторюємо запит
-      if (!noreset) _this2.find();
-      else noreset();
+      // LMX UA: RCH (запити через пристрій по вебсокету) не використовується. Раніше тут запит просто повторювався — до 10 разів поспіль без толку.
+      // Тепер — одразу повідомлення, а LMX Watch перемикає на інше джерело
+      if (noreset) return noreset();
+      try { this.parse('<div class="online-empty"><div class="online-empty__title">Джерело зараз недоступне — спробуйте інше</div></div>'); } catch (e) { this.empty(); }
     };
     this.externalids = function () {
       return new Promise(function (resolve, reject) {
@@ -1405,6 +1418,7 @@
       // міст для LMX Watch: повна адреса будь-якого джерела цього тайтла (свій хост і токен), щоб фоново порівняти джерела, як у lampaua
       window.__lmxUaBridge = { t: Date.now(), urlFor: function (k) { var x = sources[k]; return x && x.url ? account(comp.requestParams(x.url)) : ''; }, fix: function (u) { return account(u); }, resolve: function (u, cb) { resolveUrl(u, cb); } };
       return new Promise(function (resolve, reject) {
+        json = json.filter(function (j) { return !noRch(j); });
         json.forEach(function (j) {
           var name = balanserName(j);
           sources[name] = {
@@ -1450,6 +1464,7 @@
               filter_sources = [];
               sources = {};
               json.online.forEach(function (j) {
+                if (noRch(j)) return;
                 var name = balanserName(j);
                 sources[name] = {
                   url: j.url,
