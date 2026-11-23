@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.88';
+    var VERSION = '3.89';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1731,11 +1731,12 @@
         var gs = window.__lmxProbe, n = gs ? (gs.bg === 'run' ? (gs.bgDone || 0) : Math.min(gs.tried.length, gs.total || gs.tried.length)) : 0;
         if (!gs || gs.done || !gs.total) return 'Шукаємо джерела…';
         if (profileOf(gs).label) return profileOf(gs).label + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
+        if (gs.retry && gs.rTot && gs.bg === 'run') return 'Ще раз перевіряємо ті, що не відповіли: ' + Math.min(gs.rTot, gs.bgDone || 0) + ' з ' + gs.rTot + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
         var hint = (typeof gs.cur === 'string' && gs.cur ? ' \u00b7 ' + gs.cur : '') + (gs.results && gs.results.length ? ' \u00b7 знайдено ' + gs.results.length : '');
         return 'Перевіряємо джерела: ' + n + ' з ' + gs.total + hint + (gs.t00 && Date.now() - gs.t00 > 4000 ? ' \u00b7 ' + Math.round((Date.now() - gs.t00) / 1000) + ' с' : '');
     }
     function scanFrac() { var gs = window.__lmxProbe, tf = gs && gs.t00 ? Math.min(0.9, (Date.now() - gs.t00) / 24000) : 0; return Math.max(tf, scanFrac0()); }
-    function scanFrac0() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
+    function scanFrac0() { var gs = window.__lmxProbe; if (gs && gs.bg === 'run' && gs.retry && gs.rTot) return Math.max(0.5, Math.min(0.98, 0.5 + (gs.bgDone || 0) / gs.rTot / 2)); if (gs && gs.bg === 'run' && gs.total) return Math.max(0.04, Math.min(0.98, (gs.bgDone || 0) / gs.total)); return gs && gs.total ? Math.max(0.04, Math.min(0.98, (gs.tried.length - 0.5) / gs.total)) : 0.05; }
     // Один екран замість трьох: поки йде перевірка, стандартний екран джерела ховаємо (клас на body), а наш скелет — шапка з логотипом, що переливається,
     // і шкала прогресу — будується в самій активності ще до першої відмальовки, навіть коли плагін перестворює її при зміні джерела
     function scanning() { var g = window.__lmxProbe; return !!(g && !g.done && Date.now() - g.t00 < 130000); }
@@ -2825,7 +2826,7 @@
     // Субтитри (навіть українські) озвучкою не вважаємо — лишаються в «Інших»; назва, що закінчується на «UA» (FanVoxUA, AniUA), — українська
     // субтитри (будь-де в назві: «Українські субтитри», «UA Sub») — це не озвучка: не обираються й не рахуються автоматично
     function isSubOnly(t) { return /субтитр|subtitle|(^|[^a-z])subs?([^a-z]|$)/i.test(String(t || '')); }
-    function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (isSubOnly(t)) return false; if (/anidub|ани ?даб|ані ?даб/i.test(t) || (/[ыэъё]/i.test(t) && !/укр|ukr/i.test(t))) return false; return UA_VOICE.test(t) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t); }   // улюблена озвучка (обрана двічі) лише піднімається вище в списку, але українською від цього не стає
+    function isUaVoice(t) { if (/оригінал|original|озвучення іншого/i.test(t)) return false; if (isSubOnly(t)) return false; if (/anidub|ани ?даб|ані ?даб/i.test(t) || (/[ыэъё]/i.test(t) && !/укр|ukr/i.test(t))) return false; if (/українськ/i.test(t)) return true; var t2 = t.replace(/професійн\S*|англійськ\S*|японськ\S*|корейськ\S*|аматорськ\S*|авторськ\S*|двоголос\S*|одноголос\S*|багатоголос\S*|за замовчуванням|оригінал/gi, ' '); return UA_VOICE.test(t2) || /[A-Za-z\u0400-\u04FF]UA\b/.test(t2); }   // улюблена озвучка (обрана двічі) лише піднімається вище в списку, але українською від цього не стає
     var UA_VOICE = /укр|ukr|uaflix|уафлікс|(^|[^a-z])qtv([^a-z]|$)|saturn ?union|amanogawa|аманогава|fronda|фронда|freedub|фрідаб|inari ?dub|інарі ?даб|4ua|(^|[^a-z0-9])10gu|animesh|анімеш|сатурн ?юніон|\bua\b|(^|[^а-яіїєґ])уа([^а-яіїєґ]|$)|postmodern|постмодерн|pozitiv|позитив|dniprofilm|дніпрофільм|gears media|так треба|1\+1|2\+2|ictv|новий канал|(^|[^а-яіїєґ])стб([^а-яіїєґ]|$)|інтер|hdrezka ua|tvoe kino ua|[іїєґІЇЄҐ]|енейв|eneyida|enej|didko|дідько|гуртом|hurtom|омікрон|omikron|filmua|ledoyen|мазепа|mazepa|dublіv|дубл[іи]в|sweet\.?tv|(^|[^а-яіїєґ])тет([^а-яіїєґ]|$)|\btet\b|pythagoras|піфагор|adrian ?zp|cinema ?prestige|kyivstar|київстар|нтн|(^|[^а-яіїєґ])к1([^а-яіїєґ]|$)|(^|[^а-яіїєґ])к2([^а-яіїєґ]|$)|телеканал|трк україна|студія|студія|film\.?ua|ukr ?tv|\bdub ?ua\b|\bdublyazh|дубляж укр|багатоголосий укр|кіноманія|kino ?mania|ufdub|voices ?band|робота голосом|кайзок|kaizoku|кіото|kioto|козацьк|kozac|fan ?vox|flame ?studio|sun ?dragon|glass ?moon|(^|[^а-яіїєґ])ско(?![а-яіїєґ])|fan ?wox|чаюванн|аніме ?укр|aniua|ukranime|aurora production|ukr ?dub|укрдуб|гуртом/i;
     // Бейджі типу джерела у списку «Джерело»: АНІМЕ, UA (український сайт), 4K, PREMIUM (Filmix), ТОРЕНТ
     var SRC_TAGS = [
@@ -3608,7 +3609,7 @@
                 if (!okL.length && uaM && !gs.retry && gs.job && gs.job.resolve) {
                     var unk = (gs.job.items || []).filter(function (it) { var pe = pcEntry(cid, it.key); return !pe || pe.s === 'skip'; });
                     if (unk.length) {
-                        gs.retry = true; gs.bg = 'run'; gs.bgT = Date.now(); gs.bgDone = gs.total - unk.length;
+                        gs.retry = true; gs.bg = 'run'; gs.bgT = Date.now(); gs.rBase = gs.bgDone = 0; gs.rTot = unk.length;
                         var j2 = {}; for (var jk in gs.job) j2[jk] = gs.job[jk];
                         j2.items = unk.map(function (it) { var c2 = {}; for (var ck in it) c2[ck] = it[ck]; c2.to = 15000; return c2; });
                         j2.timeout = 15000; j2.par = Math.min(4, unk.length);

@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.44';
+    var VERSION = '5.45';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -496,13 +496,24 @@
                 if (j && j.url && /\/lite\/(ufd|ey)\?/.test(j.url)) return resolveUrl(j.url, done, depth + 1);
             }
             done(t);
-        }, function () { done(false); }, false, { dataType: 'text' });   // збій мережі — false («невідомо»), а не '' («тайтлу немає»)
+        }, function (a) {
+            // сервер відповів кодом помилки (Lampac на «не знайдено» віддає 503) — це «тайтлу немає»; без відповіді взагалі (мережа, тайм-аут) — «невідомо»
+            var st = a && typeof a.status === 'number' ? a.status : 0;
+            done(st > 0 ? '' : false);
+        }, false, { dataType: 'text' });
     }
 
     // Українські озвучки в змішаних джерелах (Phantom, Spectre, Aladin…) позначаємо 🇺🇦 — і в списку «Озвучка», і на картках фільму.
     // Якщо в джерелі всі озвучки українські (Eneyida, UAKino…), нічого не позначаємо, щоб не рябіло.
     var UA_RX = /укр|україн|ukr|\bua\b|(^|[^а-яіїєґ])уа([^а-яіїєґ]|$)|[іїєґ]/i, ORIG_RX = /оригін|оригинал|original|субтитр|subtit/i;
-    function isUaName(t) { t = String(t || ''); return UA_RX.test(t) && !ORIG_RX.test(t); }
+    // слова, які ми самі перекладаємо з російської (uaWords), не роблять озвучку українською: «Професійний», «Англійська» мають і/ї, але це не про мову озвучки
+    var GENERIC_RX = /українськ[аий]?(?=\s|$|[^а-яіїєґ])|професійн\S*|англійськ\S*|японськ\S*|корейськ\S*|аматорськ\S*|авторськ\S*|двоголос\S*|одноголос\S*|багатоголос\S*|дубляж|за замовчуванням|оригінал/gi;
+    function isUaName(t) {
+        t = String(t || '');
+        if (ORIG_RX.test(t)) return false;
+        if (/українськ/i.test(t)) return true;   // «Українська» — це саме мова озвучки
+        return UA_RX.test(t.replace(GENERIC_RX, ' '));
+    }
     // Назви озвучок від джерел (Aladin, Phantom…) бувають російською — показуємо їх українською. Лише в тексті кнопок озвучок і назв варіантів фільму
     var UA_WORDS = [[/Украинск(?:ий|ая|ое)/g, 'Українська'], [/Дублированн(?:ый|ая)/g, 'Дубляж'], [/Оригинальн(?:ый|ая)|Оригинал\b/g, 'Оригінал'],
         [/Многоголос(?:ый|ая)/g, 'Багатоголосий'], [/Двухголос(?:ый|ая)/g, 'Двоголосий'], [/Одноголос(?:ый|ая)/g, 'Одноголосий'],
@@ -1622,7 +1633,9 @@
         var elems = [];
         html.find(name).each(function () {
           var item = $(this);
-          var data = JSON.parse(item.attr('data-json'));
+          var data = null;
+          try { data = JSON.parse(item.attr('data-json')); } catch (e) {}
+          if (!data || typeof data !== 'object') return;   // один зіпсований елемент не повинен ховати весь список
           var season = item.attr('s');
           var episode = item.attr('e');
           var text = item.text();
