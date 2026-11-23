@@ -4843,13 +4843,13 @@
         (document.head || document.documentElement).appendChild(st);
     }
     // ===== Рейтинг IMDb на сторінці фільму: заповнюємо рідний значок Lampa «IMDb» (у джерела TMDB він порожній) =====
-    // Дані — з відкритого GraphQL самого IMDb за IMDb-id; запит робить сам пристрій, кеш на 3 дні (поза синхронізацією)
+    // Дані — з відкритого каталогу Cinemeta за IMDb-id; запит робить сам пристрій, кеш на 3 дні (поза синхронізацією)
     var IMDB_CK = 'lmx_cache_imdb';
     function imdbCache() { try { var c = Lampa.Storage.get(IMDB_CK, '{}'); if (typeof c === 'string') c = JSON.parse(c || '{}'); return c && typeof c === 'object' ? c : {}; } catch (e) { return {}; } }
     function imdbGet(iid, done) {
         var c = imdbCache(), hit = c[iid];
         if (hit && Date.now() - hit[2] < 3 * 86400000) return done(hit[0], hit[1]);
-        var x = new XMLHttpRequest(), fin = false;
+        var fin = false;
         var end = function (r, v) {
             if (fin) return; fin = true;
             if (r) {
@@ -4859,18 +4859,23 @@
             }
             done(r, v);
         };
-        try {
-            x.open('POST', 'https://api.graphql.imdb.com/', true);
-            x.setRequestHeader('Content-Type', 'application/json');
-            x.timeout = 7000;
-            x.onload = function () {
-                var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
-                var rs = j && j.data && j.data.title && j.data.title.ratingsSummary;
-                end(rs && rs.aggregateRating ? rs.aggregateRating : 0, rs && rs.voteCount);
-            };
-            x.onerror = x.ontimeout = function () { end(0); };
-            x.send(JSON.stringify({ query: 'query{title(id:"' + iid + '"){ratingsSummary{aggregateRating voteCount}}}' }));
-        } catch (e) { end(0); }
+        // Cinemeta (відкритий каталог Stremio) віддає рейтинг IMDb за IMDb-id і дозволяє запити з будь-якої сторінки, тож працює і на ТВ, і в браузері
+        var one = function (type, next) {
+            var x = new XMLHttpRequest();
+            try {
+                x.open('GET', 'https://v3-cinemeta.strem.io/meta/' + type + '/' + iid + '.json', true);
+                x.timeout = 7000;
+                x.onload = function () {
+                    var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
+                    var r = j && j.meta && parseFloat(j.meta.imdbRating);
+                    if (r > 0) end(r, 0); else next();
+                };
+                x.onerror = x.ontimeout = function () { next(); };
+                x.send();
+            } catch (e) { next(); }
+        };
+        var tv = imdbGet.tv;
+        one(tv ? 'series' : 'movie', function () { one(tv ? 'movie' : 'series', function () { end(0); }); });
     }
     function imdbShow(render, r) {
         if (!render || !r) return;
@@ -4892,7 +4897,8 @@
         if (!m || !render) return;
         var has = render.querySelector('.rate--imdb:not(.hide)');
         if (has && /\d/.test(has.textContent)) return;   // джерело вже дало рейтинг IMDb
-        var go = function (iid) { if (/^tt\d+$/.test(String(iid || ''))) imdbGet(iid, function (r) { if (r) imdbShow(render, r); }); };
+        var isTv0 = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
+        var go = function (iid) { if (/^tt\d+$/.test(String(iid || ''))) { imdbGet.tv = isTv0; imdbGet(iid, function (r) { if (r) imdbShow(render, r); }); } };
         if (m.imdb_id) return go(m.imdb_id);
         var T = window.Lampa && Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
         if (!T || !T.external_imdb_id || !m.id) return;
@@ -7022,7 +7028,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.610';
+    var VERSION = '10.611';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
