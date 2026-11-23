@@ -210,7 +210,7 @@
         S + '.lmx-onl-prog--end .lmx-onl-dead{justify-content:center;margin-top:1.1em}' +
         S + '.lmx-onl-prog__sub{font-size:.95em;opacity:.6;margin:.1em 0 0;max-width:34em}' +
         // порожній екран: тільки шапка і панель — без кнопок джерела/сезону, статусу в шапці й сірих заглушок
-        'body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-hero__s,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__b,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__f,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--search,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--sort,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .torrent-filter{display:none !important}' +
+        'body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-g--season,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-g--voice,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-g--page,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-hero__s,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__b,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .lmx-onl-prog__f,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--search,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .filter--sort,body.lmx-online .lmx-onl-nothing .explorer.lmx-onl .torrent-filter{display:none !important}' +
         S + '.lmx-onl-prog__b{height:.28em;border-radius:99em;background:rgba(255,255,255,.14);overflow:hidden;margin-bottom:1em}' +
         S + '.lmx-onl-prog__b i{display:block;height:100%;width:8%;border-radius:99em;background:#fff;transition:width .5s ease;animation:lmxBar 1.4s ease-in-out infinite alternate}' +
         '@keyframes lmxBar{0%{opacity:.55}100%{opacity:1}}' +
