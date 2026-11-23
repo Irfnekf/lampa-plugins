@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.42';
+    var VERSION = '5.43';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -510,6 +510,23 @@
         if (!/[а-яё]/i.test(html) || !/(Украинск|Дублированн|Оригинал|Многоголос|Двухголос|Одноголос|Профессиональн|Любительск|Авторск|По умолчанию|Субтитры|Английск|Японск|Корейск)/.test(html)) return html;
         return html.replace(/(<div class="videos__(?:button|item-title)[^"]*"[^>]*>)([^<]+)(<\/div>)/g, function (m, a, t, b) { return a + uaWord(t) + b; });
     }
+    // на екрані є українська озвучка — запам'ятовуємо тайтл для мітки «UA» на картках (LMX Pack читає lmx_online_ua)
+    function onlineUa(comp, html) {
+        try {
+            var id = String(comp && comp.__lmxCard && comp.__lmxCard.id || ''), act = Lampa.Activity.active();
+            if (!id) id = String(act && act.movie && act.movie.id || '');
+            if (!/^\d+$/.test(id) || !/videos__(button|item)/.test(html)) return;
+            var names = [], m, rx = /<div class="videos__(?:button|item-title)[^"]*"[^>]*>([^<]+)<\/div>/g;
+            while ((m = rx.exec(html))) names.push(m[1]);
+            var uaSrc = /\/lite\/(mikai|animeon|anitube|unimay|eneyida|ey|uafix|ufd|ufv|uakino|kinoukr|makhno|bamboo|pl|video)\?/.test(html);   // джерела лише з українською
+            if (!uaSrc && !names.some(function (t) { return /🇺🇦/.test(t) || isUaName(t); })) return;
+            var o = Lampa.Storage.get('lmx_online_ua', {}); if (typeof o === 'string') o = JSON.parse(o || '{}'); if (!o || typeof o !== 'object') o = {};
+            if (o[id] && Date.now() - o[id] < 86400000) return;
+            o[id] = Date.now();
+            var ks = Object.keys(o); if (ks.length > 600) ks.sort(function (a, b) { return o[a] - o[b]; }).slice(0, ks.length - 500).forEach(function (k) { delete o[k]; });
+            Lampa.Storage.set('lmx_online_ua', o);
+        } catch (e) {}
+    }
     function uaMark(html) {
         if (html.indexOf('🇺🇦') >= 0) return html;
         var btnRx = /<div class="videos__button[^"]*"[^>]*>([^<]+)<\/div>/g;
@@ -752,7 +769,7 @@
                             if (j0 && j0.url) return comp.request(j0.url);
                         }
                     } catch (e) {}
-                    try { if (typeof str === 'string') { arguments[0] = uaMark(uaWords(str)); } } catch (e) {}
+                    try { if (typeof str === 'string') { arguments[0] = uaMark(uaWords(str)); onlineUa(comp, arguments[0]); } } catch (e) {}
                     return realParse.apply(this, arguments);
                 };
                 var realReq = comp.request;
