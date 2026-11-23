@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.95';
+    var VERSION = '3.96';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1843,6 +1843,8 @@
         if (singleSrc()) return;
         var pr = act.querySelector('.lmx-onl-prog');
         if (!pr || pr.querySelector('.lmx-onl-dead')) return;
+        // утримання фокуса на «Джерело» (після вибору джерела) більше не потрібне — інакше воно й панель перетягували фокус туди-сюди
+        act.__lmxHold = null; clearInterval(act.__lmxHI);
         var row = document.createElement('div'), inst = instFor(act), next = nextSourceFor(act), manySrc = false;
         try { manySrc = (readSets(inst).sort || []).length > 1; } catch (e) {}
         row.className = 'lmx-onl-dead';
@@ -3844,8 +3846,11 @@
                     var uaX = isUa();
                     var c = sort.filter(function (x) { if (!(x && !x.selected && !x.ghost && !isStub(x.title) && srcName(x.title) && bad.names.indexOf(srcName(x.title)) < 0)) return false; if (!uaX) return true; if (isTorSrc(x)) return false; var pe = pcEntry(cid, srcName(x.title)); return !!(pe && pe.s === 'ok'); })   // LMX UA: перемикаємо лише на джерела, де перевірка тайтл підтвердила
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
-                    // джерело обрали вручну — не тікаємо з нього самі: показуємо його власне пояснення (напр. «вкажіть TorrServer») і кнопки, зокрема «Спробувати …»
-                    if (manual && !silent) {
+                    // обрали вручну, але інших джерел із тайтлом Watch ще не знає (серіал відкрився одразу на останньому джерелі, без перевірки) —
+                    // беремо наступне неспробуване, як кнопка «Спробувати …», і так само перемикаємо через 4 с (будь-яка кнопка пульта скасовує)
+                    if (manual && !silent && !c.length) { var nx0 = nextSourceFor(act); if (nx0 && !isTorSrc(nx0)) c = [nx0]; }
+                    // інших джерел немає зовсім — лишаємось і показуємо пояснення джерела та кнопки
+                    if (manual && !silent && !c.length) {
                         var own = ''; try { own = String($(body).find('.online-empty__title').first().text() || '').replace(/\s+/g, ' ').trim(); if (/не дав результат|не дал результат|нічого не знайдено|ничего не найдено/i.test(own)) own = ''; } catch (e) {}   // лише заголовок (без підписів кнопок); «не дав результатів» — звичайне «немає», пишемо своє
                         var curT = String((curIt && curIt.title) || curKey || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
                         act.__lmxProbing = false; bad.names = [];
