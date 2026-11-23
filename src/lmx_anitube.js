@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.47';
+    var VERSION = '5.48';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1216,6 +1216,17 @@
     // ── init & filter ──
     this.initialize = function () {
       var _this = this;
+      // збережене уточнення назви для цього тайтла — застосовуємо одразу (раніше воно зберігалось, але ніколи не використовувалось)
+      try { if (!object.clarification) { var sv = clarificationSearchGet(); if (sv) { object.search = sv; object.clarification = true; } } } catch (e) {}
+      // для LMX Watch: чи є уточнення і як його скинути
+      window.__lmxUaClar = {
+        value: object.clarification ? String(object.search || '') : '',
+        reset: function () {
+          clarificationSearchDelete();
+          _this.replaceChoice({ season: 0, voice: 0, voice_url: '', voice_name: '' });
+          Lampa.Activity.replace({ clarification: 0, similar: 0, search: object.movie.title || object.movie.name });
+        }
+      };
       this.loading(true);
       filter.onSearch = function (value) {
         clarificationSearchAdd(value);

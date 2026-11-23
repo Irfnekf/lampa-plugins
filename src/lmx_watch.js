@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.92';
+    var VERSION = '3.93';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1438,6 +1438,17 @@
     };
     function curView() { var v = Lampa.Storage.get('lmx_online_view', 'tile'); return VIEWS[v] ? v : 'tile'; }
     // sel — пункт, на якому лишається фокус після зміни; en — контролер, у який повертаємось, коли вікно закрите
+    // «Уточнити пошук»: джерело знайшло не той тайтл або нічого — шукаємо за іншою назвою (запам'ятовується для тайтла); «Скинути уточнення» — назад до назви з картки
+    function clarItems(act) {
+        var out = [];
+        try {
+            if (!act || !act.querySelector('.filter--search')) return out;
+            var cv = isUa() && window.__lmxUaClar ? window.__lmxUaClar.value : '';
+            out.push({ title: 'Уточнити пошук', subtitle: cv ? 'Зараз шукаємо: «' + cv + '»' : 'Знайти за іншою назвою, якщо джерело знайшло не те', k: 'clar' });
+            if (cv) out.push({ title: 'Скинути уточнення', subtitle: 'Шукати знову за назвою з картки', k: 'clar0' });
+        } catch (e) {}
+        return out;
+    }
     function openCfg(act, sel, en) {
         var enabled = en || '';
         if (!enabled) { try { enabled = Lampa.Controller.enabled().name; } catch (e) {} }
@@ -1451,7 +1462,7 @@
                 { title: 'Бажана якість', subtitle: QPREF[qPref()], k: 'q' },
                 { title: 'Підвантажувати наступну серію', subtitle: prefetchOn() ? 'Увімкнено' : 'Вимкнено', k: 'pre' },
                 { title: 'Здоров\u2019я джерел', subtitle: 'Статистика відповідей джерел', k: 'health' }
-            ].concat(Object.keys(OPTS).map(function (k) { var o = OPTS[k]; return { title: o[0], subtitle: o[2][opt(o[3], o[1])] || o[2][o[1]], k: 'o:' + k }; })).map(function (it) { if (sel && it.k === sel) it.selected = true; return it; }),
+            ].concat(clarItems(act)).concat(Object.keys(OPTS).map(function (k) { var o = OPTS[k]; return { title: o[0], subtitle: o[2][opt(o[3], o[1])] || o[2][o[1]], k: 'o:' + k }; })).map(function (it) { if (sel && it.k === sel) it.selected = true; return it; }),
             onBack: back,
             onSelect: function (a) {
                 if (a.k === 'q') {
@@ -1469,6 +1480,8 @@
                     return;
                 }
                 if (a.k === 'health') { safe(showHealth); return; }
+                if (a.k === 'clar') { try { Lampa.Select.close(); } catch (e) {} setTimeout(function () { var f = act.querySelector('.filter--search'); if (f) { window.__lmxAllowSel = Date.now(); try { $(f).trigger('hover:enter'); } catch (e) {} } }, 50); return; }
+                if (a.k === 'clar0') { try { Lampa.Select.close(); } catch (e) {} setTimeout(function () { try { window.__lmxUaClar.reset(); } catch (e) {} }, 50); return; }
                 if (a.k === 'probe') {
                     try { Lampa.Storage.set('lmx_online_probe', probeOn() ? 'false' : 'true'); } catch (e) {}
                     openCfg(act, 'probe', enabled);
@@ -1855,6 +1868,7 @@
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
         h += '<div class="lmx-onl-btn selector" data-a="retry">Перевірити ще раз</div>';
+        if (act.querySelector('.filter--search')) h += '<div class="lmx-onl-btn selector" data-a="clarify">Уточнити пошук</div>';
         if (next && !isTorSrc(next)) h += '<div class="lmx-onl-btn selector" data-a="next">Спробувати «' + esc(String(next.title || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() || srcName(next.title)) + '»</div>';
         row.innerHTML = h;
         act.classList.add('lmx-onl-nothing');
