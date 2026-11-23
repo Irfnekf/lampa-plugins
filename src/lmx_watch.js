@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.94';
+    var VERSION = '3.95';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3744,6 +3744,8 @@
         function stop() { clearInterval(iv); act.__lmxEG = 0; act.classList.remove('lmx-onl-eg'); EV.forEach(function (ev) { document.removeEventListener(ev, cancel, true); }); }
         function cancel() {
             if (Date.now() - t0 < 600) return;
+            // джерело обрали вручну: автоперемикання тут немає, тож натискання пульта (рух по екрану) не мають вимикати сторожа — інакше замість панелі з кнопками лишався голий текст
+            if (!cd && Date.now() - (window.__lmxManual || 0) < 120000) return;
             if (cd) { heroStatus(act, 'Автоперемикання скасовано. Оберіть джерело кнопкою «Джерело»', true); }
             else safe(function () {
                 var b = act.querySelector('.explorer__files-body .scroll__body');
@@ -3844,12 +3846,13 @@
                         .sort(function (x, y) { var kx = srcName(x.title), ky = srcName(y.title); return (srcScore(ky, { q: titleQ(y.title), pe: pcEntry(cid, ky) }, mem).s - srcScore(kx, { q: titleQ(x.title), pe: pcEntry(cid, kx) }, mem).s) || (gscore(mem.g[ky]) - gscore(mem.g[kx])); });
                     // джерело обрали вручну — не тікаємо з нього самі: показуємо його власне пояснення (напр. «вкажіть TorrServer») і кнопки, зокрема «Спробувати …»
                     if (manual && !silent) {
-                        var own = ''; try { own = String($(body).find('.online-empty__title, .online-empty').first().text() || '').replace(/\s+/g, ' ').trim(); } catch (e) {}
+                        var own = ''; try { own = String($(body).find('.online-empty__title').first().text() || '').replace(/\s+/g, ' ').trim(); if (/не дав результат|не дал результат|нічого не знайдено|ничего не найдено/i.test(own)) own = ''; } catch (e) {}   // лише заголовок (без підписів кнопок); «не дав результатів» — звичайне «немає», пишемо своє
                         var curT = String((curIt && curIt.title) || curKey || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
                         act.__lmxProbing = false; bad.names = [];
                         act.__lmxManDead = { t: curT, m: own && !/^нічого не знайдено/i.test(own) ? own : '' };
                         safe(function () { ensureProg(act); });
                         heroStatus(act, act.__lmxManDead.m || 'На «' + curT + '» нічого не знайдено', true);
+                        safe(function () { deadActions(act); });   // панель із кнопками («Спробувати …», «Уточнити пошук») — вона будується лише для «жодне джерело», тож викликаємо явно
                         act.classList.remove('lmx-onl-load'); relayout(); return stop();
                     }
                     if (!c.length) {
