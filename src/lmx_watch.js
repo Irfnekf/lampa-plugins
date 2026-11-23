@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.87';
+    var VERSION = '3.88';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1572,6 +1572,7 @@
         } catch (e) {}
     }
     // чи відповіло хоч одне джерело під час перевірки цього тайтла (інакше «нічого не знайдено» — це збій мережі/сервера, а не відсутність)
+    function unreleased() { try { var a = Lampa.Activity.active(), c = a && (a.movie || a.card), rd = c && !(c.name || c.number_of_seasons) && c.release_date; return !!(rd && Date.parse(rd) > Date.now()); } catch (e) { return false; } }
     function noneAnswered() {
         try {
             var g = window.__lmxProbe, m = g && g.cid && pcGet()[g.cid], l = m && m.l, k, n = 0, sk = 0;
@@ -1839,12 +1840,15 @@
         if (ps) ps.textContent = 'Онлайн поки немає';
         var sub = pr.querySelector('.lmx-onl-prog__sub');
         if (!sub) { sub = document.createElement('div'); sub.className = 'lmx-onl-prog__sub'; if (ps && ps.parentNode) ps.parentNode.insertBefore(sub, ps.nextSibling); else pr.appendChild(sub); }
-        if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
+        var soon = '';
+        try { var a01 = Lampa.Activity.active(), c01 = a01 && (a01.movie || a01.card), rd = c01 && !(c01.name || c01.number_of_seasons) && c01.release_date; if (rd && Date.parse(rd) > Date.now()) var dd0 = String(rd).split('-'); soon = parseInt(dd0[2], 10) + ' ' + ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'][parseInt(dd0[1], 10) - 1] + ' ' + dd0[0]; } catch (e) {}
+        if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
+        else if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
         h += '<div class="lmx-onl-btn selector" data-a="retry">Перевірити ще раз</div>';
-        if (next && !isTorSrc(next)) h += '<div class="lmx-onl-btn selector" data-a="next">Спробувати «' + esc(srcName(next.title)) + '»</div>';
+        if (next && !isTorSrc(next)) h += '<div class="lmx-onl-btn selector" data-a="next">Спробувати «' + esc(String(next.title || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() || srcName(next.title)) + '»</div>';
         row.innerHTML = h;
         act.classList.add('lmx-onl-nothing');
         pr.appendChild(row);
@@ -3813,7 +3817,7 @@
                         // (а список «порожніх» джерел скидаємо, щоб ручний вибір чи повтор не впирались у нього)
                         act.__lmxProbing = false; bad.names = [];
                         safe(function () { ensureProg(act); });
-                        heroStatus(act, noneAnswered() ? 'Більшість джерел не відповіли — схоже, збій мережі' : 'Нічого не знайдено: жодне джерело не дало результатів', true);
+                        heroStatus(act, unreleased() ? 'Фільм ще не вийшов' : noneAnswered() ? 'Більшість джерел не відповіли — схоже, збій мережі' : 'Нічого не знайдено: жодне джерело не дало результатів', true);
                         act.classList.remove('lmx-onl-load'); relayout(); return stop();
                     }
                     cand = c[0]; cd = Date.now() + (silent ? 1500 : manual ? 4000 : 600);

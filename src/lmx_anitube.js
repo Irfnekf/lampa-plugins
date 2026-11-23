@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.43';
+    var VERSION = '5.44';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -300,6 +300,7 @@
     var kuDb = null, kuWait = null;
     function kuFind(url, done) {
         function go(db) {
+            if (!db) return done(null, 'blocked');   // базу не завантажили (мережа) — «невідомо»
             var title = qget(url, 'title'), orig = qget(url, 'original_title'), year = parseInt(qget(url, 'year'), 10) || 0;
             var n1 = nrm(title), n2 = nrm(orig), best = null, bs = -1;
             db.forEach(function (r) {
@@ -318,7 +319,7 @@
         fetchText(KU_DB, function (t) {
             try { kuDb = JSON.parse(t); } catch (e) { kuDb = []; }
             var w = kuWait; kuWait = null; w.forEach(function (f) { f(kuDb); });
-        }, function () { var w = kuWait; kuWait = null; w.forEach(function (f) { f([]); }); });
+        }, function () { var w = kuWait; kuWait = null; w.forEach(function (f) { f(null); }); });
     }
     var KU_DB = (function () {
         try { var sc = document.currentScript && document.currentScript.src; if (sc && /lmx_anitube\.js/.test(sc)) return sc.replace(/lmx_anitube\.js.*$/, 'kinoukr_db.json'); } catch (e) {}
@@ -335,10 +336,12 @@
         if (!qs.length) return done(null);
         var key = qs.join('|');
         if (key in mkCache) return done(mkCache[key]);
-        var i = 0;
+        var i = 0, reached = false;
         (function next() {
-            if (i >= qs.length) { mkCache[key] = null; return done(null); }
+            // жодна відповідь не дійшла (мережа) — не запам'ятовуємо «немає» і кажемо «невідомо»
+            if (i >= qs.length) { if (!reached) return done(null, 'blocked'); mkCache[key] = null; return done(null); }
             fetchTextNc('https://wh.lme.isroot.in/?' + qs[i++], function (t) {
+                reached = true;
                 var j = null; try { j = JSON.parse(t); } catch (e) {}
                 var u = j && typeof j.play === 'string' && /^https:\/\/ashdi\.vip\/(vod|serial)\/\d+/.test(j.play) ? j.play : '';
                 if (u && /\/serial\//.test(u) !== serial) u = '';
@@ -469,8 +472,8 @@
     function resolveUrl(url, done, depth) {
         url = String(url || ''); depth = depth || 0;
         if (depth > 3) return done('');
-        function frame(label) { return function (iframe) {
-            if (!iframe) return done('');
+        function frame(label) { return function (iframe, why) {
+            if (!iframe) return done(why === 'blocked' ? false : '');   // сайт недоступний — «невідомо», а не «тайтлу немає»
             if (qget(url, 'serial') === '1') return resolveUrl(host() + '/lite/pl?u=' + encodeURIComponent(iframe), done, depth + 1);
             done(movieItemHtml(url, iframe, label));
         }; }
@@ -480,7 +483,7 @@
         if (/\/lite\/makhno\?/.test(url)) return mkFind(url, frame('Makhno'));
         if (/\/lite\/pidtor\?/.test(url)) return done(null);
         if (/\/lite\/fxd\?/.test(url)) return fxHtml(url, function (h) { done(/online-empty/.test(h) ? '' : h); });
-        if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h) { done(h || ''); });
+        if (/\/lite\/ufd\?/.test(url)) return ufDevice(url, function (h, why) { done(h || (why === 'blocked' ? false : '')); });
         if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
         var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
         var fx = window.__lmxUaBridge && window.__lmxUaBridge.fix;
@@ -810,17 +813,17 @@
                         return;
                     }
                     if (/\/lite\/kinoukr\?/.test(String(url || ''))) {
-                        kuFind(String(url), function (iframe) {
+                        kuFind(String(url), function (iframe, why) {
                             if (!live()) return;
-                            if (!iframe) return comp.parse(emptyHtml('У KinoUkr цього тайтлу немає'));
+                            if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'KinoUkr зараз недоступний — спробуйте пізніше' : 'У KinoUkr цього тайтлу немає'));
                             playFrame(iframe, 'KinoUkr');
                         });
                         return;
                     }
                     if (/\/lite\/makhno\?/.test(String(url || ''))) {
-                        mkFind(String(url), function (iframe) {
+                        mkFind(String(url), function (iframe, why) {
                             if (!live()) return;
-                            if (!iframe) return comp.parse(emptyHtml('У Makhno цього тайтлу немає'));
+                            if (!iframe) return comp.parse(emptyHtml(why === 'blocked' ? 'Makhno зараз недоступний — спробуйте пізніше' : 'У Makhno цього тайтлу немає'));
                             playFrame(iframe, 'Makhno');
                         });
                         return;
