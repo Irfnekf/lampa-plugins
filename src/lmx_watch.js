@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.83';
+    var VERSION = '3.84';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1556,10 +1556,10 @@
     // чи відповіло хоч одне джерело під час перевірки цього тайтла (інакше «нічого не знайдено» — це збій мережі/сервера, а не відсутність)
     function noneAnswered() {
         try {
-            var g = window.__lmxProbe, m = g && g.cid && pcGet()[g.cid], l = m && m.l, k, n = 0;
+            var g = window.__lmxProbe, m = g && g.cid && pcGet()[g.cid], l = m && m.l, k, n = 0, sk = 0;
             if (!l) return false;
-            for (k in l) { n++; if (l[k] && l[k].s !== 'skip' && Date.now() - (l[k].t || 0) < 600000) return false; }
-            return n > 0;
+            for (k in l) { if (!l[k]) continue; n++; if (l[k].s === 'ok') return false; if (l[k].s === 'skip') sk++; }
+            return n > 0 && sk * 2 >= n;   // більшість джерел мовчали — це збій, а не «немає»
         } catch (e) { return false; }
     }
     function pcEntry(cid, key) {
@@ -1809,7 +1809,7 @@
         if (ps) ps.textContent = 'Онлайн поки немає';
         var sub = pr.querySelector('.lmx-onl-prog__sub');
         if (!sub) { sub = document.createElement('div'); sub.className = 'lmx-onl-prog__sub'; if (ps && ps.parentNode) ps.parentNode.insertBefore(sub, ps.nextSibling); else pr.appendChild(sub); }
-        if (noneAnswered()) { if (ps) ps.textContent = 'Джерела не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
+        if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
@@ -3783,7 +3783,7 @@
                         // (а список «порожніх» джерел скидаємо, щоб ручний вибір чи повтор не впирались у нього)
                         act.__lmxProbing = false; bad.names = [];
                         safe(function () { ensureProg(act); });
-                        heroStatus(act, noneAnswered() ? 'Джерела не відповіли — схоже, збій мережі' : 'Нічого не знайдено: жодне джерело не дало результатів', true);
+                        heroStatus(act, noneAnswered() ? 'Більшість джерел не відповіли — схоже, збій мережі' : 'Нічого не знайдено: жодне джерело не дало результатів', true);
                         act.classList.remove('lmx-onl-load'); relayout(); return stop();
                     }
                     cand = c[0]; cd = Date.now() + (silent ? 1500 : manual ? 4000 : 600);
