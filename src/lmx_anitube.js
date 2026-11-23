@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.38';
+    var VERSION = '5.39';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -3617,6 +3617,28 @@
                         ((sg && sg.skip) || []).forEach(function (g) { if (g && t >= g.start - 6 && t <= g.end) hit = g; });
                         if (hit) { var du = v && isFinite(v.duration) ? v.duration : 0; Lampa.PlayerVideo.to(du ? Math.min(hit.end, du - 0.5) : hit.end); return; }
                     }
+                    // Наступна серія з відкладеним посиланням: спершу самі отримуємо посилання, і лише потім перемикаємо плеєр.
+                    // Плеєр Lampa для таких серій ставить прапорець «вже вантажу» і, якщо відповідь колись загубилась, ігнорує всі
+                    // подальші натискання — кнопка зникала без дії. З готовим посиланням він перемикає одразу, без прапорця
+                    try {
+                        if (segOpen() && P.canNext()) {
+                            var pl = P.get(), it = pl && pl[P.position() + 1], self = this, args = arguments;
+                            if (it && typeof it.url === 'function') {
+                                if (it.__lmxLd && Date.now() - it.__lmxLd < 40000) return;
+                                it.__lmxLd = Date.now();
+                                try { Lampa.Noty.show('Завантажую наступну серію…'); } catch (e) {}
+                                var gone = false;
+                                var to = setTimeout(function () { gone = true; it.__lmxLd = 0; try { Lampa.Noty.show('Не вдалося отримати наступну серію — спробуйте ще раз'); } catch (e) {} }, 40000);
+                                it.url(function () {
+                                    if (gone) return;
+                                    clearTimeout(to); it.__lmxLd = 0;
+                                    if (typeof it.url === 'string' && it.url) { if (segOpen()) nx.apply(self, args); }
+                                    else try { Lampa.Noty.show('Не вдалося отримати наступну серію — спробуйте ще раз'); } catch (e) {}
+                                });
+                                return;
+                            }
+                        }
+                    } catch (e) {}
                     return nx.apply(this, arguments);
                 };
             }
