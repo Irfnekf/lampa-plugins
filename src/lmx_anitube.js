@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.39';
+    var VERSION = '5.40';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -493,7 +493,7 @@
                 if (j && j.url && /\/lite\/(ufd|ey)\?/.test(j.url)) return resolveUrl(j.url, done, depth + 1);
             }
             done(t);
-        }, function () { done(''); }, false, { dataType: 'text' });
+        }, function () { done(false); }, false, { dataType: 'text' });   // збій мережі — false («невідомо»), а не '' («тайтлу немає»)
     }
 
     // Українські озвучки в змішаних джерелах (Phantom, Spectre, Aladin…) позначаємо 🇺🇦 — і в списку «Озвучка», і на картках фільму.

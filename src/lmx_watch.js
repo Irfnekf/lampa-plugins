@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.81';
+    var VERSION = '3.82';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1674,12 +1674,12 @@
             net.__lmxProbe = true; nets.push(net);
             // страховка: якщо мережа не віддала ні відповіді, ні помилки (рідний timeout не спрацював) — завершуємо самі, щоб підбір не стояв
             var tmo = job.resolve ? Math.max(it.to || 0, job.timeout) : (it.to || job.timeout);
-            setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} deepT = 2; end(job.resolve ? '<div class="videos__none"></div>' : ''); } }, tmo + 1500);
+            setTimeout(function () { if (!ended && !job.stopped) { try { net.clear(); } catch (e) {} deepT = 2; end(''); } }, tmo + 1500);   // не встигло — «невідомо», а не «тайтлу немає»
             try { net.timeout(it.to || job.timeout); } catch (e) {}
             var prm = { dataType: 'text' }; if (job.headers) prm.headers = job.headers;
             window.__lmxPB = true;
             // LMX UA: перевіряє сам плагін — так само, як відкриє людина (пошук на сайтах із пристрою, заглушки розкриваються); '' — тайтлу немає
-            if (job.resolve) { try { job.resolve(urlFor(it.source), function (h) { end(h === null ? '' : (h || '<div class="videos__none"></div>')); }); } catch (e) { end(''); } }
+            if (job.resolve) { try { job.resolve(urlFor(it.source), function (h) { end(h === null || h === false ? '' : (h || '<div class="videos__none"></div>')); }); } catch (e) { end(''); } }   // false — збій мережі: «невідомо»
             else try { net['native'](urlFor(it.source), end, function () { end(''); }, false, prm); } catch (e) { end(''); }
             window.__lmxPB = false;
         }
@@ -3559,6 +3559,20 @@
                     if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
                     else if ((!pe || pe.s === 'skip') && !uaM) skipN++;   // LMX UA перевіряє все сам через плагін: «немає відповіді» = «немає тайтлу», повільний обхід по колу не потрібен   // LMX UA: торенти (PidTor) автоматично не перевіряються — це не «не встигло відповісти»
                 });
+                // LMX UA: жодне не підтвердило, але частина джерел не відповіла (повільна мережа/телевізор, збій сервера) — перш ніж казати
+                // «нічого не знайдено», ще раз перевіряємо саме їх, з більшим запасом часу
+                if (!okL.length && uaM && !gs.retry && gs.job && gs.job.resolve) {
+                    var unk = (gs.job.items || []).filter(function (it) { var pe = pcEntry(cid, it.key); return !pe || pe.s === 'skip'; });
+                    if (unk.length) {
+                        gs.retry = true; gs.bg = 'run'; gs.bgT = Date.now(); gs.bgDone = gs.total - unk.length;
+                        var j2 = {}; for (var jk in gs.job) j2[jk] = gs.job[jk];
+                        j2.items = unk.map(function (it) { var c2 = {}; for (var ck in it) c2[ck] = it[ck]; c2.to = 15000; return c2; });
+                        j2.timeout = 15000; j2.par = Math.min(4, unk.length);
+                        gs.job = j2; gs.bgDeadline = Date.now() + 22000;
+                        bgProbe(j2);
+                        return;
+                    }
+                }
                 if (!okL.length) {
                     // жодна перевірка нічого не підтвердила, але деякі джерела не відповіли — довіряти цьому не можна: переходимо на надійний обхід через сам екран
                     if (skipN) { gs.bg = 'off'; gs.slow = true; return; }   // жодне джерело не встигло відповісти — вони повільні (довгі серіали), тож і далі чекаємо довше
