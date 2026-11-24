@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.49';
+    var VERSION = '5.50';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -768,13 +768,16 @@
                     if (!u) return realGet.apply(self, args);
                     if (/^pt:/.test(u)) {
                         // торент: TorrServer спершу отримує список файлів (до ~25 с) — показуємо завантаження
-                        var gone = false;
-                        try { Lampa.Loading.start(function () { gone = true; Lampa.Loading.stop(); }); } catch (e) {}
+                        // у плеєрі скасування лише ховає завантаження: відповідь потрібна завжди, інакше Lampa чекає посилання вічно й серії не перемикаються
+                        var gone = false, hid = false, inPl = false;
+                        try { inPl = !!(Lampa.Player.opened && Lampa.Player.opened()); } catch (e) {}
+                        var lstop = function () { if (!hid) { hid = true; try { Lampa.Loading.stop(); } catch (e) {} } };
+                        try { Lampa.Loading.start(function () { if (!inPl) gone = true; lstop(); }); } catch (e) {}
                         return ptPlay(u.slice(3), function (r) {
-                            try { Lampa.Loading.stop(); } catch (e) {}
+                            lstop();
                             if (!gone) call(Object.assign({}, r, { title: file.title, voice_name: file.voice_name }), {});
                         }, function () {
-                            try { Lampa.Loading.stop(); } catch (e) {}
+                            lstop();
                             if (gone) return;
                             try { Lampa.Noty.show(tsHost() ? 'TorrServer не отримав файли цієї роздачі — оберіть іншу' : 'Вкажіть адресу TorrServer у Налаштування → TorrServer'); } catch (e) {}
                             call(false, {});
@@ -955,7 +958,6 @@
   function lmxatEmbed(LMXAT_HOST) {
   'use strict';
 
-  var LAMPAC_VERSION = '1.9.2';
   var REQUEST_TIMEOUT = 10000;
   // джерела, що працюють лише через RCH (Moon) — LMX UA його не використовує, тож вони ніколи нічого не віддадуть: не показуємо їх
   function noRch(j) { return !!j && /^moonanime$/i.test(String(j.balanser || '')); }
@@ -1111,12 +1113,6 @@
 
     function getHabits() {
       var habits = Lampa.Storage.get('lmxat_balanser_habits', '{}');
-      // перенос старого глобального выбора, чтобы любимый балансер не потерялся после обновления
-      var legacy = '';   // LMX UA: власні звички, без чужого глобального вибору (інакше джерела інших плагінів впливали на наш вибір)
-      if (legacy && !Lampa.Arrays.getKeys(habits).length) {
-        habits[legacy] = 1;
-        Lampa.Storage.set('lmxat_balanser_habits', habits);
-      }
       return habits;
     }
 
@@ -1578,11 +1574,10 @@
                 }
                 if (ph && !json.some(function (j) { return j && j.balanser === 'aladin'; }))
                   json.push({ name: 'Aladin', url: String(ph.url).replace('/lite/phantom', '/lite/aladin'), balanser: 'aladin', show: true });
-                // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
                 // Filmix (ваш Premium-акаунт на нашому сервері): до 4K, є українські озвучки
-                if (ph) { window.__lmxOra = String(ph.url).replace(/\/lite\/phantom.*$/, ''); try { Lampa.Storage.set('lmx_ora', window.__lmxOra); } catch (e) {} }
                 if (fxAcc() && !json.some(function (j) { return j && j.balanser === 'filmix'; }))
                   json.push({ name: 'Filmix', url: host() + '/lite/fxd', balanser: 'filmix', show: true });
+                // HDVB — запасне російськомовне джерело для свіжих серіалів (Watch обирає його лише коли української озвучки ніде немає)
                 if (ph && !json.some(function (j) { return j && j.balanser === 'hdvb'; }))
                   json.push({ name: 'HDVB', url: String(ph.url).replace('/lite/phantom', '/lite/hdvb'), balanser: 'hdvb', show: true });
                 if (Array.isArray(json) && json.length && !json.some(function (j) { return j && j.balanser === 'pidtor'; }))
@@ -1727,8 +1722,7 @@
         }, function () { if (--left === 0) end(); });
       });
     }
-    this.getFileUrl = function (file, call, waiting_rch) {
-      var _this = this;
+    this.getFileUrl = function (file, call) {
 
       if (Lampa.Storage.field('player') !== 'inner' && file.stream && Lampa.Platform.is('apple')) {
         var newfile = Lampa.Arrays.clone(file);
@@ -1737,36 +1731,36 @@
         call(newfile, {});
       } else if (file.method == 'play') call(file, {});
       else {
+        // У плеєрі (наступна серія) будь-яка кнопка пульта під час завантаження скасовувала запит і віддавала керування екрану під плеєром:
+        // відео йшло далі, плеєр не реагував, а Lampa назавжди лишалась «в очікуванні» посилання — серії більше не перемикались.
+        // Тепер у плеєрі кнопка лише ховає завантаження, а серія ввімкнеться, щойно прийде посилання
+        var inPl = false, hid = false;
+        try { inPl = !!(Lampa.Player.opened && Lampa.Player.opened()); } catch (e) {}
         Lampa.Loading.start(function () {
+          hid = true;
           Lampa.Loading.stop();
+          if (inPl) return;
           Lampa.Controller.toggle('content');
           network.clear();
         });
-        network.timeout(BALANCER_TIMEOUT);
+        var lstop = function () { if (!hid) { hid = true; Lampa.Loading.stop(); } };
+        network.timeout(inPl ? 20000 : BALANCER_TIMEOUT);   // у плеєрі не тримаємо перемикання серій хвилину, якщо джерело мовчить
         network['native'](
           account(file.url),
           function (json) {
             if (json.rch) {
-              if (waiting_rch) {
-                waiting_rch = false;
-                Lampa.Loading.stop();
-                call(false, {});
-              } else {
-                _this.rch(json, function () {
-                  Lampa.Loading.stop();
-
-                  _this.getFileUrl(file, call, true);
-                });
-              }
+              // RCH у LMX UA не використовується — повторний запит дав би те саме
+              lstop();
+              call(false, {});
             } else {
               codecFilter(json, function () {
-                Lampa.Loading.stop();
+                lstop();
                 call(json, json);
               });
             }
           },
           function () {
-            Lampa.Loading.stop();
+            lstop();
             call(false, {});
           },
           false,
