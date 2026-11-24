@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.96';
+    var VERSION = '3.97';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -4307,7 +4307,32 @@
             try { var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-999px;top:0'; document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); document.body.removeChild(ta); done(ok); } catch (e) { done(false); }
         }
     }
+    // Запобіжник: плеєр відкритий і закриває весь екран, але керування опинилось на схованому під ним екрані (список серій, картка, меню) —
+    // пульт «не діяв», відео йшло далі, і допомагав лише перезапуск Lampa. Повертаємо керування плеєру (раз на секунду, лише з таких екранів)
+    function playerGuard() {
+        if (playerGuard.on) return; playerGuard.on = true;
+        var hidden = /^(content|full_start|full_descr|items_line|menu|head|lmx_onl\w*|lmx_eps)$/;
+        var bad0 = 0, ld0 = 0;
+        setInterval(function () {
+            try {
+                if (!Lampa.Player || !Lampa.Player.opened || !Lampa.Player.opened()) { bad0 = ld0 = 0; return; }
+                var pl = document.querySelector('.player'); if (!pl || !document.body.contains(pl) || !(pl.offsetWidth || pl.offsetHeight)) { bad0 = ld0 = 0; return; }
+                var c = Lampa.Controller.enabled(), nm = c && c.name || '', stuck = false;
+                if (hidden.test(nm)) stuck = true;
+                // кнопка «Пропустити / Наступна серія» вже зникла, а керування лишилось на ній
+                else if (nm === 'player_skip') { var sk = document.querySelector('.player-skip'); stuck = !sk || sk.classList.contains('hide') || !(sk.offsetWidth || sk.offsetHeight); }
+                // невидимий шар «Завантаження» (перехоплює всі кнопки) висить уже понад 10 с, а плеєр тим часом грає
+                else if (nm === 'loading') { if (!ld0) ld0 = Date.now(); var v = Lampa.PlayerVideo && Lampa.PlayerVideo.video && Lampa.PlayerVideo.video(); stuck = Date.now() - ld0 > 10000 && v && !v.paused; }
+                if (nm !== 'loading') ld0 = 0;
+                if (!stuck) { bad0 = 0; return; }
+                if (++bad0 < 2) return;   // дві перевірки поспіль (≈1 с) — не втручаємось у короткі законні переходи
+                bad0 = 0; ld0 = 0;
+                Lampa.Controller.toggle('player');
+            } catch (e) {}
+        }, 600);
+    }
     function start() {
+        safe(playerGuard);
         safe(function () {
             addCss();
             document.body.classList.toggle('lmx-online', isOn());
