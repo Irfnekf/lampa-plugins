@@ -5258,26 +5258,10 @@
         if (!it) return;
         var curPos = 0;
         try { curPos = Lampa.PlayerPlaylist.position(); } catch (e) {}
-        // керування — одразу назад плеєру (раніше лишалось на закритому меню: поки серія вантажилась або якщо перемикання не вдалось,
-        // пульт не діяв, відео йшло далі, і допомагав лише перезапуск Lampa)
+        // як було (перемикання — рідним способом Lampa), лише керування одразу повертаємо плеєру, щоб пульт не лишався на закритому списку
         epsClose(true);
         if (i === curPos) return;
-        var send = function () { try { Lampa.PlayerPlaylist.listener.send('select', { playlist: pl, position: i, item: it }); } catch (e) {} };
-        if (typeof it.url !== 'function') return send();
-        // посилання ще не отримане: спершу отримуємо самі, потім перемикаємо (плеєр Lampa для таких серій ставить прапорець «вже вантажу»
-        // і, якщо відповідь колись загубилась, ігнорує всі подальші перемикання)
-        if (it.__lmxLd && Date.now() - it.__lmxLd < 40000) return;
-        it.__lmxLd = Date.now();
-        try { Lampa.Noty.show('Завантажую серію…'); } catch (e) {}
-        var gone = false, to = setTimeout(function () { gone = true; it.__lmxLd = 0; try { Lampa.Noty.show('Не вдалося отримати серію — спробуйте ще раз'); } catch (e) {} }, 40000);
-        try {
-            it.url(function () {
-                if (gone) return;
-                clearTimeout(to); it.__lmxLd = 0;
-                if (typeof it.url === 'string' && it.url) { if (Lampa.Player.opened()) send(); }
-                else try { Lampa.Noty.show('Не вдалося отримати серію — спробуйте ще раз'); } catch (e) {}
-            });
-        } catch (e) { clearTimeout(to); it.__lmxLd = 0; send(); }
+        try { Lampa.PlayerPlaylist.listener.send('select', { playlist: pl, position: i, item: it }); } catch (e) {}
     }
     function epsOpen() {
         var pl = [], pos = 0;
@@ -7048,7 +7032,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.616';
+    var VERSION = '10.617';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
