@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.09';
+    var VERSION = '4.10';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1699,6 +1699,28 @@
     // job: { cid, url, items:[{key, source}], par, timeout, onEach(), onEnd() }
     // довгий серіал: сотні серій у кожній відповіді — перевіряємо джерела по два, щоб не вбити пам'ять телевізора
     function longSeries(c) { try { if (!c) return false; if ((c.number_of_episodes || 0) > 300) return true; var n = 0; (c.seasons || []).forEach(function (x) { n += (x && x.episode_count) || 0; }); return n > 300; } catch (e) { return false; } }
+    // LMX UA: коли тайтл відкрито одразу на звичному джерелі («продовжуємо перегляд»), інші джерела не перевірялись — і в списку
+    // джерел зеленим було лише поточне. Тихо (без перемикань) перевіряємо решту у фоні, щоб позначки відповідали дійсності
+    function colorProbe(cid, sort, card) {
+        try {
+            var ub = window.__lmxUaBridge;
+            if (!ub || !probeOn() || !cid || !sort || !sort.length) return;
+            var cp = window.__lmxColor;
+            if (cp && cp.cid === cid && Date.now() - cp.t < 120000) return;
+            var items = [];
+            sort.forEach(function (x) {
+                if (!x || x.ghost || !x.source || !keyOf(x) || isTorSrc(x)) return;
+                var pc0 = pcEntry(cid, keyOf(x));
+                if (pc0 && pc0.s !== 'skip') return;
+                items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: tQ(x.title), tor: false, to: 0 });
+            });
+            if (!items.length) return;
+            if (longSeries(card)) items = items.slice(0, 6);
+            window.__lmxColor = { cid: cid, t: Date.now() };
+            var job = { cid: cid, url: '', urlFor: ub.urlFor, deep: true, fix: ub.fix, resolve: ub.resolve || null, headers: null, items: items, par: 3, timeout: 9000, onEach: function () {}, onEnd: function () {} };
+            setTimeout(function () { try { if (!plyOn()) bgProbe(job); } catch (e) {} }, 2500);   // після того, як екран устиг показатись
+        } catch (e) {}
+    }
     function bgProbe(job) {
         var idx = 0, finished = 0, nets = [];
         job.stopped = false;
@@ -3537,7 +3559,7 @@
                 if (li) { gs.cont = lp.k; gs.contT = Date.now(); if (!li.selected) { switchTo(inst, li, 'Продовжуємо перегляд'); return; } }
             }
             if (gs.cont) {
-                if (curKey === gs.cont && freshEps(body).length) { if (isUa()) okNote(curKey); gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
+                if (curKey === gs.cont && freshEps(body).length) { if (isUa()) { okNote(curKey); var pcC = pcEntry(cid, curKey); if (!pcC || pcC.s !== 'ok') pcPut(cid, curKey, { s: 'ok', c: freshEps(body).length, q: 0 }); colorProbe(cid, sort, card); } gs.results.push({ name: curKey, rank: 0, n: 0 }); return finish(); }
                 if (/не дав результат|не дал результат|нічого не знайд|ничего не найд/i.test(body.textContent || '') && curKey === gs.cont || Date.now() - gs.contT > 9000) gs.cont = '';
                 else return;
             }
