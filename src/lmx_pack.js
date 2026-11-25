@@ -198,7 +198,7 @@
         { name: 'LmxPopularMovies', title: 'Популярні фільми',    urls: function () { return mkt('movie/popular', 'movie'); },     index: 13 },
         { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', urls: function () { return mkt('movie/now_playing', 'movie'); }, index: 14 },
         { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15, soon: true },
-        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
+        { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return ['discover/movie?sort_by=vote_average.desc&vote_count.gte=5000&without_genres=99%7C10770', 'movie/top_rated']; },   index: 16 },   // перевірена класика: лише фільми з тисячами оцінок (у top_rated нагорі були свіжі з малою кількістю оцінок)
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
         { name: 'LmxRecs',         title: 'Схоже на те, що вам сподобалось', custom: function () { return recsCall(this); }, index: 21 },
@@ -1176,6 +1176,7 @@
         var c = SVC[key], left = 6, recMv = [], recTv = [], topMv = [], topTv = [], t0 = dayStr(0);
         function uaOk(m) {
             var ov = String(m.overview || '');
+            if (key === 'ua' && m && m.original_language !== 'uk') return false;   // «Українське» — лише українською мовою
             return m && m.backdrop_path && m.poster_path && ov.length >= 30 && /[іїєґІЇЄҐ]/.test(ov);
         }
         function fin() {
@@ -1418,7 +1419,7 @@
                         (function go() {
                             tgetFb(qx, { page: pg }, function (j, u) {
                                 if (!empty(j) && ui === 0) cats[i].url2 = u;
-                                got[gi] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)); });
+                                got[gi] = cleanResults(j && j.results, !!cats[i].f || relaxed).filter(function (x) { return x.poster_path && (!cats[i].f || cats[i].f(x)) && (id !== 'ua' || x.original_language === 'uk'); });   // «Українське» — лише українською мовою
                                 if (cats[i].mix) got[gi].forEach(function (x) { if (!x.media_type) x.media_type = /^discover\/tv|^search\/tv/.test(qx) ? 'tv' : 'movie'; });
                                 end();
                             }, function () { errs++; if (++tries < 2) return setTimeout(go, 600); got[gi] = []; end(); });
@@ -7078,7 +7079,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.619';
+    var VERSION = '10.620';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
