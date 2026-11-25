@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.03';
+    var VERSION = '4.04';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1867,7 +1867,7 @@
         else if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
         else if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         // автозвіт: що саме відповіли джерела на цьому пристрої (лише LMX UA, не частіше ніж раз на 2 хв)
-        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, none: noneAnswered(), probe: probeOn(), on: isOn(), st: (function () { var o = {}; try { for (var k in localStorage) if (/^lmx_online|^lmxat_last|^lmx_ua|^online_/.test(k)) o[k] = String(localStorage.getItem(k)).slice(0, 120); } catch (e) {} return o; })(), src: allSrc.map(function (x) { return srcName(x.title) + (x.selected ? '*' : '') + (x.ghost ? '~' : ''); }) }); } catch (e) {}
+        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, tl: (window.__lmxTL || []).slice(-40), none: noneAnswered(), probe: probeOn(), on: isOn(), st: (function () { var o = {}; try { for (var k in localStorage) if (/^lmx_online|^lmxat_last|^lmx_ua|^online_/.test(k)) o[k] = String(localStorage.getItem(k)).slice(0, 120); } catch (e) {} return o; })(), src: allSrc.map(function (x) { return srcName(x.title) + (x.selected ? '*' : '') + (x.ghost ? '~' : ''); }) }); } catch (e) {}
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
@@ -1914,7 +1914,9 @@
         });
         setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) < Date.now() - 1500) syncNav(act, row.querySelector('.selector')); }); }, 300);
     }
+    function tl(m) { try { var L = window.__lmxTL || (window.__lmxTL = []); L.push(Math.round((Date.now() % 1e6) / 100) / 10 + ' ' + String(m).slice(0, 300)); if (L.length > 40) L.shift(); } catch (e) {} }
     function heroStatus(act, text, stop, frac) {
+        tl('hs: ' + text);
         var gs0 = window.__lmxProbe;
         if (!stop && gs0 && !gs0.done) { text = scanText(); frac = scanFrac(); }
         // Не перемикаємо тип повідомлення («перевіряємо» ↔ «джерело нічого не дало») частіше, ніж раз на 1,5 с — текст не блимає
@@ -3467,6 +3469,7 @@
             memSet(mem);
         }
         function switchTo(inst, it, text) {
+            tl('switch ' + (it && it.title) + ' : ' + text);
             gs.switches++; gs.cur = keyOf(it); gs.since = Date.now(); lastSig = '';
             if (gs.tried.indexOf(gs.cur) < 0) gs.tried.push(gs.cur);
             heroStatus(act, text + ' (' + gs.tried.length + ' з ' + (gs.total || '?') + '): ' + it.title + '…', false, Math.min(0.95, gs.tried.length / (gs.total || maxTry)));
@@ -3843,6 +3846,7 @@
                     try { $(body).find('[class*="empty__button"].cancel').each(function () { if (!/заказ|замов|order|запит|озвуч|request/i.test(this.textContent || '')) $(this).trigger('hover:enter'); }); } catch (e) {}
                     if (curKey && bad.names.indexOf(curKey) < 0) bad.names.push(curKey);
                     if (curKey && cid) seSet(cid, curKey, 'no');
+                    try { var kc = []; for (var ki = 0; ki < Math.min(body.children.length, 6); ki++) kc.push(String(body.children[ki].className).slice(0, 60)); tl('EMPTY ' + curKey + ' w=' + waited + ' eps=' + episodeEls(body).length + ' fresh=' + freshEps(body).length + ' kids=' + body.children.length + ' [' + kc.join(' | ') + '] txt=' + txt.replace(/\s+/g, ' ').slice(0, 160)); } catch (e) {}
                     var mem = memGet();
                     if (curKey && !isUa()) { var g = mem.g[curKey] || (mem.g[curKey] = { ok: 0, fail: 0, q: 0 }); g.fail = Math.min(20, (g.fail || 0) + 1); g.ft = Date.now(); memSet(mem); }   // LMX UA: «тайтлу немає» — звичайна відповідь, а не збій джерела
                     // LMX UA: джерела, де перевірка вже показала «тайтлу немає», і торенти не перебираємо — інакше обхід по колу всіх джерел
