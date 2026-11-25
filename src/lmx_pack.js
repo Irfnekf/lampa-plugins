@@ -756,7 +756,7 @@
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.trigger('lmx_imdb', true, 'Рейтинг IMDb', 'Поруч із рейтингом TMDB на сторінці фільму й серіалу. Береться з IMDb, оновлюється раз на 3 дні', null);
-        H.trigger('lmx_rt', true, 'Рейтинг глядачів Rotten Tomatoes', 'Popcornmeter поруч із IMDb на сторінці фільму й серіалу: скільки глядачів оцінили позитивно. Оновлюється раз на 2 дні', null);
+        H.trigger('lmx_rt', false, 'Рейтинг глядачів Rotten Tomatoes', 'Popcornmeter поруч із IMDb на сторінці фільму й серіалу: скільки глядачів оцінили позитивно. Оновлюється раз на 2 дні', null);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -4990,7 +4990,7 @@
             if (!/^tt\d+$/.test(String(iid || ''))) return;
             // обидва рейтинги вантажимо одночасно; Popcornmeter ставимо після IMDb, тож якщо IMDb прийде пізніше — переставляємо
             var rtP = 0;
-            if (getBool('lmx_rt', true)) rtGet(iid, function (p) { rtP = p; if (p) rtShow(render, p); });
+            if (getBool('lmx_rt', false)) rtGet(iid, function (p) { rtP = p; if (p) rtShow(render, p); });
             if (!needImdb) return;
             imdbGet.tv = isTv0;
             imdbGet(iid, function (r) {
@@ -7131,7 +7131,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.625';
+    var VERSION = '10.626';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7853,7 +7853,7 @@
         fxCss();
         fullScrollWatch();
         Lampa.Listener.follow('full', function (e) { if (e && e.type === 'build' && e.name === 'description') safe(function () { moreBind(e); }); });
-        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite' && (getBool('lmx_imdb', true) || getBool('lmx_rt', true))) safe(function () { imdbRate(e); }); });
+        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite' && (getBool('lmx_imdb', true) || getBool('lmx_rt', false))) safe(function () { imdbRate(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
