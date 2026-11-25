@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.02';
+    var VERSION = '4.03';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1867,7 +1867,7 @@
         else if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
         else if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         // автозвіт: що саме відповіли джерела на цьому пристрої (лише LMX UA, не частіше ніж раз на 2 хв)
-        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, none: noneAnswered() }); } catch (e) {}
+        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, none: noneAnswered(), probe: probeOn(), on: isOn(), st: (function () { var o = {}; try { for (var k in localStorage) if (/^lmx_online|^lmxat_last|^lmx_ua|^online_/.test(k)) o[k] = String(localStorage.getItem(k)).slice(0, 120); } catch (e) {} return o; })(), src: allSrc.map(function (x) { return srcName(x.title) + (x.selected ? '*' : '') + (x.ghost ? '~' : ''); }) }); } catch (e) {}
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';

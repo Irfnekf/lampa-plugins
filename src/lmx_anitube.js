@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.52';
+    var VERSION = '5.53';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -1662,7 +1662,8 @@
       if (number_of_requests < 10) {
         // общий network: externalids/withsearch/субтитры ставят ему REQUEST_TIMEOUT (10с) — балансеру нужен свой
         network.timeout(BALANCER_TIMEOUT);
-        network['native'](account(url), this.parse.bind(this), this.doesNotAnswer.bind(this), false, {
+        var self0 = this, rq0 = Date.now();
+        network['native'](account(url), function (t) { logRes(url, 'main', t, Date.now() - rq0); return self0.parse(t); }, function (a) { logRes(url, 'main:' + (a && a.status), a && a.responseText, Date.now() - rq0); return self0.doesNotAnswer(a); }, false, {
           dataType: 'text',
           headers: addHeaders()
         });
