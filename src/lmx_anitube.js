@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.55';
+    var VERSION = '5.56';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -63,6 +63,14 @@
         } catch (e) {}
     }
     window.__lmxSw = sw;
+    // Плеєр Lampa всередині (вбудований, а також «Tizen» на Samsung / «Orsay» — це той самий плеєр Lampa з системним відео).
+    // Код Lampac вважав зовнішнім усе, що не «inner», — на телевізорах Samsung наступні серії лишались без посилань і не перемикались
+    function innerPl() {
+        var p = ''; try { p = String(Lampa.Storage.field('player') || ''); } catch (e) {}
+        if (p === 'inner' || p === 'lampa' || p === 'tizen' || p === 'orsay') return true;
+        try { if (Lampa.Platform.is('tizen') || Lampa.Platform.is('orsay')) return true; } catch (e) {}
+        return false;
+    }
     function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
     // ───────── сторінки плеєрів (Ashdi, Tortuga) — з самого пристрою ─────────
@@ -1897,7 +1905,7 @@
                 var warmAfter = function (cur) {
                   clearTimeout(warmT);
                   var i = videos.indexOf(cur), nx = i >= 0 ? videos[i + 1] : null;
-                  if (!nx || nx.method !== 'call' || nx.__lmxPre || Lampa.Storage.field('player') !== 'inner') return;
+                  if (!nx || nx.method !== 'call' || nx.__lmxPre || !innerPl()) return;
                   var pu = typeof playerOf === 'function' ? playerOf(nx.url) : '';
                   if (/^pt:/.test(pu) || /\/lite\/pidtor/.test(String(nx.url || ''))) return;
                   warmT = setTimeout(function () {
@@ -1920,7 +1928,7 @@
                     if (elem == item) cell.url = json.url;
                     else {
                       if (elem.method == 'call') {
-                        if (Lampa.Storage.field('player') !== 'inner') {
+                        if (!innerPl()) {
                           cell.url = elem.stream;
                           delete cell.quality;
                         } else {
