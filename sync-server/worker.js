@@ -1201,26 +1201,6 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
     if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv|ufd)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
-    // Рейтинг IMDb для свіжих тайтлів, яких ще немає в Cinemeta (через OMDb), кеш 12 год — ключа OMDb вистачає з запасом
-    if (req.method === 'GET' && url.pathname === '/imdb') {
-      const id = String(url.searchParams.get('id') || '');
-      if (!/^tt\d{5,10}$/.test(id)) return json({ ok: 0 }, 400);
-      const ck = new Request('https://lmx-cache/imdb3/' + id);
-      try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
-      let r = 0, v = 0, d = '';
-      // IMDb не пускає сервери Cloudflare (сторінка — захист від ботів, API — 429), тому беремо з OMDb (дані IMDb).
-      // Ключ — у змінній OMDB_KEY воркера (Settings → Variables), щоб не лежав у відкритому репозиторії
-      if (env.OMDB_KEY) try {
-        const res = await fetch('https://www.omdbapi.com/?apikey=' + encodeURIComponent(env.OMDB_KEY) + '&i=' + id);
-        d = 'o' + res.status;
-        const j = await res.json();
-        const rr = parseFloat(j && j.imdbRating), vv = parseInt(String((j && j.imdbVotes) || '').replace(/,/g, ''), 10);
-        if (rr > 0) { r = rr; v = vv || 0; }
-      } catch (e) { d = 'oE'; } else d = 'nokey';
-      const out = json({ ok: 1, r: r, v: v, d: d });
-      try { const c2 = new Response(out.clone().body, out); c2.headers.set('cache-control', 'max-age=' + (r ? 43200 : 600)); ctx.waitUntil(caches.default.put(ck, c2)); } catch (e) {}
-      return out;
-    }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
