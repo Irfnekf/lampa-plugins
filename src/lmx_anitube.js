@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.53';
+    var VERSION = '5.54';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -36,6 +36,25 @@
             var x = new XMLHttpRequest(); x.open('POST', host() + '/api/diag', true); x.setRequestHeader('Content-Type', 'text/plain'); x.send(body);
         } catch (e) {}
     };
+    // Журнал перемикання серій у плеєрі: якщо серія не ввімкнулась за 20 с після вибору — автозвіт (що натискали, чи прийшло посилання, чи стартувало відео)
+    var swLog = [], swT = 0, swIv = 0;
+    function sw(m) { try { swLog.push(Math.round((Date.now() % 1e6) / 100) / 10 + ' ' + String(m).slice(0, 220)); if (swLog.length > 50) swLog.shift(); } catch (e) {} }
+    function swShort(u) { return typeof u === 'function' ? 'fn' : String(u || '').replace(/([?&](?:uid|token|account_email)=)[^&]*/gi, '$1~').slice(0, 90); }
+    function swWatch() {
+        if (window.__lmxSW) return; window.__lmxSW = 1;
+        try {
+            Lampa.PlayerPlaylist.listener.follow('select', function (e) {
+                sw('select pos=' + (e && e.position) + ' url=' + swShort(e && e.item && e.item.url) + ' title=' + (e && e.item && e.item.title));
+                swT = Date.now(); clearTimeout(swIv);
+                swIv = setTimeout(function () { if (swT) { sw('NO START in 20s'); try { window.__lmxUaDiagT = 0; window.__lmxUaDiag({ kind: 'switch', sw: swLog.slice(), ctl: (Lampa.Controller.enabled() || {}).name, opened: Lampa.Player.opened() }); } catch (x) {} } }, 20000);
+            });
+            Lampa.Player.listener.follow('start', function (d) { sw('start url=' + swShort(d && d.url) + ' pl=' + (Lampa.PlayerPlaylist.get() || []).length + ' pos=' + Lampa.PlayerPlaylist.position()); swT = 0; });
+            Lampa.Player.listener.follow('destroy', function () { sw('destroy'); });
+            Lampa.PlayerVideo.listener.follow('error', function (e) { sw('verror ' + (e && e.error) + ' fatal=' + (e && e.fatal)); });
+            Lampa.Keypad.listener.follow('keydown', function (e) { try { if (Lampa.Player.opened()) sw('key ' + (e && e.code) + ' ctl=' + ((Lampa.Controller.enabled() || {}).name || '')); } catch (x) {} });
+        } catch (e) {}
+    }
+    window.__lmxSw = sw;
     function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
     // ───────── сторінки плеєрів (Ashdi, Tortuga) — з самого пристрою ─────────
@@ -806,10 +825,12 @@
                             call(false, {});
                         });
                     }
+                    var dt0 = Date.now(); sw('direct ' + swShort(u));
                     direct(u, function (r) {
+                        sw('direct ok ' + (Date.now() - dt0) + 'ms ' + swShort(r && r.url));
                         var out = Object.assign({}, r, { title: file.title, voice_name: file.voice_name });
                         call(out, { quality: r.quality });
-                    }, function () { realGet.apply(self, args); });
+                    }, function () { sw('direct FAIL ' + (Date.now() - dt0) + 'ms → lampac'); realGet.apply(self, args); });
                 };
                 // UAFlix: Worker віддає заглушку-«сезон» UAFlix (сайт пускає лише пристрій) — одразу відкриваємо її, щоб у фільтрі «Сезон» не було «UAFlix»
                 var realParse = comp.parse;
@@ -1896,6 +1917,7 @@
                           delete cell.quality;
                         } else {
                           cell.url = function (call) {
+                            sw('cell.url ' + (elem.title || '') + ' pre=' + !!elem.__lmxPre);
                             // наступна серія вже підготовлена заздалегідь — відкриваємо одразу, без очікування
                             var pre = elem.__lmxPre;
                             if (pre && Date.now() - pre.t < 15 * 60000 && pre.stream && pre.stream.url) {
@@ -1914,6 +1936,7 @@
                             _this5.getFileUrl(
                               elem,
                               function (stream, stream_json) {
+                                sw('cell.url got ' + swShort(stream && stream.url));
                                 if (stream.url) {
                                   cell.url = stream.url;
                                   cell.quality = stream_json.quality || elem.qualitys;
@@ -3601,6 +3624,7 @@
     function playerWatch() {
         if (window.__lmxPW) return;
         window.__lmxPW = 1;
+        swWatch();
         try {
             Lampa.PlayerVideo.listener.follow('tracks', function (e) { safe(function () { pickUaTrack(e); }); });
             Lampa.PlayerVideo.listener.follow('timeupdate', function (e) { var c = e && +e.current; if (c > 0 && Math.abs(c - pw.last) > 0.2) { pw.last = c; pw.lastT = Date.now(); } });
@@ -3681,6 +3705,7 @@
                 P.__lmxSeg = 1;
                 var nx = P.next;
                 P.next = function () {
+                    sw('P.next canNext=' + (function () { try { return P.canNext(); } catch (e) { return '?'; } })() + ' pos=' + (function () { try { return P.position(); } catch (e) { return '?'; } })());
                     // наступної серії в плеєрі немає (остання або джерело дало одну серію) — кнопка титрів просто перемотує їх, а не «мовчить»
                     if (segOpen() && segNoNext()) {
                         var v = Lampa.PlayerVideo.video(), t = v ? v.currentTime : 0, hit = null, sg = segNow();
