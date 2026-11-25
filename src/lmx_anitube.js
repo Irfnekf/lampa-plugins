@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.56';
+    var VERSION = '5.57';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -20,49 +20,6 @@
 
     function safe(fn) { try { return fn(); } catch (e) { try { console.log('LMX UA', e); } catch (x) {} } }
     function host() { var s = ''; try { s = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {} return (s || DEFAULT_HOST).replace(/\/+$/, ''); }
-    // Короткий журнал відповідей джерел (без токенів) — для автозвіту, коли на пристрої «нічого не знайдено» ніде
-    var uaLog = [];
-    function logRes(u, st, t, ms) {
-        try {
-            uaLog.push({ u: String(u || '').replace(/([?&](?:uid|token|account_email|box_mac|nws_id|lmx[a-z_]*)=)[^&]*/gi, '$1~').slice(0, 260), st: st, n: t ? String(t).length : 0, x: t ? String(t).replace(/\s+/g, ' ').slice(0, 140) : '', ms: ms });
-            if (uaLog.length > 40) uaLog.shift();
-        } catch (e) {}
-    }
-    window.__lmxUaDiag = function (info) {
-        try {
-            if (Date.now() - (window.__lmxUaDiagT || 0) < 120000) return;
-            window.__lmxUaDiagT = Date.now();
-            var body = JSON.stringify({ v: VERSION, info: info || {}, ua: String(navigator.userAgent || '').slice(0, 200), host: host(), ora: String(window.__lmxOra || ''), plat: (function () { try { return Lampa.Platform.get(); } catch (e) { return ''; } })(), log: uaLog.slice(-30) });
-            var x = new XMLHttpRequest(); x.open('POST', host() + '/api/diag', true); x.setRequestHeader('Content-Type', 'text/plain'); x.send(body);
-        } catch (e) {}
-    };
-    // Журнал перемикання серій у плеєрі: якщо серія не ввімкнулась за 20 с після вибору — автозвіт (що натискали, чи прийшло посилання, чи стартувало відео)
-    var swLog = [], swT = 0, swIv = 0;
-    function sw(m) { try { swLog.push(Math.round((Date.now() % 1e6) / 100) / 10 + ' ' + String(m).slice(0, 220)); if (swLog.length > 50) swLog.shift(); } catch (e) {} }
-    function swShort(u) { return typeof u === 'function' ? 'fn' : String(u || '').replace(/([?&](?:uid|token|account_email)=)[^&]*/gi, '$1~').slice(0, 90); }
-    function swWatch() {
-        if (window.__lmxSW) return; window.__lmxSW = 1;
-        try {
-            Lampa.PlayerPlaylist.listener.follow('select', function (e) {
-                sw('select pos=' + (e && e.position) + ' url=' + swShort(e && e.item && e.item.url) + ' title=' + (e && e.item && e.item.title));
-                swT = Date.now(); clearTimeout(swIv);
-                swIv = setTimeout(function () { if (swT) { sw('NO START in 20s'); try { window.__lmxUaDiagT = 0; window.__lmxUaDiag({ kind: 'switch', sw: swLog.slice(), ctl: (Lampa.Controller.enabled() || {}).name, opened: Lampa.Player.opened() }); } catch (x) {} } }, 20000);
-            });
-            Lampa.Player.listener.follow('start', function (d) {
-                sw('start url=' + swShort(d && d.url) + ' pl=' + (Lampa.PlayerPlaylist.get() || []).length + ' dpl=' + ((d && d.playlist) || []).length + ' pos=' + Lampa.PlayerPlaylist.position() + ' title=' + (d && d.title));
-                swT = 0;
-                setTimeout(function () { try { var P2 = Lampa.PlayerPlaylist; sw('after start pl=' + (P2.get() || []).length + ' canNext=' + (P2.canNext ? P2.canNext() : '?') + ' pos=' + P2.position()); } catch (x) {} }, 3000);
-            });
-            Lampa.Player.listener.follow('destroy', function () {
-                sw('destroy');
-                // плеєр закрили: якщо в ньому щось дивились — звіт про перемикання (раз на 2 хв), навіть коли «наступна» нічого не викликала
-                setTimeout(function () { try { if (!Lampa.Player.opened() && swLog.join('\n').indexOf('start') >= 0) { window.__lmxUaDiag({ kind: 'close', sw: swLog.slice() }); } } catch (x) {} }, 1500);
-            });
-            Lampa.PlayerVideo.listener.follow('error', function (e) { sw('verror ' + (e && e.error) + ' fatal=' + (e && e.fatal)); });
-            Lampa.Keypad.listener.follow('keydown', function (e) { try { if (Lampa.Player.opened()) sw('key ' + (e && e.code) + ' ctl=' + ((Lampa.Controller.enabled() || {}).name || '')); } catch (x) {} });
-        } catch (e) {}
-    }
-    window.__lmxSw = sw;
     // Плеєр Lampa всередині (вбудований, а також «Tizen» на Samsung / «Orsay» — це той самий плеєр Lampa з системним відео).
     // Код Lampac вважав зовнішнім усе, що не «inner», — на телевізорах Samsung наступні серії лишались без посилань і не перемикались
     function innerPl() {
@@ -524,7 +481,6 @@
         url = String(url || ''); depth = depth || 0;
         if (depth > 3) return done('');
         function frame(label) { return function (iframe, why) {
-            logRes(url, 'dev:' + (iframe ? 'ok' : (why || 'none')), '', 0);
             if (!iframe) return done(why === 'blocked' ? false : '');   // сайт недоступний — «невідомо», а не «тайтлу немає»
             if (qget(url, 'serial') === '1') return resolveUrl(host() + '/lite/pl?u=' + encodeURIComponent(iframe), done, depth + 1);
             done(movieItemHtml(url, iframe, label));
@@ -539,10 +495,8 @@
         if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
         var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
         var fx = window.__lmxUaBridge && window.__lmxUaBridge.fix;
-        var rt0 = Date.now();
         net['native'](fx ? fx(url) : url, function (t) {
             t = typeof t === 'string' ? t : (t ? JSON.stringify(t) : '');
-            logRes(url, 200, t, Date.now() - rt0);
             // заглушка «відкрий на пристрої» (UAFlix, Eneyida): одна картка з посиланням на /lite/ufd або /lite/ey — розкриваємо її
             if ((t.match(/class="videos__item /g) || []).length === 1) {
                 var m = t.match(/data-json="([^"]+)"/) || t.match(/data-json='([^']+)'/), j = null;
@@ -556,7 +510,6 @@
             // сервер відповів кодом помилки (Lampac на «не знайдено» віддає 503) — це «тайтлу немає»; без відповіді взагалі (мережа, тайм-аут) — «невідомо»
             // Лише 503 (так Lampac каже «не знайдено») і 404 означають «тайтлу немає»; 429, 500, 502, 504, 52x — збій сервера: «невідомо», перевіримо ще раз
             var st = a && typeof a.status === 'number' ? a.status : 0;
-            logRes(url, st, a && a.responseText, Date.now() - rt0);
             done(st === 503 || st === 404 ? '' : false);
         }, false, { dataType: 'text' });
     }
@@ -841,12 +794,10 @@
                             call(false, {});
                         });
                     }
-                    var dt0 = Date.now(); sw('direct ' + swShort(u));
                     direct(u, function (r) {
-                        sw('direct ok ' + (Date.now() - dt0) + 'ms ' + swShort(r && r.url));
                         var out = Object.assign({}, r, { title: file.title, voice_name: file.voice_name });
                         call(out, { quality: r.quality });
-                    }, function () { sw('direct FAIL ' + (Date.now() - dt0) + 'ms → lampac'); realGet.apply(self, args); });
+                    }, function () { realGet.apply(self, args); });
                 };
                 // UAFlix: Worker віддає заглушку-«сезон» UAFlix (сайт пускає лише пристрій) — одразу відкриваємо її, щоб у фільтрі «Сезон» не було «UAFlix»
                 var realParse = comp.parse;
@@ -1699,8 +1650,7 @@
       if (number_of_requests < 10) {
         // общий network: externalids/withsearch/субтитры ставят ему REQUEST_TIMEOUT (10с) — балансеру нужен свой
         network.timeout(BALANCER_TIMEOUT);
-        var self0 = this, rq0 = Date.now();
-        network['native'](account(url), function (t) { logRes(url, 'main', t, Date.now() - rq0); return self0.parse(t); }, function (a) { logRes(url, 'main:' + (a && a.status), a && a.responseText, Date.now() - rq0); return self0.doesNotAnswer(a); }, false, {
+        network['native'](account(url), this.parse.bind(this), this.doesNotAnswer.bind(this), false, {
           dataType: 'text',
           headers: addHeaders()
         });
@@ -1933,7 +1883,6 @@
                           delete cell.quality;
                         } else {
                           cell.url = function (call) {
-                            sw('cell.url ' + (elem.title || '') + ' pre=' + !!elem.__lmxPre);
                             // наступна серія вже підготовлена заздалегідь — відкриваємо одразу, без очікування
                             var pre = elem.__lmxPre;
                             if (pre && Date.now() - pre.t < 15 * 60000 && pre.stream && pre.stream.url) {
@@ -1952,7 +1901,6 @@
                             _this5.getFileUrl(
                               elem,
                               function (stream, stream_json) {
-                                sw('cell.url got ' + swShort(stream && stream.url));
                                 if (stream.url) {
                                   cell.url = stream.url;
                                   cell.quality = stream_json.quality || elem.qualitys;
@@ -3640,7 +3588,6 @@
     function playerWatch() {
         if (window.__lmxPW) return;
         window.__lmxPW = 1;
-        swWatch();
         try {
             Lampa.PlayerVideo.listener.follow('tracks', function (e) { safe(function () { pickUaTrack(e); }); });
             Lampa.PlayerVideo.listener.follow('timeupdate', function (e) { var c = e && +e.current; if (c > 0 && Math.abs(c - pw.last) > 0.2) { pw.last = c; pw.lastT = Date.now(); } });
@@ -3721,7 +3668,6 @@
                 P.__lmxSeg = 1;
                 var nx = P.next;
                 P.next = function () {
-                    sw('P.next canNext=' + (function () { try { return P.canNext(); } catch (e) { return '?'; } })() + ' pos=' + (function () { try { return P.position(); } catch (e) { return '?'; } })());
                     // наступної серії в плеєрі немає (остання або джерело дало одну серію) — кнопка титрів просто перемотує їх, а не «мовчить»
                     if (segOpen() && segNoNext()) {
                         var v = Lampa.PlayerVideo.video(), t = v ? v.currentTime : 0, hit = null, sg = segNow();
