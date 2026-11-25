@@ -455,8 +455,10 @@ async function atFind(p, env, ctx) {
   names.forEach((n) => { n = String(n || '').trim(); if (n && uniq.indexOf(n) < 0 && /[0-9A-Za-z\u0400-\u04ff]{2}/.test(n)) uniq.push(n); });
   const normNames = uniq.map(atNorm);
   const seen = {}, found = [];
-  const lists = await Promise.all(uaQueries(uniq).map((q) => atSearch(q, ctx).catch(() => [])));
-  lists.forEach((l) => l.forEach((r) => { if (!seen[r.href]) { seen[r.href] = 1; found.push(r); } }));
+  const lists = await Promise.all(uaQueries(uniq).map((q) => atSearch(q, ctx).catch(() => null)));
+  // жоден пошук не відповів (сайт ліг, обмеження) — це «недоступний», а не «тайтлу немає»
+  if (lists.length && lists.every((l) => !l)) throw new Error('unavailable');
+  lists.forEach((l) => (l || []).forEach((r) => { if (!seen[r.href]) { seen[r.href] = 1; found.push(r); } }));
   const year = parseInt(p.year, 10) || 0;
   const good = found.map((r) => Object.assign(r, { score: atScore(r.title, normNames, r.href) })).filter((r) => r.score >= 0.6)
     // серіал: старіші за картку тайтли з такою ж назвою (давня OVA 1992 року при серіалі 2022-го) — не його сезони
@@ -701,6 +703,8 @@ function uaLink(self, p, extra) {
   Object.keys(extra).forEach((k) => q.set(k, extra[k]));
   return self + '?' + q.toString();
 }
+// джерело не відповіло: плагіни сприймають «недоступн…» як «невідомо», а не «тайтлу немає», і перевіряють ще раз
+function uaDown(name) { return atHtml('<div class="online-empty">' + atEsc(name) + ' зараз недоступний</div>'); }
 function uaEmpty(name) { return atHtml('<div class="online-empty">Нічого не знайдено на ' + atEsc(name) + '</div>'); }
 function uaSeasons(list, mk) {
   return atHtml(list.map((s) => atItem('videos__item videos__season', { method: 'link', url: mk(s) }, '',
@@ -731,6 +735,7 @@ async function uaAnimeon(url, env, ctx) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
     const seen = {}, found = [];
     const lists = await Promise.all(uaQueries(names).map((q) => uaJson('https://animeon.club/api/anime/search?text=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    if (lists.length && lists.every((j) => !j)) return uaDown('AnimeON');
     lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
     const good = found.map((r) => {
       let sc = Math.max(atScore(r.titleUa || '', norm), atScore(r.titleEn || '', norm));
@@ -753,6 +758,7 @@ async function uaAnimeon(url, env, ctx) {
 async function uaAnimeonTitle(url, p, aid, season, ctx) {
   const self = url.origin + '/lite/animeon', serial = p.serial === '1';
   const tr = await uaJson('https://animeon.club/api/player/' + aid + '/translations', ctx, 1800).catch(() => null);
+  if (!tr) return uaDown('AnimeON');
   const opts = [];
   ((tr && tr.translations) || []).forEach((node) => {
     const t = node && node.translation, pl = ((node && node.player) || []).filter((x) => x && /ashdi/i.test(x.name || ''))[0];
@@ -786,6 +792,7 @@ async function uaMikai(url, env, ctx) {
     const names = await uaNames(p, env, ctx), norm = names.map(atNorm), year = parseInt(p.year, 10) || 0;
     const seen = {}, found = [];
     const lists = await Promise.all(uaQueries(names).map((q) => uaJson('https://api.mikai.me/v1/anime/search?page=1&limit=24&sort=year&order=desc&name=' + encodeURIComponent(q), ctx, 1800).catch(() => null)));
+    if (lists.length && lists.every((j) => !j)) return uaDown('Mikai');
     lists.forEach((j) => ((j && j.result) || []).forEach((r) => { if (r && r.id && !seen[r.id]) { seen[r.id] = 1; found.push(r); } }));
     const good = found.map((r) => ({ id: r.id, y: r.year || 0, n: seasonOf(r), sc: Math.max.apply(null, [0].concat(nameOf(r).map((s) => atScore(String(s).replace(/-/g, ' '), norm)))) }))
       .filter((r) => r.sc >= 0.6 && (!serial || !year || !r.y || r.y >= year - 1));
@@ -800,6 +807,7 @@ async function uaMikai(url, env, ctx) {
     }
   }
   const j = await uaJson('https://api.mikai.me/v1/anime/' + aid, ctx, 1800).catch(() => null);
+  if (!j) return uaDown('Mikai');
   const players = (j && j.result && j.result.players) || [];
   const voices = [];
   players.forEach((pl) => {
@@ -1021,6 +1029,7 @@ async function uaUnimay(url, env, ctx) {
     }
   }
   const r = await uaJson(UM + '/release?code=' + encodeURIComponent(code), ctx, 3600).catch(() => null);
+  if (!r) return uaDown('Unimay');
   const eps = ((r && r.playlist) || []).filter((e) => e && !e.premium && e.hls && (e.hls.master || (e.hls.qualities && (e.hls.qualities.fhd || e.hls.qualities.hd))));
   if (!eps.length) return uaEmpty('Unimay');
   const file = (e) => e.hls.master || e.hls.qualities.fhd || e.hls.qualities.hd;

@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '3.99';
+    var VERSION = '4.00';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1676,6 +1676,7 @@
         if (b.length > 350000) b = b.slice(0, 350000);
         if (!b) return { s: 'skip' };
         if (b.indexOf('"rch"') >= 0 || b.indexOf('"accsdb"') >= 0 || b.indexOf('"blocked"') >= 0) return { s: 'skip' };
+        if (b.length < 400 && /online-empty/.test(b) && /недоступн/i.test(b)) return { s: 'skip' };   // джерело не відповіло — «невідомо», а не «тайтлу немає»
         if (PAYWALL.test(b)) return { s: 'skip', acc: 1 };
         if (NOSEASON.test(b) && !/videos__item|"method"/i.test(b)) return { s: 'empty', c: 0 };
         // лише «схожі» назви (пошук не знайшов точного збігу) — це не «є фільм»: не підсвічуємо зеленим і не обираємо автоматично

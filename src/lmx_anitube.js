@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.50';
+    var VERSION = '5.51';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -495,11 +495,14 @@
                 try { j = m && JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&')); } catch (e) {}
                 if (j && j.url && /\/lite\/(ufd|ey)\?/.test(j.url)) return resolveUrl(j.url, done, depth + 1);
             }
+            // джерело (сайт за Worker) не відповіло — це не «тайтлу немає»
+            if (t.length < 400 && /online-empty/.test(t) && /недоступн/i.test(t)) return done(false);
             done(t);
         }, function (a) {
             // сервер відповів кодом помилки (Lampac на «не знайдено» віддає 503) — це «тайтлу немає»; без відповіді взагалі (мережа, тайм-аут) — «невідомо»
+            // Лише 503 (так Lampac каже «не знайдено») і 404 означають «тайтлу немає»; 429, 500, 502, 504, 52x — збій сервера: «невідомо», перевіримо ще раз
             var st = a && typeof a.status === 'number' ? a.status : 0;
-            done(st > 0 ? '' : false);
+            done(st === 503 || st === 404 ? '' : false);
         }, false, { dataType: 'text' });
     }
 
