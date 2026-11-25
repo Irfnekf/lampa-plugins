@@ -189,7 +189,7 @@
         if (kind === 'movie') return [url + (url.indexOf('?') < 0 ? '?' : '&') + 'region=UA'];
         if (kind === 'tv') {
             // без ток-шоу (10767), новин (10763) і мильних опер (10766) без аніме (для нього є окремий каталог; ключове слово TMDB «anime», 210024) та без тайтлів, які ніхто не оцінив — саме вони засмічували «Популярні серіали»
-            return ['discover/tv?sort_by=popularity.desc&without_genres=10767%7C10763%7C10766&without_keywords=210024&vote_count.gte=15&' + WATCH + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + dayStr(30), url];
+            return ['discover/tv?sort_by=popularity.desc&without_genres=10767%7C10763%7C10766%7C10762%7C10764&without_keywords=210024&vote_count.gte=15&' + WATCH + '&air_date.gte=' + dayStr(-60) + '&air_date.lte=' + dayStr(30), url];
         }
         return [url];
     }
@@ -197,7 +197,7 @@
     var ROWS = [
         { name: 'LmxPopularMovies', title: 'Популярні фільми',    urls: function () { return mkt('movie/popular', 'movie'); },     index: 13 },
         { name: 'LmxNowPlaying',    title: 'Зараз у кінотеатрах', urls: function () { return mkt('movie/now_playing', 'movie'); }, index: 14 },
-        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15 },
+        { name: 'LmxUpcoming',      title: 'Скоро вийдуть',       urls: function () { return mkt('movie/upcoming', 'movie'); },    index: 15, soon: true },
         { name: 'LmxTopMovies',     title: 'Найвищий рейтинг',    urls: function () { return mkt('movie/top_rated', 'movie'); },   index: 16 },
         { name: 'LmxPopularTv',     title: 'Популярні серіали',   urls: function () { return mkt('tv/popular', 'tv'); },           index: 17 },
         { name: 'LmxHistory',      title: 'Історія перегляду',   custom: historyCall, index: 20 },
@@ -914,7 +914,8 @@
         var strict = market(), hv = getBool('lmx_hide_viewed', true) ? favIds('viewed') : null;   // позначене «Переглянуто» в каталогах і рядах не показуємо
         return (list || []).filter(function (c) {
             if (!c) return false;
-            if (hv && c.id && hv[c.id]) return false;
+            // за типом і номером: фільм і серіал з однаковим номером TMDB — різні тайтли (переглянутий фільм не ховає серіал)
+            if (hv && c.id && hv[((c.media_type === 'tv' || (!c.title && c.name) || c.first_air_date) ? 'tv' : 'movie') + c.id]) return false;
             if (min && c.vote_count > 2 && c.vote_average > 0 && c.vote_average < min) return false;
             if (strict && !skipText && !(c.overview && String(c.overview).trim())) return false;
             return true;
@@ -925,9 +926,12 @@
     // SkyShowtime в Україні не працює — для нього каталог беремо за польським регіоном, інакше добірка порожня
     // Регіон каталогу: SkyShowtime — Польща, Paramount+ — США (в Україні його немає), решта, зокрема Max, — Україна (якщо порожньо — США)
     function prov(id) {
-        var region = id === 1773 ? 'PL' : (id === 531 || id === 526 || id === 15) ? 'US' : 'UA';
-        // Prime Video в TMDB має два ідентифікатори (9 і 119): у різних регіонах заповнений то один, то інший
-        return 'with_watch_providers=' + (id === 119 ? '9' + PIPE + '119' : id) + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
+        // Disney+ і Prime Video для України в TMDB порожні — одразу США (раніше кожна сторінка робила десяток марних запитів)
+        var region = id === 1773 ? 'PL' : (id === 531 || id === 526 || id === 15 || id === 337 || id === 119) ? 'US' : 'UA';
+        // Prime Video в TMDB має два ідентифікатори (9 і 119): у різних регіонах заповнений то один, то інший.
+        // Paramount+: старий ідентифікатор 531 у TMDB майже порожній, тепер це 2303 (Premium) і 2616 (Essential)
+        var pid = id === 119 ? '9' + PIPE + '119' : id === 531 ? '2303' + PIPE + '2616' : id;
+        return 'with_watch_providers=' + pid + '&watch_region=' + region + '&with_watch_monetization_types=flatrate';
     }
     var PIPE = '%7C';
     // mf — фільтр для фільмів, tf — для серіалів (мережі/студії точніші за «доступно в регіоні»)
@@ -2069,7 +2073,7 @@
     // З кожного фільму беремо «рекомендації» TMDB і «схоже», найчастіші збіги та вища оцінка — зверху; переглянуте й лайкнуте не показуємо
     function favIds(type) {
         var o = {};
-        try { (Lampa.Favorite.get({ type: type }) || []).forEach(function (c) { if (c && c.id) o[c.id] = 1; }); } catch (e) {}
+        try { (Lampa.Favorite.get({ type: type }) || []).forEach(function (c) { if (c && c.id) { o[c.id] = 1; o[((c.media_type === 'tv' || c.name || c.first_air_date) ? 'tv' : 'movie') + c.id] = 1; } }); } catch (e) {}
         return o;
     }
     var recsAllBy = {};
@@ -2408,6 +2412,8 @@
                     var url = urls[i++];
                     tget(url, { page: 1 }, function (json) {
                         var list = cleanResults(json && json.results, row.ua);
+                        // «Скоро вийдуть»: TMDB підмішує повторні покази старих фільмів («Дюна» 2021) — лишаємо те, що ще не вийшло або вийшло щойно
+                        if (row.soon) list = list.filter(function (m) { var d = Date.parse(m.release_date || ''); return !d || d > Date.now() - 14 * 86400000; });
                         if (list.length && (!best || list.length > best.list.length)) best = { list: list, url: url, pages: json.total_pages || 1 };
                         if (best && best.list.length >= (row.minCount || 1)) return done();
                         next();
@@ -7072,7 +7078,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.618';
+    var VERSION = '10.619';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
