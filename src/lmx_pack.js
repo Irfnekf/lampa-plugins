@@ -4975,7 +4975,7 @@
         var box = tm.cloneNode(true);
         box.classList.remove('rate--tmdb', 'rate--imdb', 'hide'); box.classList.add('rate--lmxrt');
         var d = box.children;
-        if (d[0]) d[0].textContent = p + '%';
+        if (d[0]) d[0].textContent = String(p);
         if (d[1]) d[1].textContent = 'POPCORN';
         tm.parentNode.insertBefore(box, tm.nextSibling);
     }
@@ -7131,7 +7131,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.624';
+    var VERSION = '10.625';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
