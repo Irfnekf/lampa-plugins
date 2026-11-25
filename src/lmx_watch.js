@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.05';
+    var VERSION = '4.06';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2970,7 +2970,7 @@
         if ((act.__lmxPopT || 0) > Date.now() - 700) return true;
         if (key === 'src') {
             var hidden = 0, anyOk = false;
-            var allSrc = S.sortAll || S.sort, lifeFlags = allSrc.some(function (x) { return x && typeof x.ghost !== 'undefined'; });
+            var allSrc = S.sortAll || S.sort, lifeFlags = !(isUa() && window.__lmxUaBridge) && allSrc.some(function (x) { return x && typeof x.ghost !== 'undefined'; });   // LMX UA: ghost у джерел є завжди, а стан — з нашої перевірки (інакше зеленіли всі)
             allSrc.forEach(function (it) { if (it && !unbound(it) && (lifeFlags ? !it.ghost : srcState(srcName(it.title)) === 'ok')) anyOk = true; });
             var cid0 = ''; try { var ac = Lampa.Activity.active(), cd0 = ac && (ac.movie || ac.card); cid0 = cidKey(cd0); } catch (e) {}
             var seenLook = {}, mem1 = memGet(), curS = curSrc(act, allSrc);
@@ -2986,7 +2986,7 @@
                 var prev = seenLook[look];
                 if (prev) { var isSel = curS ? it === curS : !!it.selected; if ((isSel && !prev.sel) || (!isSel && !prev.sel && st === 'ok' && !prev.ok)) { prev.title = title; prev.sel = isSel; prev.ok = st === 'ok'; prev.dim = !!it.ghost || st === 'no'; prev.run = function () { selIn(inst, 'sort', it); }; } return; }
                 // українські джерела (за назвою) не ховаємо, навіть якщо швидка перевірка їх не підтвердила: вона могла просто не дочекатись відповіді
-                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected) { hidden++; return; }
+                if (anyOk && !act.__lmxAllSrc && st !== 'ok' && !it.selected && !(isUa() && window.__lmxUaBridge)) { hidden++; return; }   // LMX UA: список лишається повним, порожні лише притушені
                 var o = { title: title, sel: curS ? it === curS : !!it.selected, dim: !!it.ghost || st === 'no', ok: st === 'ok', run: function () { manualPick(cid0, key0); selIn(inst, 'sort', it); } };
                 // рейтинг і підпис: реальні дані перевірки (укр. озвучки, швидкість), якщо вони є
                 var pe1 = pcEntry(cid0, key0); pe1 = pe1 && pe1.s === 'ok' ? pe1 : null;
