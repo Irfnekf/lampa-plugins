@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.04';
+    var VERSION = '4.05';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1867,7 +1867,7 @@
         else if (soon) { if (ps) ps.textContent = 'Фільм ще не вийшов'; sub.textContent = 'Прем\u2019єра — ' + soon + '. Після виходу він з\u2019явиться в онлайні'; }
         else if (noneAnswered()) { if (ps) ps.textContent = 'Більшість джерел не відповіли'; sub.textContent = 'Схоже, збій інтернету або сервера — спробуйте ще раз за хвилину'; }
         // автозвіт: що саме відповіли джерела на цьому пристрої (лише LMX UA, не частіше ніж раз на 2 хв)
-        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, tl: (window.__lmxTL || []).slice(-40), none: noneAnswered(), probe: probeOn(), on: isOn(), st: (function () { var o = {}; try { for (var k in localStorage) if (/^lmx_online|^lmxat_last|^lmx_ua|^online_/.test(k)) o[k] = String(localStorage.getItem(k)).slice(0, 120); } catch (e) {} return o; })(), src: allSrc.map(function (x) { return srcName(x.title) + (x.selected ? '*' : '') + (x.ghost ? '~' : ''); }) }); } catch (e) {}
+        if (!man && !soon && isUa()) try { var cidD = cidKey(c00 || c01); window.__lmxUaDiag && window.__lmxUaDiag({ wv: VERSION, cid: cidD, n: nOnl, pc: (pcGet()[cidD] || {}).l || null, tl: (window.__lmxTL || []).slice(-40), br: !!window.__lmxUaBridge, pp: (function () { var g = window.__lmxProbe; return g ? { bg: g.bg || '', tot: g.total || 0, tr: (g.tried || []).length } : null; })(), mod: document.querySelectorAll('.modal, .selectbox').length, none: noneAnswered(), probe: probeOn(), on: isOn(), st: (function () { var o = {}; try { for (var k in localStorage) if (/^lmx_online|^lmxat_last|^lmx_ua|^online_/.test(k)) o[k] = String(localStorage.getItem(k)).slice(0, 120); } catch (e) {} return o; })(), src: allSrc.map(function (x) { return srcName(x.title) + (x.selected ? '*' : '') + (x.ghost ? '~' : ''); }) }); } catch (e) {}
         else sub.textContent = nOnl > 1 ? 'Перевірили ' + nOnl + ' ' + plural(nOnl, 'джерело', 'джерела', 'джерел') + ' — жодне не має ' + kind : 'Джерело не має ' + kind;
         var h = '';
         h += '<div class="lmx-onl-btn lmx-onl-btn--main selector" data-a="tor">Шукати в торентах</div>';
@@ -1913,6 +1913,13 @@
             addNav(b);
         });
         setTimeout(function () { safe(function () { if ((window.__lmxKeyT || 0) < Date.now() - 1500) syncNav(act, row.querySelector('.selector')); }); }, 300);
+    }
+    function openPopup() {
+        var c = ''; try { c = (Lampa.Controller.enabled() || {}).name || ''; } catch (e) {}
+        if (c !== 'modal' && c !== 'select') return false;
+        var els = document.querySelectorAll('.modal, .selectbox');
+        for (var i = 0; i < els.length; i++) if (els[i].offsetWidth || els[i].offsetHeight) return true;
+        return false;
     }
     function tl(m) { try { var L = window.__lmxTL || (window.__lmxTL = []); L.push(Math.round((Date.now() % 1e6) / 100) / 10 + ' ' + String(m).slice(0, 300)); if (L.length > 40) L.shift(); } catch (e) {} }
     function heroStatus(act, text, stop, frac) {
@@ -3508,7 +3515,9 @@
             if (!isOn() || !autoOn() || Date.now() - gs.t00 > budget) return finish();
             // Деякі джерела при відкритті показують вікно (прив'язка акаунта, вибір, запит): воно блокує перебір — закриваємо і йдемо до наступного
             try {
-                if (gs.cur && document.querySelector('.modal, .selectbox') && Date.now() - gs.since > 400) {
+                // лише справді відкрите й видиме вікно: інші плагіни тримають на сторінці приховані елементи .modal/.selectbox — через них
+                // кожне джерело кидалось за 0,4 с і перебір проходив усі джерела по колу з «нічого не знайдено»
+                if (gs.cur && Date.now() - gs.since > 400 && openPopup()) {
                     try { Lampa.Modal.close(); } catch (e) {} try { Lampa.Select.close(); } catch (e) {}
                     save(gs.cur, -1);
                     var i1 = instFor(act), S1 = i1 && readSets(i1); if (S1) return next(i1, S1.sort);
