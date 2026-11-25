@@ -1201,6 +1201,40 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
     if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv|ufd)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    // Rotten Tomatoes: Popcornmeter (глядачі) і Tomatometer (критики). Адресу сторінки беремо з Wikidata за IMDb-id, оцінки — зі сторінки RT. Кеш 24 год
+    if (req.method === 'GET' && url.pathname === '/rt') {
+      const id = String(url.searchParams.get('imdb') || '');
+      if (!/^tt\d{5,10}$/.test(id)) return json({ ok: 0 }, 400);
+      const ck = new Request('https://lmx-cache/rt1/' + id);
+      try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
+      let slug = '', a = 0, c = 0, d = '';
+      try {
+        const q = 'SELECT ?rt WHERE { ?f wdt:P345 "' + id + '". ?f wdt:P1258 ?rt } LIMIT 1';
+        const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), { headers: { 'accept': 'application/sparql-results+json', 'user-agent': 'lmx-sync/1.0 (Lampa plugin)' }, cf: { cacheTtl: 86400 } });
+        d += 'w' + res.status;
+        const j = await res.json();
+        const b = j && j.results && j.results.bindings && j.results.bindings[0];
+        slug = b && b.rt && b.rt.value ? String(b.rt.value) : '';
+      } catch (e) { d += 'wE'; }
+      if (slug && /^(m|tv)\/[\w-]+(\/s\d+)?$/.test(slug)) {
+        try {
+          const res = await fetch('https://www.rottentomatoes.com/' + slug, { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'accept': 'text/html', 'accept-language': 'en-US,en;q=0.9' }, cf: { cacheTtl: 21600 } });
+          d += ',r' + res.status;
+          if (res.ok) {
+            const h = await res.text();
+            const sc = h.match(/<script[^>]*id="media-scorecard-json"[^>]*>([\s\S]*?)<\/script>/);
+            if (sc) {
+              try { const o = JSON.parse(sc[1]); a = +((o.audienceScore || {}).score) || 0; c = +((o.criticsScore || {}).score) || 0; } catch (e) { d += ',jE'; }
+            }
+            if (!a) { const m1 = h.match(/"audienceScore"\s*:\s*\{[^}]*?"score"\s*:\s*"?(\d+)/); if (m1) a = +m1[1]; }
+            if (!c) { const m2 = h.match(/"criticsScore"\s*:\s*\{[^}]*?"score"\s*:\s*"?(\d+)/); if (m2) c = +m2[1]; }
+          }
+        } catch (e) { d += ',rE'; }
+      }
+      const out = json({ ok: 1, slug: slug, pop: a, tom: c, d: d });
+      try { const c2 = new Response(out.clone().body, out); c2.headers.set('cache-control', 'max-age=' + (a || c ? 86400 : 1800)); ctx.waitUntil(caches.default.put(ck, c2)); } catch (e) {}
+      return out;
+    }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}
