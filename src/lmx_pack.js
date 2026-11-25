@@ -4923,8 +4923,20 @@
                 x.send();
             } catch (e) { next(); }
         };
+        // свіжих тайтлів (напр. «Resident Evil» 2026) у Cinemeta ще без оцінки — тоді питаємо наш сервер, він бере рейтинг у самого IMDb
+        var viaServer = function () {
+            var x = new XMLHttpRequest(), h = '';
+            try { h = String(Lampa.Storage.get('lmx_sync_server', '') || '') || 'https://lmx-sync.vladshkaraputa07.workers.dev'; } catch (e) { h = 'https://lmx-sync.vladshkaraputa07.workers.dev'; }
+            try {
+                x.open('GET', h.replace(/\/+$/, '') + '/imdb?id=' + iid, true);
+                x.timeout = 8000;
+                x.onload = function () { var j = null; try { j = JSON.parse(x.responseText); } catch (e) {} end(j && j.r > 0 ? j.r : 0, j && j.v); };
+                x.onerror = x.ontimeout = function () { end(0); };
+                x.send();
+            } catch (e) { end(0); }
+        };
         var tv = imdbGet.tv;
-        one(tv ? 'series' : 'movie', function () { one(tv ? 'movie' : 'series', function () { end(0); }); });
+        one(tv ? 'series' : 'movie', function () { one(tv ? 'movie' : 'series', viaServer); });
     }
     function imdbShow(render, r) {
         if (!render || !r) return;
@@ -7079,7 +7091,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.620';
+    var VERSION = '10.621';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

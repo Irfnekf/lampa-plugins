@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.07';
+    var VERSION = '4.08';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -4295,7 +4295,36 @@
             }
         });
     }
+    // Сторож фокуса на екрані «Онлайн»: під час пошуку джерел список серій перебудовується, і фокус міг зникнути зовсім
+    // (стрілки не діяли, допомагало лише бокове меню). Також «зависле» невидиме меню вибору (керування в нього, а саме меню закрите).
+    // Якщо так триває понад 1,5 с — повертаємо керування екрану й ставимо фокус на «Дивитись»
+    function focusRescue() {
+        if (!isOn() || plyOn()) return;
+        var act = document.querySelector('.activity--active');
+        if (!act || !act.querySelector('.explorer.lmx-onl')) return;
+        var c = ''; try { c = (Lampa.Controller.enabled() || {}).name || ''; } catch (e) {}
+        if (c === 'select' && !selOpen()) {
+            if (!act.__lmxSelStuck) { act.__lmxSelStuck = Date.now(); return; }
+            if (Date.now() - act.__lmxSelStuck < 1500) return;
+            act.__lmxSelStuck = 0;
+            try { Lampa.Select.close(); } catch (e) {}
+            try { Lampa.Controller.toggle('content'); } catch (e) {}
+        } else act.__lmxSelStuck = 0;
+        try { c = (Lampa.Controller.enabled() || {}).name || ''; } catch (e) {}
+        if (c !== 'content') { act.__lmxNoF = 0; return; }
+        var gf = null; try { gf = Navigator.getFocusedElement ? Navigator.getFocusedElement() : null; } catch (e) {}
+        var fe = act.querySelector('.selector.focus') || document.querySelector('.head .focus');
+        var ok = (gf && gf.nodeType === 1 && document.body.contains(gf) && (gf.offsetWidth || gf.offsetHeight)) || (fe && (fe.offsetWidth || fe.offsetHeight));
+        if (ok) { act.__lmxNoF = 0; return; }
+        if (!act.__lmxNoF) { act.__lmxNoF = Date.now(); return; }
+        if (Date.now() - act.__lmxNoF < 1500) return;
+        act.__lmxNoF = 0;
+        var tg = act.querySelector('.lmx-onl-btn.selector') || act.querySelector('.lmx-onl-item') || act.querySelector('.lmx-onl-pill');
+        try { ctlContent(); } catch (e) {}
+        if (tg && window.Navigator && Navigator.focus) { try { Navigator.focus(tg); bringIn(tg); } catch (e) {} }
+    }
     function start() {
+        if (!window.__lmxFR) { window.__lmxFR = setInterval(function () { safe(focusRescue); }, 700); }
         safe(function () {
             addCss();
             document.body.classList.toggle('lmx-online', isOn());
