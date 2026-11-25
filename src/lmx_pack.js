@@ -4988,10 +4988,17 @@
         var isTv0 = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
         var go = function (iid) {
             if (!/^tt\d+$/.test(String(iid || ''))) return;
-            var rt = function () { if (getBool('lmx_rt', true)) rtGet(iid, function (p) { if (p) rtShow(render, p); }); };
-            if (!needImdb) return rt();
+            // обидва рейтинги вантажимо одночасно; Popcornmeter ставимо після IMDb, тож якщо IMDb прийде пізніше — переставляємо
+            var rtP = 0;
+            if (getBool('lmx_rt', true)) rtGet(iid, function (p) { rtP = p; if (p) rtShow(render, p); });
+            if (!needImdb) return;
             imdbGet.tv = isTv0;
-            imdbGet(iid, function (r) { if (r) imdbShow(render, r); rt(); });
+            imdbGet(iid, function (r) {
+                if (!r) return;
+                imdbShow(render, r);
+                var b = render.querySelector('.rate--lmxrt'), im = render.querySelector('.rate--imdb:not(.hide)');
+                if (b && im && im.nextSibling !== b && im.parentNode) im.parentNode.insertBefore(b, im.nextSibling);
+            });
         };
         if (m.imdb_id) return go(m.imdb_id);
         var T = window.Lampa && Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
@@ -7124,7 +7131,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.623';
+    var VERSION = '10.624';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

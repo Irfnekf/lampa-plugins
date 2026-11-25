@@ -1205,16 +1205,22 @@ export default {
     if (req.method === 'GET' && url.pathname === '/rt') {
       const id = String(url.searchParams.get('imdb') || '');
       if (!/^tt\d{5,10}$/.test(id)) return json({ ok: 0 }, 400);
-      const ck = new Request('https://lmx-cache/rt2/' + id);
+      const ck = new Request('https://lmx-cache/rt3/' + id);
       try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
       let slug = '', a = 0, c = 0, d = '';
+      // Wikidata: швидкий пошук за IMDb-id (SPARQL бував і по 3 с), потім одна властивість P1258 — адреса на RT
       try {
-        const q = 'SELECT ?rt WHERE { ?f wdt:P345 "' + id + '". ?f wdt:P1258 ?rt } LIMIT 1';
-        const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), { headers: { 'accept': 'application/sparql-results+json', 'user-agent': 'lmx-sync/1.0 (Lampa plugin)' }, cf: { cacheTtl: 86400 } });
-        d += 'w' + res.status;
-        const j = await res.json();
-        const b = j && j.results && j.results.bindings && j.results.bindings[0];
-        slug = b && b.rt && b.rt.value ? String(b.rt.value) : '';
+        const H = { 'user-agent': 'lmx-sync/1.0 (Lampa plugin)' };
+        const r1 = await fetch('https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=haswbstatement:P345=' + id + '&srlimit=1&format=json', { headers: H, cf: { cacheTtl: 604800 } });
+        d += 'w' + r1.status;
+        const j1 = await r1.json();
+        const qid = j1 && j1.query && j1.query.search && j1.query.search[0] && j1.query.search[0].title;
+        if (qid && /^Q\d+$/.test(qid)) {
+          const r2 = await fetch('https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=' + qid + '&property=P1258&format=json', { headers: H, cf: { cacheTtl: 604800 } });
+          const j2 = await r2.json();
+          const cl = j2 && j2.claims && j2.claims.P1258 && j2.claims.P1258[0];
+          slug = cl && cl.mainsnak && cl.mainsnak.datavalue ? String(cl.mainsnak.datavalue.value || '') : '';
+        }
       } catch (e) { d += 'wE'; }
       if (slug && /^(m|tv)\/[\w-]+(\/s\d+)?$/.test(slug)) {
         try {
