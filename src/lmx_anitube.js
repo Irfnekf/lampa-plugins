@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.54';
+    var VERSION = '5.55';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -48,8 +48,16 @@
                 swT = Date.now(); clearTimeout(swIv);
                 swIv = setTimeout(function () { if (swT) { sw('NO START in 20s'); try { window.__lmxUaDiagT = 0; window.__lmxUaDiag({ kind: 'switch', sw: swLog.slice(), ctl: (Lampa.Controller.enabled() || {}).name, opened: Lampa.Player.opened() }); } catch (x) {} } }, 20000);
             });
-            Lampa.Player.listener.follow('start', function (d) { sw('start url=' + swShort(d && d.url) + ' pl=' + (Lampa.PlayerPlaylist.get() || []).length + ' pos=' + Lampa.PlayerPlaylist.position()); swT = 0; });
-            Lampa.Player.listener.follow('destroy', function () { sw('destroy'); });
+            Lampa.Player.listener.follow('start', function (d) {
+                sw('start url=' + swShort(d && d.url) + ' pl=' + (Lampa.PlayerPlaylist.get() || []).length + ' dpl=' + ((d && d.playlist) || []).length + ' pos=' + Lampa.PlayerPlaylist.position() + ' title=' + (d && d.title));
+                swT = 0;
+                setTimeout(function () { try { var P2 = Lampa.PlayerPlaylist; sw('after start pl=' + (P2.get() || []).length + ' canNext=' + (P2.canNext ? P2.canNext() : '?') + ' pos=' + P2.position()); } catch (x) {} }, 3000);
+            });
+            Lampa.Player.listener.follow('destroy', function () {
+                sw('destroy');
+                // плеєр закрили: якщо в ньому щось дивились — звіт про перемикання (раз на 2 хв), навіть коли «наступна» нічого не викликала
+                setTimeout(function () { try { if (!Lampa.Player.opened() && swLog.join('\n').indexOf('start') >= 0) { window.__lmxUaDiag({ kind: 'close', sw: swLog.slice() }); } } catch (x) {} }, 1500);
+            });
             Lampa.PlayerVideo.listener.follow('error', function (e) { sw('verror ' + (e && e.error) + ' fatal=' + (e && e.fatal)); });
             Lampa.Keypad.listener.follow('keydown', function (e) { try { if (Lampa.Player.opened()) sw('key ' + (e && e.code) + ' ctl=' + ((Lampa.Controller.enabled() || {}).name || '')); } catch (x) {} });
         } catch (e) {}
