@@ -1200,6 +1200,21 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
     if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv|ufd)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    // автозвіт LMX UA: коли на пристрої жодне джерело нічого не дало — що саме вони відповіли (без токенів); зберігаємо 30 останніх
+    if (url.pathname === '/api/diag') {
+      try {
+        await env.DB.prepare('CREATE TABLE IF NOT EXISTS diag (t INTEGER NOT NULL, ip TEXT, v TEXT)').run();
+        if (req.method === 'POST') {
+          const txt = (await req.text()).slice(0, 60000);
+          await env.DB.prepare('INSERT INTO diag (t, ip, v) VALUES (?, ?, ?)').bind(Date.now(), String(req.headers.get('cf-connecting-ip') || '').replace(/\.\d+$/, '.x'), txt).run();
+          await env.DB.prepare('DELETE FROM diag WHERE t < (SELECT MIN(t) FROM (SELECT t FROM diag ORDER BY t DESC LIMIT 30))').run();
+          return json({ ok: 1 });
+        }
+        if (url.searchParams.get('k') !== 'lmxdiag7') return json({ ok: 0 }, 404);
+        const r = await env.DB.prepare('SELECT t, ip, v FROM diag ORDER BY t DESC LIMIT 10').all();
+        return json({ ok: 1, rows: r.results || [] });
+      } catch (e) { return json({ ok: 0, error: 'server' }, 500); }
+    }
     if (req.method === 'POST' && url.pathname === '/tg') {
       if (!env.BOT_TOKEN || !env.TG_SECRET || req.headers.get('x-telegram-bot-api-secret-token') !== env.TG_SECRET) return json({ ok: 0, error: 'forbidden' }, 403);
       try { await handleTg(await req.json(), env); } catch (e) {}

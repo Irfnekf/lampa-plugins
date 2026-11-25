@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.51';
+    var VERSION = '5.52';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -20,6 +20,22 @@
 
     function safe(fn) { try { return fn(); } catch (e) { try { console.log('LMX UA', e); } catch (x) {} } }
     function host() { var s = ''; try { s = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {} return (s || DEFAULT_HOST).replace(/\/+$/, ''); }
+    // Короткий журнал відповідей джерел (без токенів) — для автозвіту, коли на пристрої «нічого не знайдено» ніде
+    var uaLog = [];
+    function logRes(u, st, t, ms) {
+        try {
+            uaLog.push({ u: String(u || '').replace(/([?&](?:uid|token|account_email|box_mac|nws_id|lmx[a-z_]*)=)[^&]*/gi, '$1~').slice(0, 260), st: st, n: t ? String(t).length : 0, x: t ? String(t).replace(/\s+/g, ' ').slice(0, 140) : '', ms: ms });
+            if (uaLog.length > 40) uaLog.shift();
+        } catch (e) {}
+    }
+    window.__lmxUaDiag = function (info) {
+        try {
+            if (Date.now() - (window.__lmxUaDiagT || 0) < 120000) return;
+            window.__lmxUaDiagT = Date.now();
+            var body = JSON.stringify({ v: VERSION, info: info || {}, ua: String(navigator.userAgent || '').slice(0, 200), host: host(), ora: String(window.__lmxOra || ''), plat: (function () { try { return Lampa.Platform.get(); } catch (e) { return ''; } })(), log: uaLog.slice(-30) });
+            var x = new XMLHttpRequest(); x.open('POST', host() + '/api/diag', true); x.setRequestHeader('Content-Type', 'text/plain'); x.send(body);
+        } catch (e) {}
+    };
     function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
     // ───────── сторінки плеєрів (Ashdi, Tortuga) — з самого пристрою ─────────
@@ -473,6 +489,7 @@
         url = String(url || ''); depth = depth || 0;
         if (depth > 3) return done('');
         function frame(label) { return function (iframe, why) {
+            logRes(url, 'dev:' + (iframe ? 'ok' : (why || 'none')), '', 0);
             if (!iframe) return done(why === 'blocked' ? false : '');   // сайт недоступний — «невідомо», а не «тайтлу немає»
             if (qget(url, 'serial') === '1') return resolveUrl(host() + '/lite/pl?u=' + encodeURIComponent(iframe), done, depth + 1);
             done(movieItemHtml(url, iframe, label));
@@ -487,8 +504,10 @@
         if (/\/lite\/pl\?/.test(url)) return fetchPage(qget(url, 'u'), function (page) { var h = ''; try { h = plHtml(page, url); } catch (e) {} done(h); }, function () { done(''); });
         var net; try { net = new Lampa.Reguest(); net.timeout(9000); } catch (e) { return done(''); }
         var fx = window.__lmxUaBridge && window.__lmxUaBridge.fix;
+        var rt0 = Date.now();
         net['native'](fx ? fx(url) : url, function (t) {
             t = typeof t === 'string' ? t : (t ? JSON.stringify(t) : '');
+            logRes(url, 200, t, Date.now() - rt0);
             // заглушка «відкрий на пристрої» (UAFlix, Eneyida): одна картка з посиланням на /lite/ufd або /lite/ey — розкриваємо її
             if ((t.match(/class="videos__item /g) || []).length === 1) {
                 var m = t.match(/data-json="([^"]+)"/) || t.match(/data-json='([^']+)'/), j = null;
@@ -502,6 +521,7 @@
             // сервер відповів кодом помилки (Lampac на «не знайдено» віддає 503) — це «тайтлу немає»; без відповіді взагалі (мережа, тайм-аут) — «невідомо»
             // Лише 503 (так Lampac каже «не знайдено») і 404 означають «тайтлу немає»; 429, 500, 502, 504, 52x — збій сервера: «невідомо», перевіримо ще раз
             var st = a && typeof a.status === 'number' ? a.status : 0;
+            logRes(url, st, a && a.responseText, Date.now() - rt0);
             done(st === 503 || st === 404 ? '' : false);
         }, false, { dataType: 'text' });
     }
