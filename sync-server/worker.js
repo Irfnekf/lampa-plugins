@@ -1205,7 +1205,7 @@ export default {
     if (req.method === 'GET' && url.pathname === '/rt') {
       const id = String(url.searchParams.get('imdb') || '');
       if (!/^tt\d{5,10}$/.test(id)) return json({ ok: 0 }, 400);
-      const ck = new Request('https://lmx-cache/rt1/' + id);
+      const ck = new Request('https://lmx-cache/rt2/' + id);
       try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
       let slug = '', a = 0, c = 0, d = '';
       try {
@@ -1226,8 +1226,11 @@ export default {
             if (sc) {
               try { const o = JSON.parse(sc[1]); a = +((o.audienceScore || {}).score) || 0; c = +((o.criticsScore || {}).score) || 0; } catch (e) { d += ',jE'; }
             }
-            if (!a) { const m1 = h.match(/"audienceScore"\s*:\s*\{[^}]*?"score"\s*:\s*"?(\d+)/); if (m1) a = +m1[1]; }
-            if (!c) { const m2 = h.match(/"criticsScore"\s*:\s*\{[^}]*?"score"\s*:\s*"?(\d+)/); if (m2) c = +m2[1]; }
+            // розмітка картки оцінок: <rt-text slot="audienceScore">96%</rt-text>
+            if (!a) { const m3 = h.match(/slot="audience-?[sS]core"[^>]*>\s*(\d{1,3})%/); if (m3) a = +m3[1]; }
+            if (!c) { const m4 = h.match(/slot="critics-?[sS]core"[^>]*>\s*(\d{1,3})%/); if (m4) c = +m4[1]; }
+            if (!a) { const m1 = h.match(/"audienceScore"\s*:\s*\{[\s\S]{0,400}?"score"\s*:\s*"?(\d+)/); if (m1) a = +m1[1]; }
+            if (!c) { const m2 = h.match(/"criticsScore"\s*:\s*\{[\s\S]{0,400}?"score"\s*:\s*"?(\d+)/); if (m2) c = +m2[1]; }
           }
         } catch (e) { d += ',rE'; }
       }

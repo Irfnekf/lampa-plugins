@@ -756,6 +756,7 @@
         H.trigger('lmx_coll_chrono', false, 'Колекція: хронологія подій', 'Для франшиз, де порядок подій відрізняється від порядку виходу (напр. «Зоряні війни») — за епізодами, а не за роком виходу', null);
         H.trigger('lmx_logo', true, 'Логотип замість назви', 'Офіційний логотип з TMDB; рік і країна переходять у рядок перед тривалістю. Якщо логотипа немає — звичайна назва', restyle);
         H.trigger('lmx_imdb', true, 'Рейтинг IMDb', 'Поруч із рейтингом TMDB на сторінці фільму й серіалу. Береться з IMDb, оновлюється раз на 3 дні', null);
+        H.trigger('lmx_rt', true, 'Рейтинг глядачів Rotten Tomatoes', 'Popcornmeter поруч із IMDb на сторінці фільму й серіалу: скільки глядачів оцінили позитивно. Оновлюється раз на 2 дні', null);
         H.button('lmx_btns_btn', 'Кнопки на сторінці фільму', 'Порядок, колір, іконки, назви й папки. Також кнопка «Кнопки» (✎) в кінці ряду на сторінці фільму', openButtonsEditor);
 
         H.title('lmx_t_ver', 'LMX Pack · версія ' + VERSION);
@@ -4940,14 +4941,58 @@
         if (d[1] && !/imdb/i.test(d[1].textContent || '')) d[1].textContent = 'IMDB';   // підпис як у самої Lampa
         box.classList.remove('hide');
     }
+    // ===== Popcornmeter (оцінка глядачів Rotten Tomatoes) поряд з IMDb: наш сервер бере її зі сторінки RT за IMDb-id, кеш на 2 дні =====
+    var RT_CK = 'lmx_cache_rt';
+    function rtCache() { try { var c = Lampa.Storage.get(RT_CK, '{}'); if (typeof c === 'string') c = JSON.parse(c || '{}'); return c && typeof c === 'object' ? c : {}; } catch (e) { return {}; } }
+    function rtGet(iid, done) {
+        var c = rtCache(), hit = c[iid];
+        if (hit && Date.now() - hit[1] < (hit[0] ? 2 : 0.5) * 86400000) return done(hit[0]);
+        var h = '';
+        try { h = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {}
+        h = (h || 'https://lmx-sync.vladshkaraputa07.workers.dev').replace(/\/+$/, '');
+        var x = new XMLHttpRequest();
+        try {
+            x.open('GET', h + '/rt?imdb=' + iid, true);
+            x.timeout = 9000;
+            x.onload = function () {
+                var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
+                var p = j && j.pop > 0 ? j.pop : 0;
+                if (j && j.ok) {
+                    c = rtCache(); c[iid] = [p, Date.now()];
+                    var ks = Object.keys(c); if (ks.length > 400) { ks.sort(function (a, b) { return c[a][1] - c[b][1]; }); ks.slice(0, ks.length - 300).forEach(function (k) { delete c[k]; }); }
+                    try { Lampa.Storage.set(RT_CK, c); } catch (e) {}
+                }
+                done(p);
+            };
+            x.onerror = x.ontimeout = function () { done(0); };
+            x.send();
+        } catch (e) { done(0); }
+    }
+    function rtShow(render, p) {
+        if (!render || !p || render.querySelector('.rate--lmxrt')) return;
+        var tm = render.querySelector('.rate--imdb:not(.hide)') || render.querySelector('.rate--tmdb');
+        if (!tm || !tm.parentNode) return;
+        var box = tm.cloneNode(true);
+        box.classList.remove('rate--tmdb', 'rate--imdb', 'hide'); box.classList.add('rate--lmxrt');
+        var d = box.children;
+        if (d[0]) d[0].textContent = p + '%';
+        if (d[1]) d[1].textContent = 'POPCORN';
+        tm.parentNode.insertBefore(box, tm.nextSibling);
+    }
     function imdbRate(e) {
         var m = e.data && e.data.movie, act = e.object && e.object.activity, render = act && act.render && act.render();
         render = render && (render.jquery ? render[0] : render);
         if (!m || !render) return;
         var has = render.querySelector('.rate--imdb:not(.hide)');
-        if (has && /\d/.test(has.textContent)) return;   // джерело вже дало рейтинг IMDb
+        var needImdb = getBool('lmx_imdb', true) && !(has && /\d/.test(has.textContent));   // джерело вже дало рейтинг IMDb — не перезаписуємо
         var isTv0 = !!(m.name || m.first_air_date || m.number_of_seasons) && !m.title;
-        var go = function (iid) { if (/^tt\d+$/.test(String(iid || ''))) { imdbGet.tv = isTv0; imdbGet(iid, function (r) { if (r) imdbShow(render, r); }); } };
+        var go = function (iid) {
+            if (!/^tt\d+$/.test(String(iid || ''))) return;
+            var rt = function () { if (getBool('lmx_rt', true)) rtGet(iid, function (p) { if (p) rtShow(render, p); }); };
+            if (!needImdb) return rt();
+            imdbGet.tv = isTv0;
+            imdbGet(iid, function (r) { if (r) imdbShow(render, r); rt(); });
+        };
         if (m.imdb_id) return go(m.imdb_id);
         var T = window.Lampa && Lampa.Api && Lampa.Api.sources && Lampa.Api.sources.tmdb;
         if (!T || !T.external_imdb_id || !m.id) return;
@@ -7079,7 +7124,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.622';
+    var VERSION = '10.623';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7801,7 +7846,7 @@
         fxCss();
         fullScrollWatch();
         Lampa.Listener.follow('full', function (e) { if (e && e.type === 'build' && e.name === 'description') safe(function () { moreBind(e); }); });
-        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite' && getBool('lmx_imdb', true)) safe(function () { imdbRate(e); }); });
+        Lampa.Listener.follow('full', function (e) { if (e && e.type === 'complite' && (getBool('lmx_imdb', true) || getBool('lmx_rt', true))) safe(function () { imdbRate(e); }); });
         if (document.body) { document.body.classList.toggle('lmx-hidetrl', getBool('lmx_hide_trl_btn', true)); document.body.classList.toggle('lmx-hidetags', getBool('lmx_hide_tags', true)); }
         Lampa.Listener.follow('full', function (e) {
             safe(function () {
