@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.08';
+    var VERSION = '4.09';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2005,7 +2005,14 @@
     // ---- Джерело «Anitube» з окремого плагіна LMX Anitube: якщо він встановлений, фонова перевірка знає, куди по нього звертатись ----
     var AT_KEY = 'anitube';
     function atBridge() { var b = window.__lmxAnitube; return b && typeof b.urlFor === 'function' ? b : null; }
-    function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && (ANIME_SRC.test(String(k || '')) || (HINT[k] && HINT[k].a) || learnedAnime(k)) && isAnimeCard() ? 4 : 0; }
+    // Українське універсальне джерело, яке на ділі знаходить майже все аніме (напр. Makhno: 24 з 24), рівне спеціалізованим:
+    // тоді між ним і AnimeON/Mikai вирішує якість, а не сама «спеціалізація»
+    // універсальні українські джерела з великою добіркою аніме — на сторінці аніме рівні спеціалізованим (мітки «АНІМЕ» у списку не отримують)
+    var ANIME_ALSO = /makhno/i;
+    function animeRich(k) {
+        try { var e = learnGet().s[k]; return !!e && e.a[1] >= 5 && e.a[0] / e.a[1] >= 0.8 && (uaName(k) || UA_SRC.test(String(k || ''))); } catch (x) { return false; }
+    }
+    function animeBonus(k) { return opt('lmx_online_anime', 'on') === 'on' && (ANIME_SRC.test(String(k || '')) || ANIME_ALSO.test(String(k || '')) || (HINT[k] && HINT[k].a) || learnedAnime(k) || animeRich(k)) && isAnimeCard() ? 4 : 0; }
     // Універсальність: плагін не прив'язаний до назв конкретного онлайн-плагіна. Окрім списків слів, діють ще два шари:
     // (1) значки в назві джерела (🌸/🎌 — аніме, 🇺🇦 — українське): запам'ятовуємо їх із сирої назви, бо в ключі значки відкидаються;
     // (2) навчання: джерело, що знаходить аніме, але майже ніколи — інші тайтли, плагін вважає аніме-спеціалізованим
