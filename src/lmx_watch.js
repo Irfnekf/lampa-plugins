@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.00';
+    var VERSION = '4.01';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -3589,10 +3589,14 @@
                 if (pu && pu.cid === cid && sort.length > 1) {
                     gs.bg = 'run'; gs.bgDone = 0; gs.bgT = Date.now();
                     var items = [], cached = 0;
+                    // запам'ятоване «порожньо» довіряємо, лише коли хоч одне джерело цього тайтлу має серії: якщо всі «порожні» —
+                    // це, найімовірніше, була хвилинна відмова серверів, тож перевіряємо їх наново, а не показуємо «нічого не знайдено» пів години
+                    var anyOkC = sort.some(function (x) { var p0 = x && keyOf(x) && pcEntry(cid, keyOf(x)); return !!(p0 && p0.s === 'ok'); });
                     sort.forEach(function (x) {
                         if (!x || x.ghost || !x.source || !keyOf(x)) return;
                         if (uaM && isTorSrc(x)) return;   // LMX UA: торенти вмикаються лише вручну
-                        if (pcEntry(cid, keyOf(x)) && pcEntry(cid, keyOf(x)).s !== 'skip') { cached++; return; }
+                        var pc0 = pcEntry(cid, keyOf(x));
+                        if (pc0 && (pc0.s === 'ok' || (pc0.s === 'empty' && anyOkC))) { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
                         var gq = mem.g[keyOf(x)];
                         if (!uaM && gq && gq.fail >= 3 && gq.fail > (gq.ok || 0) * 2 && Date.now() - (gq.ft || 0) < 86400000) return;   // LMX UA перевіряє кожне джерело завжди (тайтли різні, а «порожньо» тут — не збій)
