@@ -1575,7 +1575,9 @@
             ['discover/movie?sort_by=popularity.desc&primary_release_date.gte=' + dayStr(-w) + '&primary_release_date.lte=' + dayStr(0) + '&region=UA', 'movie', 1, 'new'],
             // серіали: прем'єри, що відбудуться у вікні, і ті, що щойно стартували
             ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(w), 'tv', 1, 'soon'],
-            ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(-w) + '&first_air_date.lte=' + dayStr(0), 'tv', 1, 'new']
+            ['discover/tv?sort_by=popularity.desc&first_air_date.gte=' + dayStr(-w) + '&first_air_date.lte=' + dayStr(0), 'tv', 1, 'new'],
+            // серіали, у яких зараз виходять серії: серед них шукаємо прем'єри нових сезонів (перевіряємо дату сезону окремо)
+            ['discover/tv?sort_by=popularity.desc&air_date.gte=' + dayStr(-SEASON_WIN) + '&air_date.lte=' + dayStr(0) + '&vote_count.gte=50&without_genres=16%7C10764%7C10767%7C10763%7C10766', 'tv', 1, 'season']
         ];
     }
     // Афіша: тренди тижня + кінотеатри + «гучні» прем'єри (скоро / щойно вийшли)
@@ -1599,6 +1601,10 @@
     }
     // Мінімальна популярність TMDB, щоб прем'єра вважалась «гучною»
     var HYPE_MIN_POP = 50;
+    // у серіалів, що ще не вийшли, популярність у TMDB завжди низька (напр. «Гаррі Поттер» за місяць до прем'єри — 16): свій поріг
+    var HYPE_MIN_POP_SOON_TV = 10;
+    // «Новий сезон»: сезон (не перший) стартував не раніше ніж стільки днів тому
+    var SEASON_WIN = 21;
 
     // Кеш запитів до TMDB у пам'яті (8 хв) + об'єднання однакових запитів, що летять одночасно — головна відкривається швидше
     var tcache = {}, tpend = {}, tcacheKeys = [];
@@ -1771,7 +1777,7 @@
         if (!ov && m.__tag === 'soon') ov = '';
         var ovMax = getStr('lmx_theme', 'default') === 'default' ? 120 : 190;
         if (ov.length > ovMax) ov = ov.slice(0, ovMax - 3).replace(/\s+\S*$/, '') + '…';
-        var tagHtml = m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '');
+        var tagHtml = m.__tag ? '<span class="lmx-hero__tag lmx-t-' + m.__tag + '">' + (m.__tag === 'soon' ? 'Скоро · ' + fmtShort(m.release_date || m.first_air_date) : m.__season ? 'Новий сезон' : 'Вже вийшов') + '</span>' : (m.__trend ? '<span class="lmx-hero__tag lmx-t-trend">' + (m.__air ? 'Виходить зараз' : 'У тренді') + '</span>' : '');
         var premT = themeBase() === 'prem';
         view.append('<div class="lmx-hero__shade"></div><div class="lmx-hero__text">' + (premT ? '<div class="lmx-hero__kick">' + (tagHtml || (isTv ? 'Серіал' : 'Фільм')) + '</div>' : '') + '<div class="lmx-hero__title">' +
             heroTitle(m.title || m.name) + '</div><div class="lmx-hero__meta">' +
@@ -1896,31 +1902,65 @@
 
     function heroCall(row) {
         return function (call) {
-            var srcs = heroSources(), left = srcs.length, all = [], seenIds = {};
+            var srcs = heroSources(), left = srcs.length, all = [], seenIds = {}, seasonOk = {};
+            // фільм і серіал мають окремі номери в TMDB — ключ із типом, інакше різні тайтли з однаковим номером злипались
+            function kindOf(m) { return (m.media_type === 'tv' || (!m.title && m.name)) ? 'tv' : 'movie'; }
+            function keyOf(m) { return kindOf(m) + m.id; }
             function fin() {
                 if (--left > 0) return;
+                // кандидати на «Новий сезон»: популярні серіали з новими серіями, що не є щойно стартованими новинками.
+                // Дату сезону перевіряємо в деталях (лише для кількох перших), далі будуємо афішу
+                var seasonC = [], seenC = {};
+                all.forEach(function (m) {
+                    if (m.__hype !== 'season' || seenC[m.id] || !m.backdrop_path || (m.popularity || 0) < HYPE_MIN_POP) return;
+                    var fd = dayDiff(m.first_air_date);
+                    if (fd !== null && fd >= -60) return;
+                    seenC[m.id] = 1; seasonC.push(m);
+                });
+                seasonC.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+                seasonC = seasonC.slice(0, 6);
+                var wait = seasonC.length, built = false;
+                function go() { if (built) return; built = true; build(); }
+                if (!wait) return go();
+                var to = setTimeout(go, 3000);
+                seasonC.forEach(function (m) {
+                    tget('tv/' + m.id, {}, function (d) {
+                        try {
+                            var le = d && d.last_episode_to_air, sn = le && le.season_number, ss = null;
+                            ((d && d.seasons) || []).forEach(function (x) { if (x && x.season_number === sn) ss = x; });
+                            var sd = dayDiff(ss && ss.air_date);
+                            if (sn > 1 && sd !== null && sd <= 0 && sd >= -SEASON_WIN) seasonOk[m.id] = 1;
+                        } catch (e) {}
+                        if (--wait <= 0) { clearTimeout(to); go(); }
+                    }, function () { if (--wait <= 0) { clearTimeout(to); go(); } });
+                });
+            }
+            function build() {
                 // зливаємо дублікати: звичайний (тренд, кінотеатри) і «гучна прем'єра» з окремих джерел
                 var merged = {}, order = [];
                 all.forEach(function (m) {
-                    var e = merged[m.id];
-                    if (!e) { merged[m.id] = e = { m: m, base: false, hype: false }; order.push(m.id); }
+                    if (m.__hype === 'season' && !seasonOk[m.id]) return;   // серіал просто в ефірі, а не з новим сезоном — тут не потрібен
+                    var k = keyOf(m), e = merged[k];
+                    if (!e) { merged[k] = e = { m: m, base: false, hype: false }; order.push(k); }
                     if (m.__hype) e.hype = true; else e.base = true;
+                    if (m.__hype === 'season') e.season = true;
                 });
                 // гучні: найпопулярніші у вікні — до 3 фільмів і до 2 серіалів у кожній групі («скоро» / «вже вийшло»)
-                var w = hypeWindow(), tagOf = {}, pool = { soon_movie: [], new_movie: [], soon_tv: [], new_tv: [] };
+                var w = hypeWindow(), tagOf = {}, pool = { soon_movie: [], new_movie: [], soon_tv: [], new_tv: [], season_tv: [] };
                 order.forEach(function (id) {
                     var m = merged[id].m;
                     if (!merged[id].hype || !m.backdrop_path || m.media_type === 'person') return;
+                    if (merged[id].season) { pool.season_tv.push(m); return; }
                     var d = dayDiff(m.release_date || m.first_air_date);
-                    var kind = (m.media_type === 'tv' || (!m.title && m.name)) ? 'tv' : 'movie';
+                    var kind = kindOf(m);
                     if (d === null || !w) return;
-                    if ((m.popularity || 0) < HYPE_MIN_POP) return;
+                    if ((m.popularity || 0) < (d > 0 && kind === 'tv' ? HYPE_MIN_POP_SOON_TV : HYPE_MIN_POP)) return;
                     if (d > 0 && d <= w) pool['soon_' + kind].push(m);
                     else if (d <= 0 && d >= -w && !(m.vote_count > 30 && m.vote_average < 6)) pool['new_' + kind].push(m);
                 });
                 Object.keys(pool).forEach(function (k) {
                     pool[k].sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
-                    pool[k].slice(0, k.indexOf('tv') > 0 ? 2 : 3).forEach(function (m) { tagOf[m.id] = k.split('_')[0]; });
+                    pool[k].slice(0, k.indexOf('tv') > 0 ? 2 : 3).forEach(function (m) { tagOf[keyOf(m)] = k === 'season_tv' ? 'season' : k.split('_')[0]; });
                 });
                 var list = [];
                 order.forEach(function (id) {
@@ -1938,7 +1978,7 @@
                         if (!(m.overview && String(m.overview).trim())) return;
                         if (m.vote_count > 30 && m.vote_average < 6.3) return;
                     }
-                    if (tag) m.__tag = tag; else m.__trend = 1;
+                    if (tag === 'season') { m.__tag = 'new'; m.__season = 1; } else if (tag) m.__tag = tag; else m.__trend = 1;
                     seenIds[id] = 1;
                     list.push(m);
                 });
@@ -7032,7 +7072,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.617';
+    var VERSION = '10.618';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
