@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.12';
+    var VERSION = '4.13';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -2900,7 +2900,7 @@
     var SRC_TAGS = [
         ['anime', 'АНІМЕ', function (t) { return ANIME_SRC.test(t); }],
         ['ua', 'UA', function (t) { return (UA_SRC.test(t) || /ене[иії]д/i.test(t)) && !/filmix|фільмікс|фильмикс/i.test(t); }],
-        ['k4', '4K', function (t) { return /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/i.test(t) || /(^|[^a-z])(spectre|aladin)([^a-z]|$)/i.test(t); }],   // Spectre і Aladin віддають 4K, хоч у назві цього немає
+        ['k4', '4K', function (t) { return /(^|[^a-z0-9])(4k|2160p?|uhd)([^a-z0-9]|$)/i.test(t) || /(^|[^a-z])(spectre|aladin|mirage)([^a-z]|$)/i.test(t); }],   // Spectre, Aladin і Mirage віддають 4K, хоч у назві цього немає
         ['mix', 'МІКС', function (t) { return /(^|[^a-z])hdvb([^a-z]|$)/i.test(t) && !/hdvb\s*ua/i.test(t); }],   // збірник різних озвучок
         ['prem', 'PREMIUM', function (t) { return /filmix|фільмікс|фильмикс/i.test(t); }],
         ['tor', 'ТОРЕНТ', function (t) { return isTorSrc({ title: t }); }]
