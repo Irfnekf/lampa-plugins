@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.10';
+    var VERSION = '4.11';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1709,10 +1709,10 @@
             if (cp && cp.cid === cid && Date.now() - cp.t < 120000) return;
             var items = [];
             sort.forEach(function (x) {
-                if (!x || x.ghost || !x.source || !keyOf(x) || isTorSrc(x)) return;
+                if (!x || x.ghost || !x.source || !keyOf(x) || (isTorSrc(x) && !torProbe(card))) return;
                 var pc0 = pcEntry(cid, keyOf(x));
                 if (pc0 && pc0.s !== 'skip') return;
-                items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: tQ(x.title), tor: false, to: 0 });
+                items.push({ key: keyOf(x), source: x.source || keyOf(x).replace(/\s+/g, ''), q: tQ(x.title), tor: !!isTorSrc(x), to: 0 });
             });
             if (!items.length) return;
             if (longSeries(card)) items = items.slice(0, 6);
@@ -2913,6 +2913,11 @@
         }
         got.forEach(function (g) { var b = document.createElement('span'); b.className = 'lmx-onl-tag lmx-onl-tag--' + g[0]; b.textContent = g[1]; nm.appendChild(b); });
     }
+    // PidTor у LMX UA перевіряємо разом з рештою лише для фільмів і лише коли в Lampa підключено TorrServer (без нього торенти не відтворюються).
+    // Відкривати його першим Watch не буде, поки є звичайне джерело з цим фільмом — торент лише запасний варіант
+    function torOn() { try { if (Lampa.Torserver && Lampa.Torserver.url) return !!Lampa.Torserver.url(); } catch (e) {} try { return !!(Lampa.Storage.get('torrserver_url', '') || Lampa.Storage.get('torrserver_url_two', '')); } catch (e) { return false; } }
+    function isMovieCard(c) { return !!c && !c.name && !c.first_air_date && !c.number_of_seasons; }
+    function torProbe(c) { return torOn() && isMovieCard(c); }
     function isTorSrc(x) { return /jac|torrent|jackett|torr|magnet|pidtor/i.test(String(x && x.title) + ' ' + String(x && x.source)) ? 1 : 0; }
     // Стан джерела для поточного сезону (джерело може мати один сезон і не мати іншого): 'ok' / 'no' / ''
     function curSeason() {
@@ -3632,7 +3637,7 @@
                     var anyOkC = sort.some(function (x) { var p0 = x && keyOf(x) && pcEntry(cid, keyOf(x)); return !!(p0 && p0.s === 'ok'); });
                     sort.forEach(function (x) {
                         if (!x || x.ghost || !x.source || !keyOf(x)) return;
-                        if (uaM && isTorSrc(x)) return;   // LMX UA: торенти вмикаються лише вручну
+                        if (uaM && isTorSrc(x) && !torProbe(card)) return;   // LMX UA: торенти — лише для фільмів і з підключеним TorrServer, інакше лише вручну
                         var pc0 = pcEntry(cid, keyOf(x));
                         if (pc0 && (pc0.s === 'ok' || (pc0.s === 'empty' && anyOkC))) { cached++; return; }
                         // карантин: джерело, що кілька разів поспіль підводило за останню добу, не перевіряємо (воно лишається в списку)
@@ -3651,7 +3656,7 @@
                     gs.job = { cid: cid, url: pu.u, urlFor: pu.ua ? pu.ua.urlFor : null, deep: !!pu.ua, fix: pu.ua ? pu.ua.fix : null, resolve: pu.ua && pu.ua.resolve ? pu.ua.resolve : null, headers: pu.h || null, items: items.slice(0, longSeries(card) ? 5 : 40), par: longSeries(card) ? 2 : 6, timeout: pu.ua && pu.ua.resolve ? 9000 : 4500, onEach: function (it, r) {
                         gs.bgDone++; updScan();
                         // знайшли джерело потрібної якості — відкриваємо одразу, решту дoперевіряємо у фоні для меню
-                        if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && Math.max(r.q || 0, it.q || 0) >= qTarget() && (!uaM || !uaOn() || balMode() === 'quality' || r.uv > 0)) { gs.early = true; gs.bg = 'done'; }
+                        if (r && r.s === 'ok' && !gs.early && gs.bg === 'run' && !(uaM && it.tor) && Math.max(r.q || 0, it.q || 0) >= qTarget() && (!uaM || !uaOn() || balMode() === 'quality' || r.uv > 0)) { gs.early = true; gs.bg = 'done'; }
                     }, onEnd: function () { gs.bg = 'done'; } };
                     gs.bgDeadline = Date.now() + (longSeries(card) ? 9000 : 14000);
                     bgProbe(gs.job);
@@ -3671,7 +3676,7 @@
                 sort.forEach(function (x) {
                     if (!x || x.ghost || !keyOf(x)) return;
                     var pe = pcEntry(cid, keyOf(x));
-                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
+                    if (pe && pe.s === 'ok') okL.push({ it: x, name: keyOf(x), tor: uaM ? isTorSrc(x) : 0, rank: pe.q || tQ(x.title), n: pe.c || 0, sc: srcScore(keyOf(x), { q: tQ(x.title), pe: pe }, mem).s });
                     else if ((!pe || pe.s === 'skip') && !uaM) skipN++;   // LMX UA перевіряє все сам через плагін: «немає відповіді» = «немає тайтлу», повільний обхід по колу не потрібен   // LMX UA: торенти (PidTor) автоматично не перевіряються — це не «не встигло відповісти»
                 });
                 // LMX UA: жодне не підтвердило, але частина джерел не відповіла (повільна мережа/телевізор, збій сервера) — перш ніж казати
@@ -3693,7 +3698,7 @@
                     if (skipN) { gs.bg = 'off'; gs.slow = true; return; }   // жодне джерело не встигло відповісти — вони повільні (довгі серіали), тож і далі чекаємо довше
                     return finish('Жодне джерело не знайшло цей матеріал');
                 }
-                okL.sort(function (a, b) { return (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
+                okL.sort(function (a, b) { return (a.tor - b.tor) || (b.sc - a.sc) || msCmp(mem.g[b.name], mem.g[a.name]) || (gscore(mem.g[b.name]) - gscore(mem.g[a.name])) || (b.n - a.n); });
                 okL.forEach(function (r) { gs.results.push({ name: r.name, rank: r.rank, n: r.n }); });
                 var bestO = okL[0];
                 if (cid) { mem.t[cid] = { s: bestO.name, q: bestO.rank, at: Date.now(), v: 2, oks: okL.map(function (r) { return r.name; }) }; memSet(mem); }
