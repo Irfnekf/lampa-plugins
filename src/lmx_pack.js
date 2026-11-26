@@ -3471,6 +3471,8 @@
             F + '.full-start__background.dim{opacity:.36 !important}' +
             'body.lmx-apple .lmx-bgb{position:fixed !important;top:0;left:0;width:100vw;height:100vh;object-fit:cover;filter:blur(1.1em);opacity:0;transition:opacity .35s ease-out;will-change:opacity;pointer-events:none}' +
             'body.lmx-apple.lmx-fscroll .lmx-bgb{opacity:.2}' +
+            // ТВ: розмиття фону на весь екран дуже важке для телевізора — беремо маленьку копію картинки, розтягнуту на екран, вона й так м’яка
+            'body.lmx-tvperf.lmx-apple .lmx-bgb{filter:none !important}' +
             'body.lmx-apple.lmx-fscroll .full-start__background,body.lmx-apple.lmx-fscroll .full-start__background.dim{opacity:0 !important;filter:none !important;transform:none !important}' +
             // чистий фон лише на сторінці фільму: нейтральний майже чорний замість аврори (клас lmx-fullact ставиться на .activity сторінки фільму)
             'body.lmx-apple.lmx-onfull{background:#0b0b0d !important}' +
@@ -3531,7 +3533,7 @@
     }
     function applyThemeClass() {
         safe(loadThemeFont);
-        if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', themeBase() === 'hbo'); document.body.classList.toggle('lmx-prem', themeBase() === 'prem'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); }
+        if (document.body && document.body.classList) { document.body.classList.toggle('lmx-hbo', themeBase() === 'hbo'); document.body.classList.toggle('lmx-prem', themeBase() === 'prem'); document.body.classList.toggle('lmx-apple', getStr('lmx_theme', 'default') === 'apple'); var tvp = false; try { tvp = !!(Lampa.Platform.tv && Lampa.Platform.tv()); } catch (e) {} document.body.classList.toggle('lmx-tvperf', tvp); }   // lmx-tvperf: телевізор — важке розмиття «Скла» замінюємо дешевшими прийомами (вигляд той самий)
     }
     // Тема читається зі сховища один раз на старті, а значення може змінитись згодом (синхронізація профілю/хмари підтягує інше після запуску):
     // тоді галочка в меню «Тема» показує одне, а екран лишається в іншій темі. Стежимо: розбіжність — перезапуск (не частіше за раз на 20 с)
@@ -7131,7 +7133,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.627';
+    var VERSION = '10.628';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
@@ -7750,7 +7752,8 @@
                 if (sb && sb.src) {
                     var cl = sb.parentNode && sb.parentNode.querySelector('.lmx-bgb');
                     if (!cl) { cl = document.createElement('img'); cl.className = 'lmx-bgb'; sb.parentNode.insertBefore(cl, sb.nextSibling); }
-                    if (cl.getAttribute('src') !== sb.getAttribute('src')) cl.src = sb.src;
+                    var bsrc = sb.src; if (b.classList.contains('lmx-tvperf')) bsrc = bsrc.replace(/\/t\/p\/(?:w\d+|original)\//, '/t/p/w92/');
+                    if (cl.getAttribute('src') !== bsrc) cl.src = bsrc;
                     if (cl.style.top !== sb.style.top) { if (sb.style.top) cl.style.setProperty('top', sb.style.top, 'important'); else cl.style.removeProperty('top'); }
                     if (cl.style.left !== sb.style.left) { if (sb.style.left) cl.style.setProperty('left', sb.style.left, 'important'); else cl.style.removeProperty('left'); }
                 }

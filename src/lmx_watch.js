@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.11';
+    var VERSION = '4.12';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -381,6 +381,9 @@
             C + ' [class*="__quality"]:not(:empty){margin-left:auto;align-self:center;min-height:0 !important;padding:.15em .65em;border-radius:99em;background:rgba(255,255,255,.12);font-weight:700}' +
             // Скло — справжнє розмиття; Кіно — темна панель із золотом; Полегшена — без розмиття
             'body.lmx-apple.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}' +
+            // ТВ (LMX Pack ставить lmx-tvperf): розмиття під кожною карткою серії телевізор перераховує при кожному русі фокуса — вимикаємо;
+            // фон за картками в «Склі» і так розмитий, тож різниці майже не видно
+            'body.lmx-tvperf.lmx-apple.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item{-webkit-backdrop-filter:none !important;backdrop-filter:none !important}' +
             'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item{background:#14161f !important;border-color:rgba(255,255,255,.08);border-radius:1em !important}' +
             'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item.focus{background:#1c1f2c !important;border-color:transparent}' +
             'body.lmx-prem.lmx-online .explorer.lmx-onl .lmx-onl-grid.lmx-onl-grid > .lmx-onl-item [class*="episode-number"]{background:rgba(0,0,0,.7) !important;color:' + GOLD + ' !important}';
