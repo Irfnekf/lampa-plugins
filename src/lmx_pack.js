@@ -1285,8 +1285,11 @@
         var h = '';
         try { h = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {}
         h = (h || 'https://lmx-sync.vladshkaraputa07.workers.dev').replace(/\/+$/, '');
-        alXhr(h + '/anime?l=' + l, function (j) {
-            if (j && j.ok && j.results && j.results.length) return fin(j.results);
+        // worker без ключа TMDB або зі збоєм — 12 год не чекаємо на нього, одразу йдемо запасним шляхом
+        var skipW = 0; try { skipW = +Lampa.Storage.get('lmx_al_skipw', 0) || 0; } catch (e) {}
+        alXhr(Date.now() - skipW < 12 * 3600000 ? 'about:blank' : h + '/anime?l=' + l, function (j) {
+            if (j && j.ok && j.results && j.results.length >= 5) return fin(j.results);
+            if (Date.now() - skipW >= 12 * 3600000) { try { Lampa.Storage.set('lmx_al_skipw', Date.now()); } catch (e) {} }
             // запасний шлях: список з GitHub Pages + картки з TMDB
             alXhr('https://irfnekf.github.io/lampa-plugins/anime_lists.json?t=' + Math.floor(Date.now() / 3600000), function (src) {
                 var ids = src && src.lists && src.lists[l] ? src.lists[l].slice(0, 24) : [];
@@ -7315,7 +7318,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.634';
+    var VERSION = '10.635';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

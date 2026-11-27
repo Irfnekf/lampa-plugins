@@ -1205,6 +1205,7 @@ export default {
     if (req.method === 'GET' && url.pathname === '/anime') {
       const l = String(url.searchParams.get('l') || '');
       if (!/^(trend|season|next|top)$/.test(l)) return json({ ok: 0 }, 400);
+      if (!env.TMDB_KEY) return json({ ok: 0, error: 'no_tmdb_key' }, 503);
       const ck = new Request('https://lmx-cache/anime1/' + l);
       try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
       let src = null;
@@ -1221,7 +1222,9 @@ export default {
           return o;
         } catch (e) { return null; }
       }));
-      const out = json({ ok: 1, season: src.season, next: src.next, results: cards.filter((c) => c && c.poster_path) });
+      const good = cards.filter((c) => c && c.poster_path);
+      if (good.length < 5) return json({ ok: 0, error: 'tmdb_failed', n: good.length }, 502);   // порожнє не кешуємо
+      const out = json({ ok: 1, season: src.season, next: src.next, results: good });
       try { const c2 = new Response(out.clone().body, out); c2.headers.set('cache-control', 'max-age=21600'); ctx.waitUntil(caches.default.put(ck, c2)); } catch (e) {}
       return out;
     }
