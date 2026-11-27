@@ -13,7 +13,7 @@
     'use strict';
     if (window.__lmxOnline) return;
     window.__lmxOnline = true;
-    var VERSION = '4.13';
+    var VERSION = '4.14';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Watch', description: 'Екран «Онлайн»: швидкий і розумний вибір джерела, українська озвучка, зручний список серій', author: 'Irfnekf' }; } catch (e) {}
     function safe(fn) { try { return fn(); } catch (e) { try { console.error('LMX Watch', e); } catch (x) {} } }
@@ -1617,15 +1617,26 @@
         try { Lampa.Storage.set('lmx_online_qm', o); } catch (e) {}
     }
     function qmBadge(cid, key) { var m = qmGet()[cid]; return m && m.l && QB[m.l[key]] || ''; }
+    // список тайтлів з українською онлайн (для мітки «UA» у LMX Pack). Раніше лежав під тим самим ключем, що й налаштування
+    // «Перевага українській озвучці» (lmx_online_ua): після зміни налаштування список затирався рядком 'on'/'off' і більше не поповнювався
+    function uaMapGet() {
+        var o = null;
+        try { o = Lampa.Storage.get('lmx_online_uamap', null); if (typeof o === 'string') o = JSON.parse(o || '{}'); } catch (e) { o = null; }
+        if (!o || typeof o !== 'object') {
+            o = {};
+            try { var old = Lampa.Storage.get('lmx_online_ua', null); if (old && typeof old === 'object') { o = old; Lampa.Storage.set('lmx_online_ua', 'on'); } } catch (e) {}
+        }
+        return o;
+    }
     // Тайтли, де онлайн справді знайшлась українська озвучка (будь-яке джерело, хоч Filmix чи Aladin) — для мітки «UA» на картках у LMX Pack
     function onlineUaNote(cid) {
         try {
             var id = String(cid || '').split('@')[0]; if (!/^\d+$/.test(id)) return;
-            var o = Lampa.Storage.get('lmx_online_ua', {}); if (typeof o === 'string') o = JSON.parse(o || '{}'); if (!o || typeof o !== 'object') o = {};
+            var o = uaMapGet();
             if (o[id] && Date.now() - o[id] < 86400000) return;
             o[id] = Date.now();
             var ks = Object.keys(o); if (ks.length > 600) ks.sort(function (a, b) { return o[a] - o[b]; }).slice(0, ks.length - 500).forEach(function (k) { delete o[k]; });
-            Lampa.Storage.set('lmx_online_ua', o);
+            Lampa.Storage.set('lmx_online_uamap', o);
         } catch (x) {}
     }
     function pcPut(cid, key, e) {

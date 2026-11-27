@@ -4044,7 +4044,8 @@
         try {
             // LMX Watch: якість джерел (для LMX UA ключ має суфікс «@ua2») і тайтли, де онлайн знайшлась українська озвучка
             var o = Lampa.Storage.get('lmx_online_qm', {}), m = o && (o[String(id) + '@ua2'] || o[String(id)]);
-            var ou = Lampa.Storage.get('lmx_online_ua', {}); if (typeof ou === 'string') { try { ou = JSON.parse(ou || '{}'); } catch (x) { ou = {}; } }
+            var ou = Lampa.Storage.get('lmx_online_uamap', null); if (typeof ou === 'string') { try { ou = JSON.parse(ou || '{}'); } catch (x) { ou = null; } }
+            if (!ou || typeof ou !== 'object') { ou = Lampa.Storage.get('lmx_online_ua', null); if (!ou || typeof ou !== 'object') ou = {}; }   // старий ключ (до Watch 4.14)
             var uaOnl = ou && ou[String(id)] && Date.now() - ou[String(id)] < 30 * 86400000;
             var ua = uaOnl ? 1 : 0, best = 0, k;
             if (m && m.l && Date.now() - (m.t || 0) <= 604800000) for (k in m.l) { if (UAQ_SRC_RX.test(k)) ua = 1; if (ua && m.l[k] > best) best = m.l[k]; }
@@ -7146,7 +7147,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.629';
+    var VERSION = '10.630';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

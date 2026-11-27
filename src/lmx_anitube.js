@@ -11,7 +11,7 @@
     'use strict';
     if (window.__lmxAnitube4) return;
     window.__lmxAnitube4 = true;
-    var VERSION = '5.58';
+    var VERSION = '5.59';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX UA', description: 'Українська озвучка: Anitube, AnimeON, Mikai, Unimay (аніме) та Eneyida, UAFlix (фільми й серіали), BambooUA (дорами)', author: 'Irfnekf' }; } catch (e) {}
 
@@ -536,6 +536,17 @@
         if (!/[а-яё]/i.test(html) || !/(украинск|дублированн|оригинал|многоголос|двухголос|одноголос|закадров|профессиональн|любительск|авторск|по умолчанию|субтитры|английск|японск|корейск)/i.test(html)) return html;
         return html.replace(/(<div class="videos__(?:button|item-title)[^"]*"[^>]*>)([^<]+)(<\/div>)/g, function (m, a, t, b) { return a + uaWord(t) + b; });
     }
+    // список тайтлів з українською онлайн (для мітки «UA» у LMX Pack). Раніше лежав під тим самим ключем, що й налаштування
+    // «Перевага українській озвучці» (lmx_online_ua): після зміни налаштування список затирався рядком 'on'/'off' і більше не поповнювався
+    function uaMapGet() {
+        var o = null;
+        try { o = Lampa.Storage.get('lmx_online_uamap', null); if (typeof o === 'string') o = JSON.parse(o || '{}'); } catch (e) { o = null; }
+        if (!o || typeof o !== 'object') {
+            o = {};
+            try { var old = Lampa.Storage.get('lmx_online_ua', null); if (old && typeof old === 'object') { o = old; Lampa.Storage.set('lmx_online_ua', 'on'); } } catch (e) {}
+        }
+        return o;
+    }
     // на екрані є українська озвучка — запам'ятовуємо тайтл для мітки «UA» на картках (LMX Pack читає lmx_online_ua)
     function onlineUa(comp, html) {
         try {
@@ -546,11 +557,11 @@
             while ((m = rx.exec(html))) names.push(m[1]);
             var uaSrc = /\/lite\/(mikai|animeon|anitube|unimay|eneyida|ey|uafix|ufd|ufv|uakino|kinoukr|makhno|bamboo|pl|video)\?/.test(html);   // джерела лише з українською
             if (!uaSrc && !names.some(function (t) { return /🇺🇦/.test(t) || isUaName(t); })) return;
-            var o = Lampa.Storage.get('lmx_online_ua', {}); if (typeof o === 'string') o = JSON.parse(o || '{}'); if (!o || typeof o !== 'object') o = {};
+            var o = uaMapGet();
             if (o[id] && Date.now() - o[id] < 86400000) return;
             o[id] = Date.now();
             var ks = Object.keys(o); if (ks.length > 600) ks.sort(function (a, b) { return o[a] - o[b]; }).slice(0, ks.length - 500).forEach(function (k) { delete o[k]; });
-            Lampa.Storage.set('lmx_online_ua', o);
+            Lampa.Storage.set('lmx_online_uamap', o);
         } catch (e) {}
     }
     // однакові назви озвучок в одному джерелі (у Mikai буває два релізи «Рідний Голос») — підписуємо другу «· 2», інакше їх не розрізнити
