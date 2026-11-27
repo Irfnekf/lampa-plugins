@@ -1204,7 +1204,7 @@ export default {
     // Підбірки аніме з AniList (тренд, сезон, наступний сезон, топ): id готує GitHub Action у anime_lists.json, тут — картки TMDB українською. Кеш 6 год
     if (req.method === 'GET' && url.pathname === '/anime') {
       const l = String(url.searchParams.get('l') || '');
-      if (!/^(trend|season|next|top|popular|movies|lastyear|romance|psych|revenge|survival|antihero)$/.test(l)) return json({ ok: 0 }, 400);
+      if (!/^[a-z0-9]{2,12}$/.test(l)) return json({ ok: 0 }, 400);
       if (!env.TMDB_KEY) return json({ ok: 0, error: 'no_tmdb_key' }, 503);
       const ck = new Request('https://lmx-cache/anime1/' + l);
       try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}

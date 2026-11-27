@@ -26,8 +26,8 @@ async function al(query, variables) {
   throw new Error('AniList rate limit');
 }
 
-const Q = `query($p:Int,$sort:[MediaSort],$season:MediaSeason,$year:Int,$status:MediaStatus,$status_not:MediaStatus,$pop:Int,$fmt:[MediaFormat],$genre:[String],$tag:[String],$after:FuzzyDateInt,$rank:Int){
-  Page(page:$p,perPage:50){ media(type:ANIME,isAdult:false,countryOfOrigin:"JP",format_in:$fmt,genre_in:$genre,tag_in:$tag,minimumTagRank:$rank,startDate_greater:$after,
+const Q = `query($p:Int,$sort:[MediaSort],$season:MediaSeason,$year:Int,$status:MediaStatus,$status_not:MediaStatus,$pop:Int,$fmt:[MediaFormat],$genre:[String],$tag:[String],$after:FuzzyDateInt,$before:FuzzyDateInt,$rank:Int,$popLess:Int){
+  Page(page:$p,perPage:50){ media(type:ANIME,isAdult:false,countryOfOrigin:"JP",format_in:$fmt,genre_in:$genre,tag_in:$tag,minimumTagRank:$rank,startDate_greater:$after,startDate_lesser:$before,popularity_lesser:$popLess,
     sort:$sort,season:$season,seasonYear:$year,status:$status,status_not:$status_not,popularity_greater:$pop){ id format } } }`;
 const FMT = ['TV', 'TV_SHORT', 'ONA', 'MOVIE'];
 const q = (v) => al(Q, { fmt: FMT, ...v });
@@ -53,29 +53,57 @@ async function main() {
   const now = new Date(), cur = seasonOf(now, 0), nxt = seasonOf(now, 1);
   const Y = now.getUTCFullYear();
   const raw = {
+    // «Зараз дивляться»
     trend: await q({ p: 1, sort: ['TRENDING_DESC'], status_not: 'NOT_YET_RELEASED' }),
+    // «Популярне» — найпопулярніше поточного сезону (з новими сезонами старих серіалів)
     season: await two({ sort: ['POPULARITY_DESC'], season: cur.s, year: cur.y }),
+    // «Скоро»
     next: await q({ p: 1, sort: ['POPULARITY_DESC'], season: nxt.s, year: nxt.y }),
+    // «З високим рейтингом»
     top: await two({ sort: ['SCORE_DESC'], pop: 40000 }),
-    // найпопулярніше за кількістю глядачів (усі часи)
+    // «У топі» — за кількістю глядачів (усі часи)
     popular: await two({ sort: ['POPULARITY_DESC'] }),
-    // топ аніме-фільмів за оцінками
+    // «Онгоїнги» — що виходить зараз
+    airing: await two({ sort: ['POPULARITY_DESC'], status: 'RELEASING' }),
+    // «Новинки цього року» / «Минулий рік»
+    thisyear: await q({ p: 1, sort: ['POPULARITY_DESC'], year: Y }),
+    lastyear: await q({ p: 1, sort: ['POPULARITY_DESC'], year: Y - 1 }),
+    // «Варто переглянути» — висока оцінка, але менш відоме
+    gems: await two({ sort: ['SCORE_DESC'], pop: 8000, popLess: 60000, after: 20050000 }),
+    // «Топ аніме-фільмів»
     movies: await two({ sort: ['SCORE_DESC'], fmt: ['MOVIE'], pop: 15000 }),
-    // найкраще минулого року
-    lastyear: await q({ p: 1, sort: ['SCORE_DESC'], year: Y - 1, pop: 8000 }),
-    // жанри й теги AniList (з 2010 року, за популярністю)
-    romance: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Romance'], after: 20100000 }),
-    psych: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Psychological'], after: 20100000 }),
-    revenge: await q({ p: 1, sort: ['POPULARITY_DESC'], tag: ['Revenge'], rank: 85, after: 20000000 }),
+    // жанри й теги
+    action: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Action'], after: 20150000 }),
+    mystery: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Mystery'], after: 20050000 }),
+    spy: await q({ p: 1, sort: ['POPULARITY_DESC'], tag: ['Espionage'], rank: 70, after: 19950000 }),
+    mecha: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Mecha'], after: 20000000 }),
+    zombie: await q({ p: 1, sort: ['POPULARITY_DESC'], tag: ['Zombie'], rank: 60, after: 19950000 }),
     survival: await q({ p: 1, sort: ['POPULARITY_DESC'], tag: ['Survival'], rank: 85, after: 20000000 }),
-    antihero: await q({ p: 1, sort: ['POPULARITY_DESC'], tag: ['Anti-Hero'], rank: 85, after: 20000000 }),
+    hits2010: await two({ sort: ['POPULARITY_DESC'], after: 20100000, before: 20200000 }),
+    comedy: await q({ p: 1, sort: ['POPULARITY_DESC'], genre: ['Comedy'], after: 20180000 }),
   };
+
+  // «Нове українською»: останні оновлення AnimeON (нові серії з українською озвучкою чи субтитрами) → MAL id → TMDB
+  const byMal = {};
+  for (const e of full) if (e.mal_id && e.themoviedb_id) { const t = e.themoviedb_id; if (t.tv) byMal[e.mal_id] = ['tv', +t.tv]; else if (t.movie) byMal[e.mal_id] = ['movie', +[].concat(t.movie)[0]]; }
+  let uaNew = [];
+  try {
+    const H = { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' };
+    const upd = [];
+    for (const skip of [0, 50, 100]) { const r = await fetch('https://animeon.club/api/anime-update/recently-updated?take=50&skip=' + skip, { headers: H }); if (!r.ok) break; upd.push(...await r.json()); }
+    const slugs = [...new Set(upd.map((u) => u.anime && u.anime.slug).filter(Boolean))].slice(0, 60);
+    for (const sl of slugs) {
+      try { const r = await fetch('https://animeon.club/api/anime/' + sl, { headers: H }); if (!r.ok) continue; const d = await r.json(); const t = byMal[+d.malId]; if (t) uaNew.push(t); } catch (e) {}
+      await sleep(250);
+    }
+  } catch (e) { console.log('animeon failed', e.message); }
+  raw.uanew = uaNew.map((t) => ({ t }));
 
   const lists = {};
   for (const k of Object.keys(raw)) {
     const seen = {}, out = [];
     for (const m of raw[k]) {
-      const t = map[m.id];
+      const t = m.t || map[m.id];
       if (!t) continue;
       const key = t[0] + t[1];
       if (seen[key]) continue;   // сезони одного серіалу в TMDB — один тайтл

@@ -1028,22 +1028,11 @@
         anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16&without_genres=10762', hero: 'with_original_language=ja&with_genres=16',
           // головні підбірки аніме (тренд, сезон, наступний сезон, топ) — з AniList, див. ALIST; тут лише ряди з TMDB
           lead: function () { return []; },
+          // з TMDB лишається тільки «Середньовіччя» (решта рядів аніме — з AniList і AnimeON, див. svcCats)
           extra: function () {
-            // жанрові ряди — лише з 2015 року: інакше всюди ті самі One Piece, «Наруто» й «Бліч»
-            var JA = 'with_original_language=ja&with_genres=16', NK = '&without_genres=10762', G15 = NK + '&first_air_date.gte=2015-01-01&sort_by=popularity.desc', out = [
-                // середньовіччя: мечі, лицарі, королівства (ключові слова TMDB medieval, sword and sorcery, knight)
-                { t: 'Середньовіччя', k: 'tv', q: JA + NK + '&with_keywords=161257' + PIPE + '234213' + PIPE + '10466&sort_by=popularity.desc&vote_count.gte=10' },
-                // завершені популярні серіали (з 2010-го) — щоб дивитись підряд, без очікування нових серій
-                { t: 'Завершені — на один раз', k: 'tv', q: JA + NK + '&with_status=3&first_air_date.gte=2010-01-01&vote_count.gte=150&sort_by=popularity.desc' },
-                { t: 'Бойовик і пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759' + G15 },
-                { t: 'Фантастика й фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765' + G15 },
-                { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35' + G15 }
-            ], kw = animeCos('lmx_anime_kw');
-            ANIME_TAGS.forEach(function (tg) {
-                var id = kw[tg[0]];
-                if (id) out.push({ t: tg[1], k: 'tv', q: JA + NK + '&with_keywords=' + id + '&sort_by=popularity.desc&vote_count.gte=20' });
-            });
-            return out;
+            var JA = 'with_original_language=ja&with_genres=16', NK = '&without_genres=10762';
+            // середньовіччя: мечі, лицарі, королівства (ключові слова TMDB medieval, sword and sorcery, knight)
+            return [{ t: 'Середньовіччя', k: 'tv', q: JA + NK + '&with_keywords=161257' + PIPE + '234213' + PIPE + '10466&sort_by=popularity.desc&vote_count.gte=10' }];
           } },
         // Дорами: корейські (основа) + японські, китайські й тайські серіали, без анімації, реаліті та ток-шоу
         dorama: { mf: DR_KO, tf: DR_KO, hero: DR_KO,
@@ -1173,22 +1162,30 @@
             var JK = 'with_original_language=ja&with_genres=16&without_genres=10762', sn = animeSeason(), nx = animeSeason(1);
             var alr = function (t, l, q, k) { return { title: t, al: l, url: 'discover/' + (k || 'tv') + '?' + q, kind: k || 'tv', min: 5 }; };
             var recsR = mapped.filter(function (e) { return e.recs; }), restR = mapped.filter(function (e) { return !e.recs; });
+            var Y = new Date().getFullYear(), JA0 = 'with_original_language=ja&with_genres=16';
+            // назви рядів — як у стандартному розділі «Аніме» Lampa, але підбірки з AniList (і «Нове українською» з AnimeON), усе українською
             mapped = [{ title: 'Нові серії', url: 'lmx://newep/anime', kind: 'tv', newep: true, min: 1 },
-                alr('Тренд тижня', 'trend', JK + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=3')]
+                alr('Зараз дивляться', 'trend', JK + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=3')]
                 .concat(recsR, [
-                alr('Аніме сезону · ' + sn.name, 'season', JK + '&first_air_date.gte=' + sn.start + '&first_air_date.lte=' + today + '&sort_by=popularity.desc'),
+                alr('Нове українською', 'uanew', JK + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=3'),
+                alr('Онгоїнги', 'airing', JK + '&air_date.gte=' + dayStr(-14) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=20'),
+                alr('У топі', 'popular', JK + '&sort_by=popularity.desc&vote_count.gte=400'),
+                alr('Популярне', 'season', JK + '&first_air_date.gte=' + sn.start + '&first_air_date.lte=' + today + '&sort_by=popularity.desc'),
+                alr('Новинки цього року', 'thisyear', JK + '&first_air_date.gte=' + Y + '-01-01&first_air_date.lte=' + today + '&sort_by=popularity.desc'),
+                alr('Минулий рік', 'lastyear', JK + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc'),
+                alr('Варто переглянути', 'gems', JK + '&vote_average.gte=8&vote_count.gte=50&vote_count.lte=400&sort_by=vote_average.desc'),
+                alr('З високим рейтингом', 'top', JK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc'),
                 alr('Скоро · ' + nx.name, 'next', JK + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(150) + '&sort_by=popularity.desc'),
-                alr('Найпопулярніше всіх часів', 'popular', JK + '&sort_by=popularity.desc&vote_count.gte=400'),
-                alr('Топ аніме всіх часів', 'top', JK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc'),
-                alr('Найкраще ' + (new Date().getFullYear() - 1), 'lastyear', JK + '&first_air_date.gte=' + (new Date().getFullYear() - 1) + '-01-01&first_air_date.lte=' + (new Date().getFullYear() - 1) + '-12-31&sort_by=vote_average.desc&vote_count.gte=30'),
-                alr('Топ аніме-фільмів', 'movies', 'with_original_language=ja&with_genres=16&sort_by=vote_average.desc&vote_count.gte=300', 'movie')],
-                restR.slice(0, 2), [   // Середньовіччя, Завершені
-                alr('Романтика', 'romance', JK + '&with_keywords=9840&sort_by=popularity.desc'),
-                alr('Психологічне', 'psych', JK + '&with_genres=9648&sort_by=popularity.desc'),
-                alr('Помста', 'revenge', JK + '&with_keywords=9748&sort_by=popularity.desc'),
+                alr('Топ аніме-фільмів', 'movies', JA0 + '&sort_by=vote_average.desc&vote_count.gte=300', 'movie')],
+                restR, [   // Середньовіччя
+                alr('Бойовик та Пригоди', 'action', JK + '&with_genres=10759&first_air_date.gte=2015-01-01&sort_by=popularity.desc'),
+                alr('Детектив', 'mystery', JK + '&with_genres=9648&sort_by=popularity.desc'),
+                alr('Шпигуни', 'spy', JK + '&with_keywords=470&sort_by=popularity.desc'),
+                alr('Роботи', 'mecha', JK + '&with_keywords=10046&sort_by=popularity.desc'),
+                alr('Зомбі', 'zombie', JK + '&with_keywords=12377&sort_by=popularity.desc'),
                 alr('Виживання', 'survival', JK + '&with_keywords=10349&sort_by=popularity.desc'),
-                alr('Антигерої', 'antihero', JK + '&with_keywords=2095&sort_by=popularity.desc')],
-                restR.slice(2));
+                alr('Хіти 2010-х', 'hits2010', JK + '&first_air_date.gte=2010-01-01&first_air_date.lte=2019-12-31&sort_by=popularity.desc&vote_count.gte=200'),
+                alr('Сучасні комедії', 'comedy', JK + '&with_genres=35&first_air_date.gte=2018-01-01&sort_by=popularity.desc')]);
         }
         return mapped;
     }
@@ -1360,7 +1357,8 @@
                 return m.backdrop_path && m.poster_path && g.indexOf(10762) < 0 && !(m.media_type === 'movie' && g.indexOf(10751) >= 0);
             });
             if (!(alSoon.length >= 2)) cand.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
-            soonFix(cand.slice(0, 4), build);
+            // «Скоро» в каруселі аніме не показуємо (є окремий ряд «Скоро»)
+            build([]);
         }
         function build(soon) {
             var seen = {}, out = [];
@@ -7327,7 +7325,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.636';
+    var VERSION = '10.637';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
