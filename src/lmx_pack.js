@@ -1031,7 +1031,6 @@
           extra: function () {
             // жанрові ряди — лише з 2015 року: інакше всюди ті самі One Piece, «Наруто» й «Бліч»
             var JA = 'with_original_language=ja&with_genres=16', NK = '&without_genres=10762', G15 = NK + '&first_air_date.gte=2015-01-01&sort_by=popularity.desc', out = [
-                { t: 'Аніме-фільми', k: 'movie', q: JA + '&sort_by=popularity.desc&vote_count.gte=100' },
                 // середньовіччя: мечі, лицарі, королівства (ключові слова TMDB medieval, sword and sorcery, knight)
                 { t: 'Середньовіччя', k: 'tv', q: JA + NK + '&with_keywords=161257' + PIPE + '234213' + PIPE + '10466&sort_by=popularity.desc&vote_count.gte=10' },
                 // завершені популярні серіали (з 2010-го) — щоб дивитись підряд, без очікування нових серій
@@ -1172,14 +1171,24 @@
         // AniList: «Тренд тижня» перед «Схожим», далі сезон, наступний сезон і топ. Якщо AniList недоступний — ряд вантажить запасний запит TMDB (url)
         if (!forHome && key === 'anime') {
             var JK = 'with_original_language=ja&with_genres=16&without_genres=10762', sn = animeSeason(), nx = animeSeason(1);
-            var alr = function (t, l, q, k) { return { title: t, al: l, url: 'discover/' + (k || 'tv') + '?' + q, kind: 'tv', min: 5 }; };
+            var alr = function (t, l, q, k) { return { title: t, al: l, url: 'discover/' + (k || 'tv') + '?' + q, kind: k || 'tv', min: 5 }; };
             var recsR = mapped.filter(function (e) { return e.recs; }), restR = mapped.filter(function (e) { return !e.recs; });
             mapped = [{ title: 'Нові серії', url: 'lmx://newep/anime', kind: 'tv', newep: true, min: 1 },
                 alr('Тренд тижня', 'trend', JK + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=3')]
                 .concat(recsR, [
                 alr('Аніме сезону · ' + sn.name, 'season', JK + '&first_air_date.gte=' + sn.start + '&first_air_date.lte=' + today + '&sort_by=popularity.desc'),
                 alr('Скоро · ' + nx.name, 'next', JK + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(150) + '&sort_by=popularity.desc'),
-                alr('Топ аніме всіх часів', 'top', JK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc')], restR);
+                alr('Найпопулярніше всіх часів', 'popular', JK + '&sort_by=popularity.desc&vote_count.gte=400'),
+                alr('Топ аніме всіх часів', 'top', JK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc'),
+                alr('Найкраще ' + (new Date().getFullYear() - 1), 'lastyear', JK + '&first_air_date.gte=' + (new Date().getFullYear() - 1) + '-01-01&first_air_date.lte=' + (new Date().getFullYear() - 1) + '-12-31&sort_by=vote_average.desc&vote_count.gte=30'),
+                alr('Топ аніме-фільмів', 'movies', 'with_original_language=ja&with_genres=16&sort_by=vote_average.desc&vote_count.gte=300', 'movie')],
+                restR.slice(0, 2), [   // Середньовіччя, Завершені
+                alr('Романтика', 'romance', JK + '&with_keywords=9840&sort_by=popularity.desc'),
+                alr('Психологічне', 'psych', JK + '&with_genres=9648&sort_by=popularity.desc'),
+                alr('Помста', 'revenge', JK + '&with_keywords=9748&sort_by=popularity.desc'),
+                alr('Виживання', 'survival', JK + '&with_keywords=10349&sort_by=popularity.desc'),
+                alr('Антигерої', 'antihero', JK + '&with_keywords=2095&sort_by=popularity.desc')],
+                restR.slice(2));
         }
         return mapped;
     }
@@ -7318,7 +7327,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.635';
+    var VERSION = '10.636';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
