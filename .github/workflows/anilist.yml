@@ -24,7 +24,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet; then echo "no changes"; exit 0; fi
+          if [ -z "$(git status --porcelain anime_lists.json)" ]; then echo "no changes"; exit 0; fi
           git config user.name "anilist-bot"
           git config user.email "actions@users.noreply.github.com"
           git add anime_lists.json
