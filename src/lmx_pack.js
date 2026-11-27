@@ -1026,30 +1026,19 @@
         // Аніме: не провайдер, а вся японська анімація; студії й теги підтягуються за назвою з TMDB (див. animeResolve)
         // аніме: серіали без дитячих («Дораемон», «Покемон» — жанр «Дитячий» 10762)
         anime: { mf: 'with_original_language=ja&with_genres=16', tf: 'with_original_language=ja&with_genres=16&without_genres=10762', hero: 'with_original_language=ja&with_genres=16',
-          lead: function () {
-            var JA = 'with_original_language=ja&with_genres=16&without_genres=10762', Y = new Date().getFullYear(), t0 = dayStr(0), sn = animeSeason();
-            return [
-                { t: 'Зараз дивляться', k: 'tv', q: JA + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=3' },
-                // нові тайтли поточного аніме-сезону (зима/весна/літо/осінь), назва ряду змінюється сама раз на квартал
-                { t: 'Аніме сезону · ' + sn.name, k: 'tv', q: JA + '&first_air_date.gte=' + sn.start + '&first_air_date.lte=' + t0 + '&sort_by=popularity.desc', min: 4 },
-                { t: 'У топі', k: 'tv', q: JA + '&sort_by=popularity.desc&vote_count.gte=400' },
-                { t: 'Минулий рік', k: 'tv', q: JA + '&first_air_date.gte=' + (Y - 1) + '-01-01&first_air_date.lte=' + (Y - 1) + '-12-31&sort_by=popularity.desc' }
-            ];
-          },
+          // головні підбірки аніме (тренд, сезон, наступний сезон, топ) — з AniList, див. ALIST; тут лише ряди з TMDB
+          lead: function () { return []; },
           extra: function () {
             // жанрові ряди — лише з 2015 року: інакше всюди ті самі One Piece, «Наруто» й «Бліч»
             var JA = 'with_original_language=ja&with_genres=16', NK = '&without_genres=10762', G15 = NK + '&first_air_date.gte=2015-01-01&sort_by=popularity.desc', out = [
-                { t: 'З високим рейтингом', k: 'tv', q: JA + NK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc' },
                 { t: 'Аніме-фільми', k: 'movie', q: JA + '&sort_by=popularity.desc&vote_count.gte=100' },
                 // середньовіччя: мечі, лицарі, королівства (ключові слова TMDB medieval, sword and sorcery, knight)
                 { t: 'Середньовіччя', k: 'tv', q: JA + NK + '&with_keywords=161257' + PIPE + '234213' + PIPE + '10466&sort_by=popularity.desc&vote_count.gte=10' },
+                // завершені популярні серіали (з 2010-го) — щоб дивитись підряд, без очікування нових серій
+                { t: 'Завершені — на один раз', k: 'tv', q: JA + NK + '&with_status=3&first_air_date.gte=2010-01-01&vote_count.gte=150&sort_by=popularity.desc' },
                 { t: 'Бойовик і пригоди', k: 'tv', q: 'with_original_language=ja&with_genres=16,10759' + G15 },
                 { t: 'Фантастика й фентезі', k: 'tv', q: 'with_original_language=ja&with_genres=16,10765' + G15 },
-                { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35' + G15 },
-                { t: 'Драми', k: 'tv', q: 'with_original_language=ja&with_genres=16,18' + G15 },
-                { t: 'Детективи й психологія', k: 'tv', q: 'with_original_language=ja&with_genres=16,9648' + G15 },
-                // завершені популярні серіали (з 2010-го) — щоб дивитись підряд, без очікування нових серій
-                { t: 'Завершені — на один раз', k: 'tv', q: JA + NK + '&with_status=3&first_air_date.gte=2010-01-01&vote_count.gte=150&sort_by=popularity.desc' }
+                { t: 'Комедії', k: 'tv', q: 'with_original_language=ja&with_genres=16,35' + G15 }
             ], kw = animeCos('lmx_anime_kw');
             ANIME_TAGS.forEach(function (tg) {
                 var id = kw[tg[0]];
@@ -1100,13 +1089,13 @@
     SVC.amc.soon = { tf: 'with_networks=174' };
     SVC.sky.soon = {};
     // поточний аніме-сезон: зима (січ–бер), весна (кві–чер), літо (лип–вер), осінь (жов–гру)
-    function animeSeason() {
-        var d = new Date(), y = d.getFullYear(), q = Math.floor(d.getMonth() / 3);
+    function animeSeason(shift) {
+        var d = new Date(), y = d.getFullYear(), q = Math.floor(d.getMonth() / 3) + (shift || 0);
+        if (q > 3) { q -= 4; y++; }
         return { start: y + '-' + ['01', '04', '07', '10'][q] + '-01', name: ['Зима', 'Весна', 'Літо', 'Осінь'][q] + ' ' + y };
     }
     var ANIME_TAGS = [
-        ['isekai', 'Ісекай'], ['reincarnation', 'Переродження'], ['vampire', 'Вампіри'],
-        ['mecha', 'Меха'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність']
+        ['isekai', 'Ісекай'], ['sports', 'Спорт'], ['slice of life', 'Повсякденність']
     ];
     var DORAMA_TAGS = [
         ['romance', 'Романтика'], ['school', 'Школа'], ['medical', 'Лікарі'], ['revenge', 'Помста'], ['time travel', 'Подорожі в часі'],
@@ -1160,7 +1149,7 @@
         out.push({ t: 'Золота колекція (найвищий рейтинг)', k: 'tv', q: c.tf + '&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=300' });
         // аніме: рядів забагато, частина дублює одна одну («Нові серіали» ≈ «Новинки цього року», «Головні хіти» ≈ «У топі» тощо) — прибираємо
         if (key === 'anime' && !forHome) {
-            var drop = ['Нові серіали', 'Популярні фільми', 'Головні хіти', 'Золота колекція (найвищий рейтинг)'];
+            var drop = ['Нові серіали', 'Нові фільми', 'Скоро вийде', 'Популярні фільми', 'Головні хіти', 'Золота колекція (найвищий рейтинг)'];
             out = out.filter(function (e) { return drop.indexOf(e.t) < 0; });
         }
         // Українське: у TMDB багато нових українських тайтлів без країни UA — доповнюємо кожен ряд тим самим запитом за мовою оригіналу, мережами (1+1 Україна, Новий канал) і студією Pronto Film; результати зливаються в один ряд
@@ -1180,7 +1169,18 @@
         // «Схоже на те, що вам сподобалось» — лише аніме / лише дорами (будується лише на цих сторінках, на головну не впливає)
         if (!forHome && (key === 'anime' || key === 'dorama')) mapped.splice(1, 0, { title: 'Схоже на те, що вам сподобалось', url: 'lmx://recs/' + key, kind: 'tv', recs: key, min: 6 });
         // «Нові серії» — лише на сторінці «Аніме»: улюблене (лайкнуте) аніме, у якого за останні 2 тижні вийшла нова серія
-        if (!forHome && key === 'anime') mapped.unshift({ title: 'Нові серії', url: 'lmx://newep/anime', kind: 'tv', newep: true, min: 1 });
+        // AniList: «Тренд тижня» перед «Схожим», далі сезон, наступний сезон і топ. Якщо AniList недоступний — ряд вантажить запасний запит TMDB (url)
+        if (!forHome && key === 'anime') {
+            var JK = 'with_original_language=ja&with_genres=16&without_genres=10762', sn = animeSeason(), nx = animeSeason(1);
+            var alr = function (t, l, q, k) { return { title: t, al: l, url: 'discover/' + (k || 'tv') + '?' + q, kind: 'tv', min: 5 }; };
+            var recsR = mapped.filter(function (e) { return e.recs; }), restR = mapped.filter(function (e) { return !e.recs; });
+            mapped = [{ title: 'Нові серії', url: 'lmx://newep/anime', kind: 'tv', newep: true, min: 1 },
+                alr('Тренд тижня', 'trend', JK + '&air_date.gte=' + dayStr(-10) + '&air_date.lte=' + today + '&sort_by=popularity.desc&vote_count.gte=3')]
+                .concat(recsR, [
+                alr('Аніме сезону · ' + sn.name, 'season', JK + '&first_air_date.gte=' + sn.start + '&first_air_date.lte=' + today + '&sort_by=popularity.desc'),
+                alr('Скоро · ' + nx.name, 'next', JK + '&first_air_date.gte=' + dayStr(1) + '&first_air_date.lte=' + dayStr(150) + '&sort_by=popularity.desc'),
+                alr('Топ аніме всіх часів', 'top', JK + '&vote_average.gte=8.2&vote_count.gte=300&sort_by=vote_average.desc')], restR);
+        }
         return mapped;
     }
 
@@ -1257,6 +1257,57 @@
         if (!need) return finish();
         setTimeout(finish, 5000);
     }
+    // ===== AniList: тренд / сезон / наступний сезон / топ =====
+    // Списки (id TMDB) раз на 6 год будує GitHub Action (anime_lists.json); картки українською віддає наш worker (/anime) одним запитом.
+    // Якщо worker недоступний — беремо список з GitHub Pages і самі дотягуємо перші 24 картки з TMDB. Кеш на пристрої — 6 год
+    var alAll = {}, alPend = {};
+    function alStore() { var c = null; try { c = Lampa.Storage.get('lmx_cache_al', {}); } catch (e) {} return c && typeof c === 'object' ? c : {}; }
+    function alXhr(url, cb) {
+        var x = new XMLHttpRequest(), done = false;
+        function fin(j) { if (done) return; done = true; cb(j); }
+        try {
+            x.open('GET', url, true); x.timeout = 12000;
+            x.onload = function () { var j = null; try { j = x.status === 200 ? JSON.parse(x.responseText) : null; } catch (e) {} fin(j); };
+            x.onerror = x.ontimeout = function () { fin(null); };
+            x.send();
+        } catch (e) { fin(null); }
+    }
+    function alGet(l, cb) {
+        var st = alStore(), hit = st[l];
+        if (hit && hit.r && hit.r.length && Date.now() - hit.t < 6 * 3600000) return setTimeout(function () { cb(hit.r.map(function (c) { var x = {}, k; for (k in c) x[k] = c[k]; return x; })); }, 0);
+        if (alPend[l]) return alPend[l].push(cb);
+        alPend[l] = [cb];
+        function fin(list) {
+            var q = alPend[l]; delete alPend[l];
+            if (list && list.length) { try { var s2 = alStore(); s2[l] = { t: Date.now(), r: list }; Lampa.Storage.set('lmx_cache_al', s2); } catch (e) {} }
+            q.forEach(function (f) { try { f(list && list.length ? list.map(function (c) { var x = {}, k; for (k in c) x[k] = c[k]; return x; }) : null); } catch (e) {} });
+        }
+        var h = '';
+        try { h = String(Lampa.Storage.get('lmx_sync_server', '') || ''); } catch (e) {}
+        h = (h || 'https://lmx-sync.vladshkaraputa07.workers.dev').replace(/\/+$/, '');
+        alXhr(h + '/anime?l=' + l, function (j) {
+            if (j && j.ok && j.results && j.results.length) return fin(j.results);
+            // запасний шлях: список з GitHub Pages + картки з TMDB
+            alXhr('https://irfnekf.github.io/lampa-plugins/anime_lists.json?t=' + Math.floor(Date.now() / 3600000), function (src) {
+                var ids = src && src.lists && src.lists[l] ? src.lists[l].slice(0, 24) : [];
+                if (!ids.length) return fin(null);
+                var out = [], left = ids.length;
+                ids.forEach(function (t, i) {
+                    tget(t[0] + '/' + t[1], {}, function (d) {
+                        if (d && d.id) { d.media_type = t[0]; d.genre_ids = (d.genres || []).map(function (g) { return g.id; }); out[i] = d; }
+                        if (--left === 0) fin(out.filter(Boolean));
+                    }, function () { if (--left === 0) fin(out.filter(Boolean)); });
+                });
+            });
+        });
+    }
+    function alBuild(l, cb) {
+        alGet(l, function (list) {
+            if (!list) return cb(null);
+            list = cleanResults(list, true).filter(function (m) { return m.poster_path && (m.genre_ids || []).indexOf(10762) < 0; });
+            jpFix(list, function (arr) { alAll[l] = arr; cb(arr); });
+        });
+    }
     function animeHeroList(JA, done) {
         var t0 = dayStr(0), left = 7, recent = [], top = [], soonTv = [], soonMv = [];
         // у афішу потрапляють лише картки з українським описом (є і/ї/є/ґ) і назвою без ієрогліфів
@@ -1289,11 +1340,15 @@
         }
         function fin() {
             if (--left > 0) return;
-            var cand = soonTv.concat(soonMv).filter(function (m) {
+            var t1 = dayStr(1);
+            // «Скоро» — з AniList (наступний сезон; лише нові тайтли, у яких дата прем'єри ще попереду), інакше з TMDB
+            var alSoon = (alN || []).filter(function (m) { return String(m.release_date || m.first_air_date || '') >= t1; });
+            var cand = (alSoon.length >= 2 ? alSoon : soonTv.concat(soonMv)).filter(function (m) {
                 var g = m.genre_ids || [];
                 return m.backdrop_path && m.poster_path && g.indexOf(10762) < 0 && !(m.media_type === 'movie' && g.indexOf(10751) >= 0);
-            }).sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); }).slice(0, 4);
-            soonFix(cand, build);
+            });
+            if (!(alSoon.length >= 2)) cand.sort(function (a, b) { return (b.popularity || 0) - (a.popularity || 0); });
+            soonFix(cand.slice(0, 4), build);
         }
         function build(soon) {
             var seen = {}, out = [];
@@ -1304,6 +1359,15 @@
             var sn0 = animeSeason().start, y3 = dayStr(-3 * 365);
             function fresh(m) { var f = String(m.first_air_date || ''); return f >= sn0 ? 3 : f >= y3 ? 1 : 0.2; }
             recent.sort(function (a, b) { return (b.popularity || 0) * fresh(b) - (a.popularity || 0) * fresh(a); });
+            // AniList «сезон»: найпопулярніше цього сезону, разом із новими сезонами старих серіалів («Новий сезон»)
+            (alS || []).filter(function (m) { return uaOk(m) && !seen[m.id] && (m.genre_ids || []).indexOf(10762) < 0; }).forEach(function (m) {
+                if (out.length >= room) return;
+                var d = String(m.release_date || m.first_air_date || '');
+                if (m.media_type === 'movie') { if (!d || d > dayStr(0)) return; m.__tag = 'new'; }
+                else if (d && d < sn0) { m.__tag = 'new'; m.__season = 1; }
+                else { m.__trend = 1; m.__air = 1; }
+                seen[m.id] = 1; out.push(m);
+            });
             recent.filter(function (m) { return uaOk(m) && !seen[m.id]; }).forEach(function (m) {
                 if (out.length >= room) return;
                 seen[m.id] = 1; m.media_type = 'tv'; m.__trend = 1; m.__air = 1; out.push(m);
@@ -1325,6 +1389,10 @@
         var JT = JA + '&without_genres=10762';
         var recentUrl = 'discover/tv?' + JT + '&air_date.gte=' + dayStr(-30) + '&air_date.lte=' + t0 + '&sort_by=popularity.desc&vote_count.gte=1';
         var topUrl = 'discover/tv?' + JT + '&sort_by=popularity.desc&vote_count.gte=100';
+        var alS = null, alN = null;
+        left += 2;
+        alGet('season', function (l) { alS = l; fin(); });
+        alGet('next', function (l) { alN = l; fin(); });
         get(recentUrl, 'tv', recent, 1);
         get(recentUrl, 'tv', recent, 2);
         get(topUrl, 'tv', top, 1);
@@ -1478,6 +1546,13 @@
                 function fetchRow(i, done) {
                     if (res[i]) return done();
                     if (cats[i].newep) { newEpBuild(function (arr) { res[i] = arr || []; done(); }); return; }
+                    if (cats[i].al && !cats[i].alFail) {
+                        alBuild(cats[i].al, function (arr) {
+                            if (!arr || arr.length < 5) { cats[i].alFail = 1; return fetchRow(i, done); }
+                            res[i] = arr; meta[i] = { url: 'lmx://al/' + cats[i].al, tp: Math.max(1, Math.ceil(arr.length / 20)) }; done();
+                        });
+                        return;
+                    }
                     if (cats[i].recs) { recsBuild(cats[i].recs, function (d) { res[i] = (d && d.results) || []; if (d && d.url) meta[i] = { url: d.url, tp: d.total_pages }; done(); }); return; }
                     var pages = (i < 3 || id === 'anime' || id === 'dorama') ? 2 : 1, alts = cats[i].alts || [], nu = 1 + alts.length, got = [], pend = pages * nu, seenC = {}, fin = false, t0 = Date.now(), errs = 0;
                     // запасний запит для збірок Lampa, де дискавер за «мова=ja + жанр=анімація» повертає порожньо: ключове слово TMDB «anime» (210024)
@@ -2188,6 +2263,10 @@
                 arr = arr.filter(function (c) { return c && c.id && !seenF[c.id]; });
                 var pf = params.page || 1, perF = 20;
                 return ok({ results: arr.slice((pf - 1) * perF, pf * perF).map(function (c) { var x = {}, q; for (q in c) x[q] = c[q]; return x; }), page: pf, total_pages: Math.max(1, Math.ceil(arr.length / perF)), total_results: arr.length, source: 'tmdb' });
+            }
+            if (params && typeof params.url === 'string' && params.url.indexOf('lmx://al/') === 0) {
+                var alA = alAll[params.url.slice(9)] || [], pa = params.page || 1;
+                return ok({ results: alA.slice((pa - 1) * 20, pa * 20).map(function (c) { var x = {}, q; for (q in c) x[q] = c[q]; return x; }), page: pa, total_pages: Math.max(1, Math.ceil(alA.length / 20)), total_results: alA.length, source: 'tmdb' });
             }
             if (params && typeof params.url === 'string' && params.url.indexOf('lmx://recs/') === 0) {
                 var recsAll = recsAllBy[params.url.slice(11)] || [];
@@ -7228,7 +7307,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.632';
+    var VERSION = '10.633';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {

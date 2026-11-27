@@ -1,0 +1,34 @@
+name: AniList anime lists
+
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build anime lists from AniList
+        run: node tools/anilist_update.mjs
+      - name: Commit if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then echo "no changes"; exit 0; fi
+          git config user.name "anilist-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add anime_lists.json
+          git commit -m "AniList lists: update"
+          git pull --rebase -q || true
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" >/dev/null || true

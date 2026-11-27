@@ -1201,6 +1201,30 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/lite/anitube' || url.pathname === '/lite/anitube/video')) return handleAnitube(url, env, ctx);
     if (req.method === 'GET' && /^\/(lite\/(events|withsearch|video|pl|ey|aoep|animeon|mikai|eneyida|bamboo|unimay|uafix|ufv|ufd)|externalids)$/.test(url.pathname)) { const r = await handleUa(url, env, ctx); if (r) return r; }
+    // Підбірки аніме з AniList (тренд, сезон, наступний сезон, топ): id готує GitHub Action у anime_lists.json, тут — картки TMDB українською. Кеш 6 год
+    if (req.method === 'GET' && url.pathname === '/anime') {
+      const l = String(url.searchParams.get('l') || '');
+      if (!/^(trend|season|next|top)$/.test(l)) return json({ ok: 0 }, 400);
+      const ck = new Request('https://lmx-cache/anime1/' + l);
+      try { const hit = await caches.default.match(ck); if (hit) return hit; } catch (e) {}
+      let src = null;
+      try { const r = await fetch('https://irfnekf.github.io/lampa-plugins/anime_lists.json', { cf: { cacheTtl: 1800 } }); if (r.ok) src = await r.json(); } catch (e) {}
+      if (!src || !src.lists || !src.lists[l]) return json({ ok: 0, error: 'no_lists' }, 502);
+      const ids = src.lists[l].slice(0, 45);
+      const KEEP = ['id', 'title', 'name', 'original_title', 'original_name', 'overview', 'poster_path', 'backdrop_path', 'release_date', 'first_air_date', 'vote_average', 'vote_count', 'popularity', 'original_language', 'number_of_seasons', 'status'];
+      const cards = await Promise.all(ids.map(async (t) => {
+        try {
+          const d = await tmdbGet(env, '/' + t[0] + '/' + t[1], fetch);
+          const o = { media_type: t[0] };
+          KEEP.forEach((k) => { if (d[k] !== undefined && d[k] !== null) o[k] = d[k]; });
+          o.genre_ids = (d.genres || []).map((g) => g.id);
+          return o;
+        } catch (e) { return null; }
+      }));
+      const out = json({ ok: 1, season: src.season, next: src.next, results: cards.filter((c) => c && c.poster_path) });
+      try { const c2 = new Response(out.clone().body, out); c2.headers.set('cache-control', 'max-age=21600'); ctx.waitUntil(caches.default.put(ck, c2)); } catch (e) {}
+      return out;
+    }
     // Rotten Tomatoes: Popcornmeter (глядачі) і Tomatometer (критики). Адресу сторінки беремо з Wikidata за IMDb-id, оцінки — зі сторінки RT. Кеш 24 год
     if (req.method === 'GET' && url.pathname === '/rt') {
       const id = String(url.searchParams.get('imdb') || '');
