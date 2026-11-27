@@ -1539,7 +1539,15 @@
                 function rowData(i) {
                     // «Ще» є в кожного ряду з адресою (раніше — лише коли після фільтрів лишалось ≥18 карток, тож у багатьох рядів кнопки не було)
                     var mt = meta[i], url = mt ? mt.url : (cats[i].url2 || cats[i].url), more = !!url && !cats[i].newep && !cats[i].mix;
-                    return { title: cats[i].title, results: res[i].slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: url, source: 'tmdb', page: 1, more: more, total_pages: more ? ((mt && mt.tp) || 20) : 1 };
+                    // аніме: ті самі хіти («Переродження», «Реінкарнація безробітного») в «Бойовику», «Фантастиці» й «Середньовіччі» поспіль —
+                    // що вже є на початку вищих рядів, переносимо в кінець ряду (ряд не порожніє, але починається з іншого)
+                    var list = res[i];
+                    if (id === 'anime' && !cats[i].newep && !cats[i].recs && i > 0) {
+                        var shown = {}, j;
+                        for (j = 0; j < i; j++) if (res[j] && !cats[j].newep && !cats[j].recs) res[j].slice(0, 10).forEach(function (x) { shown[x.id] = 1; });
+                        list = list.filter(function (x) { return !shown[x.id]; }).concat(list.filter(function (x) { return shown[x.id]; }));
+                    }
+                    return { title: cats[i].title, results: list.slice(0, ROW_MAX).map(function (x) { var c = {}; for (var k in x) c[k] = x[k]; return c; }), url: url, source: 'tmdb', page: 1, more: more, total_pages: more ? ((mt && mt.tp) || 20) : 1 };
                 }
                 // ряд з 1–2 картками (малі каталоги на кшталт Apple TV+) не показуємо: порожній ряд лише псує вигляд
                 function ok(i) { return res[i] && res[i].length >= (cats[i].min || (i < 4 ? 5 : 8)); }
@@ -7307,7 +7315,7 @@
     // ===== Запуск =====
     // Перехоплення ставимо одразу при завантаженні, щоб побачити ряди, які додадуться пізніше
     // Версію лише запам'ятовуємо. Порядок і видимість рядів користувача при оновленні НЕ скидаємо
-    var VERSION = '10.633';
+    var VERSION = '10.634';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Pack', description: 'Головна, картки, сторінка тайтлу та оформлення Lampa в одному плагіні', author: 'Irfnekf' }; } catch (e) {}
     safe(function () {
