@@ -15,7 +15,7 @@
     if (window.__lmxSync) return;
     window.__lmxSync = true;
 
-    var VERSION = '1.31';
+    var VERSION = '1.32';
     // Назва в списку розширень Lampa (інакше там «Без назви»)
     try { if (window.Lampa && Lampa.Manifest) Lampa.Manifest.plugins = { type: 'other', version: String(VERSION), name: 'LMX Sync', description: 'Синхронізація закладок, історії та позицій перегляду між пристроями', author: 'Irfnekf' }; } catch (e) {}
     // Адреса вашого сервера (Cloudflare Worker). Можна змінити й у Налаштування → LMX Sync → «Адреса сервера»
@@ -370,7 +370,7 @@
         } catch (e) { done = true; clearTimeout(t); fail('Помилка запиту'); }
     }
 
-    var busy = false, applying = false, timer = 0, retryN = 0;
+    var busy = false, applying = false, timer = 0, retryN = 0, favPend = false;
     var status = { text: '', ok: true };
     function setStatus(t, ok, extra) {
         status.text = t; status.ok = ok !== false;
@@ -595,7 +595,7 @@
         if (!code()) { if (manual) noty('Спочатку створіть або введіть код'); return cb(false); }
         if (!server()) { if (manual) noty('Не вказана адреса сервера'); setStatus('Немає адреси сервера', false); return cb(false); }
         if (!syncActive()) { if (manual) noty('Увімкнена синхронізація CUB — LMX Sync вимкнено'); return cb(false); }
-        busy = true;
+        busy = true; favPend = false;
         var skew0 = st0skew(), st = getState(), now = Date.now() + skew0;
         // Повне зчитування з сервера (since=0) — безпечне й нічого не затирає (діють ті самі правила «новіше/більше виграє»). Робимо його:
         // вручну («Синхронізувати зараз»), один раз після оновлення плагіна і коли локальних таймкодів стало вдвічі менше, ніж пам'ятає стан (дані пристрою очищали)
@@ -767,7 +767,7 @@
         safe(function () {
             Lampa.Listener.follow('state:changed', function (e) {
                 if (!e || applying || !code()) return;
-                if (e.target === 'favorite' && e.reason !== 'read') schedule(20000);
+                if (e.target === 'favorite' && e.reason !== 'read') { favPend = true; schedule(5000); }
                 else if (e.target === 'timeline' && e.reason === 'update') schedule(60000);
             });
         });
@@ -814,9 +814,20 @@
                 post('/api/sync', obj, function () {}, function () {}, 15000);
             } catch (e) {}
         }
+        // Закладку додали й одразу згорнули/закрили застосунок (телефон) — звичайна синхронізація через 5 с уже не встигала,
+        // і закладка лишалась лише на цьому пристрої до наступного запуску. Тепер незбережені зміни закладок ідуть «маяком»
+        function favFlush() {
+            try {
+                if (!favPend || !code() || !server() || !syncActive() || busy || applying || !window.navigator || !navigator.sendBeacon || typeof Blob === 'undefined') return;
+                var st = getState(), sk = st0skew(), col = collect(st, Date.now() + sk, { skew: sk });
+                var ops = (col.ops || []).filter(function (o) { return /^f:/.test(o.k); }).slice(0, 60);
+                if (!ops.length) return;
+                if (navigator.sendBeacon(server() + '/api/sync', new Blob([JSON.stringify({ u: st.u, since: -1, ops: ops })], { type: 'text/plain;charset=UTF-8' }))) favPend = false;
+            } catch (e) {}
+        }
         safe(function () {
-            document.addEventListener('visibilitychange', function () { if (document.hidden) { beaconNow = true; savePos(); beaconNow = false; } });
-            window.addEventListener('pagehide', function () { beaconNow = true; savePos(); beaconNow = false; });
+            document.addEventListener('visibilitychange', function () { if (document.hidden) { beaconNow = true; savePos(); beaconNow = false; favFlush(); } });
+            window.addEventListener('pagehide', function () { beaconNow = true; savePos(); beaconNow = false; favFlush(); });
             setInterval(function () { if (!document.hidden) savePos(); }, 15000);
         });
         safe(function () {
